@@ -89,6 +89,7 @@ export const helpText = (themes: readonly string[]): string => `
 |---------|------|
 | \`/prismantis theme <name>\` | Switch theme on the spot |
 | \`/prismantis demo\` | Full showcase, every element and diagram |
+| \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |
 
 ### ${themes.length} themes
 
@@ -116,4 +117,32 @@ xychart-beta
 
 > [!CAUTION]
 > Claude Code refuses trees over 20000 nodes. A code block past about 500 highlighted lines falls back to plain text.
+`
+
+export const rtlShowcaseText = (): string => `
+# עברית מימין לשמאל
+
+**שלום חברים**, זו הדגמה של עברית עם מונחים באנגלית כמו \`kubectl\`, מספרים כמו 99.9% ו-250ms, נתיב כמו ~/src/app.ts וגם [קישור](https://github.com/NahumLitvin/prismantis).
+
+## רשימות
+
+- פרוסים בשני אזורים (us-east ו-eu-west)
+- מחליפים ערכת נושא עם \`/prismantis theme nord\`
+
+1. מתקינים את התוסף
+2. שואלים שאלה בעברית
+
+> עברית נקראת מימין לשמאל, גם בטרמינל בלי תמיכה בכיווניות
+
+> [!TIP]
+> כל ערכת נושא עובדת גם בעברית
+
+| שירות | אזור | גרסה |
+| :--- | :--- | ---: |
+| שער | us-east | 2.14.0 |
+| חיוב | eu-west | 1.8.3 |
+
+\`\`\`bash
+ls -la # רשימת הקבצים בתיקייה
+\`\`\`
 `

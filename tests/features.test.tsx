@@ -1,5 +1,5 @@
 import type { On } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
@@ -134,6 +134,7 @@ test('slash command output renders as markdown, errors stay native', async ($, o
 
 test('your prompts carry the render hint as model-only context', async ($, on) => {
   const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
   on('prompt.submit', (_, e) => {
     seen.push(e.context)
     return { text: e.text, context: e.context }
@@ -144,6 +145,7 @@ test('your prompts carry the render hint as model-only context', async ($, on) =
 
 test('no render hint when diagramHints is off', { options: { diagramHints: false } }, async ($, on) => {
   const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
   on('prompt.submit', (_, e) => {
     seen.push(e.context)
     return { text: e.text, context: e.context }
@@ -237,6 +239,7 @@ test('a full reply draws every element itself, with the right copy buttons', asy
 
 test('headless runs get no render hint', async ($, on) => {
   const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
   on('prompt.submit', (_, e) => {
     seen.push(e.context)
     return { text: e.text, context: e.context }

@@ -4,7 +4,7 @@ import { parse } from './markdown'
 import { boxArt, mermaidText } from './mermaid'
 import type { Drawn } from './render'
 import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, width } from './render'
-import { helpText, showcaseText } from './help'
+import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { resolveStyle } from './theme'
@@ -27,6 +27,13 @@ const detectRtl = async ($: EngineInterface): Promise<Shape | null> => {
   if (program === 'WarpTerminal' || program === 'ghostty' || program === 'WezTerm' || program === 'vscode') return 'visual'
   if (term === 'alacritty' || (await $.env.get('ALACRITTY_WINDOW_ID')) || (await $.env.get('WT_SESSION'))) return 'visual'
   return null
+}
+
+const applyRtl = async ($: EngineInterface, style: Style): Promise<void> => {
+  if (style.rtl !== 'auto') return
+  const shape = await detectRtl($)
+  style.reorder = shape !== null
+  if (shape) style.shape = shape
 }
 
 const expandedCalls = new Set<string>()
@@ -78,11 +85,7 @@ export const register: Register = (on, options) => {
   }
 
   on('session.start', async ($, e, next) => {
-    if (style.rtl === 'auto') {
-      const shape = await detectRtl($)
-      style.reorder = shape !== null
-      if (shape) style.shape = shape
-    }
+    await applyRtl($, style)
     const started = await next(e)
     await $.command
       .register({ name: 'prismantis', description: 'Switch the prismantis theme, or list themes', argumentHint: '[theme <name>]' })
@@ -93,6 +96,10 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'prismantis' }, async ($, e) => {
     const [sub, name] = e.args.trim().split(/\s+/)
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
+    if (sub === 'demo-rtl') {
+      await applyRtl($, style)
+      return { text: rtlShowcaseText() }
+    }
     if (sub !== 'theme' || !name) return { text: helpText(PRESET_NAMES) }
     if (!(PRESET_NAMES as readonly string[]).includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}` }
     const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
@@ -101,12 +108,11 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'TurnDuration' }, ($, e) => renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs))
 
-  if (style.diagramHints) {
-    on('prompt.submit', ($, e, next) => {
-      if (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge') return next(e)
-      return next({ ...e, context: [...(e.context ?? []), HINT] })
-    })
-  }
+  on('prompt.submit', async ($, e, next) => {
+    await applyRtl($, style)
+    if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
+    return next({ ...e, context: [...(e.context ?? []), HINT] })
+  })
 
   on('ui.render', { component: 'CommandOutput' }, ($, e, next) => {
     if (e.props.isErrored) return next(e)

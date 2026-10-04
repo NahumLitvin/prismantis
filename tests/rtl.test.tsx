@@ -2,6 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 
 import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
+import { rtlShowcaseText } from '../hooks/help'
 import { commentTail, flow } from '../hooks/rtl'
 
 const measure = (s: string) => [...s].length
@@ -247,5 +248,21 @@ test('auto reorders fully in Ghostty, which has no bidi of its own', async ($, o
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
   const ui = await $.ui.mount(mount('שלום עולם'))
   expect(await ui.find({ type: 'Text', text: /^םלוע םולש$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('detection also runs when a prompt is submitted, so a reload without session start still gets it', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'WarpTerminal' })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /^םלוע םולש$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the demo-rtl screen has every element and draws right to left', { options: { rtl: 'visual' } }, async $ => {
+  const ui = await $.ui.mount({ plugin: 'prismantis', component: 'CommandOutput' as const, props: { command: 'prismantis', args: 'demo-rtl', text: rtlShowcaseText(), isErrored: false }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
+  expect(await ui.find({ type: 'Text', text: /^לאמשל ןימימ תירבע$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.alignItems === 'flex-end').length >= 3).toBe(true)
   await ui.unmount()
 })
