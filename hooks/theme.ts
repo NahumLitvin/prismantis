@@ -38,7 +38,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     TOKENS.filter(k => isColor(options[`${k}Color`])).map(k => [k, String(options[`${k}Color`]).trim()]),
   )
 
-  const rtl = pick(options.rtl, ['auto', 'visual', 'lrm', 'logical', 'off'] as const, 'auto')
+  const rtl = pick(options.rtl, ['auto', 'visual', 'lrm', 'words', 'logical', 'off'] as const, 'auto')
 
   return {
     theme: { ...base, ...fromFields },
@@ -52,6 +52,6 @@ export const resolveStyle = (options: PluginOptions): Style => {
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',
-    shape: rtl === 'lrm' || rtl === 'logical' ? rtl : 'visual',
+    shape: rtl === 'lrm' || rtl === 'words' || rtl === 'logical' ? rtl : 'visual',
   }
 }

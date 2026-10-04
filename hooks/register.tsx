@@ -21,7 +21,7 @@ const HINT = [
 const detectRtl = async ($: EngineInterface): Promise<Shape | null> => {
   const program = await $.env.get('TERM_PROGRAM')
   const term = await $.env.get('TERM')
-  if ((await $.env.get('KITTY_WINDOW_ID')) || term === 'xterm-kitty') return 'logical'
+  if ((await $.env.get('KITTY_WINDOW_ID')) || term === 'xterm-kitty') return 'words'
   if (program === 'Apple_Terminal') return 'lrm'
   if (program === 'iTerm.app' || (await $.env.get('VTE_VERSION')) || (await $.env.get('KONSOLE_VERSION'))) return 'logical'
   if (program === 'WarpTerminal' || program === 'ghostty' || program === 'WezTerm' || program === 'vscode') return 'visual'

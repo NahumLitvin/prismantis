@@ -206,13 +206,13 @@ test('auto reorders Hebrew in Warp', async ($, on) => {
   await ui.unmount()
 })
 
-test('auto in kitty keeps the right-to-left layout and leaves the letters for kitty', async ($, on) => {
+test('auto in kitty puts words in visual order and leaves each word for kitty to reverse', async ($, on) => {
   mock.env(on, { TERM: 'xterm-kitty', KITTY_WINDOW_ID: '1', TERM_PROGRAM: 'WarpTerminal' })
   on('session.start', () => ({ cwd: '/tmp' }))
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount(mount('שלום עולם\n\n- אחד'))
-  expect(await ui.find({ type: 'Text', text: /^שלום עולם$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^ •$/ })).toBeDefined()
+  const ui = await $.ui.mount(mount('שלום עולם\n\n- פרוסים בשני אזורים (us-east ו-eu-west)'))
+  expect(await ui.find({ type: 'Text', text: /^עולם שלום$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\(eu-west-ו us-east\) אזורים בשני פרוסים$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })

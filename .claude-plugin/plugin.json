@@ -74,12 +74,13 @@
     "rtl": {
       "type": "string",
       "title": "Right-to-left text",
-      "description": "Hebrew and Arabic get a right-to-left layout: right aligned, bullets, numbers and quote bars on the right, tables mirrored. auto picks how the letters are sent: visual order where the terminal has no bidi of its own (Warp, Ghostty, WezTerm, VS Code, Alacritty, Windows Terminal), visual order pinned with invisible marks for Apple Terminal (lrm), and as written where the terminal reverses them itself (kitty, iTerm2, GNOME Terminal, Konsole: logical). Other terminals are left alone. Set visual, lrm or logical to force one, or off for no right-to-left handling.",
+      "description": "Hebrew and Arabic get a right-to-left layout: right aligned, bullets, numbers and quote bars on the right, tables mirrored. auto picks how the letters are sent: visual order where the terminal has no bidi of its own (Warp, Ghostty, WezTerm, VS Code, Alacritty, Windows Terminal), visual order pinned with invisible marks for Apple Terminal (lrm), words in visual order with each word as written for kitty, which reverses every Hebrew word itself (words), and as written where the terminal does full bidi (iTerm2, GNOME Terminal, Konsole: logical). Other terminals are left alone. Set visual, lrm, words or logical to force one, or off for no right-to-left handling.",
       "default": "auto",
       "options": [
         "auto",
         "visual",
         "lrm",
+        "words",
         "logical",
         "off"
       ]
