@@ -205,12 +205,13 @@ test('auto reorders Hebrew in Warp', async ($, on) => {
   await ui.unmount()
 })
 
-test('auto in kitty orders the words and leaves each word for kitty to reverse', async ($, on) => {
-  mock.env(on, { TERM: 'xterm-kitty', KITTY_WINDOW_ID: '1' })
+test('auto in kitty keeps the right-to-left layout and leaves the letters for kitty', async ($, on) => {
+  mock.env(on, { TERM: 'xterm-kitty', KITTY_WINDOW_ID: '1', TERM_PROGRAM: 'WarpTerminal' })
   on('session.start', () => ({ cwd: '/tmp' }))
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount(mount('שלום עולם'))
-  expect(await ui.find({ type: 'Text', text: /^עולם שלום$/ })).toBeDefined()
+  const ui = await $.ui.mount(mount('שלום עולם\n\n- אחד'))
+  expect(await ui.find({ type: 'Text', text: /^שלום עולם$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ •$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })
@@ -234,9 +235,10 @@ test('auto leaves an unknown terminal alone', async ($, on) => {
   await ui.unmount()
 })
 
-test('words mode keeps points attached and leaves Latin and numbers untouched', async () => {
-  const f = flow([{ kind: 'text', text: 'ש\u05B8לום kubectl ו-100%' }], 100, measure, 'words')
-  expect(f?.lines.map(inlineText)).toEqual(['100%-ו kubectl ש\u05B8לום'])
+test('logical mode wraps in reading order and keeps every line as written', async () => {
+  const f = flow([{ kind: 'text', text: 'אחד שניים שלושה ארבעה חמישה' }], 12, measure, 'logical')
+  expect(f?.base).toBe('R')
+  expect(f?.lines.map(inlineText)).toEqual(['אחד שניים', 'שלושה ארבעה', 'חמישה'])
 })
 
 test('auto reorders fully in Ghostty, which has no bidi of its own', async ($, on) => {

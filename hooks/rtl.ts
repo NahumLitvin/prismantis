@@ -2,7 +2,7 @@ import type { Inline } from './markdown'
 
 type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
-export type Shape = 'visual' | 'words' | 'lrm'
+export type Shape = 'visual' | 'lrm' | 'logical'
 
 type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'number' | 'path' | 'link' | 'dim' }
 type Unit = { ch: string; fmt: Fmt }
@@ -127,15 +127,9 @@ const wrapUnits = (all: Unit[], max: number, measure: (s: string) => number): Un
   return lines
 }
 
-const RUN = new RegExp(`(?:${R.source}|\\p{M})+`, 'gu')
-
 const clusters = (text: string): string[] => units(text, { wrap: [], leaf: 'text' }).map(u => u.ch)
 
-const shapeText = (text: string, shape: Shape): string => {
-  if (shape === 'visual' || !R.test(text)) return text
-  if (shape === 'words') return text.replace(RUN, run => clusters(run).reverse().join(''))
-  return clusters(text).join('\u200e')
-}
+const shapeText = (text: string, shape: Shape): string => (shape === 'lrm' && R.test(text) ? clusters(text).join('\u200e') : text)
 
 const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
   nodes.map(n => {
@@ -151,8 +145,8 @@ export const flow = (nodes: Inline[], columns: number, measure: (s: string) => n
   const all = flatten(nodes)
   const base = baseOf(all)
   const logical = base === 'R' ? wrapUnits(all, columns, measure) : [all]
-  const lines = logical.map(line => rebuild(reorder(line, base)))
-  return { base, lines: shape === 'visual' ? lines : lines.map(line => shapeNodes(line, shape)) }
+  const lines = logical.map(line => rebuild(shape === 'logical' ? line : reorder(line, base)))
+  return { base, lines: shape === 'lrm' ? lines.map(line => shapeNodes(line, shape)) : lines }
 }
 
 const visualText = (text: string): string => {
@@ -162,7 +156,7 @@ const visualText = (text: string): string => {
 }
 
 export const commentTail = (line: string, shape: Shape = 'visual'): { head: string; marker: string; tail: string } | null => {
-  if (!R.test(line)) return null
+  if (shape === 'logical' || !R.test(line)) return null
   const m = COMMENT.exec(line)
   return m && R.test(m[3]!) ? { head: m[1]!, marker: m[2]!, tail: shapeText(visualText(m[3]!), shape) } : null
 }

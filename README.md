@@ -136,7 +136,7 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `toolRows` | `true`, `false` | `true` |
 | `copyButtons` | `true`, `false` | `true` |
 | `diagramHints` | `true`, `false` | `true` |
-| `rtl` | `auto`, `visual`, `words`, `lrm`, `off` | `auto` |
+| `rtl` | `auto`, `visual`, `lrm`, `logical`, `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
