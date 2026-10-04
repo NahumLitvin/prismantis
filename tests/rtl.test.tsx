@@ -217,13 +217,13 @@ test('auto in kitty puts words in visual order and leaves each word for kitty to
   await ui.unmount()
 })
 
-test('auto in Apple Terminal pins the visual order with LRM marks', async ($, on) => {
+test('auto in Apple Terminal keeps the right-to-left layout and leaves the letters to its own bidi', async ($, on) => {
   mock.env(on, { TERM_PROGRAM: 'Apple_Terminal' })
   on('session.start', () => ({ cwd: '/tmp' }))
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
   const ui = await $.ui.mount(mount('שלום עולם'))
-  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text).filter(t => t.includes('\u200e'))
-  expect(texts.some(t => t.replaceAll('\u200e', '') === 'םלוע םולש')).toBe(true)
+  expect(await ui.find({ type: 'Text', text: /^שלום עולם$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })
 

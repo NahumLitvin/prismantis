@@ -11,7 +11,7 @@ export const TERMINALS = {
   vscode: 'visual',
   alacritty: 'visual',
   'windows-terminal': 'visual',
-  'apple-terminal': 'lrm',
+  'apple-terminal': 'logical',
   kitty: 'words',
   iterm: 'logical',
   gnome: 'logical',
