@@ -9,6 +9,7 @@ import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { resolveStyle } from './theme'
 import type { Shape } from './rtl'
+import { hasRtl } from './rtl'
 
 const HINT = [
   'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
@@ -121,7 +122,7 @@ export const register: Register = (on, options) => {
     const el = $.ui.resolve(e)
     const { Box } = el
     const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
-    return <Box flexDirection="column" rowGap={1}>{drawMarkdown($, el, style, blocks, columns)}</Box>
+    return <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.props.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, style, blocks, columns)}</Box>
   })
 
   on('ui.render', { component: 'AssistantMessage' }, ($, e, next) => {

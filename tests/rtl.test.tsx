@@ -264,5 +264,6 @@ test('the demo-rtl screen has every element and draws right to left', { options:
   const ui = await $.ui.mount({ plugin: 'prismantis', component: 'CommandOutput' as const, props: { command: 'prismantis', args: 'demo-rtl', text: rtlShowcaseText(), isErrored: false }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
   expect(await ui.find({ type: 'Text', text: /^לאמשל ןימימ תירבע$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.alignItems === 'flex-end').length >= 3).toBe(true)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.width === '100%')).toBe(true)
   await ui.unmount()
 })
