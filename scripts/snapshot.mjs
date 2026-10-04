@@ -21,11 +21,11 @@ const walk = (node, depth, out) => {
 
 let bad = 0
 mkdirSync(dir, { recursive: true })
-for (const theme of THEMES) {
+for (const [theme, rtl, name] of [...THEMES.map(t => [t, 'warp', t]), ['catppuccin-mocha', 'kitty', 'kitty']]) {
   const out = []
-  walk(reply(demo, resolveStyle({ theme, rtl: 'warp' }), 100), 0, out)
+  walk(reply(demo, resolveStyle({ theme, rtl }), 100), 0, out)
   const text = `${out.join('\n')}\n`
-  const file = join(dir, `demo-${theme}.txt`)
+  const file = join(dir, `demo-${name}.txt`)
   if (process.argv.includes('--update') || !existsSync(file)) {
     writeFileSync(file, text)
     console.log(`wrote ${file}`)
@@ -34,7 +34,7 @@ for (const theme of THEMES) {
     const a = readFileSync(file, 'utf8').split('\n')
     const b = text.split('\n')
     const i = a.findIndex((l, k) => l !== b[k])
-    console.error(`SNAPSHOT DIFF ${theme} at line ${i + 1}:\n  was: ${a[i]}\n  now: ${b[i]}`)
-  } else console.log(`ok ${theme}`)
+    console.error(`SNAPSHOT DIFF ${name} at line ${i + 1}:\n  was: ${a[i]}\n  now: ${b[i]}`)
+  } else console.log(`ok ${name}`)
 }
 if (bad) process.exit(1)
