@@ -238,3 +238,12 @@ test('words mode keeps points attached and leaves Latin and numbers untouched', 
   const f = flow([{ kind: 'text', text: 'ש\u05B8לום kubectl ו-100%' }], 100, measure, 'words')
   expect(f?.lines.map(inlineText)).toEqual(['100%-ו kubectl ש\u05B8לום'])
 })
+
+test('auto reorders fully in Ghostty, which has no bidi of its own', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'ghostty', TERM: 'xterm-ghostty' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /^םלוע םולש$/ })).toBeDefined()
+  await ui.unmount()
+})
