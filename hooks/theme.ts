@@ -1,6 +1,7 @@
 import type { PluginOptions } from 'claude-code'
 
 import { PRESETS } from './presets'
+import type { Shape } from './rtl'
 
 export const TOKENS = [
   'accent', 'heading', 'strong', 'emphasis', 'inlineCode', 'codeText', 'codeCommand', 'codeFlag', 'codeString', 'codeComment',
@@ -19,6 +20,9 @@ export type Style = {
   mermaidAscii: boolean
   copyButtons: boolean
   diagramHints: boolean
+  rtl: 'auto' | Shape | 'off'
+  reorder: boolean
+  shape: Shape
 }
 
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)|ansi256\(\d{1,3}\)|(black|red|green|yellow|blue|magenta|cyan|white|gray|grey)(Bright)?)$/i
@@ -34,6 +38,8 @@ export const resolveStyle = (options: PluginOptions): Style => {
     TOKENS.filter(k => isColor(options[`${k}Color`])).map(k => [k, String(options[`${k}Color`]).trim()]),
   )
 
+  const rtl = pick(options.rtl, ['auto', 'visual', 'words', 'lrm', 'off'] as const, 'auto')
+
   return {
     theme: { ...base, ...fromFields },
     headingStyle: pick(options.headingStyle, ['bold', 'underline', 'uppercase', 'banner'] as const, 'banner'),
@@ -44,5 +50,8 @@ export const resolveStyle = (options: PluginOptions): Style => {
     mermaidAscii: options.mermaidAscii === true,
     copyButtons: options.copyButtons !== false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
+    rtl,
+    reorder: rtl !== 'auto' && rtl !== 'off',
+    shape: rtl === 'words' || rtl === 'lrm' ? rtl : 'visual',
   }
 }

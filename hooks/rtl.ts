@@ -2,6 +2,7 @@ import type { Inline } from './markdown'
 
 type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
+export type Shape = 'visual' | 'words' | 'lrm'
 
 type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'number' | 'path' | 'link' | 'dim' }
 type Unit = { ch: string; fmt: Fmt }
@@ -126,14 +127,32 @@ const wrapUnits = (all: Unit[], max: number, measure: (s: string) => number): Un
   return lines
 }
 
+const RUN = new RegExp(`(?:${R.source}|\\p{M})+`, 'gu')
+
+const clusters = (text: string): string[] => units(text, { wrap: [], leaf: 'text' }).map(u => u.ch)
+
+const shapeText = (text: string, shape: Shape): string => {
+  if (shape === 'visual' || !R.test(text)) return text
+  if (shape === 'words') return text.replace(RUN, run => clusters(run).reverse().join(''))
+  return clusters(text).join('\u200e')
+}
+
+const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
+  nodes.map(n => {
+    if ('children' in n) return { ...n, children: shapeNodes(n.children, shape) }
+    if (n.kind === 'link') return { ...n, text: shapeText(n.text, shape), href: shapeText(n.href, shape) }
+    return { ...n, text: shapeText(n.text, shape) }
+  })
+
 const containsRtl = (nodes: Inline[]): boolean => nodes.some(n => ('children' in n ? containsRtl(n.children) : R.test(n.text)))
 
-export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number): Flow | null => {
+export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual'): Flow | null => {
   if (!containsRtl(nodes)) return null
   const all = flatten(nodes)
   const base = baseOf(all)
   const logical = base === 'R' ? wrapUnits(all, columns, measure) : [all]
-  return { base, lines: logical.map(line => rebuild(reorder(line, base))) }
+  const lines = logical.map(line => rebuild(reorder(line, base)))
+  return { base, lines: shape === 'visual' ? lines : lines.map(line => shapeNodes(line, shape)) }
 }
 
 const visualText = (text: string): string => {
@@ -142,14 +161,14 @@ const visualText = (text: string): string => {
   return reorder(all, baseOf(all)).map(u => u.ch).join('')
 }
 
-export const commentTail = (line: string): { head: string; marker: string; tail: string } | null => {
+export const commentTail = (line: string, shape: Shape = 'visual'): { head: string; marker: string; tail: string } | null => {
   if (!R.test(line)) return null
   const m = COMMENT.exec(line)
-  return m && R.test(m[3]!) ? { head: m[1]!, marker: m[2]!, tail: visualText(m[3]!) } : null
+  return m && R.test(m[3]!) ? { head: m[1]!, marker: m[2]!, tail: shapeText(visualText(m[3]!), shape) } : null
 }
 
-export const commentVisual = (text: string): string => {
-  const c = commentTail(text)
+export const commentVisual = (text: string, shape: Shape = 'visual'): string => {
+  const c = commentTail(text, shape)
   return c ? c.head + c.marker + c.tail : text
 }
 

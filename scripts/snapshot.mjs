@@ -23,7 +23,7 @@ let bad = 0
 mkdirSync(dir, { recursive: true })
 for (const theme of THEMES) {
   const out = []
-  walk(reply(demo, resolveStyle({ theme }), 100), 0, out)
+  walk(reply(demo, resolveStyle({ theme, rtl: 'visual' }), 100), 0, out)
   const text = `${out.join('\n')}\n`
   const file = join(dir, `demo-${theme}.txt`)
   if (process.argv.includes('--update') || !existsSync(file)) {

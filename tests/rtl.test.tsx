@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
@@ -91,21 +91,21 @@ test('only the comment tail of a code line is reordered', async () => {
   expect(commentTail('// שלום עולם')).toEqual({ head: '', marker: '// ', tail: 'םלוע םולש' })
 })
 
-test('a Hebrew paragraph is right aligned and reordered', async $ => {
+test('a Hebrew paragraph is right aligned and reordered', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('שלום עולם'))
   expect(await ui.find({ type: 'Text', text: /^םלוע םולש$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })
 
-test('a Hebrew paragraph wraps into right aligned lines at the viewport width', async $ => {
+test('a Hebrew paragraph wraps into right aligned lines at the viewport width', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('אחד שניים שלושה ארבעה חמישה שישה שבעה', 30))
   const lines = (await ui.findAll({ type: 'Text' })).filter(t => /[א-ת]/.test(t.text))
   expect(lines.length >= 2).toBe(true)
   await ui.unmount()
 })
 
-test('bullets move to the right end and ordered items keep their number', async $ => {
+test('bullets move to the right end and ordered items keep their number', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('- שלום\n- עולם\n\n1. אחד\n2. שניים'))
   expect((await ui.findAll({ type: 'Text', text: /^ •$/ })).length).toBe(2)
   expect(await ui.find({ type: 'Text', text: /^ 1\.$/ })).toBeDefined()
@@ -114,13 +114,13 @@ test('bullets move to the right end and ordered items keep their number', async 
   await ui.unmount()
 })
 
-test('an English list keeps the left bullet', async $ => {
+test('an English list keeps the left bullet', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('- hello\n- world'))
   expect((await ui.findAll({ type: 'Text', text: /^• $/ })).length).toBe(2)
   await ui.unmount()
 })
 
-test('table cells are reordered one by one and English cells are untouched', async $ => {
+test('table cells are reordered one by one and English cells are untouched', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('| שם | a |\n|---|---|\n| שלום | b |'))
   expect(await ui.find({ type: 'Text', text: /^םש$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
@@ -128,7 +128,7 @@ test('table cells are reordered one by one and English cells are untouched', asy
   await ui.unmount()
 })
 
-test('a Hebrew table is mirrored and right aligned, with the first column on the right', async $ => {
+test('a Hebrew table is mirrored and right aligned, with the first column on the right', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('| לוחם | סרט |\n|---|---|\n| מנטיס | פנדה |'))
   const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
   expect(texts.indexOf('טרס') < texts.indexOf('םחול')).toBe(true)
@@ -136,7 +136,7 @@ test('a Hebrew table is mirrored and right aligned, with the first column on the
   await ui.unmount()
 })
 
-test('an English table with one Hebrew cell keeps its column order and side', async $ => {
+test('an English table with one Hebrew cell keeps its column order and side', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('| name | tag |\n|---|---|\n| web | שלום |\n| api | db |'))
   const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
   expect(texts.indexOf('name') < texts.indexOf('tag')).toBe(true)
@@ -144,7 +144,7 @@ test('an English table with one Hebrew cell keeps its column order and side', as
   await ui.unmount()
 })
 
-test('a code comment is reordered and the code itself is not', async $ => {
+test('a code comment is reordered and the code itself is not', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('```bash\nls -la # שלום\n```\n\n```text\nשלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^ # םולש$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^ls$/ })).toBeDefined()
@@ -152,13 +152,13 @@ test('a code comment is reordered and the code itself is not', async $ => {
   await ui.unmount()
 })
 
-test('a highlighted comment is reordered too', async $ => {
+test('a highlighted comment is reordered too', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('```ts\nconst x = 1 // שלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^\/\/ םולש$/ })).toBeDefined()
   await ui.unmount()
 })
 
-test('quotes and alerts put their bar and box on the right', async $ => {
+test('quotes and alerts put their bar and box on the right', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('> שלום\n\n> [!NOTE]\n> עולם'))
   expect(await ui.find({ type: 'Text', text: /^ │$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
@@ -167,16 +167,74 @@ test('quotes and alerts put their bar and box on the right', async $ => {
   await ui.unmount()
 })
 
-test('headings are right aligned and reordered', async $ => {
+test('headings are right aligned and reordered', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('## שלום'))
   expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end')).toBe(true)
   await ui.unmount()
 })
 
-test('an English reply draws exactly as before', async $ => {
+test('an English reply draws exactly as before', { options: { rtl: 'visual' } }, async $ => {
   const ui = await $.ui.mount(mount('# Title\n\nplain text\n\n- item\n\n> quote'))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end' || b.props.paddingRight !== undefined)).toBe(false)
   expect(await ui.find({ type: 'Text', text: /^• $/ })).toBeDefined()
   await ui.unmount()
+})
+
+test('by default Hebrew is left exactly as written', async $ => {
+  const ui = await $.ui.mount(mount('שלום עולם\n\n- אחד'))
+  expect(await ui.find({ type: 'Text', text: /^שלום עולם$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^• $/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end' || b.props.justifyContent === 'flex-end' && b.props.paddingRight !== undefined)).toBe(false)
+  await ui.unmount()
+})
+
+test('rtl off keeps Hebrew as written even in Warp', { options: { rtl: 'off' } }, async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'WarpTerminal' })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /^שלום עולם$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('auto reorders Hebrew in Warp', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'WarpTerminal' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /^םלוע םולש$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('auto in kitty orders the words and leaves each word for kitty to reverse', async ($, on) => {
+  mock.env(on, { TERM: 'xterm-kitty', KITTY_WINDOW_ID: '1' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /^עולם שלום$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
+  await ui.unmount()
+})
+
+test('auto in Apple Terminal pins the visual order with LRM marks', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'Apple_Terminal' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text).filter(t => t.includes('\u200e'))
+  expect(texts.some(t => t.replaceAll('\u200e', '') === 'םלוע םולש')).toBe(true)
+  await ui.unmount()
+})
+
+test('auto leaves an unknown terminal alone', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'iTerm.app' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /^שלום עולם$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('words mode keeps points attached and leaves Latin and numbers untouched', async () => {
+  const f = flow([{ kind: 'text', text: 'ש\u05B8לום kubectl ו-100%' }], 100, measure, 'words')
+  expect(f?.lines.map(inlineText)).toEqual(['100%-ו kubectl ש\u05B8לום'])
 })

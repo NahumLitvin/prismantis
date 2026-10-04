@@ -15,6 +15,8 @@ export const width = (s: string): number => {
   return graphemes.reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
 }
 
+const flowOf = (style: Style, nodes: Inline[], columns: number) => (style.reorder ? flow(nodes, columns, width, style.shape) : null)
+
 const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: string): RenderElement[] => {
   const { Text } = el
   const t = style.theme
@@ -66,7 +68,7 @@ const flatten = (tokens: PrismToken[], style: Style, color?: string, italic = fa
     if (typeof token === 'string') return [{ text: token, color, italic }]
     const names = [token.type, ...(Array.isArray(token.alias) ? token.alias : token.alias ? [token.alias] : [])]
     const slot = names.map(n => PRISM_COLORS[n]).find(Boolean)
-    const inner = Array.isArray(token.content) ? token.content : [token.type === 'comment' && typeof token.content === 'string' ? commentVisual(token.content) : token.content]
+    const inner = Array.isArray(token.content) ? token.content : [token.type === 'comment' && typeof token.content === 'string' && style.reorder ? commentVisual(token.content, style.shape) : token.content]
     return flatten(inner, style, slot ? style.theme[slot] : color, italic || token.type === 'comment')
   })
 
@@ -117,7 +119,7 @@ export const codeLine = (el: ElementTable, style: Style, line: string, lang: str
   const t = style.theme
   const isShell = isShellLang(lang)
   if (/[\u2500-\u257F]/.test(line)) return <Text key={key} color={t.codeText}>{line}</Text>
-  const comment = commentTail(line)
+  const comment = style.reorder ? commentTail(line, style.shape) : null
   if (comment) {
     return (
       <Text key={key} color={t.codeText}>
@@ -163,15 +165,15 @@ const columnWidths = (natural: number[], available: number, gap: number): number
 const displayText = (inline: Inline[]): string =>
   inline.map(n => (n.kind === 'link' && n.text !== n.href ? `${n.text} (${n.href})` : 'children' in n ? displayText(n.children) : n.text)).join('')
 
-const isRtlTable = (block: Extract<Block, { kind: 'table' }>): boolean => {
+const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boolean => {
   const cells = [...block.header, ...block.rows.flat()].filter(cell => displayText(cell).trim() !== '')
-  return cells.filter(cell => flow(cell, Infinity, width)?.base === 'R').length * 2 > cells.length
+  return cells.filter(cell => flowOf(style, cell, Infinity)?.base === 'R').length * 2 > cells.length
 }
 
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string) => {
   const { Box, Text } = el
   const t = style.theme
-  const rtl = isRtlTable(block)
+  const rtl = isRtlTable(style, block)
   const gap = style.tableStyle === 'grid' ? 3 : 2
   const natural = block.header.map((h, c) =>
     Math.max(width(displayText(h)), ...block.rows.map(r => width(displayText(r[c] ?? [])))),
@@ -197,7 +199,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     <Box key={k} flexDirection="row" columnGap={gap}>
       {order.map(c => {
         const w = widths[c]!
-        const cell = flow(cells[c] ?? [], Infinity, width)
+        const cell = flowOf(style, cells[c] ?? [], Infinity)
         const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
         return (
@@ -220,7 +222,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
 }
 
 const renderHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, key: string) => {
-  const rtl = flow(block.inline, Infinity, width)
+  const rtl = flowOf(style, block.inline, Infinity)
   if (!rtl) return drawHeading(el, style, block, block.inline, key)
   const heading = drawHeading(el, style, block, rtl.lines[0]!, key)
   return rtl.base === 'R' ? <el.Box key={key} alignSelf="flex-end">{heading}</el.Box> : heading
@@ -250,7 +252,7 @@ const ALERT_COLOR = { note: 'blue', tip: 'green', important: 'magenta', warning:
 
 const renderParagraph = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'paragraph' }>, columns: number, key: string) => {
   const { Box, Text } = el
-  const rtl = flow(block.inline, columns, width)
+  const rtl = flowOf(style, block.inline, columns)
   if (rtl?.base === 'R') return <Box key={key} flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, key)}</Box>
   return <Text key={key}>{renderInline(el, style, rtl ? rtl.lines[0]! : block.inline, key)}</Text>
 }
@@ -258,7 +260,7 @@ const renderParagraph = (el: ElementTable, style: Style, block: Extract<Block, {
 const renderQuote = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'quote' }>, columns: number, key: string) => {
   const { Box, Text } = el
   const t = style.theme
-  const rtl = flow(block.inline, columns - 2, width)
+  const rtl = flowOf(style, block.inline, columns - 2)
   if (rtl?.base === 'R') {
     return (
       <Box key={key} flexDirection="row" justifyContent="flex-end">
@@ -279,7 +281,7 @@ const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const { Box, Text } = el
   const color = ALERT_COLOR[block.level]
   const title = <Text bold color={color}>{block.level[0]!.toUpperCase() + block.level.slice(1)}</Text>
-  const rtl = flow(block.inline, columns - 4, width)
+  const rtl = flowOf(style, block.inline, columns - 4)
   if (rtl?.base === 'R') {
     return (
       <Box key={key} flexDirection="column" alignSelf="flex-end" alignItems="flex-end" borderStyle="round" borderColor={color} paddingX={1}>
@@ -305,7 +307,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
       {block.items.map((item, i) => {
         const k = `${key}.${i}`
         const glyph = /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
-        const rtl = flow(item.inline, columns - item.depth * 2 - 2, width)
+        const rtl = flowOf(style, item.inline, columns - item.depth * 2 - 2)
         if (rtl?.base === 'R') {
           return (
             <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
@@ -378,14 +380,14 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     )
     if (!button) return element
     const { Box } = el
-    const rtl = block !== undefined && hasRtl(block.raw)
+    const rtl = style.reorder && block !== undefined && hasRtl(block.raw)
     return block?.kind === 'quote' || block?.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
         {button}
       </Box>
     ) : (
-      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || (block?.kind === 'table' && isRtlTable(block))) ? {} : { alignSelf: 'flex-start' as const })}>
+      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || (block?.kind === 'table' && isRtlTable(style, block))) ? {} : { alignSelf: 'flex-start' as const })}>
         <Box justifyContent="flex-end">{button}</Box>
         {element}
       </Box>

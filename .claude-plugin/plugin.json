@@ -71,6 +71,19 @@
         "minimal"
       ]
     },
+    "rtl": {
+      "type": "string",
+      "title": "Right-to-left text",
+      "description": "Hebrew and Arabic in a right-to-left layout. auto picks the form your terminal needs: visual for Warp (no bidi of its own), words for kitty (it reverses each word itself), lrm for Apple Terminal (visual order pinned with invisible marks), and leaves other terminals alone. Set visual, words or lrm to force one, or off to never reorder.",
+      "default": "auto",
+      "options": [
+        "auto",
+        "visual",
+        "words",
+        "lrm",
+        "off"
+      ]
+    },
     "highlightNumbers": {
       "type": "boolean",
       "title": "Highlight numbers",

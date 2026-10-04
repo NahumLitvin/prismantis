@@ -8,6 +8,7 @@ import { helpText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { resolveStyle } from './theme'
+import type { Shape } from './rtl'
 
 const HINT = [
   'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
@@ -16,6 +17,14 @@ const HINT = [
   'When a reply carries a numeric series or a flow that is easier to see than read, add one small diagram or chart with short labels.',
   'Skip diagrams for simple answers.',
 ].join(' ')
+
+const detectRtl = async ($: EngineInterface): Promise<Shape | null> => {
+  const program = await $.env.get('TERM_PROGRAM')
+  if (program === 'WarpTerminal') return 'visual'
+  if ((await $.env.get('KITTY_WINDOW_ID')) || (await $.env.get('TERM')) === 'xterm-kitty') return 'words'
+  if (program === 'Apple_Terminal') return 'lrm'
+  return null
+}
 
 const expandedCalls = new Set<string>()
 
@@ -66,6 +75,11 @@ export const register: Register = (on, options) => {
   }
 
   on('session.start', async ($, e, next) => {
+    if (style.rtl === 'auto') {
+      const shape = await detectRtl($)
+      style.reorder = shape !== null
+      if (shape) style.shape = shape
+    }
     const started = await next(e)
     await $.command
       .register({ name: 'prismantis', description: 'Switch the prismantis theme, or list themes', argumentHint: '[theme <name>]' })
