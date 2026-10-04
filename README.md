@@ -1,4 +1,4 @@
-# prismantis
+<h1 align="center"><img src="docs/brand/banner.png" alt="prismantis" width="640"></h1>
 
 [![ci](https://github.com/NahumLitvin/prismantis/actions/workflows/ci.yml/badge.svg)](https://github.com/NahumLitvin/prismantis/actions/workflows/ci.yml)
 
