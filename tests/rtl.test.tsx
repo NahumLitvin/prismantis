@@ -128,6 +128,22 @@ test('table cells are reordered one by one and English cells are untouched', asy
   await ui.unmount()
 })
 
+test('a Hebrew table is mirrored and right aligned, with the first column on the right', async $ => {
+  const ui = await $.ui.mount(mount('| לוחם | סרט |\n|---|---|\n| מנטיס | פנדה |'))
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  expect(texts.indexOf('טרס') < texts.indexOf('םחול')).toBe(true)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end')).toBe(true)
+  await ui.unmount()
+})
+
+test('an English table with one Hebrew cell keeps its column order and side', async $ => {
+  const ui = await $.ui.mount(mount('| name | tag |\n|---|---|\n| web | שלום |\n| api | db |'))
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  expect(texts.indexOf('name') < texts.indexOf('tag')).toBe(true)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end')).toBe(false)
+  await ui.unmount()
+})
+
 test('a code comment is reordered and the code itself is not', async $ => {
   const ui = await $.ui.mount(mount('```bash\nls -la # שלום\n```\n\n```text\nשלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^ # םולש$/ })).toBeDefined()

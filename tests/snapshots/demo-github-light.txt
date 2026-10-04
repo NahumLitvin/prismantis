@@ -931,25 +931,25 @@
   <Box row>
     <Box>
       <Text color=#953800 bold>
-        "םחול"
+        "לע חוכ"
     <Box>
       <Text color=#953800 bold>
         "טרס"
     <Box>
       <Text color=#953800 bold>
-        "לע חוכ"
+        "םחול"
   <Box row>
     <Text color=#6e7781>
-      "─────"
+      "──────────────"
     <Text color=#6e7781>
       "────────────"
     <Text color=#6e7781>
-      "──────────────"
+      "─────"
   <Box row>
     <Box>
       <Text>
         <Text>
-          "סיטנמ"
+          "רוקיד תוטיעב"
     <Box>
       <Text>
         <Text>
@@ -957,19 +957,19 @@
     <Box>
       <Text>
         <Text>
-          "רוקיד תוטיעב"
+          "סיטנמ"
   <Box row>
     <Text color=#6e7781>
-      "─────"
+      "──────────────"
     <Text color=#6e7781>
       "────────────"
     <Text color=#6e7781>
-      "──────────────"
+      "─────"
   <Box row>
     <Box>
       <Text>
         <Text>
-          "פמירש"
+          "23 m/s-ב ףורגא"
     <Box>
       <Text>
         <Text>
@@ -977,7 +977,7 @@
     <Box>
       <Text>
         <Text>
-          "23 m/s-ב ףורגא"
+          "פמירש"
 <Box>
   <Box row>
     <Text color=#6e7781>

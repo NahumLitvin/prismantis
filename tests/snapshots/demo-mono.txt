@@ -551,25 +551,25 @@
   <Box row>
     <Box>
       <Text bold>
-        "םחול"
+        "לע חוכ"
     <Box>
       <Text bold>
         "טרס"
     <Box>
       <Text bold>
-        "לע חוכ"
+        "םחול"
   <Box row>
     <Text>
-      "─────"
+      "──────────────"
     <Text>
       "────────────"
     <Text>
-      "──────────────"
+      "─────"
   <Box row>
     <Box>
       <Text>
         <Text>
-          "סיטנמ"
+          "רוקיד תוטיעב"
     <Box>
       <Text>
         <Text>
@@ -577,19 +577,19 @@
     <Box>
       <Text>
         <Text>
-          "רוקיד תוטיעב"
+          "סיטנמ"
   <Box row>
     <Text>
-      "─────"
+      "──────────────"
     <Text>
       "────────────"
     <Text>
-      "──────────────"
+      "─────"
   <Box row>
     <Box>
       <Text>
         <Text>
-          "פמירש"
+          "23 m/s-ב ףורגא"
     <Box>
       <Text>
         <Text>
@@ -597,7 +597,7 @@
     <Box>
       <Text>
         <Text>
-          "23 m/s-ב ףורגא"
+          "פמירש"
 <Box>
   <Box row>
     <Text>

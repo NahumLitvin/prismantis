@@ -163,23 +163,31 @@ const columnWidths = (natural: number[], available: number, gap: number): number
 const displayText = (inline: Inline[]): string =>
   inline.map(n => (n.kind === 'link' && n.text !== n.href ? `${n.text} (${n.href})` : 'children' in n ? displayText(n.children) : n.text)).join('')
 
+const isRtlTable = (block: Extract<Block, { kind: 'table' }>): boolean => {
+  const cells = [...block.header, ...block.rows.flat()].filter(cell => displayText(cell).trim() !== '')
+  return cells.filter(cell => flow(cell, Infinity, width)?.base === 'R').length * 2 > cells.length
+}
+
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string) => {
   const { Box, Text } = el
   const t = style.theme
+  const rtl = isRtlTable(block)
   const gap = style.tableStyle === 'grid' ? 3 : 2
   const natural = block.header.map((h, c) =>
     Math.max(width(displayText(h)), ...block.rows.map(r => width(displayText(r[c] ?? [])))),
   )
   const widths = columnWidths(natural, columns, gap)
+  const order = natural.map((_, c) => c)
+  if (rtl) order.reverse()
   const ruleChar = style.tableStyle === 'grid' ? '━' : '─'
   const justify = (c: number) =>
     block.align[c] === 'right' ? 'flex-end' : block.align[c] === 'center' ? 'center' : 'flex-start'
 
   const rule = (k: string, heavy: boolean) => (
     <Box key={k} flexDirection="row" columnGap={gap}>
-      {widths.map((w, c) => (
+      {order.map(c => (
         <Text key={`${k}.${c}`} color={t.tableRule} dimColor={!heavy && !t.tableRule}>
-          {(heavy ? ruleChar : '─').repeat(w)}
+          {(heavy ? ruleChar : '─').repeat(widths[c]!)}
         </Text>
       ))}
     </Box>
@@ -187,7 +195,8 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
   const row = (cells: Inline[][], k: string, isHeader: boolean) => (
     <Box key={k} flexDirection="row" columnGap={gap}>
-      {widths.map((w, c) => {
+      {order.map(c => {
+        const w = widths[c]!
         const cell = flow(cells[c] ?? [], Infinity, width)
         const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
@@ -207,7 +216,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     body.push(row(r, `${key}.r${i}`, false))
     if (style.tableStyle !== 'minimal' && i < block.rows.length - 1) body.push(rule(`${key}.r${i}r`, false))
   })
-  return <Box key={key} flexDirection="column">{body}</Box>
+  return <Box key={key} flexDirection="column" {...(rtl ? { alignSelf: 'flex-end' as const } : {})}>{body}</Box>
 }
 
 const renderHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, key: string) => {
@@ -376,7 +385,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         {button}
       </Box>
     ) : (
-      <Box key={`c${b}`} flexDirection="column" {...(rtl && block?.kind === 'list' ? {} : { alignSelf: 'flex-start' as const })}>
+      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || (block?.kind === 'table' && isRtlTable(block))) ? {} : { alignSelf: 'flex-start' as const })}>
         <Box justifyContent="flex-end">{button}</Box>
         {element}
       </Box>
