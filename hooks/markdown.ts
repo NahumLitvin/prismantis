@@ -7,6 +7,7 @@ export type Inline =
   | { kind: 'link'; text: string; href: string }
   | { kind: 'number'; text: string }
   | { kind: 'path'; text: string }
+  | { kind: 'dim'; text: string }
 
 export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }

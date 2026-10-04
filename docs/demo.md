@@ -58,3 +58,24 @@ kungfu train --student "Po" --master shifu --dumplings 3 && echo "skadoosh"
 > If `inner peace` returns 404, try `snacks` first.
 
 > Mantis wisdom: small bug, big kick.
+
+## עברית
+
+**שלום חברים**, התוסף מצייר גם עברית עם מונחים באנגלית כמו `kubectl`, מספרים כמו 99.9% ו-250ms, וגם [קישור](https://github.com/NahumLitvin/prismantis).
+
+- פרוסים ב-uw2 ו-ue1 (שני אזורים)
+- מחליפים ערכת נושא עם `/prismantis theme nord`
+
+1. מתעוררים ומותחים את כל 6 הרגליים
+2. מתפללים לאלי הנודלס
+
+> עברית נקראת מימין לשמאל, גם בטרמינל בלי תמיכה בכיווניות
+
+| לוחם | סרט | כוח על |
+| :--- | :--- | :--- |
+| מנטיס | קונג פו פנדה | בעיטות דיקור |
+| שרימפ | מציאות | אגרוף ב-23 m/s |
+
+```bash
+ls -la # רשימת הקבצים
+```

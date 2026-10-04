@@ -1,0 +1,166 @@
+import { expect, test } from 'claude-code/testing'
+
+import type { Inline } from '../hooks/markdown'
+import { inlineText } from '../hooks/markdown'
+import { commentTail, flow } from '../hooks/rtl'
+
+const measure = (s: string) => [...s].length
+const plain = (text: string, columns = 100) => flow([{ kind: 'text', text }], columns, measure)
+const visual = (text: string) => plain(text)?.lines.map(inlineText).join('\n')
+
+const mount = (text: string, columns = 120) => ({
+  plugin: 'prismantis',
+  component: 'AssistantMessage' as const,
+  props: { text, isFirstOfReply: true },
+  viewport: { columns, rows: 40 },
+  surface: 'terminal' as const,
+})
+
+test('pure Hebrew reverses and takes a right base', async () => {
+  expect(plain('שלום')?.base).toBe('R')
+  expect(visual('שלום')).toBe('םולש')
+})
+
+test('a Latin run inside Hebrew keeps its own order', async () => {
+  expect(visual('שלום Warp')).toBe('Warp םולש')
+  expect(visual('שרת kore-supervisor רץ על פורט')).toBe('טרופ לע ץר kore-supervisor תרש')
+})
+
+test('hyphen and percent around a number follow the Hebrew base', async () => {
+  expect(visual('שרתים ו-100% פעילים')).toBe('םיליעפ 100%-ו םיתרש')
+})
+
+test('parentheses mirror inside a Hebrew line', async () => {
+  expect(visual('שרתים (uw2 ו-ue1) פעילים')).toBe('םיליעפ (ue1-ו uw2) םיתרש')
+})
+
+test('inline code and paths stay one left-to-right unit inside Hebrew', async () => {
+  const nodes: Inline[] = [{ kind: 'text', text: 'מחליפים עם ' }, { kind: 'code', text: '/prismantis theme nord' }, { kind: 'text', text: ' ו-' }, { kind: 'path', text: '~/app/main.ts' }]
+  const line = flow(nodes, 100, measure)?.lines[0]
+  expect(line?.find(n => n.kind === 'code')).toEqual({ kind: 'code', text: '/prismantis theme nord' })
+  expect(line?.find(n => n.kind === 'path')).toEqual({ kind: 'path', text: '~/app/main.ts' })
+})
+
+test('a percent sign stays on the right of its number', async () => {
+  expect(visual('ירידה של 5%')).toBe('5% לש הדירי')
+})
+
+test('an English sentence with one Hebrew word stays left and flips only that word', async () => {
+  const f = plain('The cluster is ready שלום now')
+  expect(f?.base).toBe('L')
+  expect(f?.lines.map(inlineText)).toEqual(['The cluster is ready םולש now'])
+})
+
+test('Hebrew points stay attached to their letter', async () => {
+  expect(visual('שָלום')).toBe('םולשָ')
+})
+
+test('Arabic reverses and Arabic-Indic digits keep their order', async () => {
+  expect(visual('مرحبا')).toBe('ابحرم')
+  expect(visual('١٢٣ مرحبا')).toBe('ابحرم ١٢٣')
+})
+
+test('bold, code and links keep their style through reordering', async () => {
+  const nodes: Inline[] = [
+    { kind: 'strong', children: [{ kind: 'text', text: 'שלום' }] },
+    { kind: 'text', text: ' עולם ' },
+    { kind: 'code', text: 'kubectl' },
+    { kind: 'text', text: ' ' },
+    { kind: 'link', text: 'תיעוד', href: 'https://x.dev' },
+  ]
+  const line = flow(nodes, 100, measure)?.lines[0]
+  expect(line?.map(n => n.kind)).toEqual(['dim', 'link', 'text', 'code', 'text', 'strong'])
+  const strong = line?.find(n => n.kind === 'strong')
+  expect(strong?.kind === 'strong' && inlineText(strong.children)).toBe('םולש')
+  expect(line?.find(n => n.kind === 'code')).toEqual({ kind: 'code', text: 'kubectl' })
+})
+
+test('a long right-based paragraph wraps in reading order, each line reordered', async () => {
+  const f = plain('אחד שניים שלושה ארבעה חמישה שישה שבעה', 14)
+  expect(f?.lines.map(inlineText)).toEqual(['םיינש דחא', 'העברא השולש', 'השיש השימח', 'העבש'])
+})
+
+test('text with no right-to-left character takes the old path', async () => {
+  expect(plain('hello world 100%')).toBeNull()
+  expect(flow([{ kind: 'strong', children: [{ kind: 'text', text: 'ok' }] }], 100, measure)).toBeNull()
+  expect(commentTail('ls # hello')).toBeNull()
+})
+
+test('only the comment tail of a code line is reordered', async () => {
+  expect(commentTail('ls # שלום')).toEqual({ head: 'ls', marker: ' # ', tail: 'םולש' })
+  expect(commentTail('// שלום עולם')).toEqual({ head: '', marker: '// ', tail: 'םלוע םולש' })
+})
+
+test('a Hebrew paragraph is right aligned and reordered', async $ => {
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /^םלוע םולש$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
+  await ui.unmount()
+})
+
+test('a Hebrew paragraph wraps into right aligned lines at the viewport width', async $ => {
+  const ui = await $.ui.mount(mount('אחד שניים שלושה ארבעה חמישה שישה שבעה', 30))
+  const lines = (await ui.findAll({ type: 'Text' })).filter(t => /[א-ת]/.test(t.text))
+  expect(lines.length >= 2).toBe(true)
+  await ui.unmount()
+})
+
+test('bullets move to the right end and ordered items keep their number', async $ => {
+  const ui = await $.ui.mount(mount('- שלום\n- עולם\n\n1. אחד\n2. שניים'))
+  expect((await ui.findAll({ type: 'Text', text: /^ •$/ })).length).toBe(2)
+  expect(await ui.find({ type: 'Text', text: /^ 1\.$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ 2\.$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.justifyContent === 'flex-end')).toBe(true)
+  await ui.unmount()
+})
+
+test('an English list keeps the left bullet', async $ => {
+  const ui = await $.ui.mount(mount('- hello\n- world'))
+  expect((await ui.findAll({ type: 'Text', text: /^• $/ })).length).toBe(2)
+  await ui.unmount()
+})
+
+test('table cells are reordered one by one and English cells are untouched', async $ => {
+  const ui = await $.ui.mount(mount('| שם | a |\n|---|---|\n| שלום | b |'))
+  expect(await ui.find({ type: 'Text', text: /^םש$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^b$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a code comment is reordered and the code itself is not', async $ => {
+  const ui = await $.ui.mount(mount('```bash\nls -la # שלום\n```\n\n```text\nשלום\n```'))
+  expect(await ui.find({ type: 'Text', text: /^ # םולש$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ls$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^שלום$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a highlighted comment is reordered too', async $ => {
+  const ui = await $.ui.mount(mount('```ts\nconst x = 1 // שלום\n```'))
+  expect(await ui.find({ type: 'Text', text: /^\/\/ םולש$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('quotes and alerts put their bar and box on the right', async $ => {
+  const ui = await $.ui.mount(mount('> שלום\n\n> [!NOTE]\n> עולם'))
+  expect(await ui.find({ type: 'Text', text: /^ │$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^םלוע$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end' && b.props.borderStyle === 'round')).toBe(true)
+  await ui.unmount()
+})
+
+test('headings are right aligned and reordered', async $ => {
+  const ui = await $.ui.mount(mount('## שלום'))
+  expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end')).toBe(true)
+  await ui.unmount()
+})
+
+test('an English reply draws exactly as before', async $ => {
+  const ui = await $.ui.mount(mount('# Title\n\nplain text\n\n- item\n\n> quote'))
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end' || b.props.paddingRight !== undefined)).toBe(false)
+  expect(await ui.find({ type: 'Text', text: /^• $/ })).toBeDefined()
+  await ui.unmount()
+})

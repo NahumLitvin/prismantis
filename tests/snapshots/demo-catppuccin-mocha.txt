@@ -857,3 +857,141 @@
   <Text color=#9399b2 italic>
     <Text>
       "Mantis wisdom: small bug, big kick."
+<Box>
+  <Box>
+    <Text color=#f9e2af bold>
+      <Text>
+        "תירבע"
+    <Text color=#f9e2af>
+      "━━━━━"
+<Box>
+  <Text>
+    <Text color=#89b4fa underline>
+      "רושיק"
+    <Text>
+      " םגו ,250ms-ו "
+    <Text color=#a6e3a1>
+      "99.9%"
+    <Text>
+      " ומכ םירפסמ ,"
+    <Text color=#89dceb>
+      "kubectl"
+    <Text>
+      " ומכ תילגנאב םיחנומ םע תירבע םג רייצמ ףסותה ,"
+    <Text color=#ffffff bold>
+      <Text>
+        "םירבח םולש"
+  <Text>
+    <Text>
+      "."
+    <Text>
+      "(https://github.com/NahumLitvin/prismantis)"
+<Box>
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "(םירוזא ינש) ue1-ו uw2-ב םיסורפ"
+    <Text color=#cba6f7>
+      " •"
+  <Box row>
+    <Box>
+      <Text>
+        <Text color=#89dceb>
+          "/prismantis theme nord"
+        <Text>
+          " םע אשונ תכרע םיפילחמ"
+    <Text color=#cba6f7>
+      " •"
+<Box>
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "םיילגרה "
+        <Text color=#a6e3a1>
+          "6"
+        <Text>
+          " לכ תא םיחתומו םיררועתמ"
+    <Text color=#cba6f7>
+      " 1."
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "סלדונה ילאל םיללפתמ"
+    <Text color=#cba6f7>
+      " 2."
+<Box row>
+  <Box>
+    <Text color=#9399b2 italic>
+      <Text>
+        "תוינוויכב הכימת ילב לנימרטב םג ,לאמשל ןימימ תארקנ תירבע"
+  <Text color=#cba6f7>
+    " │"
+<Box>
+  <Box row>
+    <Box>
+      <Text color=#f9e2af bold>
+        "םחול"
+    <Box>
+      <Text color=#f9e2af bold>
+        "טרס"
+    <Box>
+      <Text color=#f9e2af bold>
+        "לע חוכ"
+  <Box row>
+    <Text color=#585b70>
+      "─────"
+    <Text color=#585b70>
+      "────────────"
+    <Text color=#585b70>
+      "──────────────"
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "סיטנמ"
+    <Box>
+      <Text>
+        <Text>
+          "הדנפ ופ גנוק"
+    <Box>
+      <Text>
+        <Text>
+          "רוקיד תוטיעב"
+  <Box row>
+    <Text color=#585b70>
+      "─────"
+    <Text color=#585b70>
+      "────────────"
+    <Text color=#585b70>
+      "──────────────"
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "פמירש"
+    <Box>
+      <Text>
+        <Text>
+          "תואיצמ"
+    <Box>
+      <Text>
+        <Text>
+          "23 m/s-ב ףורגא"
+<Box>
+  <Box row>
+    <Text color=#6c7086>
+      "── bash"
+  <Box>
+    <Text color=#cdd6f4>
+      <Text color=#cdd6f4>
+        <Text color=#89b4fa>
+          "ls"
+        <Text>
+          " "
+        <Text color=#f38ba8>
+          "-la"
+      <Text color=#6c7086>
+        " # םיצבקה תמישר"

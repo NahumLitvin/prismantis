@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-04
+
+### Added
+
+- Hebrew and Arabic read in the right order in terminals without bidi support (Warp and most others). Paragraphs, headings, list items, quotes, alerts and table cells that are mostly right-to-left are reversed run by run, right aligned, and get their bullet, number or quote bar on the right. Bold, italic, inline code, links, numbers and paths keep their style, and inline code and paths stay left to right as one piece.
+- The base direction is the dominant language by word count, so an English sentence with a few Hebrew words stays on the left and only those words flip.
+- Right-to-left paragraphs, list items, quotes and alerts wrap at the terminal width in reading order before they are reordered, so a long line no longer reads wrong after the terminal wraps it.
+- In code blocks only the text after a `#` or `//` comment marker is reordered. The code itself, and so a copy, is unchanged.
+- The demo reply has a Hebrew section, covered by the render snapshots.
+
+### Known issues
+
+- Table columns keep their left-to-right order, and a long heading or table cell that the terminal wraps still reads wrong. A single word wider than the terminal does too.
+- The terminal font must contain Hebrew or Arabic glyphs (Warp's default JetBrains Mono does not; DejaVu Sans Mono does).
+
 ## [0.4.1] - 2026-10-04
 
 ### Added

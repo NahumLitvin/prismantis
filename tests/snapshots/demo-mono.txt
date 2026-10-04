@@ -475,3 +475,141 @@
   <Text italic>
     <Text>
       "Mantis wisdom: small bug, big kick."
+<Box>
+  <Box>
+    <Text bold>
+      <Text>
+        "תירבע"
+    <Text>
+      "━━━━━"
+<Box>
+  <Text>
+    <Text underline>
+      "רושיק"
+    <Text>
+      " םגו ,250ms-ו "
+    <Text>
+      "99.9%"
+    <Text>
+      " ומכ םירפסמ ,"
+    <Text>
+      "kubectl"
+    <Text>
+      " ומכ תילגנאב םיחנומ םע תירבע םג רייצמ ףסותה ,"
+    <Text bold>
+      <Text>
+        "םירבח םולש"
+  <Text>
+    <Text>
+      "."
+    <Text>
+      "(https://github.com/NahumLitvin/prismantis)"
+<Box>
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "(םירוזא ינש) ue1-ו uw2-ב םיסורפ"
+    <Text>
+      " •"
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "/prismantis theme nord"
+        <Text>
+          " םע אשונ תכרע םיפילחמ"
+    <Text>
+      " •"
+<Box>
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "םיילגרה "
+        <Text>
+          "6"
+        <Text>
+          " לכ תא םיחתומו םיררועתמ"
+    <Text>
+      " 1."
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "סלדונה ילאל םיללפתמ"
+    <Text>
+      " 2."
+<Box row>
+  <Box>
+    <Text italic>
+      <Text>
+        "תוינוויכב הכימת ילב לנימרטב םג ,לאמשל ןימימ תארקנ תירבע"
+  <Text>
+    " │"
+<Box>
+  <Box row>
+    <Box>
+      <Text bold>
+        "םחול"
+    <Box>
+      <Text bold>
+        "טרס"
+    <Box>
+      <Text bold>
+        "לע חוכ"
+  <Box row>
+    <Text>
+      "─────"
+    <Text>
+      "────────────"
+    <Text>
+      "──────────────"
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "סיטנמ"
+    <Box>
+      <Text>
+        <Text>
+          "הדנפ ופ גנוק"
+    <Box>
+      <Text>
+        <Text>
+          "רוקיד תוטיעב"
+  <Box row>
+    <Text>
+      "─────"
+    <Text>
+      "────────────"
+    <Text>
+      "──────────────"
+  <Box row>
+    <Box>
+      <Text>
+        <Text>
+          "פמירש"
+    <Box>
+      <Text>
+        <Text>
+          "תואיצמ"
+    <Box>
+      <Text>
+        <Text>
+          "23 m/s-ב ףורגא"
+<Box>
+  <Box row>
+    <Text>
+      "── bash"
+  <Box>
+    <Text>
+      <Text>
+        <Text>
+          "ls"
+        <Text>
+          " "
+        <Text>
+          "-la"
+      <Text>
+        " # םיצבקה תמישר"
