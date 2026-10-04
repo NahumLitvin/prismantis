@@ -8,8 +8,8 @@ import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { resolveStyle } from './theme'
-import type { Shape } from './rtl'
-import { hasRtl } from './rtl'
+import type { Terminal } from './rtl'
+import { TERMINALS, hasRtl } from './rtl'
 
 const HINT = [
   'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
@@ -19,22 +19,28 @@ const HINT = [
   'Skip diagrams for simple answers.',
 ].join(' ')
 
-const detectRtl = async ($: EngineInterface): Promise<Shape | null> => {
+const detectTerminal = async ($: EngineInterface): Promise<Terminal | null> => {
   const program = await $.env.get('TERM_PROGRAM')
   const term = await $.env.get('TERM')
-  if ((await $.env.get('KITTY_WINDOW_ID')) || term === 'xterm-kitty') return 'words'
-  if (program === 'Apple_Terminal') return 'lrm'
-  if (program === 'iTerm.app' || (await $.env.get('VTE_VERSION')) || (await $.env.get('KONSOLE_VERSION'))) return 'logical'
-  if (program === 'WarpTerminal' || program === 'ghostty' || program === 'WezTerm' || program === 'vscode') return 'visual'
-  if (term === 'alacritty' || (await $.env.get('ALACRITTY_WINDOW_ID')) || (await $.env.get('WT_SESSION'))) return 'visual'
+  if ((await $.env.get('KITTY_WINDOW_ID')) || term === 'xterm-kitty') return 'kitty'
+  if (program === 'Apple_Terminal') return 'apple-terminal'
+  if (program === 'WarpTerminal') return 'warp'
+  if (program === 'ghostty') return 'ghostty'
+  if (program === 'WezTerm') return 'wezterm'
+  if (program === 'vscode') return 'vscode'
+  if (program === 'iTerm.app') return 'iterm'
+  if (term === 'alacritty' || (await $.env.get('ALACRITTY_WINDOW_ID'))) return 'alacritty'
+  if (await $.env.get('WT_SESSION')) return 'windows-terminal'
+  if (await $.env.get('VTE_VERSION')) return 'gnome'
+  if (await $.env.get('KONSOLE_VERSION')) return 'konsole'
   return null
 }
 
 const applyRtl = async ($: EngineInterface, style: Style): Promise<void> => {
   if (style.rtl !== 'auto') return
-  const shape = await detectRtl($)
-  style.reorder = shape !== null
-  if (shape) style.shape = shape
+  const terminal = await detectTerminal($)
+  style.reorder = terminal !== null
+  if (terminal) style.shape = TERMINALS[terminal]
 }
 
 const expandedCalls = new Set<string>()

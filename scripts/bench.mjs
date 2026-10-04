@@ -5,7 +5,7 @@ import { ROOT, load } from './load.mjs'
 
 const { parse, mermaidText, boxArt, resolveStyle, el, reply } = await load()
 const demo = readFileSync(join(ROOT, 'docs/demo.md'), 'utf8')
-const style = resolveStyle({ theme: 'dracula', rtl: 'visual' })
+const style = resolveStyle({ theme: 'dracula', rtl: 'warp' })
 const columns = 200
 const RUNS = Number(process.env.RUNS ?? 200)
 const BASELINE = join(ROOT, 'docs/bench-baseline.json')

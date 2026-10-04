@@ -1,7 +1,8 @@
 import type { PluginOptions } from 'claude-code'
 
 import { PRESETS } from './presets'
-import type { Shape } from './rtl'
+import type { Shape, Terminal } from './rtl'
+import { TERMINALS } from './rtl'
 
 export const TOKENS = [
   'accent', 'heading', 'strong', 'emphasis', 'inlineCode', 'codeText', 'codeCommand', 'codeFlag', 'codeString', 'codeComment',
@@ -20,7 +21,7 @@ export type Style = {
   mermaidAscii: boolean
   copyButtons: boolean
   diagramHints: boolean
-  rtl: 'auto' | Shape | 'off'
+  rtl: 'auto' | Terminal | 'off'
   reorder: boolean
   shape: Shape
 }
@@ -38,7 +39,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     TOKENS.filter(k => isColor(options[`${k}Color`])).map(k => [k, String(options[`${k}Color`]).trim()]),
   )
 
-  const rtl = pick(options.rtl, ['auto', 'visual', 'lrm', 'words', 'logical', 'off'] as const, 'auto')
+  const rtl = pick(options.rtl, ['auto', 'off', ...(Object.keys(TERMINALS) as Terminal[])], 'auto')
 
   return {
     theme: { ...base, ...fromFields },
@@ -52,6 +53,6 @@ export const resolveStyle = (options: PluginOptions): Style => {
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',
-    shape: rtl === 'lrm' || rtl === 'words' || rtl === 'logical' ? rtl : 'visual',
+    shape: rtl === 'auto' || rtl === 'off' ? 'visual' : TERMINALS[rtl],
   }
 }

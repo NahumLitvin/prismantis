@@ -4,6 +4,22 @@ type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
 export type Shape = 'visual' | 'lrm' | 'words' | 'logical'
 
+export const TERMINALS = {
+  warp: 'visual',
+  ghostty: 'visual',
+  wezterm: 'visual',
+  vscode: 'visual',
+  alacritty: 'visual',
+  'windows-terminal': 'visual',
+  'apple-terminal': 'lrm',
+  kitty: 'words',
+  iterm: 'logical',
+  gnome: 'logical',
+  konsole: 'logical',
+} as const satisfies Record<string, Shape>
+
+export type Terminal = keyof typeof TERMINALS
+
 type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'number' | 'path' | 'link' | 'dim' }
 type Unit = { ch: string; fmt: Fmt }
 

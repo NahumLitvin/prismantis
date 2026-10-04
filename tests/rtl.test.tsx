@@ -92,21 +92,21 @@ test('only the comment tail of a code line is reordered', async () => {
   expect(commentTail('// שלום עולם')).toEqual({ head: '', marker: '// ', tail: 'םלוע םולש' })
 })
 
-test('a Hebrew paragraph is right aligned and reordered', { options: { rtl: 'visual' } }, async $ => {
+test('a Hebrew paragraph is right aligned and reordered', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('שלום עולם'))
   expect(await ui.find({ type: 'Text', text: /^םלוע םולש$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })
 
-test('a Hebrew paragraph wraps into right aligned lines at the viewport width', { options: { rtl: 'visual' } }, async $ => {
+test('a Hebrew paragraph wraps into right aligned lines at the viewport width', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('אחד שניים שלושה ארבעה חמישה שישה שבעה', 30))
   const lines = (await ui.findAll({ type: 'Text' })).filter(t => /[א-ת]/.test(t.text))
   expect(lines.length >= 2).toBe(true)
   await ui.unmount()
 })
 
-test('bullets move to the right end and ordered items keep their number', { options: { rtl: 'visual' } }, async $ => {
+test('bullets move to the right end and ordered items keep their number', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('- שלום\n- עולם\n\n1. אחד\n2. שניים'))
   expect((await ui.findAll({ type: 'Text', text: /^ •$/ })).length).toBe(2)
   expect(await ui.find({ type: 'Text', text: /^ 1\.$/ })).toBeDefined()
@@ -115,13 +115,13 @@ test('bullets move to the right end and ordered items keep their number', { opti
   await ui.unmount()
 })
 
-test('an English list keeps the left bullet', { options: { rtl: 'visual' } }, async $ => {
+test('an English list keeps the left bullet', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('- hello\n- world'))
   expect((await ui.findAll({ type: 'Text', text: /^• $/ })).length).toBe(2)
   await ui.unmount()
 })
 
-test('table cells are reordered one by one and English cells are untouched', { options: { rtl: 'visual' } }, async $ => {
+test('table cells are reordered one by one and English cells are untouched', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('| שם | a |\n|---|---|\n| שלום | b |'))
   expect(await ui.find({ type: 'Text', text: /^םש$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
@@ -129,7 +129,7 @@ test('table cells are reordered one by one and English cells are untouched', { o
   await ui.unmount()
 })
 
-test('a Hebrew table is mirrored and right aligned, with the first column on the right', { options: { rtl: 'visual' } }, async $ => {
+test('a Hebrew table is mirrored and right aligned, with the first column on the right', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('| לוחם | סרט |\n|---|---|\n| מנטיס | פנדה |'))
   const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
   expect(texts.indexOf('טרס') < texts.indexOf('םחול')).toBe(true)
@@ -137,7 +137,7 @@ test('a Hebrew table is mirrored and right aligned, with the first column on the
   await ui.unmount()
 })
 
-test('an English table with one Hebrew cell keeps its column order and side', { options: { rtl: 'visual' } }, async $ => {
+test('an English table with one Hebrew cell keeps its column order and side', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('| name | tag |\n|---|---|\n| web | שלום |\n| api | db |'))
   const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
   expect(texts.indexOf('name') < texts.indexOf('tag')).toBe(true)
@@ -145,7 +145,7 @@ test('an English table with one Hebrew cell keeps its column order and side', { 
   await ui.unmount()
 })
 
-test('a code comment is reordered and the code itself is not', { options: { rtl: 'visual' } }, async $ => {
+test('a code comment is reordered and the code itself is not', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('```bash\nls -la # שלום\n```\n\n```text\nשלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^ # םולש$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^ls$/ })).toBeDefined()
@@ -153,13 +153,13 @@ test('a code comment is reordered and the code itself is not', { options: { rtl:
   await ui.unmount()
 })
 
-test('a highlighted comment is reordered too', { options: { rtl: 'visual' } }, async $ => {
+test('a highlighted comment is reordered too', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('```ts\nconst x = 1 // שלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^\/\/ םולש$/ })).toBeDefined()
   await ui.unmount()
 })
 
-test('quotes and alerts put their bar and box on the right', { options: { rtl: 'visual' } }, async $ => {
+test('quotes and alerts put their bar and box on the right', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('> שלום\n\n> [!NOTE]\n> עולם'))
   expect(await ui.find({ type: 'Text', text: /^ │$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
@@ -168,14 +168,14 @@ test('quotes and alerts put their bar and box on the right', { options: { rtl: '
   await ui.unmount()
 })
 
-test('headings are right aligned and reordered', { options: { rtl: 'visual' } }, async $ => {
+test('headings are right aligned and reordered', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('## שלום'))
   expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end')).toBe(true)
   await ui.unmount()
 })
 
-test('an English reply draws exactly as before', { options: { rtl: 'visual' } }, async $ => {
+test('an English reply draws exactly as before', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('# Title\n\nplain text\n\n- item\n\n> quote'))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end' || b.props.paddingRight !== undefined)).toBe(false)
   expect(await ui.find({ type: 'Text', text: /^• $/ })).toBeDefined()
@@ -260,7 +260,7 @@ test('detection also runs when a prompt is submitted, so a reload without sessio
   await ui.unmount()
 })
 
-test('the demo-rtl screen has every element and draws right to left', { options: { rtl: 'visual' } }, async $ => {
+test('the demo-rtl screen has every element and draws right to left', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount({ plugin: 'prismantis', component: 'CommandOutput' as const, props: { command: 'prismantis', args: 'demo-rtl', text: rtlShowcaseText(), isErrored: false }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
   expect(await ui.find({ type: 'Text', text: /^לאמשל ןימימ תירבע$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.alignItems === 'flex-end').length >= 3).toBe(true)
