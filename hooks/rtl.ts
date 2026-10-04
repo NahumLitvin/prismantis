@@ -1,6 +1,6 @@
 import type { Inline } from './markdown'
 
-export type Dir = 'R' | 'L'
+type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
 
 type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'number' | 'path' | 'link' | 'dim' }
@@ -136,7 +136,7 @@ export const flow = (nodes: Inline[], columns: number, measure: (s: string) => n
   return { base, lines: logical.map(line => rebuild(reorder(line, base))) }
 }
 
-export const visualText = (text: string): string => {
+const visualText = (text: string): string => {
   if (!R.test(text)) return text
   const all = units(text, { wrap: [], leaf: 'text' })
   return reorder(all, baseOf(all)).map(u => u.ch).join('')
