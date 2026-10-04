@@ -32,7 +32,7 @@ test('hyphen and percent around a number follow the Hebrew base', async () => {
 })
 
 test('parentheses mirror inside a Hebrew line', async () => {
-  expect(visual('שרתים (uw2 ו-ue1) פעילים')).toBe('םיליעפ (ue1-ו uw2) םיתרש')
+  expect(visual('שרתים (east ו-west) פעילים')).toBe('םיליעפ (west-ו east) םיתרש')
 })
 
 test('inline code and paths stay one left-to-right unit inside Hebrew', async () => {

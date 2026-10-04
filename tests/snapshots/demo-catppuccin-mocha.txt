@@ -891,7 +891,7 @@
     <Box>
       <Text>
         <Text>
-          "(םירוזא ינש) ue1-ו uw2-ב םיסורפ"
+          "(םירוזא ינש) eu-west-ו us-east-ב םיסורפ"
     <Text color=#cba6f7>
       " •"
   <Box row>

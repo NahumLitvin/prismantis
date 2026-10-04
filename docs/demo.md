@@ -63,7 +63,7 @@ kungfu train --student "Po" --master shifu --dumplings 3 && echo "skadoosh"
 
 **שלום חברים**, התוסף מצייר גם עברית עם מונחים באנגלית כמו `kubectl`, מספרים כמו 99.9% ו-250ms, וגם [קישור](https://github.com/NahumLitvin/prismantis).
 
-- פרוסים ב-uw2 ו-ue1 (שני אזורים)
+- פרוסים ב-us-east ו-eu-west (שני אזורים)
 - מחליפים ערכת נושא עם `/prismantis theme nord`
 
 1. מתעוררים ומותחים את כל 6 הרגליים

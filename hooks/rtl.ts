@@ -2,7 +2,7 @@ import type { Inline } from './markdown'
 
 type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
-export type Shape = 'visual' | 'lrm' | 'words' | 'logical'
+export type Shape = 'visual' | 'words' | 'logical'
 
 export const TERMINALS = {
   warp: 'visual',
@@ -147,12 +147,8 @@ const clusters = (text: string): string[] => units(text, { wrap: [], leaf: 'text
 
 const RUN = new RegExp(`(?:${R.source}|\\p{M})+`, 'gu')
 
-const shapeText = (text: string, shape: Shape): string => {
-  if (!R.test(text)) return text
-  if (shape === 'lrm') return clusters(text).join('\u200e')
-  if (shape === 'words') return text.replace(RUN, run => clusters(run).reverse().join(''))
-  return text
-}
+const shapeText = (text: string, shape: Shape): string =>
+  shape === 'words' && R.test(text) ? text.replace(RUN, run => clusters(run).reverse().join('')) : text
 
 const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
   nodes.map(n => {
@@ -169,7 +165,7 @@ export const flow = (nodes: Inline[], columns: number, measure: (s: string) => n
   const base = baseOf(all)
   const logical = base === 'R' ? wrapUnits(all, columns, measure) : [all]
   const lines = logical.map(line => rebuild(shape === 'logical' ? line : reorder(line, base)))
-  return { base, lines: shape === 'lrm' || shape === 'words' ? lines.map(line => shapeNodes(line, shape)) : lines }
+  return { base, lines: shape === 'words' ? lines.map(line => shapeNodes(line, shape)) : lines }
 }
 
 const visualText = (text: string): string => {

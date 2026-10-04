@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-10-04
+
+### Added
+
+- The `rtl` option names your terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), and `auto` (the default) detects it. Every terminal gets the right-to-left layout; only the way the letters are sent differs.
+- `/prismantis demo-rtl` shows a Hebrew showcase with every element, drawn for the terminal it runs in.
+
+### Fixed
+
+- Hebrew and Arabic read backwards in terminals that do their own bidi. 0.5.0 reordered the letters everywhere, which is right only where the terminal has no bidi (Warp, Ghostty, WezTerm, VS Code, Alacritty, Windows Terminal). Kitty reverses each word itself, so it now gets the words in visual order with each word as written. Apple Terminal, iTerm2, GNOME Terminal and Konsole do whole-line bidi, so they get the letters as written. A terminal prismantis does not recognise is left alone.
+- `/prismantis` output now spans the full width, so right-to-left blocks there sit on the right like they do in replies.
+- Terminal detection runs again on every prompt, so a plugin reload no longer drops it.
+
+### Changed
+
+- The demo reply and tests use neutral region names (`us-east`, `eu-west`).
+
 ## [0.5.0] - 2026-10-04
 
 ### Added

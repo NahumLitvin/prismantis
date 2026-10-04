@@ -891,7 +891,7 @@
     <Box>
       <Text>
         <Text>
-          "(אזורים שני) ue1-ו uw2-ב פרוסים"
+          "(אזורים שני) eu-west-ו us-east-ב פרוסים"
     <Text color=#cba6f7>
       " •"
   <Box row>
