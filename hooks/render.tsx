@@ -170,6 +170,19 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
   return cells.filter(cell => flowOf(style, cell, Infinity)?.base === 'R').length * 2 > cells.length
 }
 
+export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
+  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
+  const widths = block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!))))
+  const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
+    const room = widths[c]! - width(text)
+    const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
+    return ' '.repeat(left) + text + ' '.repeat(room - left)
+  }
+  const line = (l: string, m: string, r: string) => l + widths.map(w => '─'.repeat(w + 2)).join(m) + r
+  const row = (r: string[], header: boolean) => `│ ${r.map((text, c) => pad(text, c, header ? 'center' : block.align[c] ?? 'left')).join(' │ ')} │`
+  return [line('┌', '┬', '┐'), row(cells[0]!, true), ...cells.slice(1).flatMap(r => [line('├', '┼', '┤'), row(r, false)]), line('└', '┴', '┘')].join('\n')
+}
+
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string) => {
   const { Box, Text } = el
   const t = style.theme
@@ -360,7 +373,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
   )
 }
 
-export type CopyButton = (text: string, key: string, label?: string) => RenderElement | null
+export type CopyButton = (text: string | (() => string), key: string, label?: string) => RenderElement | null
 export type Drawn = Map<number, { element: RenderElement; art: string }>
 
 const copySource = (block: Block): string | undefined =>
@@ -404,13 +417,15 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const block = blocks[b]
     const text = block ? copySource(block) : undefined
     const isPlainCode = block?.kind === 'code' && !drawn.has(b)
-    const art = drawn.get(b)?.art
-    const button = text === undefined || isPlainCode ? null : art === undefined ? copy?.(text, `copy${b}`) : (
+    const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
+    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, art === undefined || block?.kind === 'table' ? undefined : '⧉ source')
+    const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
+    const button = second ? (
       <el.Box key={`copies${b}`} flexDirection="row" columnGap={1}>
-        {copy?.(text, `copy${b}`, '⧉ source')}
-        {copy?.(art, `art${b}`, '⧉ art')}
+        {first}
+        {second}
       </el.Box>
-    )
+    ) : first
     if (!button) return element
     const { Box } = el
     const rtl = style.reorder && block !== undefined && hasRtl(block.raw)

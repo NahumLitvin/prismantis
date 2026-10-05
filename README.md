@@ -17,7 +17,7 @@ Colorful, themeable replies for [Claude Code](https://claude.com/claude-code): t
 | [Code](#code) | a language header and copy button, Prism highlighting in 24 languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
 | [Layout](#layout) | back-to-back tables and diagrams sit side by side and wrap on narrow terminals |
-| [Copy buttons](#copy-buttons) | `[ ⧉ copy ]` on code, tables, lists and quotes, `⧉ source` and `⧉ art` on diagrams |
+| [Copy buttons](#copy-buttons) | `[ ⧉ copy ]` on code, tables, lists and quotes, plus `⧉ art` on tables and diagrams for pasting into Slack |
 | [Tool rows](#tool-rows) | `Ran gh pr view 12`, `Read ~/src/app.ts`, groups summed up as `Ran 3 commands, read 2 files`, with status dots |
 | [Turn footer](#turn-footer) | `✻ Baked for 6m 20s` with the duration in the number color |
 | [Slash commands](#slash-commands) | command output (`/cost`, `/context`, plugin commands) gets the same tables and code styling |
@@ -82,7 +82,7 @@ When tables and diagrams follow each other, they share a row and wrap to the nex
 
 ### Copy buttons
 
-`[ ⧉ copy ]`, drawn in Claude Code's accent color, sits on code blocks, tables, lists and quotes and puts the raw markdown on your clipboard. Quotes copy without their `> ` markers, ready to paste as a message. Diagrams get two: `⧉ source` copies the mermaid code and `⧉ art` copies the drawn art, ready to paste into a chat code block. Press `ctrl+x` then `tab` to move focus onto the buttons and Enter to copy; that works in every terminal. Clicking works where the terminal passes clicks through (fullscreen mode does); terminals with copy-on-select, such as Warp, may grab the word "copy" instead.
+`[ ⧉ copy ]`, drawn in Claude Code's accent color, sits on code blocks, tables, lists and quotes and puts the raw markdown on your clipboard. Quotes copy without their `> ` markers, ready to paste as a message. Diagrams get two: `⧉ source` copies the mermaid code and `⧉ art` copies the drawn art, ready to paste into a chat code block. Tables get `⧉ art` too: a plain boxed table that reads right in Slack, where pasted markdown does not. Press `ctrl+x` then `tab` to move focus onto the buttons and Enter to copy; that works in every terminal. Clicking works where the terminal passes clicks through (fullscreen mode does); terminals with copy-on-select, such as Warp, may grab the word "copy" instead.
 
 ### Tool rows
 

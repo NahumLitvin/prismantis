@@ -48,14 +48,14 @@ const expandedCalls = new Set<string>()
 
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number): RenderElement[] => {
   const { Button } = el
-  const copy = (text: string, key: string, label = '⧉ copy') =>
+  const copy = (text: string | (() => string), key: string, label = '⧉ copy') =>
     style.copyButtons ? (
       <Button
         key={key}
         variant="primary"
         label={label}
         onPress={press => {
-          $.ui.copy({ text, surface: press.surface })
+          $.ui.copy({ text: typeof text === 'function' ? text() : text, surface: press.surface })
             .then(r => $.ui.toast(r.isCopied ? 'Copied' : `Copy failed: ${r.reason}`))
             .catch(() => $.ui.toast('Copy failed'))
         }}

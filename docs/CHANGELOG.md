@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `/prismantis` and `/prismantis demo` show task lists.
 - Tables draw boxed by default: every cell in a box, with a double line under the header. `tableStyle` adds `box` as the new default; `rules`, `grid` and `minimal` stay for a lighter look.
+- Tables get a second button, `⧉ art`, that copies a plain boxed table for Slack and chat. `⧉ copy` still gives the markdown.
 
 ## [0.7.1] - 2026-10-05
 

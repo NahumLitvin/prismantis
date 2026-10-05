@@ -278,3 +278,20 @@ test('drawn replies add no emoji-capable glyphs', async $ => {
     await ui.unmount()
   }
 })
+
+test('a table art button copies boxed text ready for Slack', async ($, on) => {
+  const copied = stubClipboard(on)
+  const ui = await $.ui.mount(mount('| Queue | Sent |\n|---|--:|\n| tasks-east | 24 |\n| west | 0 |'))
+  const art = (await ui.findAll({ type: 'Button' }))[1]
+  await ui.press({ key: art!.key! })
+  expect(copied).toEqual([[
+    '┌────────────┬──────┐',
+    '│   Queue    │ Sent │',
+    '├────────────┼──────┤',
+    '│ tasks-east │   24 │',
+    '├────────────┼──────┤',
+    '│ west       │    0 │',
+    '└────────────┴──────┘',
+  ].join('\n')])
+  await ui.unmount()
+})
