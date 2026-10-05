@@ -28,6 +28,7 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 - No code comments. The why goes in the commit message or PR description.
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).
 - No new feature flags or config knobs unless the user asked for them.
+- Feature and fix PRs add their CHANGELOG entry under `## [Unreleased]` and leave the version alone. Only the release commit sets the version, so parallel PRs never fight over it.
 
 ## Mod API facts that bite
 
