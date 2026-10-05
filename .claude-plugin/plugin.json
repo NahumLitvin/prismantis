@@ -71,6 +71,13 @@
         "minimal"
       ]
     },
+    "taskStyle": {
+      "type": "string",
+      "title": "Task list style",
+      "description": "How - [ ] and - [x] items draw. checks: [ ] and [✓] with done items dimmed and struck through. ticks: ○ and ✓, done items dimmed. box: □ and ✓, done items dimmed and struck through. progress: ticks with a done-count bar above each list.",
+      "default": "checks",
+      "options": ["checks", "ticks", "box", "progress"]
+    },
     "rtl": {
       "type": "string",
       "title": "Right-to-left terminal",

@@ -138,6 +138,7 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `enabled` | `true`, `false` | `true` |
 | `theme` | see [Themes](#themes) | `catppuccin-mocha` |
 | `tableStyle` | `rules`, `grid`, `minimal` | `rules` |
+| `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `headingStyle` | `banner`, `bold`, `underline`, `uppercase` | `banner` |
 | `highlightNumbers` | `true`, `false` | `true` |
 | `highlightPaths` | `true`, `false` | `true` |

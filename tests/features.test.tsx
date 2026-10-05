@@ -280,14 +280,38 @@ test('task list items parse as checked or open, nested ones too', async () => {
   expect(list.items[0]?.inline).toEqual([{ kind: 'text', text: 'write tests' }])
 })
 
-test('task lists draw open and filled boxes and dim done items', async $ => {
+test('task lists draw brackets and check marks, done items dimmed and struck through', async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'prismantis', component: 'AssistantMessage', props: { text: '- [ ] todo\n- [x] done', isFirstOfReply: true }, viewport: { columns: 80, rows: 20 }, surface })
-    expect((await ui.find({ type: 'Text', text: /^□ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].bullet)
-    expect(await ui.find({ type: 'Text', text: /^■ $/ })).toBeDefined()
-    expect((await ui.find({ type: 'Text', text: /^done$/ }))?.props.dimColor).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^\[ \] $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].bullet)
+    expect(await ui.find({ type: 'Text', text: /^\[✓\] $/ })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: /^done$/ }))?.props).toMatchObject({ dimColor: true, strikethrough: true })
     expect((await ui.find({ type: 'Text', text: /^todo$/ }))?.props.dimColor).toBeFalsy()
-    expect(await ui.find({ type: 'Text', text: /\[[ x]\]/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+const tasks = (surface: 'terminal' | 'desktop') => ({ plugin: 'prismantis', component: 'AssistantMessage' as const, props: { text: '- [ ] todo\n- [x] done', isFirstOfReply: true }, viewport: { columns: 80, rows: 20 }, surface })
+
+test('taskStyle progress draws ticks under a done-count bar', { options: { taskStyle: 'progress' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(tasks(surface))
+    expect(await ui.find({ type: 'Text', text: /^ 1\/2 done$/ })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: /^━{10}$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
+    expect(await ui.find({ type: 'Text', text: /^○ $/ })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: /^✓ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
+    expect((await ui.find({ type: 'Text', text: /^done$/ }))?.props).toMatchObject({ dimColor: true, strikethrough: false })
+    await ui.unmount()
+  }
+})
+
+test('taskStyle box draws a box and a tick', { options: { taskStyle: 'box' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(tasks(surface))
+    expect(await ui.find({ type: 'Text', text: /^□ $/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^✓ $/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^ 1\/2 done$/ })).toBeUndefined()
+    expect((await ui.find({ type: 'Text', text: /^done$/ }))?.props.strikethrough).toBe(true)
     await ui.unmount()
   }
 })

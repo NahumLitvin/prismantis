@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Task lists: `- [ ]` and `- [x]` draw as □ and ■, and done items are dimmed. The copy button still copies the markdown as written ([#10](https://github.com/NahumLitvin/prismantis/issues/10)).
+- Task lists: `- [ ]` and `- [x]` draw as `[ ]` and `[✓]`, with done items dimmed and struck through. The new `taskStyle` option picks `checks` (the default), `ticks`, `box` or `progress`, which adds a done-count bar above each list. The copy button still copies the markdown as written ([#10](https://github.com/NahumLitvin/prismantis/issues/10)).
 
 ## [0.6.1] - 2026-10-05
 

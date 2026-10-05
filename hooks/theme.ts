@@ -15,6 +15,7 @@ export type Style = {
   theme: Theme
   headingStyle: 'bold' | 'underline' | 'uppercase' | 'banner'
   tableStyle: 'rules' | 'grid' | 'minimal'
+  taskStyle: 'checks' | 'ticks' | 'box' | 'progress'
   highlightNumbers: boolean
   highlightPaths: boolean
   mermaid: boolean
@@ -45,6 +46,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     theme: { ...base, ...fromFields },
     headingStyle: pick(options.headingStyle, ['bold', 'underline', 'uppercase', 'banner'] as const, 'banner'),
     tableStyle: pick(options.tableStyle, ['rules', 'grid', 'minimal'] as const, 'rules'),
+    taskStyle: pick(options.taskStyle, ['checks', 'ticks', 'box', 'progress'] as const, 'checks'),
     highlightNumbers: options.highlightNumbers !== false,
     highlightPaths: options.highlightPaths !== false,
     mermaid: options.mermaid !== false,

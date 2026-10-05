@@ -299,27 +299,42 @@ const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kin
   )
 }
 
+const TASK_GLYPHS = { checks: ['[ ]', '[✓]'], ticks: ['○', '✓'], box: ['□', '✓'], progress: ['○', '✓'] } as const
+
 const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'list' }>, columns: number, key: string) => {
   const { Box, Text } = el
   const t = style.theme
+  const tasks = block.items.filter(item => item.task !== undefined)
+  const done = tasks.filter(item => item.task).length
+  const filled = tasks.length ? Math.round((done / tasks.length) * 20) : 0
+  const strike = style.taskStyle === 'checks' || style.taskStyle === 'box'
+  const tick = style.taskStyle === 'ticks' || style.taskStyle === 'progress'
   return (
     <Box key={key} flexDirection="column">
+      {style.taskStyle === 'progress' && tasks.length > 0 && (
+        <Text>
+          <Text color={t.accent}>{'━'.repeat(filled)}</Text>
+          <Text color={t.bullet} dimColor>{'─'.repeat(20 - filled)}</Text>
+          <Text color={t.bullet}>{` ${done}/${tasks.length} done`}</Text>
+        </Text>
+      )}
       {block.items.map((item, i) => {
         const k = `${key}.${i}`
-        const glyph = item.task !== undefined ? (item.task ? '■' : '□') : /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
-        const rtl = flowOf(style, item.inline, columns - item.depth * 2 - 2)
+        const glyph = item.task !== undefined ? TASK_GLYPHS[style.taskStyle][item.task ? 1 : 0] : /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
+        const glyphColor = item.task && tick ? t.accent : t.bullet
+        const rtl = flowOf(style, item.inline, columns - item.depth * 2 - glyph.length - 1)
         if (rtl?.base === 'R') {
           return (
             <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
               <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k)}</Box>
-              <Text color={t.bullet}>{` ${glyph}`}</Text>
+              <Text color={glyphColor}>{` ${glyph}`}</Text>
             </Box>
           )
         }
         return (
           <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
-            <Text color={t.bullet}>{`${glyph} `}</Text>
-            <Text dimColor={item.task === true}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>
+            <Text color={glyphColor}>{`${glyph} `}</Text>
+            <Text dimColor={item.task === true} strikethrough={item.task === true && strike}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>
           </Box>
         )
       })}
