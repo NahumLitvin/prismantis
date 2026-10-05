@@ -98,7 +98,7 @@ Output from slash commands, built-in or from other plugins, is parsed as markdow
 
 ### Diagram hints
 
-Claude rarely writes a chart unless it knows the terminal can draw one. With `diagramHints` on (the default), prismantis attaches a short note to each prompt you type, read by the model and never shown, saying tables, alerts, code, mermaid diagrams and `xychart-beta` charts render here and to use one when a numeric series or a flow is easier to see than read. It costs about 150 tokens per prompt. It's off whenever `mermaid` is off, and skipped for headless `claude -p` runs and background notifications. Claude Code doesn't let installed plugins edit the system prompt (its built-in `sec-default` policy keeps that for the organization), so the note rides along with your prompt instead.
+Claude rarely writes a chart unless it knows the terminal can draw one. With `diagramHints` on (the default), prismantis attaches a short note to each prompt you type, read by the model and never shown, saying tables, alerts, code, mermaid diagrams and `xychart-beta` charts render here and to use one when a numeric series or a flow is easier to see than read. It also asks for commands in fenced blocks, since only those get a copy button. It costs about 190 tokens per prompt. It's off whenever `mermaid` is off, and skipped for headless `claude -p` runs and background notifications. Claude Code doesn't let installed plugins edit the system prompt (its built-in `sec-default` policy keeps that for the organization), so the note rides along with your prompt instead.
 
 ### Text
 

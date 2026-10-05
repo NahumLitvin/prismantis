@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The model-only note asks Claude to put commands and snippets you may copy in fenced code blocks, which get a copy button, instead of inline code, which does not. The note is now about 190 tokens per prompt.
+
 ## [0.6.0] - 2026-10-04
 
 ### Added

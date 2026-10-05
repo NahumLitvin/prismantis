@@ -141,6 +141,7 @@ test('your prompts carry the render hint as model-only context', async ($, on) =
   })
   await $.prompt.submit({ text: 'show me deploys per day', wait: false, origin: { kind: 'composer' } })
   expect(seen[0]?.some(c => c.includes('prismantis'))).toBe(true)
+  expect(seen[0]?.some(c => c.includes('fenced block') && c.includes('copy button'))).toBe(true)
 })
 
 test('no render hint when diagramHints is off', { options: { diagramHints: false } }, async ($, on) => {

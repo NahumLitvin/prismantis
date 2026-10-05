@@ -17,6 +17,7 @@ const HINT = [
   'flowcharts, sequence diagrams and xychart-beta bar or line charts.',
   'When a reply carries a numeric series or a flow that is easier to see than read, add one small diagram or chart with short labels.',
   'Skip diagrams for simple answers.',
+  'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
 ].join(' ')
 
 const detectTerminal = async ($: EngineInterface): Promise<Terminal | null> => {

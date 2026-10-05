@@ -251,7 +251,7 @@
     "diagramHints": {
       "type": "boolean",
       "title": "Diagram hints",
-      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams and charts render here. About 150 tokens per prompt. Off when mermaid is off.",
+      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams and charts render here. About 190 tokens per prompt. Off when mermaid is off.",
       "default": true
     }
   }
