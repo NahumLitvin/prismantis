@@ -306,7 +306,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
     <Box key={key} flexDirection="column">
       {block.items.map((item, i) => {
         const k = `${key}.${i}`
-        const glyph = /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
+        const glyph = item.task !== undefined ? (item.task ? '■' : '□') : /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
         const rtl = flowOf(style, item.inline, columns - item.depth * 2 - 2)
         if (rtl?.base === 'R') {
           return (
@@ -319,7 +319,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         return (
           <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
             <Text color={t.bullet}>{`${glyph} `}</Text>
-            <Text>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>
+            <Text dimColor={item.task === true}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>
           </Box>
         )
       })}

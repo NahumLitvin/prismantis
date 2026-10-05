@@ -34,7 +34,7 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 - `$` cannot cross an import. Any function that takes `$` must be declared in `hooks/register.tsx`. `claude plugin validate` does not catch this; `claude plugin test` does ("hooks module did not load").
 - A render hook may not write `$.state`. Schedule work with `$.clock.after(0, ...)` and write from there; `read($, atom)` in the render subscribes and redraws when the value lands.
 - The built-in `Markdown` element has no theming props, which is why we parse and draw markdown ourselves.
-- `TextProps` has color, background, bold, italic, underline, strikethrough, dim and inverse. There is no font size on any surface.
+- `TextProps` has color, background, bold, italic, underline, strikethrough, dimColor and inverse. There is no font size on any surface.
 - `Image` draws only in terminals with the kitty graphics protocol (kitty, Ghostty); elsewhere it shows its `alt` text.
 - Installed (user-tier) plugins cannot change the system prompt: the built-in `sec-default` plugin skips their `prompt.compose`, `prompt.section` and `prompt.context` hooks. Add model-only context through `prompt.submit` instead. Tests do not run `sec-default`, so prove prompt changes in a live `claude --debug` session.
 - `userConfig` values are flat primitives. A `string` field with `options` becomes a picker in `/config`.

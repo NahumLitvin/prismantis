@@ -23,7 +23,7 @@ Colorful, themeable replies for [Claude Code](https://claude.com/claude-code): t
 | [Slash commands](#slash-commands) | command output (`/cost`, `/context`, plugin commands) gets the same tables and code styling |
 | [Diagram hints](#diagram-hints) | a short model-only note on each prompt so Claude reaches for diagrams and charts when they help |
 | [Text](#text) | bold, italic, strikethrough, inline code, links, versions, durations, percentages and paths in their own colors |
-| [Headings, lists, quotes](#headings-lists-quotes) | 4 heading styles, nested lists, quotes with an accent bar |
+| [Headings, lists, quotes](#headings-lists-quotes) | 4 heading styles, nested lists, task lists, quotes with an accent bar |
 | [Right to left](#right-to-left) | Hebrew and Arabic read right to left, right aligned, with bullets, quote bars and table columns mirrored, in Warp, kitty, Apple Terminal and more |
 
 Try it: ask Claude to print [docs/demo.md](docs/demo.md) verbatim as its whole reply. Every feature is in there.

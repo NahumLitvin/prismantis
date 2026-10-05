@@ -272,3 +272,22 @@ test('/prismantis rejects unknown themes and lists the real ones', async ($, on)
   const list = await $.command.run({ command: 'prismantis', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(list.text?.includes('dracula')).toBe(true)
 })
+
+test('task list items parse as checked or open, nested ones too', async () => {
+  const [list] = parse('- [ ] write tests\n- [x] ship it\n  - [X] nested done\n- plain', { numbers: false, paths: false })
+  if (list?.kind !== 'list') throw new Error('not a list')
+  expect(list.items.map(i => i.task)).toEqual([false, true, true, undefined])
+  expect(list.items[0]?.inline).toEqual([{ kind: 'text', text: 'write tests' }])
+})
+
+test('task lists draw open and filled boxes and dim done items', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ plugin: 'prismantis', component: 'AssistantMessage', props: { text: '- [ ] todo\n- [x] done', isFirstOfReply: true }, viewport: { columns: 80, rows: 20 }, surface })
+    expect((await ui.find({ type: 'Text', text: /^□ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].bullet)
+    expect(await ui.find({ type: 'Text', text: /^■ $/ })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: /^done$/ }))?.props.dimColor).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^todo$/ }))?.props.dimColor).toBeFalsy()
+    expect(await ui.find({ type: 'Text', text: /\[[ x]\]/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
