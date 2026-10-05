@@ -4,6 +4,7 @@ import { expect, test } from 'claude-code/testing'
 import { helpText, showcaseText } from '../hooks/help'
 import { parse } from '../hooks/markdown'
 import { mermaidText } from '../hooks/mermaid'
+import { tableArt } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 
 const hl = { numbers: true, paths: true }
@@ -285,6 +286,7 @@ test('a table art button copies boxed text ready for Slack', async ($, on) => {
   const art = (await ui.findAll({ type: 'Button' }))[1]
   await ui.press({ key: art!.key! })
   expect(copied).toEqual([[
+    '```',
     '┌────────────┬──────┐',
     '│   Queue    │ Sent │',
     '├────────────┼──────┤',
@@ -292,6 +294,18 @@ test('a table art button copies boxed text ready for Slack', async ($, on) => {
     '├────────────┼──────┤',
     '│ west       │    0 │',
     '└────────────┴──────┘',
+    '```',
   ].join('\n')])
   await ui.unmount()
+})
+
+test('wide table art wraps long cells to stay 100 columns wide', async () => {
+  const long = 'Wrong. With no default, databag_config raises No config key is found, so the render fails and nothing is applied, which is the fail-closed behaviour we want.'
+  const [table] = parse(`| Codebot says | Verdict |\n|---|---|\n| A missing x_seen_by renders an empty value | ${long} |`, hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  const lines = tableArt(table).split('\n')
+  const body = lines.slice(1, -1)
+  expect(body.every(l => [...l].length === [...body[0]!].length && [...l].length <= 100)).toBe(true)
+  expect(body.length > 6).toBe(true)
+  expect(body.filter(l => l.startsWith('│')).slice(1).map(l => l.split('│')[2]!.trim()).join(' ')).toBe(long)
 })

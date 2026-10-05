@@ -170,17 +170,52 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
   return cells.filter(cell => flowOf(style, cell, Infinity)?.base === 'R').length * 2 > cells.length
 }
 
+const ART_WIDTH = 100
+
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
-  const widths = block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!))))
+  const widths = columnWidths(block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))), ART_WIDTH - 4, 3)
+  const wrap = (text: string, w: number): string[] => {
+    const out: string[] = []
+    let current = ''
+    for (const word of text.split(/\s+/).filter(Boolean)) {
+      let rest = word
+      while (width(rest) > w) {
+        if (current) {
+          out.push(current)
+          current = ''
+        }
+        let piece = ''
+        for (const ch of rest) {
+          if (width(piece + ch) > w) break
+          piece += ch
+        }
+        piece ||= [...rest][0]!
+        out.push(piece)
+        rest = rest.slice(piece.length)
+      }
+      if (!rest) continue
+      const joined = current ? `${current} ${rest}` : rest
+      if (width(joined) > w) {
+        out.push(current)
+        current = rest
+      } else current = joined
+    }
+    return [...out, ...(current || !out.length ? [current] : [])]
+  }
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
     const room = widths[c]! - width(text)
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
     return ' '.repeat(left) + text + ' '.repeat(room - left)
   }
   const line = (l: string, m: string, r: string) => l + widths.map(w => '─'.repeat(w + 2)).join(m) + r
-  const row = (r: string[], header: boolean) => `│ ${r.map((text, c) => pad(text, c, header ? 'center' : block.align[c] ?? 'left')).join(' │ ')} │`
-  return [line('┌', '┬', '┐'), row(cells[0]!, true), ...cells.slice(1).flatMap(r => [line('├', '┼', '┤'), row(r, false)]), line('└', '┴', '┘')].join('\n')
+  const row = (r: string[], header: boolean) => {
+    const lines = r.map((text, c) => wrap(text, widths[c]!))
+    return Array.from({ length: Math.max(...lines.map(l => l.length)) }, (_, i) =>
+      `│ ${lines.map((l, c) => pad(l[i] ?? '', c, header ? 'center' : block.align[c] ?? 'left')).join(' │ ')} │`)
+  }
+  const art = [line('┌', '┬', '┐'), ...row(cells[0]!, true), ...cells.slice(1).flatMap(r => [line('├', '┼', '┤'), ...row(r, false)]), line('└', '┴', '┘')]
+  return ['```', ...art, '```'].join('\n')
 }
 
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string) => {
