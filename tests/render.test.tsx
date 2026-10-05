@@ -276,3 +276,21 @@ test('fence languages that name Prism internals fall back to plain code', async 
     await ui.unmount()
   }
 })
+
+test('tables draw boxed by default, with a double line under the header', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...draw(TABLE), surface })
+    const top = (await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ }))?.text ?? ''
+    expect(top.split('┬').length).toBe(3)
+    const lines = [top, ...(await Promise.all([/^╞[═╪]+╡$/, /^├[─┼]+┤$/, /^└[─┴]+┘$/].map(async re => (await ui.find({ type: 'Text', text: re }))?.text ?? '')))]
+    expect(lines.every(l => l.length === top.length && l.length > 0)).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^Service$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].tableHeader)
+    await ui.unmount()
+  }
+})
+
+test('tableStyle rules keeps the open look', { options: { tableStyle: 'rules' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /┌|│/ })).toBeUndefined()
+  await ui.unmount()
+})

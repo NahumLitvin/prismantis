@@ -41,89 +41,106 @@
   <Text color=#f9e2af>
     "━━━━━━"
 <Box>
+  <Text color=#585b70>
+    "┌───────────────┬─────────────────────────┬───────────────────────┬───────┐"
   <Box row>
+    <Text color=#585b70>
+      "│ "
     <Box>
       <Text color=#f9e2af bold>
         "Mantis"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text color=#f9e2af bold>
         "Movie"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text color=#f9e2af bold>
         "Superpower"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text color=#f9e2af bold>
         "Size"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞═══════════════╪═════════════════════════╪═══════════════════════╪═══════╡"
   <Box row>
     <Text color=#585b70>
-      "─────────────"
-    <Text color=#585b70>
-      "───────────────────────"
-    <Text color=#585b70>
-      "─────────────────────"
-    <Text color=#585b70>
-      "─────"
-  <Box row>
+      "│ "
     <Box>
       <Text>
         <Text>
           "Mantis"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "Kung Fu Panda"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "acupuncture kicks"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "5cm"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├───────────────┼─────────────────────────┼───────────────────────┼───────┤"
   <Box row>
     <Text color=#585b70>
-      "─────────────"
-    <Text color=#585b70>
-      "───────────────────────"
-    <Text color=#585b70>
-      "─────────────────────"
-    <Text color=#585b70>
-      "─────"
-  <Box row>
+      "│ "
     <Box>
       <Text>
         <Text>
           "Mantis"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "Guardians of the Galaxy"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "empathy, awkward hugs"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "168cm"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├───────────────┼─────────────────────────┼───────────────────────┼───────┤"
   <Box row>
     <Text color=#585b70>
-      "─────────────"
-    <Text color=#585b70>
-      "───────────────────────"
-    <Text color=#585b70>
-      "─────────────────────"
-    <Text color=#585b70>
-      "─────"
-  <Box row>
+      "│ "
     <Box>
       <Text>
         <Text>
           "mantis shrimp"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "real life"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
@@ -132,10 +149,16 @@
           "23"
         <Text>
           " m/s"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "10cm"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└───────────────┴─────────────────────────┴───────────────────────┴───────┘"
 <Box>
   <Box row>
     <Text color=#cba6f7>
@@ -930,56 +953,74 @@
   <Text color=#cba6f7>
     " │"
 <Box>
+  <Text color=#585b70>
+    "┌────────────────┬──────────────┬───────┐"
   <Box row>
+    <Text color=#585b70>
+      "│ "
     <Box>
       <Text color=#f9e2af bold>
         "לע חוכ"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text color=#f9e2af bold>
         "טרס"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text color=#f9e2af bold>
         "םחול"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞════════════════╪══════════════╪═══════╡"
   <Box row>
     <Text color=#585b70>
-      "──────────────"
-    <Text color=#585b70>
-      "────────────"
-    <Text color=#585b70>
-      "─────"
-  <Box row>
+      "│ "
     <Box>
       <Text>
         <Text>
           "רוקיד תוטיעב"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "הדנפ ופ גנוק"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "סיטנמ"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├────────────────┼──────────────┼───────┤"
   <Box row>
     <Text color=#585b70>
-      "──────────────"
-    <Text color=#585b70>
-      "────────────"
-    <Text color=#585b70>
-      "─────"
-  <Box row>
+      "│ "
     <Box>
       <Text>
         <Text>
           "23 m/s-ב ףורגא"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "תואיצמ"
+    <Text color=#585b70>
+      " │ "
     <Box>
       <Text>
         <Text>
           "פמירש"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└────────────────┴──────────────┴───────┘"
 <Box>
   <Box row>
     <Text color=#6c7086>

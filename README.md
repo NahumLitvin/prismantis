@@ -56,7 +56,7 @@ Switch on the spot with `/prismantis theme nord`, or run `/prismantis` for the h
 
 ### Tables
 
-Header cells take the `tableHeader` color, a rule runs under the header and between rows (`tableStyle`: `rules`, `grid` or `minimal`), and `:---:`/`---:` alignment is honored. Numbers inside cells are colored like everywhere else. Columns shrink to fit the terminal.
+Header cells take the `tableHeader` color, and every cell sits in a box with a double line under the header (`tableStyle`: `box`, or `rules`, `grid` and `minimal` for lighter looks), and `:---:`/`---:` alignment is honored. Numbers inside cells are colored like everywhere else. Columns shrink to fit the terminal.
 
 ### Code
 
@@ -141,7 +141,7 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | --- | --- | --- |
 | `enabled` | `true`, `false` | `true` |
 | `theme` | see [Themes](#themes) | `catppuccin-mocha` |
-| `tableStyle` | `rules`, `grid`, `minimal` | `rules` |
+| `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `headingStyle` | `banner`, `bold`, `underline`, `uppercase` | `banner` |
 | `highlightNumbers` | `true`, `false` | `true` |

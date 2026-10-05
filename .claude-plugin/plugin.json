@@ -63,9 +63,10 @@
     "tableStyle": {
       "type": "string",
       "title": "Table style",
-      "description": "rules: a rule under the header and between rows. grid: heavier header rule, wider gaps. minimal: header rule only.",
-      "default": "rules",
+      "description": "box: every cell boxed, with a double line under the header. rules: a rule under the header and between rows. grid: heavier header rule, wider gaps. minimal: header rule only.",
+      "default": "box",
       "options": [
+        "box",
         "rules",
         "grid",
         "minimal"

@@ -174,11 +174,12 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const { Box, Text } = el
   const t = style.theme
   const rtl = isRtlTable(style, block)
-  const gap = style.tableStyle === 'grid' ? 3 : 2
+  const box = style.tableStyle === 'box'
+  const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
   const natural = block.header.map((h, c) =>
     Math.max(width(displayText(h)), ...block.rows.map(r => width(displayText(r[c] ?? [])))),
   )
-  const widths = columnWidths(natural, columns, gap)
+  const widths = box ? columnWidths(natural, columns - 4, 3) : columnWidths(natural, columns, gap)
   const order = natural.map((_, c) => c)
   if (rtl) order.reverse()
   const ruleChar = style.tableStyle === 'grid' ? '━' : '─'
@@ -195,23 +196,40 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     </Box>
   )
 
+  const bar = (k: string, text: string) => <Text key={k} color={t.tableRule} dimColor={!t.tableRule}>{text}</Text>
+  const edge = (k: string, [left, fill, mid, right]: string) =>
+    bar(k, left + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + right)
+
   const row = (cells: Inline[][], k: string, isHeader: boolean) => (
     <Box key={k} flexDirection="row" columnGap={gap}>
-      {order.map(c => {
+      {box && bar(`${k}.l`, '│ ')}
+      {order.map((c, i) => {
         const w = widths[c]!
         const cell = flowOf(style, cells[c] ?? [], Infinity)
         const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
-        return (
+        const cellBox = (
           <Box key={`${k}.${c}`} width={w} flexShrink={0} justifyContent={side}>
             {isHeader
               ? <Text bold color={t.tableHeader}>{inlineText(content)}</Text>
               : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>}
           </Box>
         )
+        return box && i > 0 ? [bar(`${k}.${c}s`, ' │ '), cellBox] : cellBox
       })}
+      {box && bar(`${k}.r`, ' │')}
     </Box>
   )
+
+  if (box) {
+    const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), row(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
+    block.rows.forEach((r, i) => {
+      if (i > 0) lines.push(edge(`${key}.r${i}r`, '├─┼┤'))
+      lines.push(row(r, `${key}.r${i}`, false))
+    })
+    lines.push(edge(`${key}.b`, '└─┴┘'))
+    return <Box key={key} flexDirection="column" {...(rtl ? { alignSelf: 'flex-end' as const } : {})}>{lines}</Box>
+  }
 
   const body: RenderElement[] = [row(block.header, `${key}.h`, true), rule(`${key}.hr`, true)]
   block.rows.forEach((r, i) => {
