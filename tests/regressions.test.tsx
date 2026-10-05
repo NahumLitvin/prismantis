@@ -1,7 +1,8 @@
 import type { On } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 import { helpText, showcaseText } from '../hooks/help'
+import { tableHtml } from '../hooks/html'
 import { parse } from '../hooks/markdown'
 import { mermaidText } from '../hooks/mermaid'
 import { tableArt } from '../hooks/render'
@@ -18,6 +19,8 @@ const mount = (text: string, columns = 120) => ({
 })
 
 const stubClipboard = (on: On) => {
+  mock.env(on, {})
+  on('fs.stat', (_, e, next) => e.path === '/usr/bin/osascript' ? { deny: 'No native clipboard in this test' } : next(e))
   const copied: string[] = []
   on('ui.copy', (_, e) => {
     copied.push(e.text)
@@ -46,14 +49,31 @@ test('an escaped trailing pipe stays in the cell', async () => {
   expect(table.rows[0]?.[1]?.map(n => ('text' in n ? n.text : '')).join('')).toBe('y|')
 })
 
-test('copying a table returns its exact markdown', async ($, on) => {
+for (const surface of ['terminal', 'desktop'] as const) test(`tables copy Markdown and tab-separated cells without a native clipboard on ${surface}`, async ($, on) => {
   const copied = stubClipboard(on)
   const source = '| a | b |\n|:--|--:|\n| `x\\|y` | **2** |'
-  const ui = await $.ui.mount(mount(source))
-  const [button] = await ui.findAll({ type: 'Button' })
-  await ui.press({ key: button!.key! })
-  expect(copied).toEqual([source])
+  const ui = await $.ui.mount({ ...mount(source), surface })
+  const buttons = await ui.findAll({ type: 'Button' })
+  expect(buttons.map(button => button.props.label)).toEqual(['⧉ md', '⧉ art', '⧉ html'])
+  await ui.press({ key: 'copy0' })
+  await ui.press({ key: 'html0' })
+  expect(copied).toEqual([source, 'a\tb\nx|y\t2'])
   await ui.unmount()
+})
+
+test('HTML table copying escapes content and preserves safe inline formatting', async () => {
+  const source = '| <Title> | Link |\n|:--:|--|\n| **bold *italic*** ~~old~~ `x<y` & "quoted" | [go](https://example.com/?a=1&b="2") |\n| <script>alert | [bad](javascript:alert) |\n| short |'
+  const table = parse(source, hl)[0]
+  if (table?.kind !== 'table') throw new Error('not a table')
+  const html = tableHtml(table)
+  expect(html).toContain('<th style="text-align: center">&lt;Title&gt;</th>')
+  expect(html).toContain('<em>italic</em>')
+  expect(html).toContain('<del>old</del>')
+  expect(html).toContain('<code>x&lt;y</code> &amp; &quot;quoted&quot;')
+  expect(html).toContain('<a href="https://example.com/?a=1&amp;b=&quot;2&quot;">go</a>')
+  expect(html).toContain('&lt;script&gt;alert')
+  expect(html).not.toContain('javascript:')
+  expect(html).toContain('<td style="text-align: left"></td>')
 })
 
 test('copying a list returns its exact markdown', async ($, on) => {

@@ -1,6 +1,7 @@
 import type { EngineInterface, Register, RenderElement } from 'claude-code'
 
 import { parse } from './markdown'
+import { MAC_TABLE_COPY } from './html'
 import { boxArt, mermaidText } from './mermaid'
 import type { Drawn } from './render'
 import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
@@ -46,18 +47,51 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<void> => {
 
 const expandedCalls = new Set<string>()
 
+const copyTable = async ($: EngineInterface, html: string, text: string, surface: string): Promise<boolean> => {
+  if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return false
+  const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
+  if (helper?.kind !== 'file') return false
+  const result = await $.process.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY], {
+    stdin: JSON.stringify({ html, text }),
+    timeoutMs: 5000,
+  })
+  if (result.exitCode !== 0) throw new Error(result.stderr.trim() || 'macOS clipboard helper failed')
+  return true
+}
+
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, reply?: string): RenderElement[] => {
   const { Button } = el
-  const copy = (text: string | (() => string), key: string, label = '⧉ copy') =>
+  const copy = (text: string | (() => string), key: string, label = '⧉ copy', plainText?: () => string) =>
     style.copyButtons ? (
       <Button
         key={key}
         variant="primary"
         label={label}
-        onPress={press => {
-          $.ui.copy({ text: typeof text === 'function' ? text() : text, surface: press.surface })
-            .then(r => $.ui.toast(r.isCopied ? 'Copied' : `Copy failed: ${r.reason}`))
-            .catch(() => $.ui.toast('Copy failed'))
+        onPress={async press => {
+          try {
+            const content = typeof text === 'function' ? text() : text
+            const cells = plainText?.()
+            let fallback = ''
+            if (cells !== undefined) {
+              let copied = false
+              try {
+                copied = await copyTable($, content, cells, press.surface)
+                fallback = 'rich copying requires a local macOS terminal'
+              } catch (error) {
+                fallback = error instanceof Error ? error.message : 'rich clipboard unavailable'
+              }
+              if (copied) {
+                await $.ui.toast('Copied formatted table')
+                return
+              }
+            }
+            const result = await $.ui.copy({ text: cells ?? content, surface: press.surface })
+            await $.ui.toast(result.isCopied
+              ? cells === undefined ? 'Copied' : `Copied tab-separated cells; ${fallback}`
+              : `Copy failed: ${result.reason}`)
+          } catch {
+            await $.ui.toast('Copy failed')
+          }
         }}
       />
     ) : null
