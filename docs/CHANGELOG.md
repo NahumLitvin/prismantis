@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `/prismantis` and `/prismantis demo` show task lists.
+
 ## [0.7.1] - 2026-10-05
 
 ### Fixed

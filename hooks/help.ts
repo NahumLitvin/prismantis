@@ -42,6 +42,14 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 > [!CAUTION]
 > Claude Code refuses trees over 20000 nodes. A code block past about 500 highlighted lines falls back to plain text.
 
+### Task lists
+
+- [x] Parse the reply
+- [x] Draw it
+  - [x] Tables and code
+  - [ ] Diagrams on the desktop app
+- [ ] Ship the next release
+
 ### Quotes and rules
 
 > A quote keeps its text when you copy it, without the \`> \` markers.
@@ -99,6 +107,12 @@ export const helpText = (themes: readonly string[]): string => `
 
 > [!TIP]
 > Any color slot beats the theme. Set \`headingColor\` or \`numberColor\` to a hex value in \`/config\`.
+
+### Task lists
+
+- [x] Tables, diagrams and charts drawn in the terminal
+- [x] A copy button on every block
+- [ ] Pick a \`taskStyle\` in \`/config\`: checks, ticks, box or progress
 
 \`\`\`mermaid
 flowchart LR

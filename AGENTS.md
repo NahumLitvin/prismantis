@@ -29,6 +29,7 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).
 - No new feature flags or config knobs unless the user asked for them.
 - Feature and fix PRs add their CHANGELOG entry under `## [Unreleased]` and leave the version alone. Only the release commit sets the version, so parallel PRs never fight over it.
+- Every user-visible feature ships with a sample in `/prismantis demo` (`showcaseText` in `hooks/help.ts`), and in the one-screen `/prismantis` help (`helpText`) when it fits. Extend the help tests in `tests/regressions.test.tsx` so dropping the sample fails.
 
 ## Mod API facts that bite
 
@@ -52,7 +53,7 @@ claude plugin test .
 tsc -p .
 ```
 
-`tsc -p .` needs `.claude-plugin/types/`, which appears after running `claude --plugin-dir .` once. Then see it render for real (`.claude/skills/live-check`). Tests prove the tree; only a screenshot proves the look. CI runs validate and test on Linux, macOS and Windows, plus a type-check, a check that `hooks/vendor` rebuilds byte for byte from `scripts/package-lock.json` and holds only MIT code, version agreement across `plugin.json`, `marketplace.json` and `docs/CHANGELOG.md`, a no-comments check, and a clean install. Pushing a `vX.Y.Z` tag publishes a GitHub release from the CHANGELOG section.
+`tsc -p .` needs `.claude-plugin/types/`, which appears after running `claude --plugin-dir .` once. Then see it render for real (`.claude/skills/live-check`): any change to what gets drawn needs a screenshot of `/prismantis demo` (and `/prismantis` when the help changed), looked at before the PR opens. Tests prove the tree; only a screenshot proves the look. CI runs validate and test on Linux, macOS and Windows, plus a type-check, a check that `hooks/vendor` rebuilds byte for byte from `scripts/package-lock.json` and holds only MIT code, version agreement across `plugin.json`, `marketplace.json` and `docs/CHANGELOG.md`, a no-comments check, and a clean install. Pushing a `vX.Y.Z` tag publishes a GitHub release from the CHANGELOG section.
 
 Performance and render regressions (CI gates snapshots and node counts):
 
