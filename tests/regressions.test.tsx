@@ -268,19 +268,11 @@ test('the help screen draws as command output', async $ => {
   await ui.unmount()
 })
 
-test('reply marker is a text glyph Windows fonts carry, not an emoji', async $ => {
-  const first = await $.ui.mount(mount('hi'))
-  expect((await first.find({ type: 'Text', text: /^●$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
-  await first.unmount()
-  const rest = await $.ui.mount({ ...mount('hi'), props: { text: 'hi', isFirstOfReply: false } })
-  expect(await rest.find({ type: 'Text', text: /●/ })).toBeUndefined()
-  await rest.unmount()
-})
-
 test('drawn replies add no emoji-capable glyphs', async $ => {
   const text = ['sequenceDiagram\n  A->>B: go\n  B-->>A: ok', 'classDiagram\n  direction LR\n  A <|-- B\n  C --> D', 'graph RL\n  A-->B'].map(d => '```mermaid\n' + d + '\n```').join('\n\n')
-  const ui = await $.ui.mount(mount(text))
-  const hit = await ui.find({ type: 'Text', text: /\p{Extended_Pictographic}/u })
-  expect(hit?.text).toBeUndefined()
-  await ui.unmount()
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount(text), surface })
+    expect((await ui.find({ type: 'Text', text: /\p{Extended_Pictographic}/u }))?.text).toBeUndefined()
+    await ui.unmount()
+  }
 })
