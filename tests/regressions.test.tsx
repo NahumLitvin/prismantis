@@ -309,3 +309,13 @@ test('wide table art wraps long cells to stay 100 columns wide', async () => {
   expect(body.length > 6).toBe(true)
   expect(body.filter(l => l.startsWith('│')).slice(1).map(l => l.split('│')[2]!.trim()).join(' ')).toBe(long)
 })
+
+test('copy reply copies the whole reply as written, Hebrew in reading order', { options: { rtl: 'warp' } }, async ($, on) => {
+  const copied = stubClipboard(on)
+  const text = 'שלום חברים, זו הדגמה של prismantis.\n\n| a | b |\n|---|---|\n| 1 | 2 |'
+  const ui = await $.ui.mount(mount(text))
+  const reply = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ copy reply')
+  await ui.press({ key: reply!.key! })
+  expect(copied).toEqual([text])
+  await ui.unmount()
+})

@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Every reply ends with a `⧉ copy reply` button that copies the whole reply as Claude wrote it. Selecting Hebrew or Arabic on screen copies it in drawn order, reversed; this copies it in reading order.
+
 ### Changed
 
 - `/prismantis` and `/prismantis demo` show task lists.

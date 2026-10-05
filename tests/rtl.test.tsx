@@ -141,7 +141,7 @@ test('an English table with one Hebrew cell keeps its column order and side', { 
   const ui = await $.ui.mount(mount('| name | tag |\n|---|---|\n| web | שלום |\n| api | db |'))
   const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
   expect(texts.indexOf('name') < texts.indexOf('tag')).toBe(true)
-  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end')).toBe(false)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.key !== 'reply' && b.props.alignSelf === 'flex-end')).toBe(false)
   await ui.unmount()
 })
 

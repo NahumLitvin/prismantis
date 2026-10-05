@@ -243,7 +243,7 @@ test('diagrams offer two copies: mermaid source and drawn art', async ($, on) =>
   })
   const ui = await $.ui.mount({ ...draw(FLOW), surface: 'terminal' })
   const buttons = await ui.findAll({ type: 'Button' })
-  expect(buttons.map(b => b.props.label)).toEqual(['⧉ source', '⧉ art'])
+  expect(buttons.map(b => b.props.label)).toEqual(['⧉ source', '⧉ art', '⧉ copy reply'])
   for (const b of buttons) await ui.press({ key: b.key! })
   expect(copied[0]).toBe('graph LR\nA[User] --> B[Gateway]')
   expect(copied[1]).toContain('┌')

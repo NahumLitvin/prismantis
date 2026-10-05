@@ -46,7 +46,7 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<void> => {
 
 const expandedCalls = new Set<string>()
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number): RenderElement[] => {
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, reply?: string): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy') =>
     style.copyButtons ? (
@@ -69,7 +69,9 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       if (art !== null && art.split('\n').every(l => width(l) <= columns - 2)) drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
     }
   }
-  return renderBlocks(el, style, blocks, columns, drawn, copy)
+  const elements = renderBlocks(el, style, blocks, columns, drawn, copy)
+  const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
+  return button ? [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>] : elements
 }
 
 export const register: Register = (on, options) => {
@@ -144,7 +146,7 @@ export const register: Register = (on, options) => {
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, style, blocks, columns)}
+          {drawMarkdown($, el, style, blocks, columns, e.props.text)}
         </Box>
       </Box>
     )
