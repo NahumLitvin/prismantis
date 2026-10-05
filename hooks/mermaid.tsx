@@ -47,7 +47,7 @@ export const mermaidText =(source: string, ascii: boolean, columns: number): str
   return remember(textCache, key, () => {
     try {
       if (isChart) setChartSize(size.width, size.height)
-      const art = renderMermaidAscii(unquoteCategories(source.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd()
+      const art = renderMermaidAscii(unquoteCategories(source.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
       return isChart ? labelBars(art, source) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')
     } catch {
       return null
@@ -56,7 +56,7 @@ export const mermaidText =(source: string, ascii: boolean, columns: number): str
 }
 
 const LINE = /[─-╿◇]/
-const ARROW = /[►◄▲▼▶◀]/
+const ARROW = /[►◄▲▼]/
 
 const paint = (art: string, style: Style): (string | undefined)[][] => {
   const t = style.theme
@@ -75,7 +75,7 @@ const paint = (art: string, style: Style): (string | undefined)[][] => {
       while (/[─┬┴┼▲▼]/.test(cell(r, c2))) c2++
       if (!/[┐╮)]/.test(cell(r, c2)) || c2 === c + 1) continue
       let r2 = r + 1
-      while (/[│├┤┼►◄▶◀]/.test(cell(r2, c))) r2++
+      while (/[│├┤┼►◄]/.test(cell(r2, c))) r2++
       if (!/[└╰(]/.test(cell(r2, c)) || !/[┘╯)]/.test(cell(r2, c2))) continue
       rects.push({ r, c, r2, c2 })
     }

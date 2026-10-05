@@ -141,7 +141,7 @@ export const register: Register = (on, options) => {
     return (
       <Box flexDirection="row">
         <Box width={2} flexShrink={0}>
-          <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '⏺' : ' '}</Text>
+          <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
           {drawMarkdown($, el, style, blocks, columns)}

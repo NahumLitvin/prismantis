@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] - 2026-10-05
+
+### Fixed
+
+- On Windows the reply marker and the filled arrowheads in sequence and class diagrams drew as color emoji. The marker is now `●`, the same dot Claude Code uses off macOS, and the arrowheads are `►` and `◄`. A test fails if a drawn reply ever adds an emoji-capable character again ([#6](https://github.com/NahumLitvin/prismantis/issues/6)).
+
 ## [0.7.0] - 2026-10-05
 
 ### Added

@@ -340,7 +340,7 @@
           <Text color=#89b4fa>
             "│────────────────────"
           <Text color=#cba6f7>
-            "▶"
+            "►"
         <Text>
           <Text color=#cdd6f4>
             "     "
@@ -354,7 +354,7 @@
           <Text color=#cdd6f4>
             "     "
           <Text color=#cba6f7>
-            "◀"
+            "◄"
           <Text color=#89b4fa>
             "────────────────────│"
         <Text>
@@ -372,7 +372,7 @@
           <Text color=#89b4fa>
             "│╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌"
           <Text color=#cba6f7>
-            "▶"
+            "►"
         <Text>
           <Text color=#89b4fa>
             "┌────┴───┐"
