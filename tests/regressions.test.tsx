@@ -319,3 +319,9 @@ test('copy reply copies the whole reply as written, Hebrew in reading order', { 
   expect(copied).toEqual([text])
   await ui.unmount()
 })
+
+test('a one-paragraph English block gets no copy reply button', async $ => {
+  const ui = await $.ui.mount(mount('Checking the tests next.'))
+  expect((await ui.findAll({ type: 'Button' })).some(b => b.props.label === '⧉ copy reply')).toBe(false)
+  await ui.unmount()
+})

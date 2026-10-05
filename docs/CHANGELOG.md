@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Every reply ends with a `⧉ copy reply` button that copies the whole reply as Claude wrote it. Selecting Hebrew or Arabic on screen copies it in drawn order, reversed; this copies it in reading order.
+- Replies end with a `⧉ copy reply` button that copies the reply as Claude wrote it. One-line English narration gets none, so the button sits where there is something worth copying. Selecting Hebrew or Arabic on screen copies it in drawn order, reversed; this copies it in reading order.
 
 ### Changed
 
