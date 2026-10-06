@@ -17,6 +17,9 @@ const mount = (text: string, columns = 120) => ({
   surface: 'terminal' as const,
 })
 
+const drawn = (node: unknown): string =>
+  typeof node === 'string' ? node : ((node as { children?: unknown[] }).children ?? []).map(drawn).join('')
+
 const stubClipboard = (on: On) => {
   const copied: string[] = []
   on('ui.copy', (_, e) => {
@@ -71,6 +74,31 @@ test('table columns never exceed the terminal width', async $ => {
   const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).slice(1)
   const firstRow = cells.slice(0, 5).map(b => b.props.width as number)
   expect(firstRow.reduce((a, b) => a + b, 0) + 2 * 4 <= 20).toBe(true)
+  await ui.unmount()
+})
+
+test('a boxed row that wraps keeps its borders on every line', async $ => {
+  const file = 'handoffs/handoff-scheduled-event-pushes-21082026.md'
+  const evidence = 'Its blocking question is unanswered; BACKLOG row 16 cites [it](https://x.io/16)'
+  const ui = await $.ui.mount(mount(`| File | Evidence |\n|---|---|\n| ${file} | ${evidence} |`, 40))
+  const lines = await ui.findAll({ type: 'Text', text: /^│ $/ })
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).slice(-2 * (lines.length - 1))
+  expect(lines.length > 3).toBe(true)
+  expect(cells.every(b => drawn(b).length <= (b.props.width as number))).toBe(true)
+  expect(cells.filter((_, i) => i % 2 === 0).map(drawn).join('')).toBe(file)
+  expect(cells.filter((_, i) => i % 2 === 1).map(drawn).join(' ')).toBe('Its blocking question is unanswered; BACKLOG row 16 cites it')
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['https://x.io/16'])
+  expect((await ui.find({ type: 'Text', text: /^16$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].number)
+  await ui.unmount()
+})
+
+test('a bare URL that wraps in a boxed cell links every piece to the whole URL', async $ => {
+  const url = 'https://example.com/a/rather/long/path/that/cannot/fit/on/one/line'
+  const ui = await $.ui.mount(mount(`| n | link |\n|---|---|\n| 1 | ${url} |`, 40))
+  const links = await ui.findAll({ type: 'Link' })
+  expect(links.length > 1).toBe(true)
+  expect(links.every(l => l.props.href === url)).toBe(true)
+  expect(links.map(drawn).join('')).toBe(url)
   await ui.unmount()
 })
 

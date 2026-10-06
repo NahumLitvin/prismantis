@@ -10,9 +10,58 @@ import { languages, tokenize } from './vendor/prism.js'
 const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]|\p{Extended_Pictographic}/u
 const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter() : undefined
 
-export const width = (s: string): number => {
-  const graphemes = segmenter ? [...segmenter.segment(s)].map(g => g.segment) : [...s]
-  return graphemes.reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
+const graphemes = (s: string): string[] => (segmenter ? [...segmenter.segment(s)].map(g => g.segment) : [...s])
+
+export const width = (s: string): number =>
+  graphemes(s).reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
+
+const wrapRanges = (text: string, w: number): [number, number][] => {
+  if (width(text) <= w) return [[0, text.length]]
+  const out: [number, number][] = []
+  let line: [number, number] | undefined
+  for (const word of text.matchAll(/\S+/g)) {
+    let start = word.index
+    const end = start + word[0].length
+    while (width(text.slice(start, end)) > w) {
+      if (line) out.push(line)
+      line = undefined
+      let cut = start
+      for (const g of graphemes(text.slice(start, end))) {
+        if (cut > start && width(text.slice(start, cut + g.length)) > w) break
+        cut += g.length
+      }
+      out.push([start, cut])
+      start = cut
+    }
+    if (start === end) continue
+    if (line && width(text.slice(line[0], end)) <= w) line = [line[0], end]
+    else {
+      if (line) out.push(line)
+      line = [start, end]
+    }
+  }
+  if (line) out.push(line)
+  return out.length ? out : [[0, 0]]
+}
+
+const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
+  const out: Inline[] = []
+  let at = 0
+  for (const n of nodes) {
+    const length = inlineText([n]).length
+    const a = Math.max(from - at, 0)
+    const b = Math.min(to - at, length)
+    at += length
+    if (a >= b) continue
+    if ('children' in n) out.push({ ...n, children: sliceInline(n.children, a, b) })
+    else out.push({ ...n, text: n.text.slice(a, b) })
+  }
+  return out
+}
+
+const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
+  const text = inlineText(nodes)
+  return width(text) <= w ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
 }
 
 const flowOf = (style: Style, nodes: Inline[], columns: number) => (style.reorder ? flow(nodes, columns, width, style.shape) : null)
@@ -175,34 +224,6 @@ const ART_WIDTH = 100
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
   const widths = columnWidths(block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))), ART_WIDTH - 4, 3)
-  const wrap = (text: string, w: number): string[] => {
-    const out: string[] = []
-    let current = ''
-    for (const word of text.split(/\s+/).filter(Boolean)) {
-      let rest = word
-      while (width(rest) > w) {
-        if (current) {
-          out.push(current)
-          current = ''
-        }
-        let piece = ''
-        for (const ch of rest) {
-          if (width(piece + ch) > w) break
-          piece += ch
-        }
-        piece ||= [...rest][0]!
-        out.push(piece)
-        rest = rest.slice(piece.length)
-      }
-      if (!rest) continue
-      const joined = current ? `${current} ${rest}` : rest
-      if (width(joined) > w) {
-        out.push(current)
-        current = rest
-      } else current = joined
-    }
-    return [...out, ...(current || !out.length ? [current] : [])]
-  }
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
     const room = widths[c]! - width(text)
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
@@ -210,7 +231,7 @@ export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   }
   const line = (l: string, m: string, r: string) => l + widths.map(w => '─'.repeat(w + 2)).join(m) + r
   const row = (r: string[], header: boolean) => {
-    const lines = r.map((text, c) => wrap(text, widths[c]!))
+    const lines = r.map((text, c) => wrapRanges(text, widths[c]!).map(([a, b]) => text.slice(a, b)))
     return Array.from({ length: Math.max(...lines.map(l => l.length)) }, (_, i) =>
       `│ ${lines.map((l, c) => pad(l[i] ?? '', c, header ? 'center' : block.align[c] ?? 'left')).join(' │ ')} │`)
   }
@@ -269,11 +290,21 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     </Box>
   )
 
+  const wrappedRow = (cells: Inline[][], k: string, isHeader: boolean) => {
+    const wrapped = widths.map((w, c) => {
+      const content = cells[c] ?? []
+      if (natural[c]! <= w) return [content]
+      return wrapInline(isHeader ? [{ kind: 'text', text: inlineText(content) }] : content, w)
+    })
+    return Array.from({ length: Math.max(...wrapped.map(l => l.length)) }, (_, i) =>
+      row(wrapped.map(l => l[i] ?? []), `${k}.${i}`, isHeader))
+  }
+
   if (box) {
-    const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), row(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
+    const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), ...wrappedRow(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
     block.rows.forEach((r, i) => {
       if (i > 0) lines.push(edge(`${key}.r${i}r`, '├─┼┤'))
-      lines.push(row(r, `${key}.r${i}`, false))
+      lines.push(...wrappedRow(r, `${key}.r${i}`, false))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
     return <Box key={key} flexDirection="column" {...(rtl ? { alignSelf: 'flex-end' as const } : {})}>{lines}</Box>
