@@ -510,12 +510,10 @@ const field = (input: unknown, ...keys: string[]): string | undefined => {
   return undefined
 }
 
-const isTree = (style: Style) => style.toolStyle === "tree-dim" || style.toolStyle === "tree-bold"
-
 const toolDim = (style: Style) => style.toolStyle !== "classic"
 
 const toolGutter = ({ Box, Text }: ElementTable, style: Style, color: string | undefined, running: boolean) =>
-  isTree(style)
+  style.toolStyle.startsWith("tree")
     ? <Box width={4} flexShrink={0}><Text color={color}>{'  ⎿ '}</Text></Box>
     : <Box width={2} flexShrink={0}><Text color={color}>{running ? '◌' : '●'}</Text></Box>
 
