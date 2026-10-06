@@ -15,7 +15,7 @@ const engine = (on: On) =>
 
 const call = (tool: string, input: unknown, id: string) => ({ tool_use_id: id, tool, input, isRunning: false, isErrored: false, isInterrupted: false })
 
-test('collapsed tool groups draw one summary line', async $ => {
+test('collapsed tool groups draw one summary line', { options: { toolStyle: 'classic' } }, async $ => {
   const ui = await $.ui.mount({
     plugin: 'prismantis',
     surface: 'terminal',
@@ -415,4 +415,37 @@ test('an unstamped prompt is yours, a teammate message is not', async ($, on) =>
   const peer = await $.ui.mount({ ...prompt('from a teammate', 'unclassified' as never), props: { text: 'from a teammate', origin: { kind: 'unclassified' } as never, isExpanded: true, from: { name: 'bob' } as never } })
   expect(await peer.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await peer.unmount()
+})
+
+const readRow = { plugin: 'prismantis', component: 'ToolUse' as const, props: call('Read', { file_path: '/tmp/x' }, 'ts-1'), viewport: { columns: 100, rows: 10 }, surface: 'terminal' as const }
+
+test('chat puts tool rows on the right, dimmed, by default', async $ => {
+  const ui = await $.ui.mount(readRow)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.justifyContent === 'flex-end')).toBe(true)
+  expect(await ui.find({ type: 'Text', text: /⎿/ })).toBeUndefined()
+  expect((await ui.findAll({ type: 'Text' })).find(t => t.props.wrap === 'truncate-end')?.props.dimColor).toBe(true)
+  await ui.unmount()
+})
+
+test('toolStyle tree-dim tucks tool rows under the sentence', { options: { toolStyle: 'tree-dim' } }, async $ => {
+  const ui = await $.ui.mount(readRow)
+  expect((await ui.find({ type: 'Text', text: /^ {2}⎿ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].number)
+  expect((await ui.findAll({ type: 'Text' })).find(t => t.props.wrap === 'truncate-end')?.props.dimColor).toBe(true)
+  await ui.unmount()
+})
+
+test('toolStyle classic is the original look', { options: { toolStyle: 'classic' } }, async $ => {
+  const ui = await $.ui.mount(readRow)
+  expect(await ui.find({ type: 'Text', text: /⎿/ })).toBeUndefined()
+  expect((await ui.findAll({ type: 'Text' })).find(t => t.props.wrap === 'truncate-end')?.props.dimColor).toBe(false)
+  await ui.unmount()
+})
+
+test('toolStyle tree-bold draws one-line narration in bold', { options: { toolStyle: 'tree-bold' } }, async $ => {
+  const one = await $.ui.mount({ plugin: 'prismantis', component: 'AssistantMessage', props: { text: 'Checking the tests next.', isFirstOfReply: true }, viewport: { columns: 80, rows: 10 }, surface: 'terminal' })
+  expect((await one.find({ type: 'Text', text: /^Checking the tests next\.$/ }))?.props.bold).toBe(true)
+  await one.unmount()
+  const long = await $.ui.mount({ plugin: 'prismantis', component: 'AssistantMessage', props: { text: 'First.\n\nSecond.', isFirstOfReply: true }, viewport: { columns: 80, rows: 10 }, surface: 'terminal' })
+  expect((await long.find({ type: 'Text', text: /^First\.$/ }))?.props.bold).toBeFalsy()
+  await long.unmount()
 })

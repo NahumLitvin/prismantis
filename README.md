@@ -89,6 +89,22 @@ When tables and diagrams follow each other, they share a row and wrap to the nex
 
 Each tool call draws as one line: a bold verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. The dot is green when done, hollow while running and red on failure. Output still draws below. Collapsed groups draw one line too, `Ran 3 commands, read 2 files · last: npm test`, with a red count when any call failed. Expand a group (ctrl+o or `--verbose`) and its calls draw with Claude Code's own rows, inline output included.
 
+`toolStyle` keeps tool rows apart from what Claude says. The default, `chat`, puts them dimmed on the right, like the other side of a chat, and leaves Claude's sentences on the left. Rows are capped at 60% of the width.
+
+![chat: tool rows dimmed on the right](docs/tools/chat.png)
+
+`tree-dim` tucks them under the sentence with `⎿` and dims them.
+
+![tree-dim: tool rows tucked under with ⎿](docs/tools/tree-dim.png)
+
+`tree-bold` is `tree-dim` with one-line sentences in bold.
+
+![tree-bold: one-line sentences in bold](docs/tools/tree-bold.png)
+
+`classic` is the original look: a bold verb and a status dot, at full brightness.
+
+![classic: bold verb and status dot](docs/tools/classic.png)
+
 ### Turn footer
 
 The line that closes a turn keeps Claude Code's word and colors the duration: `✻ Baked for 6m 20s`. Terminal only, since that's the only surface that draws it.
@@ -156,6 +172,7 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `highlightNumbers` | `true`, `false` | `true` |
 | `highlightPaths` | `true`, `false` | `true` |
 | `toolRows` | `true`, `false` | `true` |
+| `toolStyle` | `chat`, `tree-dim`, `tree-bold`, `classic` | `chat` |
 | `copyButtons` | `true`, `false` | `true` |
 | `diagramHints` | `true`, `false` | `true` |
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |

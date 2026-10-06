@@ -243,6 +243,7 @@ test('the help screen shows every element prismantis draws', async () => {
   const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
+  expect(showcaseText([]).includes("toolStyle")).toBe(true)
 })
 
 test('every diagram on the help screen draws as art', async () => {

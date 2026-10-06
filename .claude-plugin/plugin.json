@@ -79,6 +79,13 @@
       "default": "bubble",
       "options": ["bubble", "bar", "chevron", "off"]
     },
+    "toolStyle": {
+      "type": "string",
+      "title": "Tool row style",
+      "description": "How tool rows (Ran, Read, Edited) sit next to Claude's sentences. chat: tool rows dimmed on the right, Claude on the left. tree-dim: tucked under the sentence with ⎿ and dimmed. tree-bold: tree-dim plus one-line sentences in bold. classic: the original look.",
+      "default": "chat",
+      "options": ["chat", "tree-dim", "tree-bold", "classic"]
+    },
     "taskStyle": {
       "type": "string",
       "title": "Task list style",

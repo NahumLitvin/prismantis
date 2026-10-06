@@ -130,7 +130,7 @@ const toolRow = (tool: string, input: unknown, extra: Partial<{ isRunning: boole
   viewport: { columns: 120, rows: 40 },
 })
 
-test('tool rows read like Ran <command> with shell colors', async $ => {
+test('tool rows read like Ran <command> with shell colors', { options: { toolStyle: 'classic' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...toolRow('Bash', { command: 'gh pr view 12 --json state' }), surface })
     expect((await ui.find({ type: 'Text', text: /^Ran$/ }))?.props.bold).toBe(true)

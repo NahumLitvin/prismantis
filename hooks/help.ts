@@ -55,6 +55,10 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 
 Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`, \`chevron\` or \`off\` in \`/config\`.
 
+### Tool rows
+
+Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`.
+
 ### Quotes and rules
 
 > A quote keeps its text when you copy it, without the \`> \` markers.

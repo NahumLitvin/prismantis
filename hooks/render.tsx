@@ -320,7 +320,7 @@ const renderParagraph = (el: ElementTable, style: Style, block: Extract<Block, {
   const { Box, Text } = el
   const rtl = flowOf(style, block.inline, columns)
   if (rtl?.base === 'R') return <Box key={key} flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, key)}</Box>
-  return <Text key={key}>{renderInline(el, style, rtl ? rtl.lines[0]! : block.inline, key)}</Text>
+  return <Text key={key} bold={style.narration}>{renderInline(el, style, rtl ? rtl.lines[0]! : block.inline, key)}</Text>
 }
 
 const renderQuote = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'quote' }>, columns: number, key: string) => {
@@ -510,7 +510,27 @@ const field = (input: unknown, ...keys: string[]): string | undefined => {
   return undefined
 }
 
-export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow): RenderElement => {
+const isTree = (style: Style) => style.toolStyle === "tree-dim" || style.toolStyle === "tree-bold"
+
+const toolDim = (style: Style) => style.toolStyle !== "classic"
+
+const toolGutter = ({ Box, Text }: ElementTable, style: Style, color: string | undefined, running: boolean) =>
+  isTree(style)
+    ? <Box width={4} flexShrink={0}><Text color={color}>{'  ⎿ '}</Text></Box>
+    : <Box width={2} flexShrink={0}><Text color={color}>{running ? '◌' : '●'}</Text></Box>
+
+const toolLayout = (el: ElementTable, style: Style, columns: number, label: string, color: string | undefined, running: boolean, text: RenderElement) => {
+  const { Box, Text } = el
+  if (style.toolStyle !== "chat") return <Box flexDirection="row">{toolGutter(el, style, color, running)}{text}</Box>
+  const w = Math.min(width(label) + 2, Math.max(20, Math.floor(columns * 0.6)))
+  return (
+    <Box flexDirection="row" justifyContent="flex-end" width="100%">
+      <Box width={w} flexDirection="row">{text}<Text color={color}>{running ? " ◌" : " ●"}</Text></Box>
+    </Box>
+  )
+}
+
+export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = 100): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
@@ -521,19 +541,15 @@ export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow): Ren
   const dot = row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
   const isPath = target !== undefined && /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target)
 
-  return (
-    <Box flexDirection="row">
-      <Box width={2} flexShrink={0}>
-        <Text color={dot}>{row.isRunning ? '◌' : '●'}</Text>
-      </Box>
-      <Text wrap="truncate-end">
-        <Text bold>{verb}</Text>
+  const label = `${verb}${target === undefined ? "" : ` ${target}`}${row.isInterrupted ? " interrupted" : row.isErrored ? " failed" : ""}`
+  return toolLayout(el, style, columns, label, dot, row.isRunning, (
+      <Text wrap="truncate-end" dimColor={toolDim(style)}>
+        <Text bold={!toolDim(style)} dimColor={toolDim(style)}>{verb}</Text>
         {target === undefined ? null : <Text> </Text>}
-        {target === undefined ? null : isShell ? codeLine(el, style, target, 'bash', 'cmd') : <Text color={isPath ? t.path : t.inlineCode}>{target}</Text>}
+        {target === undefined ? null : isShell ? codeLine(el, style, target, 'bash', 'cmd') : <Text color={isPath ? t.path : t.inlineCode} dimColor={toolDim(style)}>{target}</Text>}
         {row.isInterrupted ? <Text dimColor> interrupted</Text> : row.isErrored ? <Text color={t.codeFlag}> failed</Text> : null}
       </Text>
-    </Box>
-  )
+  ))
 }
 
 const OUTPUT_LINES = 120
@@ -603,7 +619,7 @@ export const groupSummary = (calls: readonly { tool: string }[]): string => {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly ToolRow[], isActive: boolean): RenderElement => {
+export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly ToolRow[], isActive: boolean, columns = 100): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const failed = calls.filter(c => c.isErrored).length
@@ -611,18 +627,14 @@ export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly 
   const dot = failed ? t.codeFlag : running ? t.accent : t.number
   const last = calls[calls.length - 1]
   const lastTarget = last ? field(last.input, 'command', 'file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description')?.split('\n')[0] : undefined
-  return (
-    <Box flexDirection="row">
-      <Box width={2} flexShrink={0}>
-        <Text color={dot}>{running ? '◌' : '●'}</Text>
-      </Box>
-      <Text wrap="truncate-end">
-        <Text bold>{groupSummary(calls)}</Text>
+  const label = `${groupSummary(calls)}${failed ? ` · ${failed} failed` : ""}${lastTarget ? ` · last: ${lastTarget}` : ""}`
+  return toolLayout(el, style, columns, label, dot, running, (
+      <Text wrap="truncate-end" dimColor={toolDim(style)}>
+        <Text bold={!toolDim(style)} dimColor={toolDim(style)}>{groupSummary(calls)}</Text>
         {failed ? <Text color={t.codeFlag}>{` · ${failed} failed`}</Text> : null}
         {lastTarget ? <Text dimColor>{` · last: ${lastTarget}`}</Text> : null}
       </Text>
-    </Box>
-  )
+  ))
 }
 
 export const formatDuration = (ms: number): string => {

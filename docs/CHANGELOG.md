@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - Your own prompts draw in the theme: a rounded bubble by default, or an accent bar or a bold chevron with the new `promptStyle` option (`off` keeps Claude Code's look). Task notifications and teammate messages are left alone ([#14](https://github.com/NahumLitvin/prismantis/issues/14)).
+- `toolStyle` keeps tool rows apart from Claude's sentences: `chat` (the default) puts them dimmed on the right, `tree-dim` tucks them under with `⎿`, `tree-bold` adds bold one-line sentences, `classic` keeps the old look.
 
 ## [0.9.0] - 2026-10-06
 
