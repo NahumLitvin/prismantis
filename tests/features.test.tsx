@@ -327,3 +327,35 @@ test('markdown links and bare URLs draw as clickable links', async $ => {
     await ui.unmount()
   }
 })
+
+const run = (args: string) => ({ command: 'prismantis', args, origin: { kind: 'composer' as const }, presentation: { isFullscreen: false, columns: 120 } })
+
+const transcript = (on: On, messages: { role: 'user' | 'assistant'; text: string }[]) => {
+  const copied: string[] = []
+  on('session.messages', () => ({ value: messages.map(m => ({ ...m, toolUses: [] })) }))
+  on('ui.copy', (_, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  return copied
+}
+
+test('/prismantis copy copies the last reply without a mouse', async ($, on) => {
+  const copied = transcript(on, [{ role: 'user', text: 'hi' }, { role: 'assistant', text: 'old' }, { role: 'user', text: 'again' }, { role: 'assistant', text: 'שלום, the newest reply' }])
+  const result = await $.command.run(run('copy'))
+  expect(copied).toEqual(['שלום, the newest reply'])
+  expect(result.text).toBe('Copied the last reply.')
+})
+
+test('/prismantis copy code copies the last code block of the last reply', async ($, on) => {
+  const copied = transcript(on, [{ role: 'assistant', text: 'Run:\n\n```bash\nls\n```\n\nthen:\n\n```bash\nnpm test\n```' }])
+  const result = await $.command.run(run('copy code'))
+  expect(copied).toEqual(['npm test'])
+  expect(result.text).toBe('Copied the last code block.')
+})
+
+test('/prismantis copy says so when there is nothing to copy', async ($, on) => {
+  const copied = transcript(on, [{ role: 'assistant', text: 'no code here' }])
+  expect((await $.command.run(run('copy code'))).text).toBe('The last reply has no code block.')
+  expect(copied).toEqual([])
+})

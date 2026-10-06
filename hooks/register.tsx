@@ -98,7 +98,7 @@ export const register: Register = (on, options) => {
     await applyRtl($, style)
     const started = await next(e)
     await $.command
-      .register({ name: 'prismantis', description: 'Switch the prismantis theme, or list themes', argumentHint: '[theme <name>]' })
+      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
       .catch(() => undefined)
     return started
   })
@@ -106,6 +106,14 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'prismantis' }, async ($, e) => {
     const [sub, name] = e.args.trim().split(/\s+/)
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
+    if (sub === 'copy') {
+      const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
+      if (!reply) return { text: 'Nothing to copy yet.' }
+      const code = name === 'code' ? parseCached(reply.text).findLast(b => b.kind === 'code') : undefined
+      if (name === 'code' && code?.kind !== 'code') return { text: 'The last reply has no code block.' }
+      const result = await $.ui.copy({ text: code?.kind === 'code' ? code.lines.join('\n') : reply.text })
+      return { text: result.isCopied ? `Copied the last ${code ? 'code block' : 'reply'}.` : `Copy failed: ${result.reason}` }
+    }
     if (sub === 'demo-rtl') {
       await applyRtl($, style)
       return { text: rtlShowcaseText() }

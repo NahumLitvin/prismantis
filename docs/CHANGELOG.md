@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - Links and bare URLs are clickable: they draw as terminal hyperlinks (OSC 8) and as anchors on desktop. Terminals without hyperlinks show the URL after the text, as before ([#9](https://github.com/NahumLitvin/prismantis/issues/9)).
+- `/prismantis copy` copies the last reply and `/prismantis copy code` its last code block, a keyboard path that does not need a click ([#28](https://github.com/NahumLitvin/prismantis/issues/28)).
+
+### Fixed
+
+- The README no longer says `ctrl+x` then `tab` focuses the copy buttons. Since Claude Code 2.1.291 that chord focuses the area above the prompt.
 
 ## [0.8.0] - 2026-10-05
 

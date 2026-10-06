@@ -9,6 +9,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 |---------|------|
 | \`/prismantis\` | This screen |
 | \`/prismantis theme <name>\` | Switch theme on the spot |
+| \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/config\` | Edit any option |
 
 > [!NOTE]
@@ -96,6 +97,7 @@ export const helpText = (themes: readonly string[]): string => `
 | Command | Does |
 |---------|------|
 | \`/prismantis theme <name>\` | Switch theme on the spot |
+| \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/prismantis demo\` | Full showcase, every element and diagram |
 | \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |
 
