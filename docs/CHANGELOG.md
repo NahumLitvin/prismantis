@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Links and bare URLs are clickable: they draw as terminal hyperlinks (OSC 8) and as anchors on desktop. Terminals without hyperlinks show the URL after the text, as before ([#9](https://github.com/NahumLitvin/prismantis/issues/9)).
+
 ## [0.8.0] - 2026-10-05
 
 ### Added

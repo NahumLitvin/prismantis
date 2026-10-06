@@ -34,9 +34,9 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'code':
         return <Text key={key} color={t.inlineCode}>{n.text}</Text>
       case 'link':
-        return n.text === n.href
-          ? <Text key={key} color={t.link} underline>{n.href}</Text>
-          : <Text key={key}><Text color={t.link} underline>{n.text}</Text><Text dimColor> ({n.href})</Text></Text>
+        return /^[a-z][\w+.-]*:/i.test(n.href)
+          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
+          : <Text key={key} color={t.link} underline>{n.text}</Text>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
       case 'path':

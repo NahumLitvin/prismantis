@@ -239,6 +239,8 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(new Set(blocks.flatMap(b => (b.kind === 'alert' ? [b.level] : []))).size).toBe(5)
   const langs = blocks.flatMap(b => (b.kind === 'code' ? [b.lang] : []))
   for (const lang of ['bash', 'json', 'mermaid']) expect(langs.includes(lang)).toBe(true)
+  const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
+  expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
 })
 
@@ -254,6 +256,7 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(blocks.filter(b => b.kind === 'alert').length).toBe(2)
   for (const kind of ['heading', 'table', 'list']) expect(blocks.some(b => b.kind === kind)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task !== undefined))).toBe(true)
+  expect(blocks.some(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'link'))).toBe(true)
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()

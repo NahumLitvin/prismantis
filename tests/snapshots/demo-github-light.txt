@@ -32,8 +32,7 @@
     "~/jade-palace/training.md"
   <Text>
     ", scroll at "
-  <Text color=#0969da underline>
-    "https://github.com/NahumLitvin/prismantis"
+  <Link>
 <Box>
   <Text color=#0550ae bold>
     <Text>

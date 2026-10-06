@@ -102,7 +102,7 @@ Claude rarely writes a chart unless it knows the terminal can draw one. With `di
 
 ### Text
 
-**Bold**, *italic*, ~~strikethrough~~, `inline code`, links (with their URL dimmed beside them) and bare URLs. Numbers, versions (`v2.14.0`), durations (`250ms`, `3h`), sizes (`16Gi`) and percentages (`99.9%`) take the number color, and paths like `~/src/app.ts` the path color.
+**Bold**, *italic*, ~~strikethrough~~, `inline code`, links and bare URLs, clickable as terminal hyperlinks (where the terminal has none, the URL shows dimmed after the text). Numbers, versions (`v2.14.0`), durations (`250ms`, `3h`), sizes (`16Gi`) and percentages (`99.9%`) take the number color, and paths like `~/src/app.ts` the path color.
 
 ### Headings, lists, quotes
 
