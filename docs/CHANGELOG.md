@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Other mods can draw markdown the way prismantis draws replies: `$.prismantis.markdown({ surface, text, columns })` answers the drawn tree, without copy buttons, for their own panes and bands. The types ship as a contract in `types/index.d.ts`.
+- Other mods can draw markdown the way prismantis draws replies: `$.prismantis.markdown({ surface, text, columns })` answers the drawn tree, without copy buttons, for their own panes and bands. The types ship as a contract in `types/index.d.ts` ([#38](https://github.com/NahumLitvin/prismantis/pull/38), thanks @Malorn44).
 
 ## [0.10.0] - 2026-10-06
 

@@ -118,9 +118,13 @@ Output from slash commands, built-in or from other plugins, is parsed as markdow
 
 ### Other mods
 
-A mod that draws markdown in its own pane or band can have prismantis draw it, in the user's theme, by calling `$.prismantis.markdown` with the surface, the text and the columns it has. It answers the tree to draw, or `undefined` when the text holds nothing to draw. Copy buttons are left out, because a button can't cross from one mod to another.
+A mod that draws markdown in its own pane or band can have prismantis draw it, in the user's theme, by calling `$.prismantis.markdown` with the surface, the text and the columns it has.
 
-`$.prismantis` is there only while prismantis is installed and enabled, so call it in a `try` and draw your own way when it throws:
+- It answers the tree to draw, or `undefined` when prismantis is disabled or the text holds nothing to draw.
+- It throws when prismantis isn't installed, so call it in a `try`.
+- `columns` is the width of your content. Prismantis draws at least 20 columns wide.
+- Theme, RTL and number and path highlighting follow the user's prismantis settings.
+- Copy buttons are left out, because a button can't cross from one mod to another.
 
 ```tsx
 let drawn
@@ -130,7 +134,17 @@ try {
 return drawn ?? <Markdown text={text} />
 ```
 
-The types are in [types/index.d.ts](types/index.d.ts). List prismantis under `dependencies` in your `plugin.json` to have Claude Code lay them into your `.claude-plugin/types/`, or declare the noun yourself when prismantis is optional.
+The types are in [types/index.d.ts](types/index.d.ts). List prismantis under `dependencies` in your `plugin.json` to have Claude Code lay them into your `.claude-plugin/types/`. When prismantis is optional, declare the noun in your own contract instead:
+
+```ts
+declare module 'claude-code' {
+  interface EngineInterface {
+    prismantis: {
+      markdown: (args: { surface: RenderSurface; text: string; columns: number }) => Promise<RenderElement | undefined>
+    }
+  }
+}
+```
 
 ### Diagram hints
 

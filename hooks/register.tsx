@@ -80,6 +80,7 @@ export const register: Register = (on, options) => {
   const style = resolveStyle(options)
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string) => remember(parsed, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }))
+  const shared = new Map<string, ReturnType<typeof parse>>()
 
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {
@@ -170,10 +171,10 @@ export const register: Register = (on, options) => {
   })
 
   on('prismantis.markdown', ($, e, next) => {
-    const blocks = parseCached(e.text)
+    const blocks = remember(shared, e.text, () => parse(e.text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), 20)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
-    return { value: <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, Math.max(20, e.columns))}</Box> }
+    return { value: <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
   })
 }
