@@ -79,7 +79,7 @@ export const register: Register = (on, options) => {
   if (options.enabled === false) return
   const style = resolveStyle(options)
   const parsed = new Map<string, ReturnType<typeof parse>>()
-  const parseCached = (text: string) => remember(parsed, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }))
+  const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
   const shared = new Map<string, ReturnType<typeof parse>>()
 
   if (options.toolRows !== false) {
@@ -171,7 +171,7 @@ export const register: Register = (on, options) => {
   })
 
   on('prismantis.markdown', ($, e, next) => {
-    const blocks = remember(shared, e.text, () => parse(e.text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), 20)
+    const blocks = parseCached(e.text, shared, 20)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
