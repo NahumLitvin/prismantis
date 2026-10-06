@@ -27,7 +27,7 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 - Never copy code from other projects, including other mods. Read them to learn the API, then write our own.
 - No code comments. The why goes in the commit message or PR description.
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).
-- No new feature flags or config knobs unless the user asked for them.
+- No new feature flags or config knobs unless the user asked for them. The exception is looks: a feature with more than one plausible look ships its top 3 or 4 styles behind one option (like `taskStyle`, `promptStyle`), Nahum picks only the default, every style is a step in `/prismantis setup` (#22), and each style has a real screenshot in the README next to the option.
 - Feature and fix PRs add their CHANGELOG entry under `## [Unreleased]` and leave the version alone. Only the release commit sets the version, so parallel PRs never fight over it.
 - Every user-visible feature ships with a sample in `/prismantis demo` (`showcaseText` in `hooks/help.ts`), and in the one-screen `/prismantis` help (`helpText`) when it fits. Extend the help tests in `tests/regressions.test.tsx` so dropping the sample fails.
 

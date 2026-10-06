@@ -72,6 +72,13 @@
         "minimal"
       ]
     },
+    "promptStyle": {
+      "type": "string",
+      "title": "Your prompt style",
+      "description": "How the prompts you type draw in the transcript. bubble: a rounded box in the accent color. bar: an accent bar on the left. chevron: a bold accent › before the text. off: Claude Code's own look.",
+      "default": "bubble",
+      "options": ["bubble", "bar", "chevron", "off"]
+    },
     "taskStyle": {
       "type": "string",
       "title": "Task list style",

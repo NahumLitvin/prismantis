@@ -51,6 +51,10 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
   - [ ] Diagrams on the desktop app
 - [ ] Ship the next release
 
+### Your prompts
+
+Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`, \`chevron\` or \`off\` in \`/config\`.
+
 ### Quotes and rules
 
 > A quote keeps its text when you copy it, without the \`> \` markers.

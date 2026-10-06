@@ -24,6 +24,7 @@ Colorful, themeable replies for [Claude Code](https://claude.com/claude-code): t
 | [Diagram hints](#diagram-hints) | a short model-only note on each prompt so Claude reaches for diagrams and charts when they help |
 | [Text](#text) | bold, italic, strikethrough, inline code, links, versions, durations, percentages and paths in their own colors |
 | [Headings, lists, quotes](#headings-lists-quotes) | 4 heading styles, nested lists, task lists, quotes with an accent bar |
+| [Your prompts](#your-prompts) | what you type draws in a rounded bubble, an accent bar or a chevron, so you can find your turns when you scroll back |
 | [Right to left](#right-to-left) | Hebrew and Arabic read right to left, right aligned, with bullets, quote bars and table columns mirrored, in Warp, kitty, Apple Terminal and more |
 
 Try it: ask Claude to print [docs/demo.md](docs/demo.md) verbatim as its whole reply. Every feature is in there.
@@ -112,6 +113,13 @@ Task lists draw as `[ ]` and `[✓]`, with done items dimmed and struck through.
 
 ![A task list with done items struck through](docs/task-lists.png)
 
+### Your prompts
+
+What you type, at the prompt or through Remote Control, draws in the theme's colors. `promptStyle` picks the look, and `off` keeps Claude Code's own. Task notifications and teammate messages are left alone.
+
+| `bubble` (default) | `bar` | `chevron` |
+|---|---|---|
+| ![a prompt in a rounded box](docs/prompts/bubble.png) | ![a prompt with an accent bar](docs/prompts/bar.png) | ![a prompt with a bold chevron](docs/prompts/chevron.png) |
 
 ### Right to left
 
@@ -143,6 +151,7 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `theme` | see [Themes](#themes) | `catppuccin-mocha` |
 | `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
+| `promptStyle` | `bubble`, `bar`, `chevron`, `off` | `bubble` |
 | `headingStyle` | `banner`, `bold`, `underline`, `uppercase` | `banner` |
 | `highlightNumbers` | `true`, `false` | `true` |
 | `highlightPaths` | `true`, `false` | `true` |

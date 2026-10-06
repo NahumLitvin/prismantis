@@ -3,7 +3,7 @@ import type { EngineInterface, Register, RenderElement } from 'claude-code'
 import { parse } from './markdown'
 import { boxArt, mermaidText } from './mermaid'
 import type { Drawn } from './render'
-import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, width } from './render'
+import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -140,6 +140,13 @@ export const register: Register = (on, options) => {
     const { Box } = el
     const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
     return <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.props.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, style, blocks, columns)}</Box>
+  })
+
+  on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
+    const kind = e.props.origin.kind
+    const own = kind === 'composer' || kind === 'bridge' || (kind === 'unclassified' && !e.props.from && !e.props.task)
+    if (style.promptStyle === 'off' || !own) return next(e)
+    return renderUserPrompt($.ui.resolve(e), style, e.props.text, Math.max(20, (e.viewport?.columns ?? 100) - 4))
   })
 
   on('ui.render', { component: 'AssistantMessage' }, ($, e, next) => {

@@ -359,3 +359,60 @@ test('/prismantis copy says so when there is nothing to copy', async ($, on) => 
   expect((await $.command.run(run('copy code'))).text).toBe('The last reply has no code block.')
   expect(copied).toEqual([])
 })
+
+const prompt = (text: string, kind: 'composer' | 'task-notification' = 'composer', surface: 'terminal' | 'desktop' = 'terminal') =>
+  ({ plugin: 'prismantis', component: 'UserMessage' as const, props: { text, origin: { kind } as never, isExpanded: true }, viewport: { columns: 80, rows: 10 }, surface })
+
+test('your prompts draw in a rounded accent bubble by default', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(prompt('how many frog raids?', 'composer', surface))
+    const bubble = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')
+    expect(bubble?.props.borderColor).toBe(PRESETS['catppuccin-mocha'].accent)
+    expect((await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].heading)
+    await ui.unmount()
+  }
+})
+
+test('promptStyle bar draws an accent bar', { options: { promptStyle: 'bar' } }, async $ => {
+  const ui = await $.ui.mount(prompt('hi'))
+  expect((await ui.find({ type: 'Text', text: /^▌ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle)).toBe(false)
+  await ui.unmount()
+})
+
+test('promptStyle chevron draws a bold accent prompt', { options: { promptStyle: 'chevron' } }, async $ => {
+  const ui = await $.ui.mount(prompt('hi'))
+  expect(await ui.find({ type: 'Text', text: /^› $/ })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: /^hi$/ }))?.props).toMatchObject({ bold: true, color: PRESETS['catppuccin-mocha'].accent })
+  await ui.unmount()
+})
+
+test('promptStyle off and task notifications keep the engine look', { options: { promptStyle: 'off' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(prompt('hi'))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('task notifications are not drawn as your prompt', async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(prompt('task done', 'task-notification'))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a Hebrew prompt bubble sits on the right', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(prompt('כמה פשיטות היו השבוע?'))
+  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.alignSelf).toBe('flex-end')
+  await ui.unmount()
+})
+
+test('an unstamped prompt is yours, a teammate message is not', async ($, on) => {
+  engine(on)
+  const mine = await $.ui.mount(prompt('typed on the command line', 'unclassified' as never))
+  expect((await mine.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(true)
+  await mine.unmount()
+  const peer = await $.ui.mount({ ...prompt('from a teammate', 'unclassified' as never), props: { text: 'from a teammate', origin: { kind: 'unclassified' } as never, isExpanded: true, from: { name: 'bob' } as never } })
+  expect(await peer.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await peer.unmount()
+})
