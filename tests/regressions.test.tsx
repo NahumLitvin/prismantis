@@ -2,7 +2,7 @@ import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 
 import { helpText, showcaseText } from '../hooks/help'
-import { parse } from '../hooks/markdown'
+import { inlineText, parse } from '../hooks/markdown'
 import { mermaidText } from '../hooks/mermaid'
 import { tableArt } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
@@ -370,4 +370,10 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
   const ui = await $.ui.mount(mount('Checking the tests next.'))
   expect((await ui.findAll({ type: 'Button' })).some(b => b.props.label === '⧉ copy reply')).toBe(false)
   await ui.unmount()
+})
+
+test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
+  const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
+
+  expect(block?.kind === 'paragraph' ? inlineText(block.inline) : null).toBe('Call mcp__serena__activate_project, not this.')
 })
