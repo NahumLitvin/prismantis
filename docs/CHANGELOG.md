@@ -2,15 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.12.0] - 2026-10-07
 
 ### Fixed
 
-- A short table column next to a very wide one no longer breaks inside its words (`10` drawn as `1`/`0`). Columns that fit their share keep their full width, and only the wide ones split the rest.
-- Boxed tables keep their borders on every line of a row whose cells wrap. The `│` bars used to stop after the first line, leaving the rest of the row open. Rows with a link keep their link whole and get borders that follow the row's height, in terminals with or without clickable links ([#48](https://github.com/NahumLitvin/prismantis/pull/48), with @b33eep).
-- Double underscores inside a word stay as written, as CommonMark has it: `mcp__serena__activate_project` no longer draws as `mcp` **serena** `activate_project`. `__bold__` on its own still draws bold.
-- A table column keeps at least the width of its longest word when the longest words of all columns fit, so a file path or URL in a narrow table is no longer cut in the middle. The other columns, even ones that would otherwise keep their full width, wrap to make room.
-- Hebrew and Arabic read right to left in Apple Terminal's fullscreen layout, tables included. Apple Terminal runs its own left-to-right bidi over every fullscreen line, so prismantis now sends each line already reordered for that pass. A number touching Latin text (`250ms`) and ordered-list numbers can still land on the wrong side.
+- A short table column next to a very wide one no longer breaks inside its words (`10` drawn as `1`/`0`). Columns that fit their share keep their full width, and only the wide ones split the rest ([#41](https://github.com/NahumLitvin/prismantis/pull/41)).
+- Boxed tables keep their borders on every line of a row whose cells wrap. The `│` bars used to stop after the first line, leaving the rest of the row open. Rows with a link keep their link whole and get borders that follow the row's height, in terminals with or without clickable links ([#48](https://github.com/NahumLitvin/prismantis/pull/48), thanks @vrevolverrr and @b33eep).
+- Double underscores inside a word stay as written, as CommonMark has it: `mcp__serena__activate_project` no longer draws as `mcp` **serena** `activate_project`. `__bold__` on its own still draws bold ([#51](https://github.com/NahumLitvin/prismantis/pull/51), thanks @vrevolverrr).
+- A table column keeps at least the width of its longest word when the longest words of all columns fit, so a file path or URL in a narrow table is no longer cut in the middle. The other columns, even ones that would otherwise keep their full width, wrap to make room ([#49](https://github.com/NahumLitvin/prismantis/pull/49), thanks @b33eep).
+- Hebrew and Arabic read right to left in Apple Terminal's fullscreen layout, tables included. Apple Terminal runs its own left-to-right bidi over every fullscreen line, so prismantis now sends each line already reordered for that pass. A number touching Latin text (`250ms`) and ordered-list numbers can still land on the wrong side ([#42](https://github.com/NahumLitvin/prismantis/pull/42)).
+- Tables with many rows draw about twice as fast as in 0.11.0, because plain ASCII text is measured by its length.
 
 ## [0.11.0] - 2026-10-06
 
