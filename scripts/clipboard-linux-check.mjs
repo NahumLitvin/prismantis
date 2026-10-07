@@ -26,7 +26,7 @@ try {
       env.WAYLAND_DISPLAY = socket.name
       break
     }
-    if (compositor.exitCode !== null) throw new Error(diagnostics)
+    if (compositor.exitCode !== null || compositor.signalCode !== null) throw new Error(diagnostics)
     await setTimeout(100)
   }
   assert.ok(env.WAYLAND_DISPLAY, `Wayland did not start: ${diagnostics}`)
@@ -46,7 +46,7 @@ try {
     console.log(`${backend}: Unicode HTML survives two pastes after the copy command exits`)
   }
 } finally {
-  if (compositor.exitCode === null && compositor.pid) {
+  if (compositor.exitCode === null && compositor.signalCode === null && compositor.pid) {
     const exited = new Promise(resolve => compositor.once('exit', resolve))
     compositor.kill()
     await exited
