@@ -20,7 +20,7 @@ const mount = (text: string, columns = 120) => ({
 
 const stubClipboard = (on: On) => {
   mock.env(on, {})
-  on('fs.stat', (_, e, next) => e.path === '/usr/bin/osascript' ? { deny: 'No native clipboard in this test' } : next(e))
+  on('fs.stat', (_, e, next) => e.path.replace(/\\/g, '/').endsWith('/usr/bin/osascript') ? { deny: 'No native clipboard in this test' } : next(e))
   const copied: string[] = []
   on('ui.copy', (_, e) => {
     copied.push(e.text)

@@ -14,7 +14,7 @@ const mount = {
 
 const nativeClipboard = (on: On) => {
   mock.env(on, {})
-  on('fs.stat', (_, e, next) => e.path === '/usr/bin/osascript'
+  on('fs.stat', (_, e, next) => e.path.replace(/\\/g, '/').endsWith('/usr/bin/osascript')
     ? { value: { kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false } }
     : next(e))
 }
@@ -132,7 +132,7 @@ for (const failure of ['unavailable', 'refused'] as const) test(`Markdown copyin
 
 const linuxClipboard = (on: On, environment: Record<string, string>) => {
   mock.env(on, environment)
-  on('fs.stat', (_, e, next) => e.path === '/usr/bin/osascript' ? { deny: 'Not macOS' } : next(e))
+  on('fs.stat', (_, e, next) => e.path.replace(/\\/g, '/').endsWith('/usr/bin/osascript') ? { deny: 'Not macOS' } : next(e))
 }
 
 for (const backend of ['wayland', 'x11'] as const) test(`Linux ${backend} copies HTML and plain text together`, async ($, on) => {

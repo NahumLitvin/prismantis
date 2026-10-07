@@ -69,6 +69,7 @@ jobs:
           test "$size" -lt 300000
 
   clipboard:
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
