@@ -13,7 +13,7 @@ const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.
 const graphemes = (s: string): string[] => (segmenter ? [...segmenter.segment(s)].map(g => g.segment) : [...s])
 
 export const width = (s: string): number =>
-  graphemes(s).reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
+  /^[ -~]*$/.test(s) ? s.length : graphemes(s).reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
 
 const wrapRanges = (text: string, w: number): [number, number][] => {
   if (width(text) <= w) return [[0, text.length]]
