@@ -25,6 +25,9 @@ const mount = (text: string, columns = 120) => ({
   surface: 'terminal' as const,
 })
 
+const drawn = (node: unknown): string =>
+  typeof node === 'string' ? node : ((node as { children?: unknown[] }).children ?? []).map(drawn).join('')
+
 const stubClipboard = (on: On) => {
   clipboardEnv(on, 'other')
   return recordCopies(on)
@@ -107,6 +110,35 @@ test('table columns never exceed the terminal width', async $ => {
   expect(firstRow.reduce((a, b) => a + b, 0) + 2 * 4 <= 20).toBe(true)
   await ui.unmount()
 })
+
+test('a boxed row that wraps keeps its borders on every line', async $ => {
+  const file = 'handoffs/handoff-scheduled-event-pushes-21082026.md'
+  const evidence = 'Its blocking question is unanswered; BACKLOG row 16 cites it'
+  const ui = await $.ui.mount(mount(`| File | Evidence |\n|---|---|\n| ${file} | ${evidence} |`, 40))
+  const lines = await ui.findAll({ type: 'Text', text: /^│ $/ })
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).slice(-2 * (lines.length - 1))
+  expect(lines.length > 3).toBe(true)
+  expect(cells.every(b => drawn(b).length <= (b.props.width as number))).toBe(true)
+  expect(cells.filter((_, i) => i % 2 === 0).map(drawn).join('')).toBe(file)
+  expect(cells.filter((_, i) => i % 2 === 1).map(drawn).join(' ')).toBe('Its blocking question is unanswered; BACKLOG row 16 cites it')
+  expect((await ui.find({ type: 'Text', text: /^16$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].number)
+  await ui.unmount()
+})
+
+for (const [kind, cell] of [
+  ['named link', 'see [docs](https://github.com/org/repo/blob/main/docs/spec.md) for more'],
+  ['bare URL', 'https://example.com/a/rather/long/path/that/cannot/fit/on/one/line'],
+] as const) {
+  test(`a boxed row with a ${kind} keeps the link whole and clips its borders to the row`, async $ => {
+    const ui = await $.ui.mount(mount(`| n | link |\n|---|---|\n| 1 | ${cell} |`, 40))
+    const links = await ui.findAll({ type: 'Link' })
+    const clips = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.overflow === 'hidden')
+    expect(links.length).toBe(1)
+    expect(clips.length).toBe(3)
+    expect(clips.every(b => drawn(b).split('\n').length > 2)).toBe(true)
+    await ui.unmount()
+  })
+}
 
 test('a link column is sized for the URL it shows', async $ => {
   const url = 'https://example.com/a/rather/long/path'
@@ -352,6 +384,14 @@ test('wide table art wraps long cells to stay 100 columns wide', async () => {
   expect(body.every(l => [...l].length === [...body[0]!].length && [...l].length <= 100)).toBe(true)
   expect(body.length > 6).toBe(true)
   expect(body.filter(l => l.startsWith('│')).slice(1).map(l => l.split('│')[2]!.trim()).join(' ')).toBe(long)
+})
+
+test('short table columns keep their width next to a very wide one', async () => {
+  const links = Array.from({ length: 4 }, (_, i) => `https://example.com/releases/${100 + i}/notes`).join(' , ')
+  const [table] = parse(`| # | Pri | Task | Link |\n|---|---|---|---|\n| 10 | 🔵 P2 | Approved, not merged | ${links} |`, hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  const cells = tableArt(table).split('\n').slice(1, -1).filter(l => l.startsWith('│')).map(l => l.split('│').slice(1, 4).map(c => c.trim()))
+  expect(cells[1]).toEqual(['10', '🔵 P2', 'Approved, not merged'])
 })
 
 test('copy reply copies the whole reply as written, Hebrew in reading order', { options: { rtl: 'warp' } }, async ($, on) => {

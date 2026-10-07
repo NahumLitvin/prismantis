@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. HTML copying preserves headers, column alignment and inline formatting from local macOS and Linux terminals. Both HTML and tab-separated plain text must be copied and verified before success is reported. Linux requires CopyQ running in the graphical session; without it, or on other platforms, over SSH and on desktop, the action copies the plain text alone.
 
+### Fixed
+
+- A short table column next to a very wide one no longer breaks inside its words (`10` drawn as `1`/`0`). Columns that fit their share keep their full width, and only the wide ones split the rest.
+- Boxed tables keep their borders on every line of a row whose cells wrap. The `│` bars used to stop after the first line, leaving the rest of the row open. Rows with a link keep their link whole and get borders that follow the row's height, in terminals with or without clickable links ([#48](https://github.com/NahumLitvin/prismantis/pull/48), with @b33eep).
+
 ## [0.11.0] - 2026-10-06
 
 ### Added
