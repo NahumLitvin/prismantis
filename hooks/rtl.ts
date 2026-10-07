@@ -2,7 +2,7 @@ import type { Inline } from './markdown'
 
 type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
-export type Shape = 'visual' | 'words' | 'logical'
+export type Shape = 'visual' | 'words' | 'logical' | 'inverse'
 
 export const TERMINALS = {
   warp: 'visual',
@@ -116,6 +116,49 @@ const reorder = (all: Unit[], base: Dir): Unit[] => {
   return (base === 'R' ? out.reverse() : out).flat()
 }
 
+const bidiClass = (ch: string): string =>
+  R.test(ch) ? 'R' : /[٠-٩]/.test(ch) ? 'AN' : /[0-9۰-۹]/.test(ch) ? 'EN' : /\p{L}/u.test(ch) ? 'L' : /[+-]/.test(ch) ? 'ES' : /[#$%°£€¥₪‰¢]/.test(ch) ? 'ET' : /[,.:/]/.test(ch) ? 'CS' : 'N'
+
+const terminalBidi = (all: Unit[]): Unit[] => {
+  const t = all.map(u => bidiClass(u.ch))
+  t.forEach((c, i) => {
+    if ((c === 'ES' || c === 'CS') && t[i - 1] === 'EN' && t[i + 1] === 'EN') t[i] = 'EN'
+    else if (c === 'CS' && t[i - 1] === 'AN' && t[i + 1] === 'AN') t[i] = 'AN'
+  })
+  for (let i = 1; i < t.length; i++) if (t[i] === 'ET' && t[i - 1] === 'EN') t[i] = 'EN'
+  for (let i = t.length - 2; i >= 0; i--) if (t[i] === 'ET' && t[i + 1] === 'EN') t[i] = 'EN'
+  let strong = 'L'
+  const w = t.map(c => {
+    if (c === 'L' || c === 'R') strong = c
+    return c === 'EN' && strong === 'L' ? 'L' : c === 'ES' || c === 'ET' || c === 'CS' ? 'N' : c
+  })
+  const rtlSide = (c?: string) => c !== undefined && c !== 'L'
+  const levels = w.map((c, i) => {
+    if (c !== 'N') return c === 'L' ? 0 : c === 'R' ? 1 : 2
+    let a = i
+    while (w[a] === 'N') a--
+    let b = i
+    while (w[b] === 'N') b++
+    return rtlSide(w[a]) && rtlSide(w[b]) ? 1 : 0
+  })
+  let out = all.map((u, i) => ({ u: levels[i]! % 2 ? { ...u, ch: MIRROR[u.ch] ?? u.ch } : u, l: levels[i]! }))
+  for (let l = 2; l >= 1; l--) {
+    const done: typeof out = []
+    let run: typeof out = []
+    for (const x of out) {
+      if (x.l >= l) run.push(x)
+      else {
+        done.push(...run.reverse(), x)
+        run = []
+      }
+    }
+    out = [...done, ...run.reverse()]
+  }
+  return out.map(x => x.u)
+}
+
+export const terminalLine = (nodes: Inline[]): Inline[] => rebuild(terminalBidi(flatten(nodes)))
+
 const wrapUnits = (all: Unit[], max: number, measure: (s: string) => number): Unit[][] => {
   const tokens: Unit[][] = []
   all.forEach((u, i) => {
@@ -148,7 +191,7 @@ const clusters = (text: string): string[] => units(text, { wrap: [], leaf: 'text
 const RUN = new RegExp(`(?:${R.source}|\\p{M})+`, 'gu')
 
 const shapeText = (text: string, shape: Shape): string =>
-  shape === 'words' && R.test(text) ? text.replace(RUN, run => clusters(run).reverse().join('')) : text
+  !R.test(text) ? text : shape === 'words' ? text.replace(RUN, run => clusters(run).reverse().join('')) : shape === 'inverse' ? terminalBidi(units(text, { wrap: [], leaf: 'text' })).map(u => u.ch).join('') : text
 
 const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
   nodes.map(n => {
@@ -164,7 +207,7 @@ export const flow = (nodes: Inline[], columns: number, measure: (s: string) => n
   const all = flatten(nodes)
   const base = baseOf(all)
   const logical = base === 'R' ? wrapUnits(all, columns, measure) : [all]
-  const lines = logical.map(line => rebuild(shape === 'logical' ? line : reorder(line, base)))
+  const lines = logical.map(line => rebuild(shape === 'logical' ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base)))
   return { base, lines: shape === 'words' ? lines.map(line => shapeNodes(line, shape)) : lines }
 }
 

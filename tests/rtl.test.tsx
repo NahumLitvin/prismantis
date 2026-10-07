@@ -3,7 +3,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
-import { commentTail, flow } from '../hooks/rtl'
+import { commentTail, flow, terminalLine } from '../hooks/rtl'
 
 const measure = (s: string) => [...s].length
 const plain = (text: string, columns = 100) => flow([{ kind: 'text', text }], columns, measure)
@@ -225,6 +225,24 @@ test('auto in Apple Terminal keeps the right-to-left layout and leaves the lette
   expect(await ui.find({ type: 'Text', text: /^שלום עולם$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
+})
+
+test('auto in fullscreen Apple Terminal sends lines its own bidi turns into reading order', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'Apple_Terminal' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...mount('שלום kubectl עולם'), viewport: { columns: 120, rows: 40, isFullscreen: true } })
+  expect(await ui.find({ type: 'Text', text: /^עולם kubectl שלום$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the inverse shape comes back as the visual line after a left-to-right bidi pass', async () => {
+  for (const text of ['שלום חברים, כמו kubectl, מספרים וגם', 'פרוסים בשני אזורים (us-east ו-eu-west)', 'שרתים ו-100% פעילים']) {
+    const nodes: Inline[] = [{ kind: 'text', text }]
+    const visualLine = flow(nodes, 100, measure)!.lines[0]!
+    const inverse = flow(nodes, 100, measure, 'inverse')!.lines[0]!
+    expect(inlineText(terminalLine(inverse))).toBe(inlineText(visualLine))
+  }
 })
 
 test('auto leaves an unknown terminal alone', async ($, on) => {
