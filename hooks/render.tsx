@@ -54,11 +54,14 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
     at += length
     if (a >= b) continue
     if ('children' in n) out.push({ ...n, children: sliceInline(n.children, a, b) })
-    else if (n.kind === 'link' && n.text === n.href) out.push({ ...n, text: n.text.slice(a, b), bare: true })
     else out.push({ ...n, text: n.text.slice(a, b) })
   }
   return out
 }
+
+const hasLink = (nodes: Inline[]): boolean => nodes.some(n => n.kind === 'link' || ('children' in n && hasLink(n.children)))
+
+const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
 
 const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   const text = inlineText(nodes)
@@ -85,9 +88,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
         return <Text key={key} color={t.inlineCode}>{n.text}</Text>
       case 'link':
         return /^[a-z][\w+.-]*:/i.test(n.href)
-          ? n.text === n.href ? <el.Link key={key} href={n.href} />
-            : n.bare ? <el.Link key={key} href={n.href} label={n.text} />
-            : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
+          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
           : <Text key={key} color={t.link} underline>{n.text}</Text>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
@@ -268,13 +269,22 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     </Box>
   )
 
-  const bar = (k: string, text: string) => <Text key={k} color={t.tableRule} dimColor={!t.tableRule}>{text}</Text>
+  const bar = (k: string, text: string, lines = 1) => (
+    <Text key={k} color={t.tableRule} dimColor={!t.tableRule}>{Array.from({ length: lines }, () => text).join('\n')}</Text>
+  )
+  const clipped = (lines: number) => (k: string, text: string) => (
+    <Box key={k} minWidth={width(text)}>
+      <Box position="absolute" top={0} bottom={0} left={0} minWidth={width(text)} overflow="hidden">
+        {bar(`${k}.b`, text, lines)}
+      </Box>
+    </Box>
+  )
   const edge = (k: string, [left, fill, mid, right]: string) =>
     bar(k, left + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + right)
 
-  const row = (cells: Inline[][], k: string, isHeader: boolean) => (
-    <Box key={k} flexDirection="row" columnGap={gap}>
-      {box && bar(`${k}.l`, '│ ')}
+  const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar) => (
+    <Box key={k} flexDirection="row" columnGap={gap} alignItems="stretch">
+      {box && border(`${k}.l`, '│ ')}
       {order.map((c, i) => {
         const w = widths[c]!
         const cell = flowOf(style, cells[c] ?? [], Infinity)
@@ -287,13 +297,14 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
               : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>}
           </Box>
         )
-        return box && i > 0 ? [bar(`${k}.${c}s`, ' │ '), cellBox] : cellBox
+        return box && i > 0 ? [border(`${k}.${c}s`, ' │ '), cellBox] : cellBox
       })}
-      {box && bar(`${k}.r`, ' │')}
+      {box && border(`${k}.r`, ' │')}
     </Box>
   )
 
   const wrappedRow = (cells: Inline[][], k: string, isHeader: boolean) => {
+    if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(displayText(cells[c] ?? []), w)))))]
     const wrapped = widths.map((w, c) => {
       const content = cells[c] ?? []
       if (natural[c]! <= w) return [content]

@@ -4,7 +4,7 @@ export type Inline =
   | { kind: 'emphasis'; children: Inline[] }
   | { kind: 'strike'; children: Inline[] }
   | { kind: 'code'; text: string }
-  | { kind: 'link'; text: string; href: string; bare?: true }
+  | { kind: 'link'; text: string; href: string }
   | { kind: 'number'; text: string }
   | { kind: 'path'; text: string }
   | { kind: 'dim'; text: string }
