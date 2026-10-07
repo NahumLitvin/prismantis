@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. `⧉ html` copies the table as HTML, with headers, column alignment and inline formatting, together with tab-separated plain text, and verifies both before reporting success. `⧉ html` shows in a local macOS terminal; over SSH, on desktop and on other systems tables offer `⧉ md` and `⧉ art`. If the clipboard helper fails, the action copies the plain text alone.
+- Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. `⧉ html` copies the table as HTML, with headers, column alignment and inline formatting, together with tab-separated plain text, and verifies both before reporting success. `⧉ html` shows in a local macOS terminal or a Linux graphical session, where it needs CopyQ running; over SSH, on desktop and on other systems tables offer `⧉ md` and `⧉ art`. Without CopyQ, or when the clipboard helper fails, the action copies the plain text alone.
 
 ## [0.12.0] - 2026-10-07
 

@@ -1,6 +1,7 @@
 import type { EngineInterface, Register, RenderElement, RenderSurface } from 'claude-code'
 
 import { parse } from './markdown'
+import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
 import { boxArt, mermaidText } from './mermaid'
 import type { Drawn } from './render'
@@ -49,14 +50,15 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 
 const expandedCalls = new Set<string>()
 
-const canCopyHtml = async ($: EngineInterface): Promise<boolean> => {
-  if (await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return false
+const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null> => {
+  if (await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return null
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
-  return helper?.kind === 'file'
+  if (helper?.kind === 'file') return 'macos'
+  return await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : null
 }
 
-const copyTable = async ($: EngineInterface, html: string, text: string): Promise<string | null> => {
-  const command = clipboardCommand(html, text)
+const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: string, text: string): Promise<string | null> => {
+  const command = clipboardCommand(backend, html, text)
   const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: 5000 }).catch(() => null)
   if (!result) return command.failure
   return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
@@ -67,7 +69,8 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
     const copied = async (surface: RenderSurface): Promise<string> => {
       const content = typeof text === 'function' ? text() : text
-      const failure = html ? await copyTable($, html(), content) : undefined
+      const backend = style.htmlCopy
+      const failure = html && backend ? await copyTable($, backend, html(), content) : undefined
       if (failure === null) return 'Copied formatted table'
       const result = await $.ui.copy({ text: content, surface })
       if (!result.isCopied) return `Copy failed: ${result.reason}`
@@ -104,8 +107,8 @@ export const register: Register = (on, options) => {
   const shared = new Map<string, ReturnType<typeof parse>>()
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
-  const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: false })
-  let htmlCopy: Promise<boolean> | undefined
+  const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
+  let htmlCopy: Promise<ClipboardBackend | null> | undefined
 
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {
@@ -123,7 +126,7 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     terminal = await applyRtl($, style)
-    htmlCopy ??= canCopyHtml($)
+    htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
     const started = await next(e)
     await $.command
@@ -157,7 +160,7 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', async ($, e, next) => {
     await applyRtl($, style)
-    htmlCopy ??= canCopyHtml($)
+    htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
     return next({ ...e, context: [...(e.context ?? []), HINT] })

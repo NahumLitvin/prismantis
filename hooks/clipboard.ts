@@ -13,8 +13,18 @@ if (ObjC.unwrap(pasteboard.stringForType($.NSPasteboardTypeHTML)) !== payload.ht
     ObjC.unwrap(pasteboard.stringForType($.NSPasteboardTypeString)) !== payload.text) throw new Error('Clipboard verification failed')
 `
 
-export const clipboardCommand = (html: string, text: string) => ({
-  argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY],
+export const LINUX_TABLE_COPY = `
+var table = JSON.parse(str(arguments[1]))
+copy('text/html', table.html, 'text/plain', table.text)
+if (str(clipboard('text/html')) !== table.html ||
+    str(clipboard('text/plain')) !== table.text) throw new Error('Clipboard verification failed')
+`
+
+export type ClipboardBackend = 'macos' | 'linux'
+
+export const clipboardCommand = (backend: ClipboardBackend, html: string, text: string) => ({
   stdin: JSON.stringify({ html, text }),
-  failure: 'macOS clipboard helper failed',
+  ...backend === 'macos'
+    ? { argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY], failure: 'macOS clipboard helper failed' }
+    : { argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'], failure: 'CopyQ failed; install and start CopyQ in the graphical session' },
 })

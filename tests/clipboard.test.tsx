@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { MAC_TABLE_COPY } from '../hooks/clipboard'
+import { LINUX_TABLE_COPY, MAC_TABLE_COPY } from '../hooks/clipboard'
 import { clipboardEnv, recordCopies, recordToasts, runResult, startSession } from './clipboard-env'
 
 const source = '| Name | Value |\n|--|--:|\n| **שלום** | `$(ignored)` |'
@@ -13,8 +13,14 @@ const mount = {
   surface: 'terminal' as const,
 }
 
-test('macOS copies HTML and plain text together', async ($, on) => {
-  clipboardEnv(on, 'macos')
+const backends = {
+  macos: { platform: 'macos', env: {}, argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY] },
+  wayland: { platform: 'other', env: { WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0' }, argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'] },
+  x11: { platform: 'other', env: { DISPLAY: ':0' }, argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'] },
+} as const
+
+for (const [backend, setup] of Object.entries(backends)) test(`${backend} copies HTML and plain text together`, async ($, on) => {
+  clipboardEnv(on, setup.platform, setup.env)
   const calls: { argv: readonly string[]; input: string }[] = []
   on('process.run', (_, e) => {
     calls.push({ argv: e.argv, input: e.init?.stdin ?? '' })
@@ -28,7 +34,7 @@ test('macOS copies HTML and plain text together', async ($, on) => {
   expect(calls).toHaveLength(0)
   await ui.press({ key: 'html0' })
   expect(calls).toHaveLength(1)
-  expect(calls[0]!.argv).toEqual(['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY])
+  expect(calls[0]!.argv).toEqual(setup.argv)
   const payload = JSON.parse(calls[0]!.input)
   expect(payload.text).toBe(plain)
   expect(payload.html).toContain('<strong>שלום</strong>')
@@ -51,11 +57,26 @@ for (const failure of ['exit', 'refused'] as const) test(`native clipboard ${fai
   await ui.unmount()
 })
 
+for (const failure of ['missing', 'exit', 'timeout'] as const) test(`Linux clipboard ${failure} falls back to plain text`, async ($, on) => {
+  clipboardEnv(on, 'other', { DISPLAY: ':0' })
+  on('process.run', () => failure === 'timeout' ? { deny: 'Process timed out' } : runResult(failure === 'missing' ? 127 : 1))
+  const copies = recordCopies(on)
+  const toasts = recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount(mount)
+  await ui.press({ key: 'html0' })
+  expect(copies).toEqual([plain])
+  expect(toasts).toEqual(['Copied as plain text (CopyQ failed; install and start CopyQ in the graphical session)'])
+  await ui.unmount()
+})
+
 const hidden = {
   'over SSH_CONNECTION': { platform: 'macos', env: { SSH_CONNECTION: 'remote connection' }, surface: 'terminal' },
   'over SSH_TTY': { platform: 'macos', env: { SSH_TTY: '/dev/ttys001' }, surface: 'terminal' },
-  'on other systems': { platform: 'other', env: { DISPLAY: ':0', WAYLAND_DISPLAY: 'wayland-0' }, surface: 'terminal' },
+  'over SSH with a forwarded display': { platform: 'other', env: { SSH_CONNECTION: 'remote connection', DISPLAY: 'localhost:10.0' }, surface: 'terminal' },
+  'without a graphical session': { platform: 'other', env: {}, surface: 'terminal' },
   'on desktop': { platform: 'macos', env: {}, surface: 'desktop' },
+  'on desktop in Linux': { platform: 'other', env: { WAYLAND_DISPLAY: 'wayland-0' }, surface: 'desktop' },
 } as const
 
 for (const [where, setup] of Object.entries(hidden)) test(`the HTML action is hidden ${where}`, async ($, on) => {
