@@ -6,7 +6,7 @@ import { TERMINALS } from './rtl'
 
 export const TOKENS = [
   'accent', 'heading', 'strong', 'emphasis', 'inlineCode', 'codeText', 'codeCommand', 'codeFlag', 'codeString', 'codeComment',
-  'link', 'path', 'number', 'quote', 'rule', 'tableHeader', 'tableRule', 'bullet', 'diagram', 'diagramText',
+  'link', 'path', 'number', 'quote', 'rule', 'tableHeader', 'tableRule', 'bullet', 'diagram', 'diagramText', 'math',
 ] as const
 
 export type Theme = Partial<Record<(typeof TOKENS)[number], string>>
@@ -28,6 +28,9 @@ export type Style = {
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
   shape: Shape
+  latex: 'auto' | 'always' | 'off'
+  latexCommand: string
+  latexSize: 'small' | 'normal' | 'large'
 }
 
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)|ansi256\(\d{1,3}\)|(black|red|green|yellow|blue|magenta|cyan|white|gray|grey)(Bright)?)$/i
@@ -61,5 +64,8 @@ export const resolveStyle = (options: PluginOptions): Style => {
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',
     shape: rtl === 'auto' || rtl === 'off' ? 'visual' : TERMINALS[rtl],
+    latex: pick(options.latex, ['auto', 'always', 'off'] as const, 'auto'),
+    latexCommand: (typeof options.latexCommand === 'string' && options.latexCommand.trim()) || 'ratex-render',
+    latexSize: pick(options.latexSize, ['small', 'normal', 'large'] as const, 'normal'),
   }
 }

@@ -14,10 +14,11 @@ Colorful, themeable replies for [Claude Code](https://claude.com/claude-code): t
 
 | Feature | What you get |
 | --- | --- |
-| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 15 MIT palettes (Catppuccin, Dracula, Nord, Tokyo Night, Gruvbox, Rosé Pine, Everforest, GitHub, One Dark, Solarized) plus 20 color slots you can override |
+| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 15 MIT palettes (Catppuccin, Dracula, Nord, Tokyo Night, Gruvbox, Rosé Pine, Everforest, GitHub, One Dark, Solarized) plus 21 color slots you can override |
 | [Tables](#tables) | colored headers, rules, column alignment, colored numbers, sized to the terminal |
 | [Code](#code) | a language header and copy button, Prism highlighting in 24 languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
+| [LaTeX math](#latex-math) | `$$` and ` ```math ` formulas typeset as images in kitty and Ghostty by [RaTeX](https://github.com/erweixin/RaTeX), sized to the reply text, text everywhere else |
 | [Layout](#layout) | back-to-back tables and diagrams sit side by side and wrap on narrow terminals |
 | [Copy buttons](#copy-buttons) | `[ ⧉ copy ]` on code, tables, lists and quotes, plus `⧉ art` on tables and diagrams for pasting into Slack, and `/prismantis copy` without a mouse |
 | [Tool rows](#tool-rows) | `Ran gh pr view 12`, `Read ~/src/app.ts`, groups summed up as `Ran 3 commands, read 2 files`, with status dots |
@@ -46,9 +47,11 @@ Requires Claude Code **2.1.287** or later.
 
 To update, run `claude plugin marketplace update prismantis && claude plugin update prismantis@prismantis`, then `/reload` in every open session. A session keeps the version it loaded until it reloads.
 
+For LaTeX math, also put RaTeX's renderer on your `PATH`; see [LaTeX math](#latex-math). Without it, formulas draw as text.
+
 Tested in the terminal on macOS; CI runs the tests on macOS, Linux and Windows. The desktop app, VS Code and mobile should work through the same mod API but have not been checked by hand yet. Turn it off any time in `/plugin`, and Claude Code's own renderer comes back. Press ctrl+o on a reply to see the original.
 
-It's a [Claude Code mod](https://claude.com/blog/claude-code-mods) in plain TypeScript. It bundles two MIT libraries, [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for diagrams and [Prism](https://github.com/PrismJS/prism) for highlighting. It makes no network calls, reads no files and runs no commands. It redraws text already on your screen and, with `diagramHints` on, attaches a short model-only note to your prompts.
+It's a [Claude Code mod](https://claude.com/blog/claude-code-mods) in plain TypeScript. It bundles two MIT libraries, [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for diagrams and [Prism](https://github.com/PrismJS/prism) for highlighting. It makes no network calls. The one program it runs is the optional RaTeX renderer for [LaTeX math](#latex-math), and the only files it reads are the images that renderer writes; `latex: off` stops both. It redraws text already on your screen and, with `diagramHints` on, attaches a short model-only note to your prompts.
 
 ### Themes
 
@@ -79,6 +82,22 @@ Code blocks tagged `mermaid` draw as colored text art:
 - each bar gets its own color, gridlines stay dim, axis numbers use the number color
 
 Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii` swaps box-drawing characters for `+ - |`. Pie charts are not supported.
+
+### LaTeX math
+
+Display math, `$$…$$` on lines of its own or a ` ```math ` block, draws as a typeset image in the formula color (`mathColor`, or the theme's diagram text color), one formula per line. With copy buttons on, its `⧉ copy` button copies the formula's LaTeX, since selecting an image copies blank cells. It needs [RaTeX](https://github.com/erweixin/RaTeX)'s PNG renderer, a single binary that typesets KaTeX syntax in a few milliseconds without TeX, a browser or Node:
+
+```bash
+gh release download -R erweixin/RaTeX -p 'ratex-cli-*-aarch64-apple-darwin.tar.gz'
+tar -xzf ratex-cli-*.tar.gz
+install ratex-cli-*/render ~/.local/bin/ratex-render
+```
+
+Pick the archive for your platform (`x86_64-apple-darwin`, `x86_64-unknown-linux-musl`, ...). Any directory on your `PATH` works; elsewhere, set `latexCommand` to the binary's path.
+
+With `latex` on `auto` (the default), prismantis runs the renderer once in kitty and Ghostty, outside tmux, and turns LaTeX on only if that test formula comes back. Anywhere else, without the renderer, or with `latex: off`, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. `always` skips the terminal check. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` stays text.
+
+Formula text matches the reply text at `latexSize: normal`; `small` and `large` are about a fifth smaller and two fifths larger. A terminal image fills whole rows, so a formula that falls between two row counts is rendered again with more padding rather than stretched.
 
 ### Layout
 
@@ -148,7 +167,7 @@ declare module 'claude-code' {
 
 ### Diagram hints
 
-Claude rarely writes a chart unless it knows the terminal can draw one. With `diagramHints` on (the default), prismantis attaches a short note to each prompt you type, read by the model and never shown, saying tables, alerts, code, mermaid diagrams and `xychart-beta` charts render here and to use one when a numeric series or a flow is easier to see than read. It also asks for commands in fenced blocks, since only those get a copy button. It costs about 190 tokens per prompt. It's off whenever `mermaid` is off, and skipped for headless `claude -p` runs and background notifications. Claude Code doesn't let installed plugins edit the system prompt (its built-in `sec-default` policy keeps that for the organization), so the note rides along with your prompt instead.
+Claude rarely writes a chart unless it knows the terminal can draw one. With `diagramHints` on (the default), prismantis attaches a short note to each prompt you type, read by the model and never shown, saying tables, alerts, code, mermaid diagrams and `xychart-beta` charts render here and to use one when a numeric series or a flow is easier to see than read. While [LaTeX math](#latex-math) is on, it also says `$$` formulas render, about 60 tokens more. It also asks for commands in fenced blocks, since only those get a copy button. It costs about 190 tokens per prompt. It's off whenever `mermaid` is off, and skipped for headless `claude -p` runs and background notifications. Claude Code doesn't let installed plugins edit the system prompt (its built-in `sec-default` policy keeps that for the organization), so the note rides along with your prompt instead.
 
 ### Text
 
@@ -211,6 +230,9 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
+| `latex` | `auto`, `always`, `off` | `auto` |
+| `latexCommand` | a binary on your `PATH` or a full path | `ratex-render` |
+| `latexSize` | `small`, `normal`, `large` | `normal` |
 | `<token>Color` | any color, see below | theme |
 
 A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name (`green`, `cyanBright`). Values that don't parse are ignored. Every token has a `<token>Color` option and a row in `/config`:
@@ -237,6 +259,7 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 | `bullet` | list bullets and numbers |
 | `diagram` | diagram lines |
 | `diagramText` | diagram labels |
+| `math` | typeset LaTeX formulas |
 
 ## Limits
 

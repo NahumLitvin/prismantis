@@ -39,6 +39,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 
 > [!WARNING]
 > Terminals that copy on select (Warp) can turn a click on a copy button into a selection. Use the keyboard shortcut.
+> Selecting a typeset formula copies blank cells. Its copy button copies the LaTeX.
 
 > [!CAUTION]
 > Claude Code refuses trees over 20000 nodes. A code block past about 500 highlighted lines falls back to plain text.
@@ -71,6 +72,12 @@ Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` i
 { "theme": "dracula", "headingStyle": "banner", "mermaid": true }
 \`\`\`
 
+#### Math
+
+$$
+\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}
+$$
+
 #### Diagrams
 
 \`\`\`mermaid
@@ -93,9 +100,9 @@ sequenceDiagram
 \`\`\`mermaid
 xychart-beta
     title "Color options per group"
-    x-axis [text, head, num, code, diag]
+    x-axis [text, head, num, code, diag, math]
     y-axis "options" 0 --> 8
-    bar [7, 3, 2, 6, 2]
+    bar [7, 3, 2, 6, 2, 1]
 \`\`\`
 `
 
@@ -136,9 +143,9 @@ flowchart LR
 \`\`\`mermaid
 xychart-beta
     title "Color options per group"
-    x-axis [text, head, num, code, diag]
+    x-axis [text, head, num, code, diag, math]
     y-axis "options" 0 --> 8
-    bar [7, 3, 2, 6, 2]
+    bar [7, 3, 2, 6, 2, 1]
 \`\`\`
 
 > [!CAUTION]

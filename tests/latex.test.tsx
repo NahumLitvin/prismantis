@@ -1,0 +1,456 @@
+import type { On } from 'claude-code'
+import { expect, mock, test } from 'claude-code/testing'
+
+import { keepFormulas, padFor } from '../hooks/latex'
+import { parse } from '../hooks/markdown'
+import { resolveStyle } from '../hooks/theme'
+
+const PNG_160x80 = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABQAQAAAAC2JkOZAAAAFklEQVR42mNgGAWjYBSMglEwCgYeAAAGkAAB8Q2GVgAAAABJRU5ErkJggg=='
+const PNG_800x400 = 'iVBORw0KGgoAAAANSUhEUgAAAyAAAAGQAQAAAAB+XjmZAAAAPklEQVR42u3BMQEAAADCoPVPbQ0PoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4NndAAAYtfwy0AAAAASUVORK5CYII='
+const PNG_1200x212 = 'iVBORw0KGgoAAAANSUhEUgAABLAAAADUAQAAAACkcOc9AAAANklEQVR42u3BgQAAAADDoPlTH+AKVQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC8AX0MAAHD9IoJAAAAAElFTkSuQmCC'
+const PNG_1228x240 = 'iVBORw0KGgoAAAANSUhEUgAABMwAAADwAQAAAADUOMULAAAAO0lEQVR42u3BMQEAAADCoPVPbQZ/oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4DkVAAATiOUPAAAAAASUVORK5CYII='
+const PNG_1120x280 = 'iVBORw0KGgoAAAANSUhEUgAABGAAAAEYAQAAAAA7PL0PAAAAPElEQVR42u3BAQ0AAADCoPdP7ewBFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAN5o4AAH0PBZhAAAAAElFTkSuQmCC'
+const PNG_900x90 = 'iVBORw0KGgoAAAANSUhEUgAAA4QAAABaAQAAAADI6aVUAAAAIElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAPBgKBQAAb8dNmgAAAAASUVORK5CYII='
+const KITTY = { TERM: 'xterm-kitty', TMPDIR: '/tmp/' }
+const REPLY = 'The integral:\n\n$$\n\\int_0^1 x^2\\,dx\n$$\n\nDone.'
+
+type Run = { argv: readonly string[]; formulas: string[] }
+
+const ok = (formulas: string[]) => formulas.map((f, i) => `OK     ${i + 1} ${f}`).join('\n')
+
+const ratex = (on: On, answer: (formulas: string[]) => string = ok, png: string | ((run: Run) => string) = PNG_160x80) => {
+  const runs: Run[] = []
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('process.run', (_, e) => {
+    const formulas = (e.init?.stdin ?? '').split('\n').filter(line => line !== '')
+    runs.push({ argv: e.argv, formulas })
+    return { value: { exitCode: 0, stdout: answer(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('fs.read', () => ({ value: { base64: typeof png === 'string' ? png : png(runs.at(-1)!) } }))
+  return runs
+}
+
+const reply = (text: string, columns = 120) => ({
+  plugin: 'prismantis',
+  component: 'AssistantMessage' as const,
+  props: { text, isFirstOfReply: true },
+  viewport: { columns, rows: 40 },
+  surface: 'terminal' as const,
+})
+
+const hints = (on: On) => {
+  const seen: (readonly string[] | undefined)[] = []
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  return seen
+}
+
+const parsed = (text: string) => parse(text, { numbers: false, paths: false })
+
+const argOf = (run: Run | undefined, flag: string) => Number(run?.argv[run.argv.indexOf(flag) + 1])
+
+const unpaddedFirst = (run: Run) => (argOf(run, '--dpr') === 1 ? PNG_1200x212 : PNG_1228x240)
+
+const sizeOf = (image: { props: Record<string, unknown> } | undefined) => ({ columns: Number(image?.props.columns), rows: Number(image?.props.rows) })
+
+test('$$ display math on its own lines parses as a math block', async () => {
+  const blocks = parsed('Before\n\n$$\n\\frac{a}{b}\n$$\n\nAfter')
+
+  expect(blocks.map(b => b.kind)).toEqual(['paragraph', 'code', 'paragraph'])
+  expect(blocks[1]).toMatchObject({ kind: 'code', lang: 'math', lines: ['\\frac{a}{b}'] })
+})
+
+test('$$ math on one line parses as a math block', async () => {
+  const [block] = parsed('$$E = mc^2$$')
+
+  expect(block).toMatchObject({ kind: 'code', lang: 'math', lines: ['E = mc^2'] })
+})
+
+test('an unclosed $$ stays paragraph text', async () => {
+  const blocks = parsed('$$\n\\frac{a}{b}')
+
+  expect(blocks.map(b => b.kind)).toEqual(['paragraph'])
+})
+
+test('display math draws as an image that keeps the formula aspect', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  const image = await ui.find({ type: 'Image' })
+  expect(image?.props.alt).toBe('\\int_0^1 x^2\\,dx')
+  const { columns, rows } = sizeOf(image)
+  expect(columns / rows).toBe(4)
+  expect(runs.at(-1)?.formulas).toEqual(['\\int_0^1 x^2\\,dx'])
+  await ui.unmount()
+})
+
+test('a math fence draws as an image too', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on)
+
+  const ui = await $.ui.mount(reply('```math\na^2 + b^2 = c^2\n```'))
+  await clock.settle()
+
+  expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('a^2 + b^2 = c^2')
+  await ui.unmount()
+})
+
+test('a formula the renderer rejects falls back to its text', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on, formulas => formulas.map((f, i) => (f === 'x^2' ? `OK     ${i + 1} ${f}` : `ERR    ${i + 1} ${f} — Parse error: Undefined control sequence`)).join('\n'))
+
+  const ui = await $.ui.mount(reply('$$\n\\badcommand{x}\n$$'))
+  await clock.settle()
+
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^\\badcommand\{x\}$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('without the renderer installed, math stays text and no LaTeX hint is sent', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('process.run', () => ({ deny: 'spawn ratex-render ENOENT' }))
+  const seen = hints(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  await $.prompt.submit({ text: 'integrate x squared', wait: false, origin: { kind: 'composer' } })
+
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  expect(seen[0]?.some(c => c.includes('prismantis'))).toBe(true)
+  expect(seen[0]?.some(c => c.includes('$$'))).toBe(false)
+  await ui.unmount()
+})
+
+test('the prompt hint says display math renders when the renderer works', async ($, on) => {
+  mock.env(on, KITTY)
+  ratex(on)
+  const seen = hints(on)
+
+  await $.prompt.submit({ text: 'integrate x squared', wait: false, origin: { kind: 'composer' } })
+
+  expect(seen[0]?.some(c => c.includes('$$') && c.includes('LaTeX'))).toBe(true)
+})
+
+test('latex off never runs the renderer', { options: { latex: 'off' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  expect(runs.length).toBe(0)
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  await ui.unmount()
+})
+
+for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM: 'Apple_Terminal' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0' }]] as const) {
+  test(`auto skips the renderer in ${name}`, async ($, on) => {
+    mock.env(on, env)
+    const clock = mock.clock(on)
+    const runs = ratex(on)
+
+    const ui = await $.ui.mount(reply(REPLY))
+    await clock.settle()
+
+    expect(runs.length).toBe(0)
+    await ui.unmount()
+  })
+}
+
+test('latex always renders in any terminal', { options: { latex: 'always' } }, async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'Apple_Terminal' })
+  const clock = mock.clock(on)
+  ratex(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  expect(await ui.find({ type: 'Image' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('latexCommand and mathColor reach the renderer', { options: { latexCommand: '/opt/ratex/render', mathColor: '#ff0000' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  expect(runs.length > 0).toBe(true)
+  expect(runs.every(r => r.argv[0] === '/opt/ratex/render')).toBe(true)
+  expect(runs.at(-1)?.argv.join(' ')).toContain('--color #ff0000')
+  await ui.unmount()
+})
+
+test('formulas render at font 80 and density 1, so the renderer padding takes little of a row', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  expect(runs.at(-1)?.argv.join(' ')).toContain('--font-size 80 --dpr 1')
+  await ui.unmount()
+})
+
+test('a formula is padded to whole rows only when fitting it would shrink it over 10% or stretch it over 5%', async () => {
+  const style = resolveStyle({})
+  const heights = [60, 80, 88, 90, 212, 228, 229, 236]
+
+  const rows = heights.map(height => padFor({ width: 600, height }, style)?.rows ?? null)
+
+  expect(rows).toEqual([1, null, null, 2, 3, 3, null, null])
+})
+
+test('padding raises the density as it lowers the font, so the glyphs keep their size', async () => {
+  const style = resolveStyle({})
+
+  const pads = [60, 90, 212, 228].map(height => padFor({ width: 600, height }, style))
+
+  expect(pads.map(pad => (pad?.dpr ?? 0) > 1)).toEqual([true, true, true, true])
+  for (const pad of pads) expect(Math.abs((pad?.fontSize ?? 0) * (pad?.dpr ?? 0) - 80)).toBeLessThan(1e-9)
+})
+
+test('a formula between whole rows renders again with padding and draws at whole rows', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on, ok, unpaddedFirst)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  const passes = runs.filter(r => r.formulas.includes('\\int_0^1 x^2\\,dx'))
+  const image = await ui.find({ type: 'Image' })
+  expect(passes.map(r => argOf(r, '--dpr') > 1)).toEqual([false, true])
+  expect(Math.abs(argOf(passes[1], '--font-size') * argOf(passes[1], '--dpr') - 80) < 1e-9).toBe(true)
+  expect((image?.props.source as { png?: string } | undefined)?.png).toBe(PNG_1228x240)
+  expect(sizeOf(image).rows).toBe(3)
+  await ui.unmount()
+})
+
+test('a padded formula too wide for the terminal draws the unpadded picture instead', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on, ok, unpaddedFirst)
+
+  const ui = await $.ui.mount(reply(REPLY, 24))
+  await clock.settle()
+
+  expect(((await ui.find({ type: 'Image' }))?.props.source as { png?: string } | undefined)?.png).toBe(PNG_1200x212)
+  await ui.unmount()
+})
+
+for (const [latexSize, height] of [['small', 4], ['normal', 5], ['large', 7]] as const) {
+  test(`latexSize ${latexSize} draws a formula ${height} rows tall and keeps its shape`, { options: { latexSize } }, async ($, on) => {
+    mock.env(on, KITTY)
+    const clock = mock.clock(on)
+    const runs = ratex(on, ok, PNG_800x400)
+
+    const ui = await $.ui.mount(reply(REPLY))
+    await clock.settle()
+
+    const { columns, rows } = sizeOf(await ui.find({ type: 'Image' }))
+    expect(runs.map(r => argOf(r, '--dpr'))).toEqual([1, 1])
+    expect(rows).toBe(height)
+    expect(columns / rows).toBe(4)
+    await ui.unmount()
+  })
+}
+
+test('a multi-line formula reaches the renderer as one line without its % comments', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  const ui = await $.ui.mount(reply('$$\na + b % the sum\n= c \\% d\n$$'))
+  await clock.settle()
+
+  expect(runs.at(-1)?.formulas).toEqual(['a + b = c \\% d'])
+  await ui.unmount()
+})
+
+test('a formula renders once however often the reply redraws', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  for (let i = 0; i < 3; i++) {
+    const ui = await $.ui.mount(reply(REPLY))
+    await clock.settle()
+    await ui.unmount()
+  }
+
+  expect(runs.filter(r => r.formulas.includes('\\int_0^1 x^2\\,dx')).length).toBe(1)
+})
+
+test('an unclosed math fence does not run the renderer while it streams, and does once it closes', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+  const rendered = () => runs.filter(r => r.formulas.includes('a^2 + b^2')).length
+
+  const streaming = await $.ui.mount(reply('```math\na^2 + b^2'))
+  await clock.settle()
+  const whileStreaming = rendered()
+  await streaming.unmount()
+  const closed = await $.ui.mount(reply('```math\na^2 + b^2\n```'))
+  await clock.settle()
+
+  expect(whileStreaming).toBe(0)
+  expect(rendered()).toBe(1)
+  await closed.unmount()
+})
+
+test('a formula wider than the terminal shrinks to fit', { options: { latexSize: 'large' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on, ok, PNG_1120x280)
+
+  const ui = await $.ui.mount(reply(REPLY, 20))
+  await clock.settle()
+
+  const { columns, rows } = sizeOf(await ui.find({ type: 'Image' }))
+  expect(columns <= 18).toBe(true)
+  expect(columns / rows).toBe(8)
+  await ui.unmount()
+})
+
+test('a formula that cannot fit the terminal falls back to its text', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on, ok, PNG_900x90)
+
+  const ui = await $.ui.mount(reply(REPLY, 20))
+  await clock.settle()
+
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+const stubClipboard = (on: On) => {
+  const copied: string[] = []
+  on('ui.copy', (_, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  return copied
+}
+
+test("a typeset formula gets the usual copy button, and it copies the formula's LaTeX", async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on)
+  const copied = stubClipboard(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  const buttons = (await ui.findAll({ type: 'Button' })).filter(b => b.props.label === '⧉ copy')
+  expect(await ui.find({ type: 'Image' })).toBeDefined()
+  expect(buttons).toHaveLength(1)
+  await ui.press({ key: String(buttons[0]?.key) })
+
+  expect(copied).toEqual(['\\int_0^1 x^2\\,dx'])
+  await ui.unmount()
+})
+
+test('with copy buttons off, a typeset formula has no copy button', { options: { copyButtons: false } }, async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on)
+
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  expect(await ui.find({ type: 'Image' })).toBeDefined()
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('back-to-back formulas stack one per line instead of sharing a row', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on)
+
+  const ui = await $.ui.mount(reply('$$a^2 + b^2 = c^2$$\n\n$$e^{i\\pi} + 1 = 0$$'))
+  await clock.settle()
+
+  expect(await ui.findAll({ type: 'Image' })).toHaveLength(2)
+  expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.flexWrap === 'wrap')).toHaveLength(0)
+  await ui.unmount()
+})
+
+for (const [color, hex] of [['ansi256(114)', '#87d787'], ['cyanBright', '#00ffff'], ['rgb(166, 227, 161)', '#a6e3a1'], ['#fc0', '#fc0']] as const) {
+  test(`mathColor ${color} reaches the renderer as ${hex}, a color it accepts`, { options: { mathColor: color } }, async ($, on) => {
+    mock.env(on, KITTY)
+    const clock = mock.clock(on)
+    const runs = ratex(on)
+
+    const ui = await $.ui.mount(reply(REPLY))
+    await clock.settle()
+
+    expect([...new Set(runs.map(r => r.argv[r.argv.indexOf('--color') + 1]))]).toEqual([hex])
+    await ui.unmount()
+  })
+}
+
+const keys = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => `k${from + i}`)
+const storeOf = (names: string[]) => Object.fromEntries(names.map(name => [name, name]))
+
+test('the formula store keeps the newest 50, dropping the oldest', async () => {
+  const kept = keepFormulas(storeOf(keys(0, 50)), [['k50', 'k50']], new Set())
+
+  expect(Object.keys(kept)).toEqual(keys(1, 51))
+})
+
+test('the formula store never drops a formula a draw still wants, even past 50', async () => {
+  const kept = keepFormulas(storeOf(keys(0, 50)), [['k50', 'k50']], new Set(keys(0, 50)))
+
+  expect(Object.keys(kept)).toEqual(keys(0, 51))
+})
+
+test('a reply that streams in more formulas than the store keeps renders each formula once', { timeoutMs: 20000 }, async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+  const texs = Array.from({ length: 60 }, (_, i) => `x_{${i}}`)
+  const replyOf = (count: number) => reply(texs.slice(0, count).map(tex => `$$${tex}$$`).join('\n\n'))
+
+  const half = await $.ui.mount(replyOf(30))
+  await clock.settle()
+  await half.unmount()
+  const whole = await $.ui.mount(replyOf(60))
+  await clock.settle()
+
+  expect(texs.map(tex => runs.filter(r => r.formulas.includes(tex)).length)).toEqual(texs.map(() => 1))
+  expect(await whole.findAll({ type: 'Image' })).toHaveLength(60)
+  await whole.unmount()
+})
+
+test('replies drawn together, as on resume, typeset their formulas in one renderer run', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  const uis = await Promise.all(['a^2', 'b^2', 'c^2'].map(tex => $.ui.mount(reply(`$$${tex}$$`))))
+  await clock.settle()
+
+  expect(runs.map(r => r.formulas)).toEqual([['x^2'], ['a^2', 'b^2', 'c^2']])
+  expect(await Promise.all(uis.map(async ui => (await ui.findAll({ type: 'Image' })).length))).toEqual([1, 1, 1])
+  await Promise.all(uis.map(ui => ui.unmount()))
+})

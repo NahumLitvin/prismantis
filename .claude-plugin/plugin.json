@@ -223,6 +223,12 @@
       "description": "Color for diagram labels. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
+    "mathColor": {
+      "type": "string",
+      "title": "Math",
+      "description": "Color for typeset LaTeX formulas. Hex, rgb(), ansi256() or a name. Empty uses the theme's diagram text color.",
+      "default": ""
+    },
     "toolRows": {
       "type": "boolean",
       "title": "Tool rows",
@@ -274,8 +280,28 @@
     "diagramHints": {
       "type": "boolean",
       "title": "Diagram hints",
-      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams and charts render here. About 190 tokens per prompt. Off when mermaid is off.",
+      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams and charts render here, and LaTeX formulas when the renderer runs. About 190 tokens per prompt, about 60 more with LaTeX. Off when mermaid is off.",
       "default": true
+    },
+    "latex": {
+      "type": "string",
+      "title": "LaTeX math",
+      "description": "Draw $$ and ```math formulas as typeset images with RaTeX. auto: in kitty and Ghostty (not under tmux) when the renderer runs. always: in any terminal, where others show the formula text. off: never run the renderer. Formulas that fail to render stay as text.",
+      "default": "auto",
+      "options": ["auto", "always", "off"]
+    },
+    "latexCommand": {
+      "type": "string",
+      "title": "LaTeX renderer",
+      "description": "RaTeX's PNG renderer (the render binary from its release archive), by name on your PATH or as a full path.",
+      "default": "ratex-render"
+    },
+    "latexSize": {
+      "type": "string",
+      "title": "LaTeX size",
+      "description": "How big formulas draw. normal is about the size of the reply text, small about a fifth smaller, large about two fifths larger.",
+      "default": "normal",
+      "options": ["small", "normal", "large"]
     }
   }
 }

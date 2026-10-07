@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- LaTeX math: `$$…$$` and ` ```math ` formulas draw as typeset images in kitty and Ghostty through [RaTeX](https://github.com/erweixin/RaTeX)'s renderer, sized to the reply text and padded to whole rows, with a copy button for the LaTeX. Without the renderer, in other terminals, or with `latex: off`, they stay text in a `math` code block. New options `latex`, `latexCommand` and `latexSize`, and the `mathColor` slot ([#43](https://github.com/NahumLitvin/prismantis/issues/43)).
+
 ## [0.12.0] - 2026-10-07
 
 ### Fixed
