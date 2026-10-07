@@ -7,9 +7,15 @@ import { parse } from '../hooks/markdown'
 import { mermaidText } from '../hooks/mermaid'
 import { tableArt } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
-import { clipboardEnv } from './clipboard-env'
+import { clipboardEnv, recordCopies } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
+
+const tableOf = (source: string) => {
+  const [table] = parse(source, hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  return table
+}
 
 const mount = (text: string, columns = 120) => ({
   plugin: 'prismantis',
@@ -21,12 +27,7 @@ const mount = (text: string, columns = 120) => ({
 
 const stubClipboard = (on: On) => {
   clipboardEnv(on, 'other')
-  const copied: string[] = []
-  on('ui.copy', (_, e) => {
-    copied.push(e.text)
-    return { value: { isCopied: true as const } }
-  })
-  return copied
+  return recordCopies(on)
 }
 
 test('a long run of backticks parses in linear time', async () => {
@@ -44,8 +45,7 @@ test('a four-backtick fence keeps triple-backtick examples inside one code block
 })
 
 test('an escaped trailing pipe stays in the cell', async () => {
-  const [table] = parse('| a | b |\n|---|---|\n| x | y\\|', hl)
-  if (table?.kind !== 'table') throw new Error('not a table')
+  const table = tableOf('| a | b |\n|---|---|\n| x | y\\|')
   expect(table.rows[0]?.[1]?.map(n => ('text' in n ? n.text : '')).join('')).toBe('y|')
 })
 
@@ -63,8 +63,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`tables copy Markdo
 
 test('HTML table copying escapes content and preserves safe inline formatting', async () => {
   const source = '| <Title> | Link |\n|:--:|--|\n| **bold *italic*** ~~old~~ `x<y` & "quoted" | [go](https://example.com/?a=1&b="2") |\n| <script>alert | [bad](javascript:alert) |\n| short |'
-  const table = parse(source, hl)[0]
-  if (table?.kind !== 'table') throw new Error('not a table')
+  const table = tableOf(source)
   const html = tableHtml(table)
   expect(html).toContain('<th style="text-align: center">&lt;Title&gt;</th>')
   expect(html).toContain('<em>italic</em>')
@@ -77,20 +76,17 @@ test('HTML table copying escapes content and preserves safe inline formatting', 
 })
 
 test('tab-separated copying quotes embedded separators and literal quotes', async () => {
-  const [table] = parse('| Name | Value |\n|--|--|\n| `a\tb` | "quoted" |', hl)
-  if (table?.kind !== 'table') throw new Error('not a table')
+  const table = tableOf('| Name | Value |\n|--|--|\n| `a\tb` | "quoted" |')
   expect(tableText(table)).toBe('Name\tValue\n"a\tb"\t"""quoted"""')
 })
 
 test('tab-separated copying keeps link targets', async () => {
-  const [table] = parse('| Docs | Site |\n|--|--|\n| [guide](https://x.y/z) | https://a.b |', hl)
-  if (table?.kind !== 'table') throw new Error('not a table')
+  const table = tableOf('| Docs | Site |\n|--|--|\n| [guide](https://x.y/z) | https://a.b |')
   expect(tableText(table)).toBe('Docs\tSite\nguide (https://x.y/z)\thttps://a.b')
 })
 
 test('HTML copying preserves repeated spaces inside code', async () => {
-  const [table] = parse('| Code |\n|--|\n| `a  b` |', hl)
-  if (table?.kind !== 'table') throw new Error('not a table')
+  const table = tableOf('| Code |\n|--|\n| `a  b` |')
   expect(tableHtml(table)).toContain('<code style="white-space: pre-wrap">a  b</code>')
 })
 
@@ -350,8 +346,7 @@ test('a table art button copies boxed text ready for Slack', async ($, on) => {
 
 test('wide table art wraps long cells to stay 100 columns wide', async () => {
   const long = 'Wrong. With no default, databag_config raises No config key is found, so the render fails and nothing is applied, which is the fail-closed behaviour we want.'
-  const [table] = parse(`| Codebot says | Verdict |\n|---|---|\n| A missing x_seen_by renders an empty value | ${long} |`, hl)
-  if (table?.kind !== 'table') throw new Error('not a table')
+  const table = tableOf(`| Codebot says | Verdict |\n|---|---|\n| A missing x_seen_by renders an empty value | ${long} |`)
   const lines = tableArt(table).split('\n')
   const body = lines.slice(1, -1)
   expect(body.every(l => [...l].length === [...body[0]!].length && [...l].length <= 100)).toBe(true)

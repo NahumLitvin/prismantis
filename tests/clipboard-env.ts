@@ -9,3 +9,24 @@ export const clipboardEnv = (on: On, platform: 'macos' | 'other', environment: R
       ? { value: { kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false } }
       : { deny: 'Not macOS' })
 }
+
+export const runResult = (exitCode: number, stderr = '') =>
+  ({ value: { exitCode, stdout: '', stderr, isStdoutTruncated: false, isStderrTruncated: false } })
+
+export const recordCopies = (on: On) => {
+  const copies: string[] = []
+  on('ui.copy', (_, e) => {
+    copies.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  return copies
+}
+
+export const recordToasts = (on: On) => {
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  return toasts
+}

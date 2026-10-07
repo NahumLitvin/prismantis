@@ -47,47 +47,40 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<void> => {
 
 const expandedCalls = new Set<string>()
 
-const copyTable = async ($: EngineInterface, html: string, text: string, surface: RenderSurface): Promise<void> => {
-  if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) throw new Error('HTML needs a local macOS or Linux graphical session')
+const LOCAL_ONLY = 'HTML needs a local macOS or Linux graphical session'
+
+const copyTable = async ($: EngineInterface, html: string, text: string, surface: RenderSurface): Promise<string | null> => {
+  if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return LOCAL_ONLY
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
   const backend = helper?.kind === 'file' ? 'macos'
     : await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : undefined
-  if (!backend) throw new Error('HTML needs a local macOS or Linux graphical session')
+  if (!backend) return LOCAL_ONLY
   const command = clipboardCommand(backend, html, text)
-  const result = await $.process.run(command.argv, {
-    stdin: command.stdin,
-    timeoutMs: 5000,
-  }).catch(() => {
-    throw new Error(command.failure)
-  })
-  if (result.exitCode !== 0) throw new Error(result.stderr.trim() || command.failure)
+  const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: 5000 }).catch(() => null)
+  if (!result) return command.failure
+  return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
 }
 
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, reply?: string): RenderElement[] => {
   const { Button } = el
-  const copy = (text: string | (() => string), key: string, label = '⧉ copy', plainText?: () => string) =>
-    style.copyButtons ? (
+  const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
+    const copied = async (surface: RenderSurface): Promise<string> => {
+      const content = typeof text === 'function' ? text() : text
+      const failure = html ? await copyTable($, html(), content, surface) : undefined
+      if (failure === null) return 'Copied formatted table'
+      const result = await $.ui.copy({ text: content, surface })
+      if (!result.isCopied) return `Copy failed: ${result.reason}`
+      return failure ? `Copied as plain text (${failure})` : 'Copied'
+    }
+    return style.copyButtons ? (
       <Button
         key={key}
         variant="primary"
         label={label}
-        onPress={async press => {
-          let message = 'Copy failed'
-          try {
-            const content = typeof text === 'function' ? text() : text
-            const failure = plainText
-              ? await copyTable($, content, plainText(), press.surface).then(() => null, (error: unknown) => error instanceof Error ? error.message : 'clipboard unavailable')
-              : null
-            if (plainText && failure === null) message = 'Copied formatted table'
-            else {
-              const result = await $.ui.copy({ text: plainText ? plainText() : content, surface: press.surface })
-              message = !result.isCopied ? `Copy failed: ${result.reason}` : failure ? `Copied as plain text (${failure})` : 'Copied'
-            }
-          } catch {}
-          await $.ui.toast(message)
-        }}
+        onPress={async press => $.ui.toast(await copied(press.surface).catch(() => 'Copy failed'))}
       />
     ) : null
+  }
   const drawn: Drawn = new Map()
   if (style.mermaid) {
     for (const [i, block] of blocks.entries()) {

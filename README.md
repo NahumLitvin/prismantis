@@ -91,19 +91,13 @@ The HTML action copies HTML and tab-separated plain text together, then verifies
 Applications that accept HTML can paste the table with headers, column alignment and inline formatting, including spacing inside code.
 Plain-text applications receive the table cells separated by tabs.
 
-Use a local macOS or Linux terminal.
-macOS uses its built-in `osascript`.
-On Linux, install and start [CopyQ](https://copyq.readthedocs.io/en/stable/installation.html) in your graphical session, with its `copyq` command available on `PATH`.
-On Ubuntu and Debian, this installs CopyQ, starts it and starts it again at every login:
+macOS needs nothing extra. Linux needs [CopyQ](https://copyq.readthedocs.io/en/stable/installation.html) running ([Wayland caveats](https://copyq.readthedocs.io/en/stable/known-issues.html#on-linux-some-features-do-not-work-under-wayland)); on Ubuntu:
 
 ```bash
 sudo apt install -y copyq && copyq --start-server && copyq config autostart true
 ```
 
-CopyQ supports X11 and [supported Wayland compositors](https://copyq.readthedocs.io/en/stable/known-issues.html#on-linux-some-features-do-not-work-under-wayland).
-On GNOME's Wayland session, the default on Ubuntu, start it through Xwayland with `QT_QPA_PLATFORM=xcb copyq --start-server` if formatted copies fall back to plain text.
-If both formats cannot be copied (no CopyQ, other platforms, SSH or desktop), the action copies the tab-separated plain text alone and says why in its toast.
-The `md` and `art` actions work everywhere.
+Without it, over SSH or on desktop, `⧉ html` copies the plain text alone.
 
 `[ ⧉ copy ]`, drawn in Claude Code's accent color, sits on code blocks, lists and quotes. Code blocks copy their contents and lists copy their Markdown. Quotes copy without their `> ` markers, ready to paste as a message. Diagrams get two: `⧉ source` copies the mermaid code and `⧉ art` copies the drawn art, ready to paste into a chat code block. Tables get `⧉ art` too: a plain boxed table that reads right in Slack, where pasted markdown does not. Replies end with `⧉ copy reply`, which copies the reply as Claude wrote it (one-line English narration gets none). Use it for Hebrew and Arabic: selecting right-to-left text on screen copies the letters in the order they are drawn, not the order they are read. Clicking works where the terminal passes clicks through (fullscreen mode does); terminals with copy-on-select, such as Warp, may grab the word "copy" instead. Without a mouse, `/prismantis copy` copies the last reply and `/prismantis copy code` its last code block. Since Claude Code 2.1.291 `ctrl+x` then `tab` focuses the area above the prompt, not the buttons in replies.
 

@@ -406,7 +406,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
   )
 }
 
-export type CopyButton = (text: string | (() => string), key: string, label?: string, plainText?: () => string) => RenderElement | null
+export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
 export type Drawn = Map<number, { element: RenderElement; art: string }>
 
 const copySource = (block: Block): string | undefined =>
@@ -453,8 +453,8 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block?.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
-    const html = first && block?.kind === 'table' ? copy?.(() => tableHtml(block), `html${b}`, '⧉ html', () => tableText(block)) : null
-    const button = second || html ? (
+    const html = first && block?.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    const button = second ? (
       <el.Box key={`copies${b}`} flexDirection="row" columnGap={1}>
         {first}
         {second}

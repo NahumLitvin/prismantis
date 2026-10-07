@@ -9,12 +9,9 @@ const tsvCell = (cell: Inline[]): string => {
 export const tableText = (table: Extract<Block, { kind: 'table' }>): string =>
   [table.header, ...table.rows].map(row => row.map(tsvCell).join('\t')).join('\n')
 
-const escapeHtml = (text: string): string => text
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
-  .replace(/'/g, '&#39;')
+const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+
+const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, c => ENTITIES[c]!)
 
 const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
   switch (node.kind) {

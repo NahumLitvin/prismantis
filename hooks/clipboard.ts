@@ -20,15 +20,9 @@ if (str(clipboard('text/html')) !== table.html ||
     str(clipboard('text/plain')) !== table.text) throw new Error('Clipboard verification failed')
 `
 
-export const clipboardCommand = (backend: 'macos' | 'linux', html: string, text: string) => {
-  if (backend === 'macos') return {
-    argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY],
-    stdin: JSON.stringify({ html, text }),
-    failure: 'macOS clipboard helper failed',
-  }
-  return {
-    argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'],
-    stdin: JSON.stringify({ html, text }),
-    failure: 'CopyQ failed; install and start CopyQ in the graphical session',
-  }
-}
+export const clipboardCommand = (backend: 'macos' | 'linux', html: string, text: string) => ({
+  stdin: JSON.stringify({ html, text }),
+  ...backend === 'macos'
+    ? { argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY], failure: 'macOS clipboard helper failed' }
+    : { argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'], failure: 'CopyQ failed; install and start CopyQ in the graphical session' },
+})
