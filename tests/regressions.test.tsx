@@ -1,5 +1,5 @@
 import type { On } from 'claude-code'
-import { expect, mock, test } from 'claude-code/testing'
+import { expect, test } from 'claude-code/testing'
 
 import { helpText, showcaseText } from '../hooks/help'
 import { tableHtml, tableText } from '../hooks/html'
@@ -7,6 +7,7 @@ import { parse } from '../hooks/markdown'
 import { mermaidText } from '../hooks/mermaid'
 import { tableArt } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
+import { clipboardEnv } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
 
@@ -19,8 +20,7 @@ const mount = (text: string, columns = 120) => ({
 })
 
 const stubClipboard = (on: On) => {
-  mock.env(on, {})
-  on('fs.stat', (_, e, next) => e.path.replace(/\\/g, '/').endsWith('/usr/bin/osascript') ? { deny: 'No native clipboard in this test' } : next(e))
+  clipboardEnv(on, 'other')
   const copied: string[] = []
   on('ui.copy', (_, e) => {
     copied.push(e.text)
@@ -49,7 +49,7 @@ test('an escaped trailing pipe stays in the cell', async () => {
   expect(table.rows[0]?.[1]?.map(n => ('text' in n ? n.text : '')).join('')).toBe('y|')
 })
 
-for (const surface of ['terminal', 'desktop'] as const) test(`tables keep Markdown copying available without a native clipboard on ${surface}`, async ($, on) => {
+for (const surface of ['terminal', 'desktop'] as const) test(`tables copy Markdown, and plain text in place of HTML, without a native clipboard on ${surface}`, async ($, on) => {
   const copied = stubClipboard(on)
   const source = '| a | b |\n|:--|--:|\n| `x\\|y` | **2** |'
   const ui = await $.ui.mount({ ...mount(source), surface })
@@ -57,7 +57,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`tables keep Markdo
   expect(buttons.map(button => button.props.label)).toEqual(['⧉ md', '⧉ art', '⧉ html'])
   await ui.press({ key: 'copy0' })
   await ui.press({ key: 'html0' })
-  expect(copied).toEqual([source])
+  expect(copied).toEqual([source, 'a\tb\nx|y\t2'])
   await ui.unmount()
 })
 
@@ -80,6 +80,12 @@ test('tab-separated copying quotes embedded separators and literal quotes', asyn
   const [table] = parse('| Name | Value |\n|--|--|\n| `a\tb` | "quoted" |', hl)
   if (table?.kind !== 'table') throw new Error('not a table')
   expect(tableText(table)).toBe('Name\tValue\n"a\tb"\t"""quoted"""')
+})
+
+test('tab-separated copying keeps link targets', async () => {
+  const [table] = parse('| Docs | Site |\n|--|--|\n| [guide](https://x.y/z) | https://a.b |', hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  expect(tableText(table)).toBe('Docs\tSite\nguide (https://x.y/z)\thttps://a.b')
 })
 
 test('HTML copying preserves repeated spaces inside code', async () => {

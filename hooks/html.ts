@@ -1,8 +1,8 @@
 import type { Block, Inline } from './markdown'
-import { inlineText } from './markdown'
+import { displayText } from './markdown'
 
 const tsvCell = (cell: Inline[]): string => {
-  const text = inlineText(cell)
+  const text = displayText(cell)
   return /[\t\r\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 

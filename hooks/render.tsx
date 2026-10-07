@@ -2,7 +2,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
-import { inlineText } from './markdown'
+import { displayText, inlineText } from './markdown'
 import { commentTail, commentVisual, flow, hasRtl } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
@@ -162,9 +162,6 @@ const columnWidths = (natural: number[], available: number, gap: number): number
   }
   return widths
 }
-
-const displayText = (inline: Inline[]): string =>
-  inline.map(n => (n.kind === 'link' && n.text !== n.href ? `${n.text} (${n.href})` : 'children' in n ? displayText(n.children) : n.text)).join('')
 
 const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boolean => {
   const cells = [...block.header, ...block.rows.flat()].filter(cell => displayText(cell).trim() !== '')

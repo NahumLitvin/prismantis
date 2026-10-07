@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. HTML copying preserves headers, column alignment and inline formatting from local macOS and Linux terminals. Both HTML and tab-separated plain text must be copied and verified before success is reported. Linux requires CopyQ running in the graphical session.
+- Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. HTML copying preserves headers, column alignment and inline formatting from local macOS and Linux terminals. Both HTML and tab-separated plain text must be copied and verified before success is reported. Linux requires CopyQ running in the graphical session; without it, or on other platforms, over SSH and on desktop, the action copies the plain text alone.
 
 ## [0.11.0] - 2026-10-06
 

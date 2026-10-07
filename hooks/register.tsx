@@ -1,4 +1,4 @@
-import type { EngineInterface, Register, RenderElement } from 'claude-code'
+import type { EngineInterface, Register, RenderElement, RenderSurface } from 'claude-code'
 
 import { parse } from './markdown'
 import { clipboardCommand } from './clipboard'
@@ -47,16 +47,18 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<void> => {
 
 const expandedCalls = new Set<string>()
 
-const copyTable = async ($: EngineInterface, html: string, text: string, surface: string): Promise<void> => {
-  if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) throw new Error('Use a local macOS or Linux graphical session')
+const copyTable = async ($: EngineInterface, html: string, text: string, surface: RenderSurface): Promise<void> => {
+  if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) throw new Error('HTML needs a local macOS or Linux graphical session')
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
   const backend = helper?.kind === 'file' ? 'macos'
     : await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : undefined
-  if (!backend) throw new Error('Use a local macOS or Linux graphical session')
+  if (!backend) throw new Error('HTML needs a local macOS or Linux graphical session')
   const command = clipboardCommand(backend, html, text)
   const result = await $.process.run(command.argv, {
     stdin: command.stdin,
     timeoutMs: 5000,
+  }).catch(() => {
+    throw new Error(command.failure)
   })
   if (result.exitCode !== 0) throw new Error(result.stderr.trim() || command.failure)
 }
@@ -70,20 +72,19 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
         variant="primary"
         label={label}
         onPress={async press => {
+          let message = 'Copy failed'
           try {
             const content = typeof text === 'function' ? text() : text
-            if (plainText) {
-              await copyTable($, content, plainText(), press.surface)
-              await $.ui.toast('Copied formatted table')
-              return
+            const failure = plainText
+              ? await copyTable($, content, plainText(), press.surface).then(() => null, (error: unknown) => error instanceof Error ? error.message : 'clipboard unavailable')
+              : null
+            if (plainText && failure === null) message = 'Copied formatted table'
+            else {
+              const result = await $.ui.copy({ text: plainText ? plainText() : content, surface: press.surface })
+              message = !result.isCopied ? `Copy failed: ${result.reason}` : failure ? `Copied as plain text (${failure})` : 'Copied'
             }
-            const result = await $.ui.copy({ text: content, surface: press.surface })
-            await $.ui.toast(result.isCopied ? 'Copied' : `Copy failed: ${result.reason}`)
-          } catch (error) {
-            await $.ui.toast(plainText
-              ? `Formatted table copy failed: ${error instanceof Error ? error.message : 'clipboard unavailable'}`
-              : 'Copy failed')
-          }
+          } catch {}
+          await $.ui.toast(message)
         }}
       />
     ) : null
