@@ -208,17 +208,18 @@ export const columnWidths = (natural: number[], available: number, gap: number, 
   const room = Math.max(natural.length, available - gap * (natural.length - 1))
   const total = natural.reduce((a, b) => a + b, 0)
   if (total <= room) return natural
-  const floor = natural.map((w, c) => Math.min(w, Math.max(1, words[c] ?? 1)))
+  const minimum = natural.map((w, c) => Math.min(w, Math.max(1, words[c] ?? 1)))
   const widths = natural.map(() => 0)
   let open = natural.map((_, c) => c)
   let left = room
   for (let fixed = [-1]; fixed.length; ) {
     const share = Math.floor(left / open.length)
-    const floorsFit = open.reduce((a, c) => a + floor[c]!, 0) <= left
-    const needed = open.reduce((a, c) => a + (natural[c]! <= share ? natural[c]! : floor[c]!), 0)
+    const claim = (c: number) => (natural[c]! <= share ? natural[c]! : minimum[c]!)
+    const minimumsFit = open.reduce((a, c) => a + minimum[c]!, 0) <= left
+    const needed = open.reduce((a, c) => a + claim(c), 0)
     fixed = open.filter(c => natural[c]! <= share)
-    if (floorsFit && (!fixed.length || needed > left)) fixed = open.filter(c => floor[c]! > share)
-    fixed.forEach(c => (widths[c] = natural[c]! <= share ? natural[c]! : floor[c]!, left -= widths[c]!))
+    if (minimumsFit && (!fixed.length || needed > left)) fixed = open.filter(c => minimum[c]! > share)
+    fixed.forEach(c => (widths[c] = claim(c), left -= widths[c]!))
     open = open.filter(c => !fixed.includes(c))
   }
   open.forEach((c, i) => (widths[c] = Math.max(1, Math.floor(left / open.length) + (i < left % open.length ? 1 : 0))))

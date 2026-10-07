@@ -183,13 +183,15 @@ test('wide characters take two columns in tables', async $ => {
 test('short columns stay whole next to a very wide one, and a long path is not split', () => {
   expect(columnWidths([2, 5, 20, 161], 96, 3, [2, 3, 9, 38])).toEqual([2, 5, 20, 60])
   expect(columnWidths([2, 45, 80], 86, 3, [2, 45, 7])).toEqual([2, 45, 33])
+})
+
+test('a long word takes room from a column that would fit its share', () => {
   expect(columnWidths([100, 40], 90, 2, [60, 5])).toEqual([60, 28])
 })
 
 test('columns share the room equally when even the longest words do not fit', () => {
-  const widths = columnWidths([20, 20], 13, 3, [12, 12])
-  expect(widths.reduce((a, b) => a + b, 0)).toBe(10)
-  expect(widths).toEqual([5, 5])
+  expect(columnWidths([20, 20], 13, 3, [12, 12])).toEqual([5, 5])
+  expect(columnWidths([20, 20, 20], 26, 3, [12, 12, 2])).toEqual([7, 7, 6])
 })
 
 test('a long path in a narrow table keeps its column wide enough to stay whole', async $ => {
