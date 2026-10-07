@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
-import { MAC_TABLE_COPY } from '../hooks/clipboard'
+import { LINUX_TABLE_COPY, MAC_TABLE_COPY } from '../hooks/clipboard'
 
 const source = '| Name | Value |\n|--|--:|\n| **שלום** | `$(ignored)` |'
 const mount = {
@@ -44,7 +44,7 @@ test('HTML copying on macOS writes HTML and plain text through the native helper
   await ui.unmount()
 })
 
-for (const failure of ['exit', 'refused'] as const) test(`native clipboard ${failure} copies table cells and explains the failure`, async ($, on) => {
+for (const failure of ['exit', 'refused'] as const) test(`native clipboard ${failure} reports failure without copying only plain text`, async ($, on) => {
   nativeClipboard(on)
   const toasts: string[] = []
   const copies: string[] = []
@@ -63,13 +63,13 @@ for (const failure of ['exit', 'refused'] as const) test(`native clipboard ${fai
   const ui = await $.ui.mount(mount)
   await ui.press({ key: 'html0' })
   expect(toasts).toHaveLength(1)
-  expect(toasts[0]).toContain('Copied tab-separated cells;')
+  expect(toasts[0]).toContain('Formatted table copy failed:')
   expect(toasts[0]).toContain(failure === 'exit' ? 'Clipboard unavailable' : 'Cannot start helper')
-  expect(copies).toEqual(['Name\tValue\nשלום\t$(ignored)'])
+  expect(copies).toEqual([])
   await ui.unmount()
 })
 
-for (const variable of ['SSH_CONNECTION', 'SSH_TTY']) test(`${variable} table copying uses tab-separated cells on the surface clipboard`, async ($, on) => {
+for (const variable of ['SSH_CONNECTION', 'SSH_TTY']) test(`${variable} formatted copying reports an unsupported session`, async ($, on) => {
   mock.env(on, { [variable]: 'remote connection' })
   const copies: string[] = []
   const toasts: string[] = []
@@ -89,8 +89,8 @@ for (const variable of ['SSH_CONNECTION', 'SSH_TTY']) test(`${variable} table co
   const ui = await $.ui.mount(mount)
   await ui.press({ key: 'html0' })
   expect(nativeCalls).toBe(0)
-  expect(copies).toEqual(['Name\tValue\nשלום\t$(ignored)'])
-  expect(toasts).toEqual(['Copied tab-separated cells; rich copying requires a local macOS or Linux graphical session'])
+  expect(copies).toEqual([])
+  expect(toasts).toEqual(['Formatted table copy failed: Use a local macOS or Linux graphical session'])
   await ui.unmount()
 })
 
@@ -110,11 +110,11 @@ test('desktop table copying skips the native helper even on macOS', async ($, on
   const ui = await $.ui.mount({ ...mount, surface: 'desktop' })
   await ui.press({ key: 'html0' })
   expect(nativeCalls).toBe(0)
-  expect(surfaces).toEqual(['desktop'])
+  expect(surfaces).toEqual([])
   await ui.unmount()
 })
 
-for (const failure of ['unavailable', 'refused'] as const) test(`HTML fallback reports a ${failure} surface clipboard`, async ($, on) => {
+for (const failure of ['unavailable', 'refused'] as const) test(`Markdown copying reports a ${failure} surface clipboard`, async ($, on) => {
   mock.env(on, { SSH_TTY: '/dev/pts/0' })
   const toasts: string[] = []
   on('ui.copy', () => failure === 'refused'
@@ -125,7 +125,7 @@ for (const failure of ['unavailable', 'refused'] as const) test(`HTML fallback r
     return { value: undefined }
   })
   const ui = await $.ui.mount(mount)
-  await ui.press({ key: 'html0' })
+  await ui.press({ key: 'copy0' })
   expect(toasts).toEqual([failure === 'refused' ? 'Copy failed' : 'Copy failed: no-clipboard'])
   await ui.unmount()
 })
@@ -135,7 +135,7 @@ const linuxClipboard = (on: On, environment: Record<string, string>) => {
   on('fs.stat', (_, e, next) => e.path === '/usr/bin/osascript' ? { deny: 'Not macOS' } : next(e))
 }
 
-for (const backend of ['wayland', 'x11'] as const) test(`Linux ${backend} copies HTML with the correct MIME type`, async ($, on) => {
+for (const backend of ['wayland', 'x11'] as const) test(`Linux ${backend} copies HTML and plain text together`, async ($, on) => {
   linuxClipboard(on, backend === 'wayland' ? { WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0' } : { DISPLAY: ':0' })
   const calls: { argv: readonly string[]; input: string }[] = []
   const copies: string[] = []
@@ -156,18 +156,17 @@ for (const backend of ['wayland', 'x11'] as const) test(`Linux ${backend} copies
   expect(calls).toHaveLength(0)
   await ui.press({ key: 'html0' })
   expect(calls).toHaveLength(1)
-  expect(calls[0]!.argv.slice(0, 4)).toEqual(['/bin/sh', '-c', 'exec "$@" >/dev/null 2>&1', 'prismantis-clipboard'])
-  expect(calls[0]!.argv.slice(4)).toEqual(backend === 'wayland'
-    ? ['wl-copy', '--type', 'text/html']
-    : ['xclip', '-selection', 'clipboard', '-target', 'text/html', '-in', '-silent'])
-  expect(calls[0]!.input).toContain('<strong>שלום</strong>')
-  expect(calls[0]!.input).toContain('<code style="white-space: pre-wrap">$(ignored)</code>')
+  expect(calls[0]!.argv).toEqual(['copyq', 'eval', LINUX_TABLE_COPY, '-'])
+  const payload = JSON.parse(calls[0]!.input)
+  expect(payload.text).toBe('Name\tValue\nשלום\t$(ignored)')
+  expect(payload.html).toContain('<strong>שלום</strong>')
+  expect(payload.html).toContain('<code style="white-space: pre-wrap">$(ignored)</code>')
   expect(copies).toHaveLength(0)
   expect(toasts).toEqual(['Copied formatted table'])
   await ui.unmount()
 })
 
-for (const failure of ['missing', 'exit', 'timeout'] as const) test(`Linux clipboard ${failure} falls back to table cells`, async ($, on) => {
+for (const failure of ['missing', 'exit', 'timeout'] as const) test(`Linux clipboard ${failure} reports failure without a plain-text fallback`, async ($, on) => {
   linuxClipboard(on, { DISPLAY: ':0' })
   const copies: string[] = []
   const toasts: string[] = []
@@ -185,10 +184,10 @@ for (const failure of ['missing', 'exit', 'timeout'] as const) test(`Linux clipb
   })
   const ui = await $.ui.mount(mount)
   await ui.press({ key: 'html0' })
-  expect(copies).toEqual(['Name\tValue\nשלום\t$(ignored)'])
+  expect(copies).toEqual([])
   expect(toasts).toHaveLength(1)
-  expect(toasts[0]).toContain('Copied tab-separated cells;')
-  expect(toasts[0]).toContain(failure === 'timeout' ? 'Process timed out' : 'xclip failed; check xclip is installed and X11 is available')
+  expect(toasts[0]).toContain('Formatted table copy failed:')
+  expect(toasts[0]).toContain(failure === 'timeout' ? 'Process timed out' : 'CopyQ failed; install and start CopyQ in the graphical session')
   await ui.unmount()
 })
 
@@ -207,6 +206,6 @@ for (const scenario of ['headless', 'ssh', 'desktop'] as const) test(`Linux ${sc
   const ui = await $.ui.mount({ ...mount, surface: scenario === 'desktop' ? 'desktop' : 'terminal' })
   await ui.press({ key: 'html0' })
   expect(processes).toBe(0)
-  expect(copies).toEqual(['Name\tValue\nשלום\t$(ignored)'])
+  expect(copies).toEqual([])
   await ui.unmount()
 })

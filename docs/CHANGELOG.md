@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. HTML copying preserves headers, column alignment and inline formatting from local macOS and Linux terminals. Linux uses `wl-copy` on Wayland or `xclip` on X11. If rich copying is unavailable, the action copies tab-separated cells.
+- Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. HTML copying preserves headers, column alignment and inline formatting from local macOS and Linux terminals. Both HTML and tab-separated plain text must be copied and verified before success is reported. Linux requires CopyQ running in the graphical session.
 
 ## [0.11.0] - 2026-10-06
 

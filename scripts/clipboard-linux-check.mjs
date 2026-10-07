@@ -31,19 +31,54 @@ try {
   }
   assert.ok(env.WAYLAND_DISPLAY, `Wayland did not start: ${diagnostics}`)
   const html = `<table><tr><th>Name</th></tr>${'<tr><td>Żółć &amp; שלום 中文</td></tr>'.repeat(3000)}</table>`
+  const text = `Name\n${'Żółć & שלום 中文\n'.repeat(3000)}`
   for (const backend of ['wayland', 'x11']) {
-    const command = clipboardCommand(backend, html, 'plain text')
-    const copy = spawnSync(command.argv[0], command.argv.slice(1), { input: command.stdin, env, encoding: 'utf8', timeout: 5000 })
-    assert.equal(copy.status, 0, copy.error?.message || copy.stderr || command.failure)
-    const paste = backend === 'wayland'
-      ? ['wl-paste', '--type', 'text/html', '--no-newline']
-      : ['xclip', '-selection', 'clipboard', '-target', 'text/html', '-out']
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const result = spawnSync(paste[0], paste.slice(1), { env, encoding: 'utf8', timeout: 5000 })
-      assert.equal(result.status, 0, result.error?.message || result.stderr)
-      assert.equal(result.stdout, html)
+    const session = {
+      ...env,
+      QT_QPA_PLATFORM: backend === 'wayland' ? 'wayland' : 'xcb',
+      XDG_SESSION_TYPE: backend,
+      XDG_CONFIG_HOME: join(scratch, backend),
+      COPYQ_SESSION_NAME: `test-${backend}`,
     }
-    console.log(`${backend}: Unicode HTML survives two pastes after the copy command exits`)
+    if (backend === 'x11') delete session.WAYLAND_DISPLAY
+    else delete session.DISPLAY
+    const server = spawn('copyq', [], { env: session, stdio: ['ignore', 'ignore', 'pipe'] })
+    let serverDiagnostics = ''
+    server.stderr.on('data', data => { serverDiagnostics += data })
+    server.on('error', error => { serverDiagnostics += error.message })
+    try {
+      let ready = false
+      for (let attempt = 0; attempt < 100; attempt++) {
+        if (server.exitCode !== null || server.signalCode !== null) break
+        const ping = spawnSync('copyq', ['eval', '1'], { env: session, encoding: 'utf8', timeout: 1000 })
+        if (ping.status === 0) {
+          ready = true
+          break
+        }
+        await setTimeout(100)
+      }
+      assert.ok(ready, `CopyQ did not start on ${backend}: ${serverDiagnostics}`)
+      const command = clipboardCommand('linux', html, text)
+      const copy = spawnSync(command.argv[0], command.argv.slice(1), { input: command.stdin, env: session, encoding: 'utf8', timeout: 5000 })
+      assert.equal(copy.status, 0, copy.error?.message || copy.stderr || command.failure)
+      for (let attempt = 0; attempt < 2; attempt++) {
+        for (const [mime, expected] of [['text/html', html], ['text/plain', text]]) {
+          const paste = backend === 'wayland'
+            ? ['wl-paste', '--type', mime, '--no-newline']
+            : ['xclip', '-selection', 'clipboard', '-target', mime, '-out']
+          const result = spawnSync(paste[0], paste.slice(1), { env: session, encoding: 'utf8', timeout: 5000 })
+          assert.equal(result.status, 0, result.error?.message || result.stderr)
+          assert.equal(result.stdout, expected)
+        }
+      }
+      console.log(`${backend}: distinct Unicode HTML and plain text survive two pastes after the copy command exits`)
+    } finally {
+      if (server.exitCode === null && server.signalCode === null && server.pid) {
+        const exited = new Promise(resolve => server.once('exit', resolve))
+        server.kill()
+        await exited
+      }
+    }
   }
 } finally {
   if (compositor.exitCode === null && compositor.signalCode === null && compositor.pid) {

@@ -34,7 +34,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 
 ### Copy tables
 
-Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table from a local macOS or Linux terminal. Linux needs \`wl-copy\` on Wayland or \`xclip\` on X11; plain-text apps may receive HTML source. Without a supported clipboard, HTML copying falls back to tab-separated cells.
+Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table from a local macOS or Linux terminal. HTML copying requires both HTML and tab-separated plain text. Linux needs CopyQ installed and running in the graphical session.
 
 | Item | Quantity | Status |
 |:-----|---------:|:------:|

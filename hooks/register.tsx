@@ -47,20 +47,18 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<void> => {
 
 const expandedCalls = new Set<string>()
 
-const copyTable = async ($: EngineInterface, html: string, text: string, surface: string): Promise<boolean> => {
-  if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return false
+const copyTable = async ($: EngineInterface, html: string, text: string, surface: string): Promise<void> => {
+  if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) throw new Error('Use a local macOS or Linux graphical session')
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
   const backend = helper?.kind === 'file' ? 'macos'
-    : await $.env.get('WAYLAND_DISPLAY') ? 'wayland'
-    : await $.env.get('DISPLAY') ? 'x11' : undefined
-  if (!backend) return false
+    : await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : undefined
+  if (!backend) throw new Error('Use a local macOS or Linux graphical session')
   const command = clipboardCommand(backend, html, text)
   const result = await $.process.run(command.argv, {
     stdin: command.stdin,
     timeoutMs: 5000,
   })
   if (result.exitCode !== 0) throw new Error(result.stderr.trim() || command.failure)
-  return true
 }
 
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, reply?: string): RenderElement[] => {
@@ -74,27 +72,17 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
         onPress={async press => {
           try {
             const content = typeof text === 'function' ? text() : text
-            const cells = plainText?.()
-            let fallback = ''
-            if (cells !== undefined) {
-              let copied = false
-              try {
-                copied = await copyTable($, content, cells, press.surface)
-                fallback = 'rich copying requires a local macOS or Linux graphical session'
-              } catch (error) {
-                fallback = error instanceof Error ? error.message : 'rich clipboard unavailable'
-              }
-              if (copied) {
-                await $.ui.toast('Copied formatted table')
-                return
-              }
+            if (plainText) {
+              await copyTable($, content, plainText(), press.surface)
+              await $.ui.toast('Copied formatted table')
+              return
             }
-            const result = await $.ui.copy({ text: cells ?? content, surface: press.surface })
-            await $.ui.toast(result.isCopied
-              ? cells === undefined ? 'Copied' : `Copied tab-separated cells; ${fallback}`
-              : `Copy failed: ${result.reason}`)
-          } catch {
-            await $.ui.toast('Copy failed')
+            const result = await $.ui.copy({ text: content, surface: press.surface })
+            await $.ui.toast(result.isCopied ? 'Copied' : `Copy failed: ${result.reason}`)
+          } catch (error) {
+            await $.ui.toast(plainText
+              ? `Formatted table copy failed: ${error instanceof Error ? error.message : 'clipboard unavailable'}`
+              : 'Copy failed')
           }
         }}
       />

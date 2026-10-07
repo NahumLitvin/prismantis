@@ -13,20 +13,22 @@ if (ObjC.unwrap(pasteboard.stringForType($.NSPasteboardTypeHTML)) !== payload.ht
     ObjC.unwrap(pasteboard.stringForType($.NSPasteboardTypeString)) !== payload.text) throw new Error('Clipboard verification failed')
 `
 
-export const clipboardCommand = (backend: 'macos' | 'wayland' | 'x11', html: string, text: string) => {
+export const LINUX_TABLE_COPY = `
+var table = JSON.parse(str(arguments[1]))
+copy('text/html', table.html, 'text/plain', table.text)
+if (str(clipboard('text/html')) !== table.html ||
+    str(clipboard('text/plain')) !== table.text) throw new Error('Clipboard verification failed')
+`
+
+export const clipboardCommand = (backend: 'macos' | 'linux', html: string, text: string) => {
   if (backend === 'macos') return {
     argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY],
     stdin: JSON.stringify({ html, text }),
     failure: 'macOS clipboard helper failed',
   }
-  const command = backend === 'wayland'
-    ? ['wl-copy', '--type', 'text/html']
-    : ['xclip', '-selection', 'clipboard', '-target', 'text/html', '-in', '-silent']
   return {
-    argv: ['/bin/sh', '-c', 'exec "$@" >/dev/null 2>&1', 'prismantis-clipboard', ...command],
-    stdin: html,
-    failure: backend === 'wayland'
-      ? 'wl-copy failed; check wl-clipboard is installed and Wayland is available'
-      : 'xclip failed; check xclip is installed and X11 is available',
+    argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'],
+    stdin: JSON.stringify({ html, text }),
+    failure: 'CopyQ failed; install and start CopyQ in the graphical session',
   }
 }

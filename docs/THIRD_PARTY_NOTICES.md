@@ -42,8 +42,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## Optional system clipboard tools
 
-On Linux, HTML copying calls an installed [wl-clipboard](https://github.com/bugaevc/wl-clipboard) (`wl-copy`, GPL-3.0-or-later) or [xclip](https://github.com/astrand/xclip) (GPL-2.0-or-later).
-These executables are supplied by the user's system and are not bundled with prismantis.
+On Linux, HTML copying calls an installed and running [CopyQ](https://github.com/hluk/CopyQ) (GPL-3.0-or-later).
+CopyQ is supplied by the user's system and is not bundled with prismantis.
 
 ## Color palettes
 

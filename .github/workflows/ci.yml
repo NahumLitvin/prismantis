@@ -86,10 +86,20 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends wl-clipboard xclip xvfb xauth sway
-      - name: Verify HTML on Wayland and X11
+          sudo apt-get install -y --no-install-recommends wl-clipboard xclip xvfb xauth sway libxcb-cursor0 libxkbcommon-x11-0 libegl1
+      - name: Install CopyQ
         if: runner.os == 'Linux'
-        run: xvfb-run -a node scripts/clipboard-linux-check.mjs
+        run: |
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/copyq.AppImage" https://github.com/hluk/CopyQ/releases/download/v17.0.0/CopyQ-17.0.0-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/copyq.AppImage"
+          cd "$RUNNER_TEMP"
+          ./copyq.AppImage --appimage-extract > /dev/null
+          mkdir copyq-bin
+          ln -s "$RUNNER_TEMP/squashfs-root/AppRun" copyq-bin/copyq
+          echo "$RUNNER_TEMP/copyq-bin" >> "$GITHUB_PATH"
+      - name: Verify HTML and plain text on Wayland and X11
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- xvfb-run -a node scripts/clipboard-linux-check.mjs
 
   conventions:
     runs-on: ubuntu-latest

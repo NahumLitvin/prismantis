@@ -49,7 +49,7 @@ test('an escaped trailing pipe stays in the cell', async () => {
   expect(table.rows[0]?.[1]?.map(n => ('text' in n ? n.text : '')).join('')).toBe('y|')
 })
 
-for (const surface of ['terminal', 'desktop'] as const) test(`tables copy Markdown and tab-separated cells without a native clipboard on ${surface}`, async ($, on) => {
+for (const surface of ['terminal', 'desktop'] as const) test(`tables keep Markdown copying available without a native clipboard on ${surface}`, async ($, on) => {
   const copied = stubClipboard(on)
   const source = '| a | b |\n|:--|--:|\n| `x\\|y` | **2** |'
   const ui = await $.ui.mount({ ...mount(source), surface })
@@ -57,7 +57,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`tables copy Markdo
   expect(buttons.map(button => button.props.label)).toEqual(['⧉ md', '⧉ art', '⧉ html'])
   await ui.press({ key: 'copy0' })
   await ui.press({ key: 'html0' })
-  expect(copied).toEqual([source, 'a\tb\nx|y\t2'])
+  expect(copied).toEqual([source])
   await ui.unmount()
 })
 
@@ -267,8 +267,8 @@ test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
   expect(showcaseText([])).toContain('⧉ html')
-  expect(showcaseText([])).toContain('wl-copy')
-  expect(showcaseText([])).toContain('xclip')
+  expect(showcaseText([])).toContain('CopyQ')
+  expect(showcaseText([])).toContain('plain text')
   expect(blocks.some(b => b.kind === 'table' && b.align.includes('right') && b.align.includes('center'))).toBe(true)
   const kinds = new Set(blocks.map(b => b.kind))
   for (const kind of ['heading', 'paragraph', 'list', 'code', 'quote', 'alert', 'rule', 'table']) expect(kinds.has(kind as never)).toBe(true)
