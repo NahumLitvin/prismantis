@@ -316,6 +316,14 @@ test('wide table art wraps long cells to stay 100 columns wide', async () => {
   expect(body.filter(l => l.startsWith('│')).slice(1).map(l => l.split('│')[2]!.trim()).join(' ')).toBe(long)
 })
 
+test('short table columns keep their width next to a very wide one', async () => {
+  const links = Array.from({ length: 4 }, (_, i) => `https://example.com/releases/${100 + i}/notes`).join(' , ')
+  const [table] = parse(`| # | Pri | Task | Link |\n|---|---|---|---|\n| 10 | 🔵 P2 | Approved, not merged | ${links} |`, hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  const cells = tableArt(table).split('\n').slice(1, -1).filter(l => l.startsWith('│')).map(l => l.split('│').slice(1, 4).map(c => c.trim()))
+  expect(cells[1]).toEqual(['10', '🔵 P2', 'Approved, not merged'])
+})
+
 test('copy reply copies the whole reply as written, Hebrew in reading order', { options: { rtl: 'warp' } }, async ($, on) => {
   const copied = stubClipboard(on)
   const text = 'שלום חברים, זו הדגמה של prismantis.\n\n| a | b |\n|---|---|\n| 1 | 2 |'

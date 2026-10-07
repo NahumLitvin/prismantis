@@ -153,7 +153,16 @@ const columnWidths = (natural: number[], available: number, gap: number): number
   const room = Math.max(natural.length, available - gap * (natural.length - 1))
   const total = natural.reduce((a, b) => a + b, 0)
   if (total <= room) return natural
-  const widths = natural.map(w => Math.max(1, Math.floor((w * room) / total)))
+  const widths = natural.map(() => 0)
+  let open = natural.map((_, c) => c)
+  let left = room
+  for (let fits = [-1]; fits.length; ) {
+    const share = Math.floor(left / open.length)
+    fits = open.filter(c => natural[c]! <= share)
+    fits.forEach(c => (widths[c] = natural[c]!, left -= natural[c]!))
+    open = open.filter(c => !fits.includes(c))
+  }
+  open.forEach((c, i) => (widths[c] = Math.max(1, Math.floor(left / open.length) + (i < left % open.length ? 1 : 0))))
   while (widths.reduce((a, b) => a + b, 0) > room) {
     const widest = widths.indexOf(Math.max(...widths))
     if (widths[widest]! <= 1) break
