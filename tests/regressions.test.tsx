@@ -98,7 +98,8 @@ test('a bare URL that wraps in a boxed cell links every piece to the whole URL',
   const links = await ui.findAll({ type: 'Link' })
   expect(links.length > 1).toBe(true)
   expect(links.every(l => l.props.href === url)).toBe(true)
-  expect(links.map(drawn).join('')).toBe(url)
+  expect(links.map(l => l.props.label).join('')).toBe(url)
+  expect(links.every(l => l.children.length === 0)).toBe(true)
   await ui.unmount()
 })
 

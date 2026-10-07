@@ -54,6 +54,7 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
     at += length
     if (a >= b) continue
     if ('children' in n) out.push({ ...n, children: sliceInline(n.children, a, b) })
+    else if (n.kind === 'link' && n.text === n.href) out.push({ ...n, text: n.text.slice(a, b), bare: true })
     else out.push({ ...n, text: n.text.slice(a, b) })
   }
   return out
@@ -84,7 +85,9 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
         return <Text key={key} color={t.inlineCode}>{n.text}</Text>
       case 'link':
         return /^[a-z][\w+.-]*:/i.test(n.href)
-          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
+          ? n.text === n.href ? <el.Link key={key} href={n.href} />
+            : n.bare ? <el.Link key={key} href={n.href} label={n.text} />
+            : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
           : <Text key={key} color={t.link} underline>{n.text}</Text>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
