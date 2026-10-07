@@ -356,6 +356,14 @@ test('short table columns keep their width next to a very wide one', async () =>
   expect(cells[1]).toEqual(['10', '🔵 P2', 'Approved, not merged'])
 })
 
+test('table art keeps a long path whole when the other wide column can give way', async () => {
+  const path = 'src/services/reporting/exports/monthly_pdf_writer.py'
+  const change = 'The monthly export now writes one summary file per region and uploads them after the nightly run is done'
+  const [table] = parse(`| # | File | Change |\n|---|---|---|\n| 1 | ${path} | ${change} |`, hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  expect(tableArt(table).split('\n').some(l => l.includes(path))).toBe(true)
+})
+
 test('copy reply copies the whole reply as written, Hebrew in reading order', { options: { rtl: 'warp' } }, async ($, on) => {
   const copied = stubClipboard(on)
   const text = 'שלום חברים, זו הדגמה של prismantis.\n\n| a | b |\n|---|---|\n| 1 | 2 |'

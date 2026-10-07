@@ -4,7 +4,7 @@ import type { TestBody } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
-import { formatDuration, groupSummary } from '../hooks/render'
+import { columnWidths, formatDuration, groupSummary } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -177,6 +177,36 @@ test('wide characters take two columns in tables', async $ => {
   })
   const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).slice(1)
   expect(cells[0]?.props.width).toBe(4)
+  await ui.unmount()
+})
+
+test('short columns stay whole next to a very wide one, and a long path is not split', () => {
+  expect(columnWidths([2, 5, 20, 161], 96, 3, [2, 3, 9, 38])).toEqual([2, 5, 20, 60])
+  expect(columnWidths([2, 45, 80], 86, 3, [2, 45, 7])).toEqual([2, 45, 33])
+  expect(columnWidths([100, 40], 90, 2, [60, 5])).toEqual([60, 28])
+})
+
+test('columns share the room equally when even the longest words do not fit', () => {
+  const widths = columnWidths([20, 20], 13, 3, [12, 12])
+  expect(widths.reduce((a, b) => a + b, 0)).toBe(10)
+  expect(widths).toEqual([5, 5])
+})
+
+test('a long path in a narrow table keeps its column wide enough to stay whole', async $ => {
+  const table = [
+    '| # | File | Change |',
+    '|---|---|---|',
+    '| 1 | src/services/reporting/exports/monthly_pdf.py | The monthly export now writes one summary file per region and uploads them after the nightly run |',
+  ].join('\n')
+  const ui = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'AssistantMessage',
+    props: { text: table, isFirstOfReply: true },
+    viewport: { columns: 90, rows: 40 },
+  })
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).slice(1, 4)
+  expect(cells.map(c => c.props.width)).toEqual([1, 45, 30])
   await ui.unmount()
 })
 

@@ -202,18 +202,24 @@ export const codeLine = (el: ElementTable, style: Style, line: string, lang: str
   )
 }
 
-const columnWidths = (natural: number[], available: number, gap: number): number[] => {
+const longestWord = (text: string): number => Math.max(0, ...text.split(/\s+/).map(width))
+
+export const columnWidths = (natural: number[], available: number, gap: number, words: number[] = []): number[] => {
   const room = Math.max(natural.length, available - gap * (natural.length - 1))
   const total = natural.reduce((a, b) => a + b, 0)
   if (total <= room) return natural
+  const floor = natural.map((w, c) => Math.min(w, Math.max(1, words[c] ?? 1)))
   const widths = natural.map(() => 0)
   let open = natural.map((_, c) => c)
   let left = room
-  for (let fits = [-1]; fits.length; ) {
+  for (let fixed = [-1]; fixed.length; ) {
     const share = Math.floor(left / open.length)
-    fits = open.filter(c => natural[c]! <= share)
-    fits.forEach(c => (widths[c] = natural[c]!, left -= natural[c]!))
-    open = open.filter(c => !fits.includes(c))
+    const floorsFit = open.reduce((a, c) => a + floor[c]!, 0) <= left
+    const needed = open.reduce((a, c) => a + (natural[c]! <= share ? natural[c]! : floor[c]!), 0)
+    fixed = open.filter(c => natural[c]! <= share)
+    if (floorsFit && (!fixed.length || needed > left)) fixed = open.filter(c => floor[c]! > share)
+    fixed.forEach(c => (widths[c] = natural[c]! <= share ? natural[c]! : floor[c]!, left -= widths[c]!))
+    open = open.filter(c => !fixed.includes(c))
   }
   open.forEach((c, i) => (widths[c] = Math.max(1, Math.floor(left / open.length) + (i < left % open.length ? 1 : 0))))
   while (widths.reduce((a, b) => a + b, 0) > room) {
@@ -236,7 +242,12 @@ const ART_WIDTH = 100
 
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
-  const widths = columnWidths(block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))), ART_WIDTH - 4, 3)
+  const widths = columnWidths(
+    block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))),
+    ART_WIDTH - 4,
+    3,
+    block.header.map((_, c) => Math.max(...cells.map(r => longestWord(r[c]!)))),
+  )
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
     const room = widths[c]! - width(text)
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
@@ -261,7 +272,10 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const natural = block.header.map((h, c) =>
     Math.max(width(displayText(h)), ...block.rows.map(r => width(displayText(r[c] ?? [])))),
   )
-  const widths = box ? columnWidths(natural, columns - 4, 3) : columnWidths(natural, columns, gap)
+  const words = block.header.map((h, c) =>
+    Math.max(longestWord(displayText(h)), ...block.rows.map(r => longestWord(displayText(r[c] ?? [])))),
+  )
+  const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
   const order = natural.map((_, c) => c)
   if (rtl) order.reverse()
   const ruleChar = style.tableStyle === 'grid' ? '━' : '─'
