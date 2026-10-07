@@ -2,7 +2,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 
 import type { Block, Inline } from './markdown'
 import { inlineText } from './markdown'
-import { commentTail, commentVisual, flow, hasRtl } from './rtl'
+import { commentTail, commentVisual, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -306,7 +306,22 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const edge = (k: string, [left, fill, mid, right]: string) =>
     bar(k, left + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + right)
 
-  const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar) => (
+  const terminalRow = (cells: Inline[][], k: string, isHeader: boolean) => {
+    const parts: Inline[] = box ? [{ kind: 'dim', text: '│ ' }] : []
+    order.forEach((c, i) => {
+      if (i > 0) parts.push(box ? { kind: 'dim', text: ' │ ' } : { kind: 'text', text: ' '.repeat(gap) })
+      const cell = flowOf({ ...style, shape: 'visual' }, cells[c] ?? [], Infinity)
+      const content = cell ? cell.lines[0]! : (cells[c] ?? [])
+      const pad = Math.max(0, widths[c]! - width(inlineText(content)))
+      const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
+      const before = side === 'flex-end' ? pad : side === 'center' ? Math.floor(pad / 2) : 0
+      parts.push({ kind: 'text', text: ' '.repeat(before) }, ...(isHeader ? [{ kind: 'strong' as const, children: content }] : content), { kind: 'text', text: ' '.repeat(pad - before) })
+    })
+    if (box) parts.push({ kind: 'dim', text: ' │' })
+    return <Text key={k}>{renderInline(el, style, terminalLine(parts), k)}</Text>
+  }
+
+  const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar) => rtl && style.shape === 'inverse' ? terminalRow(cells, k, isHeader) : (
     <Box key={k} flexDirection="row" columnGap={gap} alignItems="stretch">
       {box && border(`${k}.l`, '│ ')}
       {order.map((c, i) => {
