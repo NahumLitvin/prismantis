@@ -69,8 +69,8 @@ for (const failure of ['exit', 'refused'] as const) test(`native clipboard ${fai
   await ui.unmount()
 })
 
-test('SSH table copying uses tab-separated cells on the surface clipboard', async ($, on) => {
-  mock.env(on, { SSH_CONNECTION: 'remote connection' })
+for (const variable of ['SSH_CONNECTION', 'SSH_TTY']) test(`${variable} table copying uses tab-separated cells on the surface clipboard`, async ($, on) => {
+  mock.env(on, { [variable]: 'remote connection' })
   const copies: string[] = []
   const toasts: string[] = []
   let nativeCalls = 0
@@ -91,5 +91,41 @@ test('SSH table copying uses tab-separated cells on the surface clipboard', asyn
   expect(nativeCalls).toBe(0)
   expect(copies).toEqual(['Name\tValue\nשלום\t$(ignored)'])
   expect(toasts).toEqual(['Copied tab-separated cells; rich copying requires a local macOS terminal'])
+  await ui.unmount()
+})
+
+test('desktop table copying skips the native helper even on macOS', async ($, on) => {
+  nativeClipboard(on)
+  const surfaces: (string | undefined)[] = []
+  let nativeCalls = 0
+  on('process.run', () => {
+    nativeCalls++
+    return { deny: 'Must use the surface clipboard' }
+  })
+  on('ui.copy', (_, e) => {
+    surfaces.push(e.surface)
+    expect(e.text).toBe('Name\tValue\nשלום\t$(ignored)')
+    return { value: { isCopied: true as const } }
+  })
+  const ui = await $.ui.mount({ ...mount, surface: 'desktop' })
+  await ui.press({ key: 'html0' })
+  expect(nativeCalls).toBe(0)
+  expect(surfaces).toEqual(['desktop'])
+  await ui.unmount()
+})
+
+for (const failure of ['unavailable', 'refused'] as const) test(`HTML fallback reports a ${failure} surface clipboard`, async ($, on) => {
+  mock.env(on, { SSH_TTY: '/dev/pts/0' })
+  const toasts: string[] = []
+  on('ui.copy', () => failure === 'refused'
+    ? { deny: 'Clipboard denied' }
+    : { value: { isCopied: false as const, reason: 'no-clipboard' as const } })
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  const ui = await $.ui.mount(mount)
+  await ui.press({ key: 'html0' })
+  expect(toasts).toEqual([failure === 'refused' ? 'Copy failed' : 'Copy failed: no-clipboard'])
   await ui.unmount()
 })

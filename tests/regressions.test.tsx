@@ -254,6 +254,8 @@ test('a half-streamed reply with an open fence and a cut table still draws', asy
 test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
+  expect(showcaseText([])).toContain('⧉ html')
+  expect(blocks.some(b => b.kind === 'table' && b.align.includes('right') && b.align.includes('center'))).toBe(true)
   const kinds = new Set(blocks.map(b => b.kind))
   for (const kind of ['heading', 'paragraph', 'list', 'code', 'quote', 'alert', 'rule', 'table']) expect(kinds.has(kind as never)).toBe(true)
   expect(new Set(blocks.flatMap(b => (b.kind === 'heading' ? [b.level] : []))).size >= 4).toBe(true)
@@ -280,6 +282,7 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task !== undefined))).toBe(true)
   expect(blocks.some(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'link'))).toBe(true)
   expect(helpText(Object.keys(PRESETS))).toContain('/prismantis copy')
+  expect(helpText([])).toContain('HTML (local macOS terminal)')
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
