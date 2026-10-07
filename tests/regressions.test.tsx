@@ -2,7 +2,7 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
 import { helpText, showcaseText } from '../hooks/help'
-import { tableHtml } from '../hooks/html'
+import { tableHtml, tableText } from '../hooks/html'
 import { parse } from '../hooks/markdown'
 import { mermaidText } from '../hooks/mermaid'
 import { tableArt } from '../hooks/render'
@@ -69,11 +69,23 @@ test('HTML table copying escapes content and preserves safe inline formatting', 
   expect(html).toContain('<th style="text-align: center">&lt;Title&gt;</th>')
   expect(html).toContain('<em>italic</em>')
   expect(html).toContain('<del>old</del>')
-  expect(html).toContain('<code>x&lt;y</code> &amp; &quot;quoted&quot;')
+  expect(html).toContain('<code style="white-space: pre-wrap">x&lt;y</code> &amp; &quot;quoted&quot;')
   expect(html).toContain('<a href="https://example.com/?a=1&amp;b=&quot;2&quot;">go</a>')
   expect(html).toContain('&lt;script&gt;alert')
   expect(html).not.toContain('javascript:')
   expect(html).toContain('<td style="text-align: left"></td>')
+})
+
+test('tab-separated copying quotes embedded separators and literal quotes', async () => {
+  const [table] = parse('| Name | Value |\n|--|--|\n| `a\tb` | "quoted" |', hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  expect(tableText(table)).toBe('Name\tValue\n"a\tb"\t"""quoted"""')
+})
+
+test('HTML copying preserves repeated spaces inside code', async () => {
+  const [table] = parse('| Code |\n|--|\n| `a  b` |', hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  expect(tableHtml(table)).toContain('<code style="white-space: pre-wrap">a  b</code>')
 })
 
 test('copying a list returns its exact markdown', async ($, on) => {
@@ -255,6 +267,8 @@ test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
   expect(showcaseText([])).toContain('⧉ html')
+  expect(showcaseText([])).toContain('wl-copy')
+  expect(showcaseText([])).toContain('xclip')
   expect(blocks.some(b => b.kind === 'table' && b.align.includes('right') && b.align.includes('center'))).toBe(true)
   const kinds = new Set(blocks.map(b => b.kind))
   for (const kind of ['heading', 'paragraph', 'list', 'code', 'quote', 'alert', 'rule', 'table']) expect(kinds.has(kind as never)).toBe(true)
@@ -282,7 +296,7 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task !== undefined))).toBe(true)
   expect(blocks.some(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'link'))).toBe(true)
   expect(helpText(Object.keys(PRESETS))).toContain('/prismantis copy')
-  expect(helpText([])).toContain('HTML (local macOS terminal)')
+  expect(helpText([])).toContain('HTML (macOS/Linux)')
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()

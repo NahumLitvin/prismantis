@@ -87,9 +87,11 @@ When tables and diagrams follow each other, they share a row and wrap to the nex
 ### Copy buttons
 
 Tables offer `⧉ md` for the original Markdown, `⧉ art` for a boxed table, and `⧉ html` for a formatted table.
-The HTML action uses macOS's built-in `osascript` from a local terminal to copy HTML and tab-separated plain text.
-Applications that accept HTML can paste the table with headers, column alignment and inline formatting.
-On other platforms, over SSH, on desktop, or when the helper fails, the action copies tab-separated cells and explains the limitation.
+From a local macOS terminal, the HTML action copies both HTML and tab-separated plain text using the built-in `osascript`.
+On Linux, it uses `wl-copy` from [wl-clipboard](https://github.com/bugaevc/wl-clipboard) on Wayland, or [xclip](https://github.com/astrand/xclip) on X11. Install the matching package with your distribution's package manager.
+Applications that accept HTML can paste the table with headers, column alignment and inline formatting, including spacing inside code.
+The Linux tools offer HTML without a separate plain-text table; a plain-text application may paste HTML source or refuse the paste. Use `md` or `art` for those applications.
+On other platforms, over SSH, on desktop, without a graphical session, or when the helper fails, the action copies tab-separated cells and explains the limitation.
 
 `[ ⧉ copy ]`, drawn in Claude Code's accent color, sits on code blocks, lists and quotes. Code blocks copy their contents and lists copy their Markdown. Quotes copy without their `> ` markers, ready to paste as a message. Diagrams get two: `⧉ source` copies the mermaid code and `⧉ art` copies the drawn art, ready to paste into a chat code block. Tables get `⧉ art` too: a plain boxed table that reads right in Slack, where pasted markdown does not. Replies end with `⧉ copy reply`, which copies the reply as Claude wrote it (one-line English narration gets none). Use it for Hebrew and Arabic: selecting right-to-left text on screen copies the letters in the order they are drawn, not the order they are read. Clicking works where the terminal passes clicks through (fullscreen mode does); terminals with copy-on-select, such as Warp, may grab the word "copy" instead. Without a mouse, `/prismantis copy` copies the last reply and `/prismantis copy code` its last code block. Since Claude Code 2.1.291 `ctrl+x` then `tab` focuses the area above the prompt, not the buttons in replies.
 

@@ -1,7 +1,7 @@
 import type { EngineInterface, Register, RenderElement } from 'claude-code'
 
 import { parse } from './markdown'
-import { MAC_TABLE_COPY } from './html'
+import { clipboardCommand } from './clipboard'
 import { boxArt, mermaidText } from './mermaid'
 import type { Drawn } from './render'
 import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
@@ -50,12 +50,16 @@ const expandedCalls = new Set<string>()
 const copyTable = async ($: EngineInterface, html: string, text: string, surface: string): Promise<boolean> => {
   if (surface !== 'terminal' || await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return false
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
-  if (helper?.kind !== 'file') return false
-  const result = await $.process.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY], {
-    stdin: JSON.stringify({ html, text }),
+  const backend = helper?.kind === 'file' ? 'macos'
+    : await $.env.get('WAYLAND_DISPLAY') ? 'wayland'
+    : await $.env.get('DISPLAY') ? 'x11' : undefined
+  if (!backend) return false
+  const command = clipboardCommand(backend, html, text)
+  const result = await $.process.run(command.argv, {
+    stdin: command.stdin,
     timeoutMs: 5000,
   })
-  if (result.exitCode !== 0) throw new Error(result.stderr.trim() || 'macOS clipboard helper failed')
+  if (result.exitCode !== 0) throw new Error(result.stderr.trim() || command.failure)
   return true
 }
 
@@ -76,7 +80,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
               let copied = false
               try {
                 copied = await copyTable($, content, cells, press.surface)
-                fallback = 'rich copying requires a local macOS terminal'
+                fallback = 'rich copying requires a local macOS or Linux graphical session'
               } catch (error) {
                 fallback = error instanceof Error ? error.message : 'rich clipboard unavailable'
               }

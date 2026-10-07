@@ -34,7 +34,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 
 ### Copy tables
 
-Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table from a local macOS terminal. Elsewhere, HTML copying falls back to tab-separated cells.
+Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table from a local macOS or Linux terminal. Linux needs \`wl-copy\` on Wayland or \`xclip\` on X11; plain-text apps may receive HTML source. Without a supported clipboard, HTML copying falls back to tab-separated cells.
 
 | Item | Quantity | Status |
 |:-----|---------:|:------:|
@@ -132,7 +132,7 @@ Docs and issues: https://github.com/NahumLitvin/prismantis
 ### Task lists
 
 - [x] Tables, diagrams and charts drawn in the terminal
-- [x] Copy tables as Markdown, art or HTML (local macOS terminal)
+- [x] Copy tables as Markdown, art or HTML (macOS/Linux)
 - [ ] Pick a \`taskStyle\` in \`/config\`: checks, ticks, box or progress
 
 \`\`\`mermaid

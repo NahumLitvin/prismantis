@@ -69,7 +69,11 @@ jobs:
           test "$size" -lt 300000
 
   clipboard:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -78,6 +82,14 @@ jobs:
       - run: npm ci
         working-directory: scripts
       - run: npm --prefix scripts run clipboard:check
+      - name: Install Linux clipboard tools and isolated displays
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wl-clipboard xclip xvfb xauth sway
+      - name: Verify HTML on Wayland and X11
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node scripts/clipboard-linux-check.mjs
 
   conventions:
     runs-on: ubuntu-latest

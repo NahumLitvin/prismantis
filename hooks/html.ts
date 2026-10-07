@@ -1,23 +1,13 @@
 import type { Block, Inline } from './markdown'
 import { inlineText } from './markdown'
 
-export const MAC_TABLE_COPY = `
-ObjC.import('AppKit')
-var input = $.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile
-var payload = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(input, $.NSUTF8StringEncoding)))
-var item = $.NSPasteboardItem.alloc.init
-if (!item.setStringForType(payload.html, $.NSPasteboardTypeHTML) ||
-    !item.setStringForType(payload.text, $.NSPasteboardTypeString)) throw new Error('Cannot encode table')
-var pasteboard = $.NSPasteboard.generalPasteboard
-if (!pasteboard || !pasteboard.writeObjects) throw new Error('macOS clipboard is unavailable to this session')
-pasteboard.clearContents
-if (!pasteboard.writeObjects($.NSArray.arrayWithObject(item))) throw new Error('Cannot write clipboard')
-if (ObjC.unwrap(pasteboard.stringForType($.NSPasteboardTypeHTML)) !== payload.html ||
-    ObjC.unwrap(pasteboard.stringForType($.NSPasteboardTypeString)) !== payload.text) throw new Error('Clipboard verification failed')
-`
+const tsvCell = (cell: Inline[]): string => {
+  const text = inlineText(cell)
+  return /[\t\r\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
 
 export const tableText = (table: Extract<Block, { kind: 'table' }>): string =>
-  [table.header, ...table.rows].map(row => row.map(inlineText).join('\t')).join('\n')
+  [table.header, ...table.rows].map(row => row.map(tsvCell).join('\t')).join('\n')
 
 const escapeHtml = (text: string): string => text
   .replace(/&/g, '&amp;')
@@ -31,7 +21,7 @@ const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
     case 'strong': return `<strong>${inlineHtml(node.children)}</strong>`
     case 'emphasis': return `<em>${inlineHtml(node.children)}</em>`
     case 'strike': return `<del>${inlineHtml(node.children)}</del>`
-    case 'code': return `<code>${escapeHtml(node.text)}</code>`
+    case 'code': return `<code style="white-space: pre-wrap">${escapeHtml(node.text)}</code>`
     case 'link': return /^(https?:|mailto:)/i.test(node.href)
       ? `<a href="${escapeHtml(node.href)}">${escapeHtml(node.text)}</a>`
       : escapeHtml(node.text)
