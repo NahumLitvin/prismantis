@@ -87,7 +87,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends wl-clipboard xclip xvfb xauth sway libxcb-cursor0 libxkbcommon-x11-0 libegl1
+          sudo apt-get install -y --no-install-recommends wl-clipboard xclip xvfb xauth sway libxcb-cursor0 libxkbcommon-x11-0 libegl1 libopengl0
       - name: Install CopyQ
         if: runner.os == 'Linux'
         run: |
@@ -97,6 +97,7 @@ jobs:
           ./copyq.AppImage --appimage-extract > /dev/null
           ln -s AppRun squashfs-root/copyq
           echo "$RUNNER_TEMP/squashfs-root" >> "$GITHUB_PATH"
+          ./squashfs-root/copyq --version
       - name: Verify HTML and plain text on Wayland and X11
         if: runner.os == 'Linux'
         run: dbus-run-session -- xvfb-run -a node scripts/clipboard-linux-check.mjs
