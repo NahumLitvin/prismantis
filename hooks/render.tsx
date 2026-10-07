@@ -172,37 +172,38 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
 
 const ART_WIDTH = 100
 
+const wrapText = (text: string, w: number): string[] => {
+  const out: string[] = []
+  let current = ''
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    let rest = word
+    while (width(rest) > w) {
+      if (current) {
+        out.push(current)
+        current = ''
+      }
+      let piece = ''
+      for (const ch of rest) {
+        if (width(piece + ch) > w) break
+        piece += ch
+      }
+      piece ||= [...rest][0]!
+      out.push(piece)
+      rest = rest.slice(piece.length)
+    }
+    if (!rest) continue
+    const joined = current ? `${current} ${rest}` : rest
+    if (width(joined) > w) {
+      out.push(current)
+      current = rest
+    } else current = joined
+  }
+  return [...out, ...(current || !out.length ? [current] : [])]
+}
+
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
   const widths = columnWidths(block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))), ART_WIDTH - 4, 3)
-  const wrap = (text: string, w: number): string[] => {
-    const out: string[] = []
-    let current = ''
-    for (const word of text.split(/\s+/).filter(Boolean)) {
-      let rest = word
-      while (width(rest) > w) {
-        if (current) {
-          out.push(current)
-          current = ''
-        }
-        let piece = ''
-        for (const ch of rest) {
-          if (width(piece + ch) > w) break
-          piece += ch
-        }
-        piece ||= [...rest][0]!
-        out.push(piece)
-        rest = rest.slice(piece.length)
-      }
-      if (!rest) continue
-      const joined = current ? `${current} ${rest}` : rest
-      if (width(joined) > w) {
-        out.push(current)
-        current = rest
-      } else current = joined
-    }
-    return [...out, ...(current || !out.length ? [current] : [])]
-  }
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
     const room = widths[c]! - width(text)
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
@@ -210,7 +211,7 @@ export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   }
   const line = (l: string, m: string, r: string) => l + widths.map(w => '─'.repeat(w + 2)).join(m) + r
   const row = (r: string[], header: boolean) => {
-    const lines = r.map((text, c) => wrap(text, widths[c]!))
+    const lines = r.map((text, c) => wrapText(text, widths[c]!))
     return Array.from({ length: Math.max(...lines.map(l => l.length)) }, (_, i) =>
       `│ ${lines.map((l, c) => pad(l[i] ?? '', c, header ? 'center' : block.align[c] ?? 'left')).join(' │ ')} │`)
   }
@@ -244,30 +245,37 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     </Box>
   )
 
-  const bar = (k: string, text: string) => <Text key={k} color={t.tableRule} dimColor={!t.tableRule}>{text}</Text>
+  const bar = (k: string, text: string, lines = 1) => (
+    <Text key={k} color={t.tableRule} dimColor={!t.tableRule}>{Array.from({ length: lines }, () => text).join('\n')}</Text>
+  )
   const edge = (k: string, [left, fill, mid, right]: string) =>
     bar(k, left + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + right)
 
-  const row = (cells: Inline[][], k: string, isHeader: boolean) => (
-    <Box key={k} flexDirection="row" columnGap={gap}>
-      {box && bar(`${k}.l`, '│ ')}
-      {order.map((c, i) => {
-        const w = widths[c]!
-        const cell = flowOf(style, cells[c] ?? [], Infinity)
-        const content = cell ? cell.lines[0]! : (cells[c] ?? [])
-        const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
-        const cellBox = (
-          <Box key={`${k}.${c}`} width={w} flexShrink={0} justifyContent={side}>
-            {isHeader
-              ? <Text bold color={t.tableHeader}>{inlineText(content)}</Text>
-              : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>}
-          </Box>
-        )
-        return box && i > 0 ? [bar(`${k}.${c}s`, ' │ '), cellBox] : cellBox
-      })}
-      {box && bar(`${k}.r`, ' │')}
-    </Box>
-  )
+  const row = (cells: Inline[][], k: string, isHeader: boolean) => {
+    const flowed = order.map(c => flowOf(style, cells[c] ?? [], Infinity))
+    const drawn = order.map((c, i) => flowed[i]?.lines[0] ?? cells[c] ?? [])
+    const lines = box ? Math.max(1, ...order.map((c, i) => wrapText(inlineText(drawn[i]!), widths[c]!).length)) : 1
+    return (
+      <Box key={k} flexDirection="row" columnGap={gap}>
+        {box && bar(`${k}.l`, '│ ', lines)}
+        {order.map((c, i) => {
+          const w = widths[c]!
+          const cell = flowed[i]
+          const content = drawn[i]!
+          const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
+          const cellBox = (
+            <Box key={`${k}.${c}`} width={w} flexShrink={0} justifyContent={side}>
+              {isHeader
+                ? <Text bold color={t.tableHeader}>{inlineText(content)}</Text>
+                : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>}
+            </Box>
+          )
+          return box && i > 0 ? [bar(`${k}.${c}s`, ' │ ', lines), cellBox] : cellBox
+        })}
+        {box && bar(`${k}.r`, ' │', lines)}
+      </Box>
+    )
+  }
 
   if (box) {
     const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), row(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]

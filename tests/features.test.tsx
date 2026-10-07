@@ -180,6 +180,32 @@ test('wide characters take two columns in tables', async $ => {
   await ui.unmount()
 })
 
+test('a wrapped table row draws its borders on every line', async $ => {
+  const ui = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'AssistantMessage',
+    props: { text: '| a | b |\n|---|---|\n| one two three four five six seven | x |', isFirstOfReply: true },
+    viewport: { columns: 30, rows: 40 },
+  })
+  const borders = (await ui.findAll({ type: 'Text' })).map(n => n.text).filter(s => s.startsWith('│ '))
+  expect(borders.map(s => s.split('\n').length)).toEqual([1, 2])
+  await ui.unmount()
+})
+
+test('a named link in a narrow table counts as its label, so the row stays one line', async $ => {
+  const ui = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'AssistantMessage',
+    props: { text: '| a | b |\n|---|---|\n| [docs](https://github.com/org/repo/blob/main/docs/spec.md) | x |', isFirstOfReply: true },
+    viewport: { columns: 30, rows: 40 },
+  })
+  const borders = (await ui.findAll({ type: 'Text' })).map(n => n.text).filter(s => s.startsWith('│ '))
+  expect(borders.map(s => s.split('\n').length)).toEqual([1, 1])
+  await ui.unmount()
+})
+
 const FULL = [
   '# prismantis',
   '',

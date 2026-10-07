@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Boxed tables draw their vertical borders on every line of a row whose cells wrap, not just on the first, so narrow terminals no longer show gaps in the frame.
+
 ## [0.11.0] - 2026-10-06
 
 ### Added
