@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
-- Boxed tables draw their vertical borders on every line of a row whose cells wrap, not just on the first, so narrow terminals no longer show gaps in the frame.
+- Boxed tables draw their vertical borders on every line of a row whose cells wrap, not just on the first, so narrow terminals no longer show gaps in the frame. The border columns stretch to the row's height and are clipped there, so rows with links stay right whether the terminal shows a link as its text or as text plus URL.
 
 ## [0.11.0] - 2026-10-06
 

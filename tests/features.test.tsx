@@ -193,7 +193,7 @@ test('a wrapped table row draws its borders on every line', async $ => {
   await ui.unmount()
 })
 
-test('a named link in a narrow table counts as its label, so the row stays one line', async $ => {
+test('table borders are clipped to the height the row actually gets', async $ => {
   const ui = await $.ui.mount({
     plugin: 'prismantis',
     surface: 'terminal',
@@ -202,7 +202,9 @@ test('a named link in a narrow table counts as its label, so the row stays one l
     viewport: { columns: 30, rows: 40 },
   })
   const borders = (await ui.findAll({ type: 'Text' })).map(n => n.text).filter(s => s.startsWith('│ '))
-  expect(borders.map(s => s.split('\n').length)).toEqual([1, 1])
+  const clips = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.overflow === 'hidden')
+  expect(clips.length).toBe(3)
+  expect(borders.length).toBe(2)
   await ui.unmount()
 })
 

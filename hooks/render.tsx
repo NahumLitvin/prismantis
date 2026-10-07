@@ -250,14 +250,24 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   )
   const edge = (k: string, [left, fill, mid, right]: string) =>
     bar(k, left + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + right)
+  const border = (k: string, text: string, lines: number) => (
+    <Box key={k} minWidth={width(text)}>
+      <Box position="absolute" top={0} bottom={0} left={0} minWidth={width(text)} overflow="hidden">
+        {bar(`${k}.b`, text, lines)}
+      </Box>
+    </Box>
+  )
 
   const row = (cells: Inline[][], k: string, isHeader: boolean) => {
     const flowed = order.map(c => flowOf(style, cells[c] ?? [], Infinity))
     const drawn = order.map((c, i) => flowed[i]?.lines[0] ?? cells[c] ?? [])
-    const lines = box ? Math.max(1, ...order.map((c, i) => wrapText(inlineText(drawn[i]!), widths[c]!).length)) : 1
+    const count = (text: (inline: Inline[]) => string) =>
+      Math.max(1, ...order.map((c, i) => wrapText(text(drawn[i]!), widths[c]!).length))
+    const lines = box ? count(displayText) : 1
+    const edgeOf = box && lines !== count(inlineText) ? border : bar
     return (
-      <Box key={k} flexDirection="row" columnGap={gap}>
-        {box && bar(`${k}.l`, '│ ', lines)}
+      <Box key={k} flexDirection="row" columnGap={gap} alignItems="stretch">
+        {box && edgeOf(`${k}.l`, '│ ', lines)}
         {order.map((c, i) => {
           const w = widths[c]!
           const cell = flowed[i]
@@ -270,9 +280,9 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
                 : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>}
             </Box>
           )
-          return box && i > 0 ? [bar(`${k}.${c}s`, ' │ ', lines), cellBox] : cellBox
+          return box && i > 0 ? [edgeOf(`${k}.${c}s`, ' │ ', lines), cellBox] : cellBox
         })}
-        {box && bar(`${k}.r`, ' │', lines)}
+        {box && edgeOf(`${k}.r`, ' │', lines)}
       </Box>
     )
   }
