@@ -67,7 +67,7 @@ const showsImages = async ($: EngineInterface): Promise<boolean> => {
 type Latex = { command: string; dir: string }
 type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; queue: Promise<void>; failures: number }
 
-const formulaKey = (latex: LatexSession, tex: string) => `${latex.color}\0${latex.style.latexSize}\0${tex}`
+const formulaKey = (latex: LatexSession, tex: string) => `${latex.color}\0${tex}`
 
 const typeset = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], fontSize = LATEX_FONT_PX, dpr = LATEX_DPR): Promise<Formula[]> => {
   const { stdout } = await $.process.run(
@@ -86,7 +86,7 @@ const typeset = async ($: EngineInterface, latex: LatexSession, engine: Latex, t
 const withPadding = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], results: Formula[]): Promise<Formula[]> => {
   const padded: Formula[] = []
   for (const [i, result] of results.entries()) {
-    const pad = 'png' in result ? padFor(result, latex.style) : null
+    const pad = 'png' in result ? padFor(result) : null
     const [again] = pad ? await typeset($, latex, engine, [texs[i]!], pad.fontSize, pad.dpr).catch((): Formula[] => []) : []
     padded.push(again && 'png' in again && 'png' in result ? { ...result, padded: again } : result)
   }
@@ -176,7 +176,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   const Image = 'Image' in el ? el.Image : null
   if (Image) {
     for (const [i, formula] of math) {
-      const picked = pickFormula(formula, style, columns)
+      const picked = pickFormula(formula, columns)
       if (picked) drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picked.picture.png }} columns={picked.fit.columns} rows={picked.fit.rows} alt={formula.tex} /> })
     }
   }
@@ -194,7 +194,7 @@ export const register: Register = (on, options) => {
   const shared = new Map<string, ReturnType<typeof parse>>()
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
-  const latex: LatexSession = { style, color: ratexColor(style.theme.math ?? style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve(), failures: 0 }
+  const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve(), failures: 0 }
 
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {

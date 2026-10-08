@@ -1,5 +1,4 @@
 import type { Block } from './markdown'
-import type { Style } from './theme'
 
 type Picture = { png: string; width: number; height: number }
 
@@ -7,8 +6,6 @@ export type Formula = (Picture & { padded?: Picture }) | { error: true }
 
 type Size = { width: number; height: number }
 type Fit = { columns: number; rows: number }
-
-const LATEX_SIZES = { small: 0.8, normal: 1, large: 1.4 } as const
 
 export const LATEX_FONT_PX = 80
 export const LATEX_DPR = 1
@@ -54,14 +51,14 @@ export const keepFormulas = <T,>(store: Record<string, T>, fresh: readonly (read
 
 export const fitsImage = (base64: string): boolean => (base64.length * 3) / 4 <= MAX_IMAGE_BYTES
 
-const naturalRows = (size: Size, style: Style): number => (size.height * LATEX_SIZES[style.latexSize]) / PX_PER_ROW
+const naturalRows = (size: Size): number => size.height / PX_PER_ROW
 
-export const padFor = (size: Size, style: Style): { rows: number; fontSize: number; dpr: number } | null => {
-  const natural = naturalRows(size, style)
+export const padFor = (size: Size): { rows: number; fontSize: number; dpr: number } | null => {
+  const natural = naturalRows(size)
   const below = Math.floor(natural)
   const above = Math.max(1, Math.ceil(natural))
   if ((below >= 1 && below / natural >= 0.9) || above / natural <= 1.05) return null
-  const dpr = LATEX_DPR + ((above * PX_PER_ROW) / LATEX_SIZES[style.latexSize] - size.height) / (2 * RATEX_MARGIN_PX)
+  const dpr = LATEX_DPR + (above * PX_PER_ROW - size.height) / (2 * RATEX_MARGIN_PX)
   return { rows: above, fontSize: PX_PER_ROW / dpr, dpr }
 }
 
@@ -78,23 +75,23 @@ export const pngSize = (base64: string): Size | null => {
   return { width: word(16), height: word(20) }
 }
 
-const rowsOf = (size: Size, style: Style): number => Math.min(255, Math.max(1, Math.round(naturalRows(size, style))))
+const rowsOf = (size: Size): number => Math.min(255, Math.max(1, Math.round(naturalRows(size))))
 
-const fitFormula = (size: Size, style: Style, columns: number): Fit | null => {
+const fitFormula = (size: Size, columns: number): Fit | null => {
   const aspect = size.width / size.height / CELL_RATIO
   const room = Math.min(255, columns - 2)
-  let rows = rowsOf(size, style)
+  let rows = rowsOf(size)
   while (rows > 1 && Math.round(aspect * rows) > room) rows--
   const width = Math.max(1, Math.round(aspect * rows))
   return width <= room ? { columns: width, rows } : null
 }
 
-export const pickFormula = (formula: Exclude<Formula, { error: true }>, style: Style, columns: number): { picture: Picture; fit: Fit } | null => {
+export const pickFormula = (formula: Exclude<Formula, { error: true }>, columns: number): { picture: Picture; fit: Fit } | null => {
   if (formula.padded) {
-    const fit = fitFormula(formula.padded, style, columns)
-    if (fit && fit.rows === rowsOf(formula.padded, style)) return { picture: formula.padded, fit }
+    const fit = fitFormula(formula.padded, columns)
+    if (fit && fit.rows === rowsOf(formula.padded)) return { picture: formula.padded, fit }
   }
-  const fit = fitFormula(formula, style, columns)
+  const fit = fitFormula(formula, columns)
   return fit ? { picture: formula, fit } : null
 }
 

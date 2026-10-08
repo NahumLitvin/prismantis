@@ -220,13 +220,7 @@
     "diagramTextColor": {
       "type": "string",
       "title": "Diagram text",
-      "description": "Color for diagram labels. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
-      "default": ""
-    },
-    "mathColor": {
-      "type": "string",
-      "title": "Math",
-      "description": "Color for typeset LaTeX formulas. Hex, rgb(), ansi256() or a name. Empty uses the theme's diagram text color.",
+      "description": "Color for diagram labels and LaTeX formulas. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
     "toolRows": {
@@ -288,13 +282,6 @@
       "title": "LaTeX math",
       "description": "Draw $$ and ```math formulas as typeset images in kitty and Ghostty (not under tmux) with RaTeX's renderer, installed as ratex-render on your PATH. Off runs nothing. Formulas that can't be drawn stay as text.",
       "default": false
-    },
-    "latexSize": {
-      "type": "string",
-      "title": "LaTeX size",
-      "description": "How big formulas draw. normal is about the size of the reply text, small about a fifth smaller, large about two fifths larger.",
-      "default": "normal",
-      "options": ["small", "normal", "large"]
     }
   }
 }

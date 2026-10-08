@@ -100,9 +100,9 @@ sequenceDiagram
 \`\`\`mermaid
 xychart-beta
     title "Color options per group"
-    x-axis [text, head, num, code, diag, math]
+    x-axis [text, head, num, code, diag]
     y-axis "options" 0 --> 8
-    bar [7, 3, 2, 6, 2, 1]
+    bar [7, 3, 2, 6, 2]
 \`\`\`
 `
 
@@ -143,9 +143,9 @@ flowchart LR
 \`\`\`mermaid
 xychart-beta
     title "Color options per group"
-    x-axis [text, head, num, code, diag, math]
+    x-axis [text, head, num, code, diag]
     y-axis "options" 0 --> 8
-    bar [7, 3, 2, 6, 2, 1]
+    bar [7, 3, 2, 6, 2]
 \`\`\`
 
 > [!CAUTION]

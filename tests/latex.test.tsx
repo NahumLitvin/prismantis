@@ -3,7 +3,6 @@ import { expect, mock, test as base } from 'claude-code/testing'
 
 import { keepFormulas, padFor } from '../hooks/latex'
 import { parse } from '../hooks/markdown'
-import { resolveStyle } from '../hooks/theme'
 
 const PNG_160x80 = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABQAQAAAAC2JkOZAAAAFklEQVR42mNgGAWjYBSMglEwCgYeAAAGkAAB8Q2GVgAAAABJRU5ErkJggg=='
 const PNG_800x400 = 'iVBORw0KGgoAAAANSUhEUgAAAyAAAAGQAQAAAAB+XjmZAAAAPklEQVR42u3BMQEAAADCoPVPbQ0PoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4NndAAAYtfwy0AAAAASUVORK5CYII='
@@ -175,7 +174,7 @@ for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM:
   })
 }
 
-test('the renderer runs as ratex-render and mathColor reaches it', { options: { mathColor: '#ff0000' } }, async ($, on) => {
+test('the renderer runs as ratex-render', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
   const runs = ratex(on)
@@ -185,7 +184,6 @@ test('the renderer runs as ratex-render and mathColor reaches it', { options: { 
 
   expect(runs.length > 0).toBe(true)
   expect(runs.every(r => r.argv[0] === 'ratex-render')).toBe(true)
-  expect(runs.at(-1)?.argv.join(' ')).toContain('--color #ff0000')
   await ui.unmount()
 })
 
@@ -202,18 +200,15 @@ test('formulas render at font 80 and density 1, so the renderer padding takes li
 })
 
 test('a formula is padded to whole rows only when fitting it would shrink it over 10% or stretch it over 5%', async () => {
-  const style = resolveStyle({})
   const heights = [60, 80, 88, 90, 212, 228, 229, 236]
 
-  const rows = heights.map(height => padFor({ width: 600, height }, style)?.rows ?? null)
+  const rows = heights.map(height => padFor({ width: 600, height })?.rows ?? null)
 
   expect(rows).toEqual([1, null, null, 2, 3, 3, null, null])
 })
 
 test('padding raises the density as it lowers the font, so the glyphs keep their size', async () => {
-  const style = resolveStyle({})
-
-  const pads = [60, 90, 212, 228].map(height => padFor({ width: 600, height }, style))
+  const pads = [60, 90, 212, 228].map(height => padFor({ width: 600, height }))
 
   expect(pads.map(pad => (pad?.dpr ?? 0) > 1)).toEqual([true, true, true, true])
   for (const pad of pads) expect(Math.abs((pad?.fontSize ?? 0) * (pad?.dpr ?? 0) - 80)).toBeLessThan(1e-9)
@@ -248,22 +243,20 @@ test('a padded formula too wide for the terminal draws the unpadded picture inst
   await ui.unmount()
 })
 
-for (const [latexSize, height] of [['small', 4], ['normal', 5], ['large', 7]] as const) {
-  test(`latexSize ${latexSize} draws a formula ${height} rows tall and keeps its shape`, { options: { latexSize } }, async ($, on) => {
-    mock.env(on, KITTY)
-    const clock = mock.clock(on)
-    const runs = ratex(on, ok, PNG_800x400)
+test('a formula draws at its natural height and keeps its shape', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on, ok, PNG_800x400)
 
-    const ui = await $.ui.mount(reply(REPLY))
-    await clock.settle()
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
 
-    const { columns, rows } = sizeOf(await ui.find({ type: 'Image' }))
-    expect(runs.map(r => argOf(r, '--dpr'))).toEqual([1, 1])
-    expect(rows).toBe(height)
-    expect(columns / rows).toBe(4)
-    await ui.unmount()
-  })
-}
+  const { columns, rows } = sizeOf(await ui.find({ type: 'Image' }))
+  expect(runs.map(r => argOf(r, '--dpr'))).toEqual([1, 1])
+  expect(rows).toBe(5)
+  expect(columns / rows).toBe(4)
+  await ui.unmount()
+})
 
 test('a multi-line formula reaches the renderer as one line without its % comments', async ($, on) => {
   mock.env(on, KITTY)
@@ -309,7 +302,7 @@ test('an unclosed math fence does not run the renderer while it streams, and doe
   await closed.unmount()
 })
 
-test('a formula wider than the terminal shrinks to fit', { options: { latexSize: 'large' } }, async ($, on) => {
+test('a formula wider than the terminal shrinks to fit', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
   ratex(on, ok, PNG_1120x280)
@@ -389,7 +382,7 @@ test('back-to-back formulas stack one per line instead of sharing a row', async 
 })
 
 for (const [color, hex] of [['ansi256(114)', '#87d787'], ['cyanBright', '#00ffff'], ['rgb(166, 227, 161)', '#a6e3a1'], ['#fc0', '#fc0']] as const) {
-  test(`mathColor ${color} reaches the renderer as ${hex}, a color it accepts`, { options: { mathColor: color } }, async ($, on) => {
+  test(`the diagram text color ${color} reaches the renderer as ${hex}, a color it accepts`, { options: { diagramTextColor: color } }, async ($, on) => {
     mock.env(on, KITTY)
     const clock = mock.clock(on)
     const runs = ratex(on)

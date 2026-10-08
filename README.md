@@ -14,7 +14,7 @@ Colorful, themeable replies for [Claude Code](https://claude.com/claude-code): t
 
 | Feature | What you get |
 | --- | --- |
-| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 15 MIT palettes (Catppuccin, Dracula, Nord, Tokyo Night, Gruvbox, Rosé Pine, Everforest, GitHub, One Dark, Solarized) plus 21 color slots you can override |
+| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 15 MIT palettes (Catppuccin, Dracula, Nord, Tokyo Night, Gruvbox, Rosé Pine, Everforest, GitHub, One Dark, Solarized) plus 20 color slots you can override |
 | [Tables](#tables) | colored headers, rules, column alignment, colored numbers, sized to the terminal |
 | [Code](#code) | a language header and copy button, Prism highlighting in 24 languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
@@ -85,7 +85,7 @@ Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii`
 
 ### LaTeX math
 
-Display math, `$$…$$` on lines of its own or a ` ```math ` block, draws as a typeset image in the formula color (`mathColor`, or the theme's diagram text color), one formula per line. With copy buttons on, its `⧉ copy` button copies the formula's LaTeX, since selecting an image copies blank cells. It needs [RaTeX](https://github.com/erweixin/RaTeX)'s PNG renderer, a single binary that typesets KaTeX syntax in a few milliseconds without TeX, a browser or Node:
+Display math, `$$…$$` on lines of its own or a ` ```math ` block, draws as a typeset image in the theme's diagram text color, one formula per line. With copy buttons on, its `⧉ copy` button copies the formula's LaTeX, since selecting an image copies blank cells. It needs [RaTeX](https://github.com/erweixin/RaTeX)'s PNG renderer, a single binary that typesets KaTeX syntax in a few milliseconds without TeX, a browser or Node:
 
 ```bash
 gh release download -R erweixin/RaTeX -p 'ratex-cli-*-aarch64-apple-darwin.tar.gz'
@@ -98,7 +98,7 @@ Pick the archive for your platform (`x86_64-apple-darwin`, `x86_64-unknown-linux
 
 LaTeX is off until you set `latex` to `true`. Then prismantis runs `ratex-render` once in kitty and Ghostty, outside tmux, and keeps LaTeX on only if that test formula comes back. Anywhere else, without the renderer, or with `latex` off, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` stays text.
 
-Formula text matches the reply text at `latexSize: normal`; `small` and `large` are about a fifth smaller and two fifths larger. A terminal image fills whole rows, so a formula that falls between two row counts is rendered again with more padding rather than stretched.
+Formula text matches the reply text. A terminal image fills whole rows, so a formula that falls between two row counts is rendered again with more padding rather than stretched.
 
 ### Layout
 
@@ -232,7 +232,6 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
 | `latex` | `true`, `false` | `false` |
-| `latexSize` | `small`, `normal`, `large` | `normal` |
 | `<token>Color` | any color, see below | theme |
 
 A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name (`green`, `cyanBright`). Values that don't parse are ignored. Every token has a `<token>Color` option and a row in `/config`:
@@ -258,8 +257,7 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 | `tableRule` | table rules |
 | `bullet` | list bullets and numbers |
 | `diagram` | diagram lines |
-| `diagramText` | diagram labels |
-| `math` | typeset LaTeX formulas |
+| `diagramText` | diagram labels and LaTeX formulas |
 
 ## Limits
 

@@ -6,7 +6,7 @@ import { TERMINALS } from './rtl'
 
 export const TOKENS = [
   'accent', 'heading', 'strong', 'emphasis', 'inlineCode', 'codeText', 'codeCommand', 'codeFlag', 'codeString', 'codeComment',
-  'link', 'path', 'number', 'quote', 'rule', 'tableHeader', 'tableRule', 'bullet', 'diagram', 'diagramText', 'math',
+  'link', 'path', 'number', 'quote', 'rule', 'tableHeader', 'tableRule', 'bullet', 'diagram', 'diagramText',
 ] as const
 
 export type Theme = Partial<Record<(typeof TOKENS)[number], string>>
@@ -29,7 +29,6 @@ export type Style = {
   reorder: boolean
   shape: Shape
   latex: boolean
-  latexSize: 'small' | 'normal' | 'large'
 }
 
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)|ansi256\(\d{1,3}\)|(black|red|green|yellow|blue|magenta|cyan|white|gray|grey)(Bright)?)$/i
@@ -64,6 +63,5 @@ export const resolveStyle = (options: PluginOptions): Style => {
     reorder: rtl !== 'auto' && rtl !== 'off',
     shape: rtl === 'auto' || rtl === 'off' ? 'visual' : TERMINALS[rtl],
     latex: options.latex === true,
-    latexSize: pick(options.latexSize, ['small', 'normal', 'large'] as const, 'normal'),
   }
 }
