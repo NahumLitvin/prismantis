@@ -65,7 +65,7 @@ const showsImages = async ($: EngineInterface): Promise<boolean> => {
 }
 
 type Latex = { command: string; dir: string }
-type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; queue: Promise<void>; failures: number }
+type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; ready?: Latex | null; queue: Promise<void>; failures: number }
 
 const formulaKey = (latex: LatexSession, tex: string) => `${latex.color}\0${tex}`
 
@@ -101,7 +101,14 @@ const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Late
   return probe && 'png' in probe ? engine : null
 }
 
-const latexEngine = ($: EngineInterface, latex: LatexSession): Promise<Latex | null> => (latex.engine ??= startLatex($, latex).catch(() => null))
+const latexEngine = ($: EngineInterface, latex: LatexSession): Promise<Latex | null> =>
+  (latex.engine ??= startLatex($, latex)
+    .catch(() => null)
+    .then(engine => {
+      latex.ready = engine
+      if (engine) $.ui.invalidate('ui.render')
+      return engine
+    }))
 
 const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: string[]): Promise<void> => {
   const engine = await latexEngine($, latex)
@@ -112,7 +119,10 @@ const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: strin
       return withPadding($, latex, engine, texs, done)
     },
     (): Formula[] => {
-      if (++latex.failures >= 3) latex.engine = Promise.resolve(null)
+      if (++latex.failures >= 3) {
+        latex.engine = Promise.resolve(null)
+        latex.ready = null
+      }
       return texs.map(() => ({ error: true }))
     },
   )
@@ -127,7 +137,9 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
     const tex = mathOf(block)
     return tex === null ? [] : [{ i, tex, key: formulaKey(latex, tex) }]
   })
-  if (surface !== 'terminal' || maths.length === 0 || !(await latexEngine($, latex))) return new Map()
+  if (surface !== 'terminal' || maths.length === 0) return new Map()
+  void latexEngine($, latex)
+  if (!latex.ready) return new Map()
   for (const { key } of maths) latex.wanted.add(key)
   const store = (await read($, formulas)) as Record<string, Formula>
   const missing = [...new Map(maths.map(({ key, tex }) => [key, tex]))].filter(([key]) => !store[key] && !latex.pending.has(key))
@@ -212,6 +224,7 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     terminal = await applyRtl($, style)
+    void latexEngine($, latex)
     const started = await next(e)
     await $.command
       .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
@@ -245,7 +258,8 @@ export const register: Register = (on, options) => {
   on('prompt.submit', async ($, e, next) => {
     await applyRtl($, style)
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
-    const hints = (await latexEngine($, latex)) ? [HINT, LATEX_HINT] : [HINT]
+    void latexEngine($, latex)
+    const hints = latex.ready ? [HINT, LATEX_HINT] : [HINT]
     return next({ ...e, context: [...(e.context ?? []), ...hints] })
   })
 

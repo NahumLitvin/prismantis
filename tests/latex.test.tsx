@@ -22,10 +22,11 @@ type Run = { argv: readonly string[]; formulas: string[] }
 
 const ok = (formulas: string[]) => formulas.map((f, i) => `OK     ${i + 1} ${f}`).join('\n')
 
-const ratex = (on: On, answer: (formulas: string[]) => string = ok, png: string | ((run: Run) => string) = PNG_160x80) => {
+const ratex = (on: On, answer: (formulas: string[]) => string = ok, png: string | ((run: Run) => string) = PNG_160x80, hold?: Promise<void>) => {
   const runs: Run[] = []
   on('session.surfaces', () => ({ value: ['terminal'] as const }))
-  on('process.run', (_, e) => {
+  on('process.run', async (_, e) => {
+    await hold
     const formulas = (e.init?.stdin ?? '').split('\n').filter(line => line !== '')
     runs.push({ argv: e.argv, formulas })
     return { value: { exitCode: 0, stdout: answer(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
@@ -139,12 +140,52 @@ test('without the renderer installed, math stays text and no LaTeX hint is sent'
 
 test('the prompt hint says display math renders when the renderer works', async ($, on) => {
   mock.env(on, KITTY)
+  const clock = mock.clock(on)
   ratex(on)
+  on('session.start', () => ({ cwd: '/tmp' }))
   const seen = hints(on)
 
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  await clock.settle()
   await $.prompt.submit({ text: 'integrate x squared', wait: false, origin: { kind: 'composer' } })
 
   expect(seen[0]?.some(c => c.includes('$$') && c.includes('LaTeX'))).toBe(true)
+})
+
+test('a prompt sent while the renderer check is still running is not held up and carries no LaTeX hint', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  let release = () => {}
+  const held = new Promise<void>(resolve => (release = resolve))
+  ratex(on, ok, PNG_160x80, held)
+  on('session.start', () => ({ cwd: '/tmp' }))
+  const seen = hints(on)
+
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  await $.prompt.submit({ text: 'integrate x squared', wait: false, origin: { kind: 'composer' } })
+
+  expect(seen).toHaveLength(1)
+  expect(seen[0]?.some(c => c.includes('$$'))).toBe(false)
+  release()
+  await clock.settle()
+})
+
+test('a reply draws its formula as text at once and as an image when the renderer check lands', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  let release = () => {}
+  const held = new Promise<void>(resolve => (release = resolve))
+  ratex(on, ok, PNG_160x80, held)
+
+  const ui = await $.ui.mount(reply(REPLY))
+
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  release()
+  await clock.settle()
+  expect(await ui.find({ type: 'Image' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeUndefined()
+  await ui.unmount()
 })
 
 base('latex is off by default and never runs the renderer', async ($, on) => {
