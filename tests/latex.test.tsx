@@ -25,13 +25,21 @@ const ok = (formulas: string[]) => formulas.map((f, i) => `OK     ${i + 1} ${f}`
 const ratex = (on: On, answer: (formulas: string[]) => string = ok, png: string | ((run: Run) => string) = PNG_160x80, hold?: Promise<void>) => {
   const runs: Run[] = []
   on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('session.id', () => ({ value: 'sess-1' }))
   on('process.run', async (_, e) => {
     await hold
     const formulas = (e.init?.stdin ?? '').split('\n').filter(line => line !== '')
     runs.push({ argv: e.argv, formulas })
     return { value: { exitCode: 0, stdout: answer(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
-  on('fs.read', () => ({ value: { base64: typeof png === 'string' ? png : png(runs.at(-1)!) } }))
+  on('fs.read', (_, e) => {
+    const run = runs.at(-1)
+    const dir = run?.argv[run.argv.indexOf('--output-dir') + 1]
+    const file = e.path.replace(/\\/g, '/')
+    const index = Number(/\/(\d{4})\.png$/.exec(file)?.[1])
+    if (!run || index < 1 || index > run.formulas.length || !file.endsWith(`${dir}/${String(index).padStart(4, '0')}.png`)) return { deny: `no such file ${e.path}` }
+    return { value: { base64: typeof png === 'string' ? png : png(run) } }
+  })
   return runs
 }
 
@@ -175,6 +183,7 @@ test('after the renderer fails once, later formulas stay text and it is not run 
   const clock = mock.clock(on)
   let runs = 0
   on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('session.id', () => ({ value: 'sess-1' }))
   on('process.run', (_, e) => {
     runs++
     const formulas = (e.init?.stdin ?? '').split('\n').filter(line => line !== '')
@@ -204,6 +213,7 @@ test('after a later run fails, formulas already drawn stay drawn and new ones st
   const clock = mock.clock(on)
   let runs = 0
   on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('session.id', () => ({ value: 'sess-1' }))
   on('process.run', (_, e) => {
     runs++
     const formulas = (e.init?.stdin ?? '').split('\n').filter(line => line !== '')
@@ -274,7 +284,7 @@ for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM:
   })
 }
 
-test('the renderer runs as ratex-render', async ($, on) => {
+test('the renderer runs as ratex-render in one folder named for the session plus a random suffix', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
   const runs = ratex(on)
@@ -284,6 +294,9 @@ test('the renderer runs as ratex-render', async ($, on) => {
 
   expect(runs.length > 0).toBe(true)
   expect(runs.every(r => r.argv[0] === 'ratex-render')).toBe(true)
+  const dirs = [...new Set(runs.map(r => r.argv[r.argv.indexOf('--output-dir') + 1]))]
+  expect(dirs).toHaveLength(1)
+  expect(dirs[0]).toMatch(/^\/tmp\/prismantis-latex-sess-1-[0-9a-f-]{36}$/)
   await ui.unmount()
 })
 

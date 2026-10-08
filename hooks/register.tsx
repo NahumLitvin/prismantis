@@ -55,6 +55,7 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 const expandedCalls = new Set<string>()
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
+const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
 
 type Typeset = Exclude<Formula, { error: true }> & { tex: string }
 
@@ -96,7 +97,9 @@ const withPadding = async ($: EngineInterface, latex: LatexSession, engine: Late
 const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Latex | null> => {
   if (!latex.style.latex || !(await $.session.surfaces()).includes('terminal') || !(await showsImages($))) return null
   const tmp = (await $.env.get('TMPDIR')) ?? (await $.env.get('TEMP')) ?? '/tmp'
-  const engine = { command: 'ratex-render', dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${crypto.randomUUID()}` }
+  const suffix = (await read($, latexDir)) || crypto.randomUUID()
+  await update($, latexDir, () => suffix)
+  const engine = { command: 'ratex-render', dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${await $.session.id()}-${suffix}` }
   const [probe] = await typeset($, latex, engine, ['x^2'])
   return probe && 'png' in probe ? engine : null
 }

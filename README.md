@@ -51,7 +51,7 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 
 Tested in the terminal on macOS; CI runs the tests on macOS, Linux and Windows. The desktop app, VS Code and mobile should work through the same mod API but have not been checked by hand yet. Turn it off any time in `/plugin`, and Claude Code's own renderer comes back. Press ctrl+o on a reply to see the original.
 
-It's a [Claude Code mod](https://claude.com/blog/claude-code-mods) in plain TypeScript. It bundles two MIT libraries, [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for diagrams and [Prism](https://github.com/PrismJS/prism) for highlighting. It makes no network calls. The one program it runs is the optional RaTeX renderer for [LaTeX math](#latex-math), and the only files it reads are the images that renderer writes; with `latex` off (the default) neither happens. It redraws text already on your screen and, with `diagramHints` on, attaches a short model-only note to your prompts.
+It's a [Claude Code mod](https://claude.com/blog/claude-code-mods) in plain TypeScript. It bundles two MIT libraries, [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for diagrams and [Prism](https://github.com/PrismJS/prism) for highlighting. It makes no network calls. The one program it runs is the optional RaTeX renderer for [LaTeX math](#latex-math), and the only files it reads are the images that renderer writes into a `prismantis-latex-<session id>-<random suffix>` folder in your temp directory, which stays there; with `latex` off (the default) neither happens. It redraws text already on your screen and, with `diagramHints` on, attaches a short model-only note to your prompts.
 
 ### Themes
 
