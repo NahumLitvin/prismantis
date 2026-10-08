@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- LaTeX math: `$$…$$` and ` ```math ` formulas draw as typeset images in kitty and Ghostty through [RaTeX](https://github.com/erweixin/RaTeX)'s renderer, sized to the reply text and padded to whole rows, with a copy button for the LaTeX. Off by default: the `latex` option turns it on. Without the renderer or in other terminals they stay text in a `math` code block. New options `latex`, `latexCommand` and `latexSize`, and the `mathColor` slot ([#43](https://github.com/NahumLitvin/prismantis/issues/43)).
+- LaTeX math: `$$…$$` and ` ```math ` formulas draw as typeset images in kitty and Ghostty through [RaTeX](https://github.com/erweixin/RaTeX)'s renderer, sized to the reply text and padded to whole rows, with a copy button for the LaTeX. Off by default: the `latex` option turns it on, and `ratex-render` must be on your `PATH`. Without the renderer or in other terminals they stay text in a `math` code block. New options `latex` and `latexSize`, and the `mathColor` slot ([#43](https://github.com/NahumLitvin/prismantis/issues/43)).
 
 ## [0.12.0] - 2026-10-07
 

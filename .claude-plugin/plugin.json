@@ -286,14 +286,8 @@
     "latex": {
       "type": "boolean",
       "title": "LaTeX math",
-      "description": "Draw $$ and ```math formulas as typeset images in kitty and Ghostty (not under tmux) with RaTeX's renderer. Off runs nothing. Formulas that can't be drawn stay as text.",
+      "description": "Draw $$ and ```math formulas as typeset images in kitty and Ghostty (not under tmux) with RaTeX's renderer, installed as ratex-render on your PATH. Off runs nothing. Formulas that can't be drawn stay as text.",
       "default": false
-    },
-    "latexCommand": {
-      "type": "string",
-      "title": "LaTeX renderer",
-      "description": "RaTeX's PNG renderer (the render binary from its release archive), by name on your PATH or as a full path.",
-      "default": "ratex-render"
     },
     "latexSize": {
       "type": "string",

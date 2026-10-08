@@ -175,7 +175,7 @@ for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM:
   })
 }
 
-test('latexCommand and mathColor reach the renderer', { options: { latexCommand: '/opt/ratex/render', mathColor: '#ff0000' } }, async ($, on) => {
+test('the renderer runs as ratex-render and mathColor reaches it', { options: { mathColor: '#ff0000' } }, async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
   const runs = ratex(on)
@@ -184,7 +184,7 @@ test('latexCommand and mathColor reach the renderer', { options: { latexCommand:
   await clock.settle()
 
   expect(runs.length > 0).toBe(true)
-  expect(runs.every(r => r.argv[0] === '/opt/ratex/render')).toBe(true)
+  expect(runs.every(r => r.argv[0] === 'ratex-render')).toBe(true)
   expect(runs.at(-1)?.argv.join(' ')).toContain('--color #ff0000')
   await ui.unmount()
 })

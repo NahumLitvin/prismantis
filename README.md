@@ -90,12 +90,13 @@ Display math, `$$…$$` on lines of its own or a ` ```math ` block, draws as a t
 ```bash
 gh release download -R erweixin/RaTeX -p 'ratex-cli-*-aarch64-apple-darwin.tar.gz'
 tar -xzf ratex-cli-*.tar.gz
+mkdir -p ~/.local/bin
 install ratex-cli-*/render ~/.local/bin/ratex-render
 ```
 
-Pick the archive for your platform (`x86_64-apple-darwin`, `x86_64-unknown-linux-musl`, ...). Any directory on your `PATH` works; elsewhere, set `latexCommand` to the binary's path.
+Pick the archive for your platform (`x86_64-apple-darwin`, `x86_64-unknown-linux-musl`, ...). Any directory on your `PATH` works, but the file must be named `ratex-render`.
 
-LaTeX is off until you set `latex` to `true`. Then prismantis runs the renderer once in kitty and Ghostty, outside tmux, and keeps LaTeX on only if that test formula comes back. Anywhere else, without the renderer, or with `latex` off, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` stays text.
+LaTeX is off until you set `latex` to `true`. Then prismantis runs `ratex-render` once in kitty and Ghostty, outside tmux, and keeps LaTeX on only if that test formula comes back. Anywhere else, without the renderer, or with `latex` off, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` stays text.
 
 Formula text matches the reply text at `latexSize: normal`; `small` and `large` are about a fifth smaller and two fifths larger. A terminal image fills whole rows, so a formula that falls between two row counts is rendered again with more padding rather than stretched.
 
@@ -231,7 +232,6 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
 | `latex` | `true`, `false` | `false` |
-| `latexCommand` | a binary on your `PATH` or a full path | `ratex-render` |
 | `latexSize` | `small`, `normal`, `large` | `normal` |
 | `<token>Color` | any color, see below | theme |
 
