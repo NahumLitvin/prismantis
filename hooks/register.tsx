@@ -93,8 +93,7 @@ const withPadding = async ($: EngineInterface, latex: LatexSession, engine: Late
 }
 
 const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Latex | null> => {
-  if (latex.style.latex === 'off' || !(await $.session.surfaces()).includes('terminal')) return null
-  if (latex.style.latex === 'auto' && !(await showsImages($))) return null
+  if (!latex.style.latex || !(await $.session.surfaces()).includes('terminal') || !(await showsImages($))) return null
   const tmp = (await $.env.get('TMPDIR')) ?? (await $.env.get('TEMP')) ?? '/tmp'
   const engine = { command: latex.style.latexCommand, dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${crypto.randomUUID()}` }
   const [probe] = await typeset($, latex, engine, ['x^2'])

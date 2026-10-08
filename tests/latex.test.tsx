@@ -1,5 +1,5 @@
 import type { On } from 'claude-code'
-import { expect, mock, test } from 'claude-code/testing'
+import { expect, mock, test as base } from 'claude-code/testing'
 
 import { keepFormulas, padFor } from '../hooks/latex'
 import { parse } from '../hooks/markdown'
@@ -11,6 +11,11 @@ const PNG_1200x212 = 'iVBORw0KGgoAAAANSUhEUgAABLAAAADUAQAAAACkcOc9AAAANklEQVR42u
 const PNG_1228x240 = 'iVBORw0KGgoAAAANSUhEUgAABMwAAADwAQAAAADUOMULAAAAO0lEQVR42u3BMQEAAADCoPVPbQZ/oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4DkVAAATiOUPAAAAAASUVORK5CYII='
 const PNG_1120x280 = 'iVBORw0KGgoAAAANSUhEUgAABGAAAAEYAQAAAAA7PL0PAAAAPElEQVR42u3BAQ0AAADCoPdP7ewBFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAN5o4AAH0PBZhAAAAAElFTkSuQmCC'
 const PNG_900x90 = 'iVBORw0KGgoAAAANSUhEUgAAA4QAAABaAQAAAADI6aVUAAAAIElEQVR42u3BAQ0AAADCoPdPbQ8HFAAAAAAAAAAAAPBgKBQAAb8dNmgAAAAASUVORK5CYII='
+const test = ((name: string, ...rest: unknown[]) => {
+  const [opts, body] = rest.length === 1 ? [{}, rest[0]] : [rest[0] as { options?: object }, rest[1]]
+  return (base as (...args: unknown[]) => void)(name, { ...opts, options: { latex: true, ...opts.options } }, body)
+}) as unknown as typeof base
+
 const KITTY = { TERM: 'xterm-kitty', TMPDIR: '/tmp/' }
 const REPLY = 'The integral:\n\n$$\n\\int_0^1 x^2\\,dx\n$$\n\nDone.'
 
@@ -143,7 +148,7 @@ test('the prompt hint says display math renders when the renderer works', async 
   expect(seen[0]?.some(c => c.includes('$$') && c.includes('LaTeX'))).toBe(true)
 })
 
-test('latex off never runs the renderer', { options: { latex: 'off' } }, async ($, on) => {
+base('latex is off by default and never runs the renderer', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
   const runs = ratex(on)
@@ -157,7 +162,7 @@ test('latex off never runs the renderer', { options: { latex: 'off' } }, async (
 })
 
 for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM: 'Apple_Terminal' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0' }]] as const) {
-  test(`auto skips the renderer in ${name}`, async ($, on) => {
+  test(`latex skips the renderer in ${name}`, async ($, on) => {
     mock.env(on, env)
     const clock = mock.clock(on)
     const runs = ratex(on)
@@ -169,18 +174,6 @@ for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM:
     await ui.unmount()
   })
 }
-
-test('latex always renders in any terminal', { options: { latex: 'always' } }, async ($, on) => {
-  mock.env(on, { TERM_PROGRAM: 'Apple_Terminal' })
-  const clock = mock.clock(on)
-  ratex(on)
-
-  const ui = await $.ui.mount(reply(REPLY))
-  await clock.settle()
-
-  expect(await ui.find({ type: 'Image' })).toBeDefined()
-  await ui.unmount()
-})
 
 test('latexCommand and mathColor reach the renderer', { options: { latexCommand: '/opt/ratex/render', mathColor: '#ff0000' } }, async ($, on) => {
   mock.env(on, KITTY)

@@ -25,7 +25,7 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 ## Rules
 
 - Bundled code and copied palettes must be MIT. Check the license at the source repo, not a port or fork: GitHub's `license.spdx_id` misses licenses declared only in a README (Gruvbox), and ports can relicense (Tokyo Night's Neovim port is Apache-2.0, the original VS Code theme is MIT).
-- Add a dependency only when writing it ourselves is unreasonable. Use its latest release, prefer well-starred maintained projects, and record it in docs/THIRD_PARTY_NOTICES.md. The runtime dependencies today are beautiful-mermaid and Prism, both bundled. esbuild is build-time only. The one external program the mod runs is RaTeX's `render`, optional and installed by the person, for LaTeX math; nothing else runs.
+- Add a dependency only when writing it ourselves is unreasonable. Use its latest release, prefer well-starred maintained projects, and record it in docs/THIRD_PARTY_NOTICES.md. The runtime dependencies today are beautiful-mermaid and Prism, both bundled. esbuild is build-time only. The one external program the mod runs is RaTeX's `render`, installed by the person and off until they set `latex`, for LaTeX math; nothing else runs.
 - Never copy code from other projects, including other mods. Read them to learn the API, then write our own.
 - No code comments. The why goes in the commit message or PR description.
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).

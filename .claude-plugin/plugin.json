@@ -284,11 +284,10 @@
       "default": true
     },
     "latex": {
-      "type": "string",
+      "type": "boolean",
       "title": "LaTeX math",
-      "description": "Draw $$ and ```math formulas as typeset images with RaTeX. auto: in kitty and Ghostty (not under tmux) when the renderer runs. always: in any terminal, where others show the formula text. off: never run the renderer. Formulas that fail to render stay as text.",
-      "default": "auto",
-      "options": ["auto", "always", "off"]
+      "description": "Draw $$ and ```math formulas as typeset images in kitty and Ghostty (not under tmux) with RaTeX's renderer. Off runs nothing. Formulas that can't be drawn stay as text.",
+      "default": false
     },
     "latexCommand": {
       "type": "string",

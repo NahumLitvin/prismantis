@@ -47,11 +47,11 @@ Requires Claude Code **2.1.287** or later.
 
 To update, run `claude plugin marketplace update prismantis && claude plugin update prismantis@prismantis`, then `/reload` in every open session. A session keeps the version it loaded until it reloads.
 
-For LaTeX math, also put RaTeX's renderer on your `PATH`; see [LaTeX math](#latex-math). Without it, formulas draw as text.
+For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX math](#latex-math). Until then formulas draw as text.
 
 Tested in the terminal on macOS; CI runs the tests on macOS, Linux and Windows. The desktop app, VS Code and mobile should work through the same mod API but have not been checked by hand yet. Turn it off any time in `/plugin`, and Claude Code's own renderer comes back. Press ctrl+o on a reply to see the original.
 
-It's a [Claude Code mod](https://claude.com/blog/claude-code-mods) in plain TypeScript. It bundles two MIT libraries, [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for diagrams and [Prism](https://github.com/PrismJS/prism) for highlighting. It makes no network calls. The one program it runs is the optional RaTeX renderer for [LaTeX math](#latex-math), and the only files it reads are the images that renderer writes; `latex: off` stops both. It redraws text already on your screen and, with `diagramHints` on, attaches a short model-only note to your prompts.
+It's a [Claude Code mod](https://claude.com/blog/claude-code-mods) in plain TypeScript. It bundles two MIT libraries, [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) for diagrams and [Prism](https://github.com/PrismJS/prism) for highlighting. It makes no network calls. The one program it runs is the optional RaTeX renderer for [LaTeX math](#latex-math), and the only files it reads are the images that renderer writes; with `latex` off (the default) neither happens. It redraws text already on your screen and, with `diagramHints` on, attaches a short model-only note to your prompts.
 
 ### Themes
 
@@ -95,7 +95,7 @@ install ratex-cli-*/render ~/.local/bin/ratex-render
 
 Pick the archive for your platform (`x86_64-apple-darwin`, `x86_64-unknown-linux-musl`, ...). Any directory on your `PATH` works; elsewhere, set `latexCommand` to the binary's path.
 
-With `latex` on `auto` (the default), prismantis runs the renderer once in kitty and Ghostty, outside tmux, and turns LaTeX on only if that test formula comes back. Anywhere else, without the renderer, or with `latex: off`, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. `always` skips the terminal check. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` stays text.
+LaTeX is off until you set `latex` to `true`. Then prismantis runs the renderer once in kitty and Ghostty, outside tmux, and keeps LaTeX on only if that test formula comes back. Anywhere else, without the renderer, or with `latex` off, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` stays text.
 
 Formula text matches the reply text at `latexSize: normal`; `small` and `large` are about a fifth smaller and two fifths larger. A terminal image fills whole rows, so a formula that falls between two row counts is rendered again with more padding rather than stretched.
 
@@ -230,7 +230,7 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
-| `latex` | `auto`, `always`, `off` | `auto` |
+| `latex` | `true`, `false` | `false` |
 | `latexCommand` | a binary on your `PATH` or a full path | `ratex-render` |
 | `latexSize` | `small`, `normal`, `large` | `normal` |
 | `<token>Color` | any color, see below | theme |

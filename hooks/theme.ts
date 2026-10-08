@@ -28,7 +28,7 @@ export type Style = {
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
   shape: Shape
-  latex: 'auto' | 'always' | 'off'
+  latex: boolean
   latexCommand: string
   latexSize: 'small' | 'normal' | 'large'
 }
@@ -64,7 +64,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',
     shape: rtl === 'auto' || rtl === 'off' ? 'visual' : TERMINALS[rtl],
-    latex: pick(options.latex, ['auto', 'always', 'off'] as const, 'auto'),
+    latex: options.latex === true,
     latexCommand: (typeof options.latexCommand === 'string' && options.latexCommand.trim()) || 'ratex-render',
     latexSize: pick(options.latexSize, ['small', 'normal', 'large'] as const, 'normal'),
   }
