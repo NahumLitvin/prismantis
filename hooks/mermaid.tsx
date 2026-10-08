@@ -1,11 +1,16 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { remember } from './render'
+import { WIDE, remember } from './render'
 import type { Style } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
 const MAX_LINES = 80
 const textCache = new Map<string, string | null>()
+
+export const PAD = '\u200b'
+const WIDE_ALL = new RegExp(WIDE.source, 'gu')
+const widen = (source: string) => source.replaceAll(PAD, '').replace(WIDE_ALL, ch => ch + PAD)
+export const unpad = (art: string) => art.replaceAll(PAD, '')
 
 export const chartSize = (columns: number, source = '') => {
   const labels = (/^\s*x-axis\b[^[\n]*\[([^\]\n]*)\]/m.exec(source)?.[1] ?? '').split(',').map(s => s.trim().replace(/^"|"$/g, ''))
@@ -47,7 +52,8 @@ export const mermaidText =(source: string, ascii: boolean, columns: number): str
   return remember(textCache, key, () => {
     try {
       if (isChart) setChartSize(size.width, size.height)
-      const art = renderMermaidAscii(unquoteCategories(source.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
+      const prepared = unquoteCategories(source.replace(/^(\s*%%[^\n]*\n)+/, ''))
+      const art = renderMermaidAscii((isChart ? prepared : widen(prepared)).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
       return isChart ? labelBars(art, source) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')
     } catch {
       return null
@@ -127,7 +133,7 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
           const hue = colors[i]?.[at]
           let end = at + 1
           while (end < chars.length && colors[i]?.[end] === hue) end++
-          parts.push(<Text key={`t${parts.length}`} color={hue}>{chars.slice(at, end).join('')}</Text>)
+          parts.push(<Text key={`t${parts.length}`} color={hue}>{unpad(chars.slice(at, end).join(''))}</Text>)
           at = end
         }
         return <Text key={`${key}.${i}`}>{parts.length ? parts : ' '}</Text>

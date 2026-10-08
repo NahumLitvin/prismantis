@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Mermaid diagrams with Chinese, Japanese or Korean labels draw boxes as wide as their text. Each wide character takes two terminal columns, but the box layout counted it as one, so borders came out short and labels spilled past them.
+
 ## [0.12.0] - 2026-10-07
 
 ### Fixed

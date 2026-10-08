@@ -1,7 +1,7 @@
 import type { EngineInterface, Register, RenderElement } from 'claude-code'
 
 import { parse } from './markdown'
-import { boxArt, mermaidText } from './mermaid'
+import { boxArt, mermaidText, unpad } from './mermaid'
 import type { Drawn } from './render'
 import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
@@ -68,7 +68,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     for (const [i, block] of blocks.entries()) {
       if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
       const art = mermaidText(block.lines.join('\n'), style.mermaidAscii, columns)
-      if (art !== null && art.split('\n').every(l => width(l) <= columns - 2)) drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
+      if (art !== null && art.split('\n').every(l => width(unpad(l)) <= columns - 2)) drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art: unpad(art) })
     }
   }
   const elements = renderBlocks(el, style, blocks, columns, drawn, copy)

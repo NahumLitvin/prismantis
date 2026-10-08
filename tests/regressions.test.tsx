@@ -4,7 +4,7 @@ import { expect, test } from 'claude-code/testing'
 import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { mermaidText } from '../hooks/mermaid'
-import { tableArt } from '../hooks/render'
+import { tableArt, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 
 const hl = { numbers: true, paths: true }
@@ -384,4 +384,35 @@ test('double underscores inside a word stay literal, as in mcp__serena__activate
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
 
   expect(block?.kind === 'paragraph' ? inlineText(block.inline) : null).toBe('Call mcp__serena__activate_project, not this.')
+})
+
+const CJK_FLOW = 'graph LR\n  A[本地测试通过] --> B[只读核对 flyway_schema_history]\n  B --> C[推送 dev 分支]'
+
+test('a flowchart with CJK labels draws boxes as wide as their text', () => {
+  const rows = (mermaidText(CJK_FLOW, false, 200) ?? '').split('\n')
+  expect(rows.length).toBe(3)
+  const [top, label, bottom] = rows.map(r => width(r.replaceAll('\u200b', '')))
+  expect(top).toBe(label)
+  expect(bottom).toBe(label)
+})
+
+test('CJK box art reaches the screen and the art copy without placeholder characters', async ($, on) => {
+  const copied: string[] = []
+  on('ui.copy', ($, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('```mermaid\n' + CJK_FLOW + '\n```', 200), surface })
+    const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+    expect(texts.some(t => t.includes('本地测试通过'))).toBe(true)
+    expect(texts.every(t => !t.includes('\u200b'))).toBe(true)
+    await ui.press({ key: 'art0' })
+    await ui.unmount()
+  }
+  expect(copied).toHaveLength(2)
+  for (const text of copied) {
+    expect(text).toContain('本地测试通过')
+    expect(text.includes('\u200b')).toBe(false)
+  }
 })
