@@ -1,6 +1,9 @@
-import type { FormulaPicture as Picture } from '../types'
 import type { Block } from './markdown'
 import type { Style } from './theme'
+
+type Picture = { png: string; width: number; height: number }
+
+export type Formula = (Picture & { padded?: Picture }) | { error: true }
 
 type Size = { width: number; height: number }
 type Fit = { columns: number; rows: number }
@@ -86,7 +89,7 @@ const fitFormula = (size: Size, style: Style, columns: number): Fit | null => {
   return width <= room ? { columns: width, rows } : null
 }
 
-export const pickFormula = (formula: Picture & { padded?: Picture }, style: Style, columns: number): { picture: Picture; fit: Fit } | null => {
+export const pickFormula = (formula: Exclude<Formula, { error: true }>, style: Style, columns: number): { picture: Picture; fit: Fit } | null => {
   if (formula.padded) {
     const fit = fitFormula(formula.padded, style, columns)
     if (fit && fit.rows === rowsOf(formula.padded, style)) return { picture: formula.padded, fit }

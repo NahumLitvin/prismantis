@@ -1,8 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement } from 'claude-code'
 
-import type { Formula } from '../types'
+import type { Formula } from './latex'
 import { LATEX_DPR, LATEX_FONT_PX, fitsImage, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
+import type { Block } from './markdown'
 import { parse } from './markdown'
 import { boxArt, mermaidText } from './mermaid'
 import type { Drawn } from './render'
@@ -121,14 +122,14 @@ const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: strin
   for (const tex of texs) latex.pending.delete(formulaKey(latex, tex))
 }
 
-const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: string, blocks: ReturnType<typeof parse>): Promise<Map<number, Typeset>> => {
+const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: string, blocks: Block[]): Promise<Map<number, Typeset>> => {
   const maths = [...blocks.entries()].flatMap(([i, block]) => {
     const tex = mathOf(block)
     return tex === null ? [] : [{ i, tex, key: formulaKey(latex, tex) }]
   })
   if (surface !== 'terminal' || maths.length === 0 || !(await latexEngine($, latex))) return new Map()
   for (const { key } of maths) latex.wanted.add(key)
-  const store = await read($, formulas)
+  const store = (await read($, formulas)) as Record<string, Formula>
   const missing = [...new Map(maths.map(({ key, tex }) => [key, tex]))].filter(([key]) => !store[key] && !latex.pending.has(key))
   if (missing.length) {
     if (latex.batch.length === 0) {
