@@ -371,6 +371,23 @@ test('a formula draws at its natural height and keeps its shape', async ($, on) 
   await ui.unmount()
 })
 
+test('two formulas that both need padding each draw their own picture', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const picture = (run: Run) => (run.formulas.includes('b') ? PNG_1120x280 : unpaddedFirst(run))
+  const runs = ratex(on, ok, picture)
+
+  const ui = await $.ui.mount(reply('$$a$$\n\n$$b$$'))
+  await clock.settle()
+
+  const sources = (await ui.findAll({ type: 'Image' })).map(image => (image.props.source as { png?: string }).png)
+  expect(runs.filter(r => argOf(r, '--dpr') !== 1)).toHaveLength(2)
+  expect(sources).toHaveLength(2)
+  expect(sources[0]).not.toBe(PNG_1120x280)
+  expect(sources[1]).toBe(PNG_1120x280)
+  await ui.unmount()
+})
+
 test('a multi-line formula reaches the renderer as one line without its % comments', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
@@ -413,6 +430,19 @@ test('an unclosed math fence does not run the renderer while it streams, and doe
   expect(whileStreaming).toBe(0)
   expect(rendered()).toBe(1)
   await closed.unmount()
+})
+
+test('on the desktop surface a formula stays text and the renderer does not run', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+
+  const ui = await $.ui.mount({ ...reply(REPLY), surface: 'desktop' as const })
+  await clock.settle()
+
+  expect(runs).toHaveLength(0)
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  await ui.unmount()
 })
 
 test('a formula wider than the terminal shrinks to fit', async ($, on) => {
