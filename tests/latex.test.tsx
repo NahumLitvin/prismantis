@@ -170,6 +170,65 @@ test('a prompt sent while the renderer check is still running is not held up and
   await clock.settle()
 })
 
+test('after the renderer fails once, later formulas stay text and it is not run again', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  let runs = 0
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('process.run', (_, e) => {
+    runs++
+    const formulas = (e.init?.stdin ?? '').split('\n').filter(line => line !== '')
+    return runs === 1
+      ? { value: { exitCode: 0, stdout: ok(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      : { deny: 'renderer crashed' }
+  })
+  on('fs.read', () => ({ value: { base64: PNG_160x80 } }))
+
+  const first = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  const afterFailure = runs
+  const second = await $.ui.mount(reply('$$a^2 + b^2 = c^2$$'))
+  await clock.settle()
+
+  expect(afterFailure).toBe(2)
+  expect(await first.find({ type: 'Image' })).toBeUndefined()
+  expect(await first.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  expect(runs).toBe(afterFailure)
+  expect(await second.find({ type: 'Image' })).toBeUndefined()
+  await first.unmount()
+  await second.unmount()
+})
+
+test('after a later run fails, formulas already drawn stay drawn and new ones stay text', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  let runs = 0
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('process.run', (_, e) => {
+    runs++
+    const formulas = (e.init?.stdin ?? '').split('\n').filter(line => line !== '')
+    return runs <= 2
+      ? { value: { exitCode: 0, stdout: ok(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      : { deny: 'renderer crashed' }
+  })
+  on('fs.read', () => ({ value: { base64: PNG_160x80 } }))
+
+  const drawn = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  const later = await $.ui.mount(reply('$$a^2 + b^2 = c^2$$'))
+  await clock.settle()
+  const again = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+
+  expect(runs).toBe(3)
+  expect(await drawn.find({ type: 'Image' })).toBeDefined()
+  expect(await later.find({ type: 'Image' })).toBeUndefined()
+  expect(await again.find({ type: 'Image' })).toBeDefined()
+  await drawn.unmount()
+  await later.unmount()
+  await again.unmount()
+})
+
 test('a reply draws its formula as text at once and as an image when the renderer check lands', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)

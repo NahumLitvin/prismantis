@@ -65,7 +65,7 @@ const showsImages = async ($: EngineInterface): Promise<boolean> => {
 }
 
 type Latex = { command: string; dir: string }
-type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; ready?: Latex | null; queue: Promise<void>; failures: number }
+type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; ready?: Latex | null; stopped?: boolean; queue: Promise<void> }
 
 const formulaKey = (latex: LatexSession, tex: string) => `${latex.color}\0${tex}`
 
@@ -110,22 +110,20 @@ const latexEngine = ($: EngineInterface, latex: LatexSession): Promise<Latex | n
       return engine
     }))
 
+const stopLatex = (latex: LatexSession) => {
+  latex.stopped = true
+  latex.pending.clear()
+  latex.batch = []
+}
+
 const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: string[]): Promise<void> => {
   const engine = await latexEngine($, latex)
-  if (!engine) return
+  if (!engine || latex.stopped) return
   const results = await typeset($, latex, engine, texs).then(
-    done => {
-      latex.failures = 0
-      return withPadding($, latex, engine, texs, done)
-    },
-    (): Formula[] => {
-      if (++latex.failures >= 3) {
-        latex.engine = Promise.resolve(null)
-        latex.ready = null
-      }
-      return texs.map(() => ({ error: true }))
-    },
+    done => withPadding($, latex, engine, texs, done),
+    () => null,
   )
+  if (!results) return stopLatex(latex)
   const fresh = texs.map((tex, i) => [formulaKey(latex, tex), results[i]!] as const)
   await update($, formulas, store => keepFormulas(store, fresh, latex.wanted))
   latex.wanted.clear()
@@ -142,13 +140,13 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
   if (!latex.ready) return new Map()
   for (const { key } of maths) latex.wanted.add(key)
   const store = (await read($, formulas)) as Record<string, Formula>
-  const missing = [...new Map(maths.map(({ key, tex }) => [key, tex]))].filter(([key]) => !store[key] && !latex.pending.has(key))
+  const missing = latex.stopped ? [] : [...new Map(maths.map(({ key, tex }) => [key, tex]))].filter(([key]) => !store[key] && !latex.pending.has(key))
   if (missing.length) {
     if (latex.batch.length === 0) {
       $.clock.after(0, () => {
         const texs = latex.batch
         latex.batch = []
-        latex.queue = latex.queue.then(() => typesetLater($, latex, texs))
+        latex.queue = latex.queue.then(() => typesetLater($, latex, texs)).catch(() => stopLatex(latex))
       })
     }
     for (const [key, tex] of missing) {
@@ -206,7 +204,7 @@ export const register: Register = (on, options) => {
   const shared = new Map<string, ReturnType<typeof parse>>()
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
-  const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve(), failures: 0 }
+  const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
 
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {
@@ -259,7 +257,7 @@ export const register: Register = (on, options) => {
     await applyRtl($, style)
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
     void latexEngine($, latex)
-    const hints = latex.ready ? [HINT, LATEX_HINT] : [HINT]
+    const hints = latex.ready && !latex.stopped ? [HINT, LATEX_HINT] : [HINT]
     return next({ ...e, context: [...(e.context ?? []), ...hints] })
   })
 
