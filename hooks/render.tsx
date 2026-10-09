@@ -130,14 +130,18 @@ const flatten = (tokens: PrismToken[], style: Style, color?: string, italic = fa
 
 export const remember = <T,>(cache: Map<string, T>, key: string, make: () => T, limit = 200): T => {
   const hit = cache.get(key)
-  if (hit !== undefined) return hit
+  if (hit !== undefined) {
+    cache.delete(key)
+    cache.set(key, hit)
+    return hit
+  }
   const value = make()
   cache.set(key, value)
   if (cache.size > limit) cache.delete(cache.keys().next().value!)
   return value
 }
 
-const highlighted = new WeakMap<Style, Map<string, Segment[][]>>()
+const highlighted = new WeakMap<Theme, Map<string, Segment[][]>>()
 
 const grammarFor = (lang: string) => {
   const name = lang.toLowerCase()
@@ -149,9 +153,9 @@ export const highlightBlock = ({ Text }: ElementTable, style: Style, lines: stri
   const grammar = grammarFor(lang)
   if (!grammar) return null
   const code = lines.join('\n')
-  const cache = highlighted.get(style) ?? new Map<string, Segment[][]>()
-  highlighted.set(style, cache)
-  const rows = remember(cache, `${lang}\0${code}`, () => {
+  const cache = highlighted.get(style.theme) ?? new Map<string, Segment[][]>()
+  highlighted.set(style.theme, cache)
+  const rows = remember(cache, `${style.reorder ? style.shape : ''}\0${lang}\0${code}`, () => {
     const out: Segment[][] = [[]]
     for (const seg of flatten(tokenize(code, grammar), style)) {
       seg.text.split('\n').forEach((piece, i) => {
