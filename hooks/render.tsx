@@ -633,13 +633,24 @@ const toolLayout = (el: ElementTable, style: Style, columns: number, label: stri
   )
 }
 
-export const shortPath = (style: Style, path: string): string => {
+type Places = Pick<Style, 'cwd' | 'home'>
+
+export const shortPath = (style: Places, path: string): string => {
   for (const [root, prefix] of [[style.cwd, ''], [style.home, '~/']] as const) {
     const base = root.replace(/\/+$/, '')
     if (base !== '' && path.startsWith(`${base}/`)) return prefix + path.slice(base.length + 1)
   }
   return path
 }
+
+const compactPath = (path: string): string => {
+  const parts = path.split('/')
+  if (!path.startsWith('/') || parts.length <= 6) return path
+  return [...parts.slice(0, 3), '…', ...parts.slice(-2)].join('/')
+}
+
+export const shortTarget = (places: Places, path: string): string => (path === places.cwd ? '.' : path === places.home ? '~' : compactPath(shortPath(places, path)))
+
 
 const PATH_FIELDS = ['file_path', 'notebook_path', 'path']
 
@@ -649,7 +660,97 @@ const targetOf = (style: Style, input: unknown, fields: string[]): { target?: st
   return { target: isPathField ? shortPath(style, target!) : target, isPathField }
 }
 
+const RESULT_LINES = 3
+
+export const renderShellResult = (el: ElementTable, style: Style, output: unknown): RenderElement => {
+  const { Box, Text } = el
+  const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
+  const shown = [...lines(out.stdout), ...lines(out.stderr)]
+  const head = shown.slice(0, RESULT_LINES).map(l => shortenPaths(l, style))
+  return (
+    <Box flexDirection="row">
+      <Text dimColor>{'  ⎿  '}</Text>
+      <Box flexDirection="column">
+        {head.length === 0 ? <Text dimColor>(No output)</Text> : head.map((l, i) => <Text key={`l${i}`} wrap="truncate-end">{l === '' ? ' ' : l}</Text>)}
+        {shown.length > head.length ? <Text dimColor>{`… +${shown.length - head.length} lines`}</Text> : null}
+      </Box>
+    </Box>
+  )
+}
+
+const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s.*|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i
+
+const REFUSAL = /^(Error:\s*)?(The user doesn't want to proceed|Permission (for|to) .*\bdenied|The server-side auto mode classifier|\S+ hook error:)/i
+
+export const refusalReason = (output: unknown): string | undefined => {
+  if (typeof output !== 'string' || /^(Error:\s*)?Exit code \d+/m.test(output) || !REFUSAL.test(output)) return undefined
+  return output.replace(/\s+/g, ' ').trim()
+}
+
+export const CALLS_REMEMBERED = 2000
+
+export const rememberCall = (calls: Set<string>, id: string, limit = CALLS_REMEMBERED): void => {
+  calls.delete(id)
+  calls.add(id)
+  if (calls.size > limit) calls.delete(calls.values().next().value!)
+}
+
+export const errorReason = (output: unknown): string | undefined => {
+  const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
+  const text = typeof output === 'string' ? output : typeof out.stderr === 'string' && out.stderr.trim() ? out.stderr : out.stdout
+  if (typeof text !== 'string') return undefined
+  return text.split('\n').map(l => l.trim()).filter(l => l !== '' && !NOISE_LINES.test(l)).at(-1)
+}
+
+export const renderFailure = (el: ElementTable, style: Style, output: unknown, key?: string): RenderElement | undefined => {
+  const refusal = refusalReason(output)
+  const reason = refusal ?? errorReason(output)
+  if (reason === undefined) return undefined
+  const chat = style.toolStyle === 'chat'
+  return (
+    <el.Box key={key} flexDirection="row" width="100%" justifyContent={chat ? 'flex-end' : 'flex-start'}>
+      <el.Text color={style.theme.codeFlag} wrap={refusal === undefined ? 'truncate-middle' : 'wrap'}>{`${chat ? '' : '  ⎿ '}${refusal ?? shortenPaths(reason, style)}`}</el.Text>
+    </el.Box>
+  )
+}
+
+const callLabel = (call: ToolRow, style: Style): string => {
+  const isShell = call.tool === 'Bash' || call.tool === 'PowerShell'
+  if (isShell) {
+    const command = field(call.input, 'command') ?? ''
+    const plain = call.tool === 'Bash' ? describeShell(command, style) : undefined
+    if (plain) return plain
+    const description = field(call.input, 'description')
+    if (description === undefined) return `Ran ${shortenPaths(command.split('\n')[0]!, style)}`
+    const programs = call.tool === 'Bash' ? programsOf(command) : []
+    return programs.length ? `${description} · ${programs.join(', ')}` : description
+  }
+  if (call.tool === 'Grep') {
+    const pattern = field(call.input, 'pattern')
+    const path = field(call.input, 'path')
+    if (pattern !== undefined) return `Searched ${path === undefined ? '.' : shortTarget(style, path)} for "${pattern}"`
+  }
+  const verb = call.tool === 'Skill' ? 'Loaded skill' : VERBS[call.tool] ?? call.tool.replace(/^mcp__([^_]+)__/, '$1 ')
+  const target = field(call.input, 'skill', ...TARGET_FIELDS)
+  const args = call.tool === 'Skill' ? field(call.input, 'args') : undefined
+  return target === undefined ? verb : `${verb} ${shortTarget(style, target)}${args ? ` ${args}` : ''}`
+}
+
+const quietToolRow = (el: ElementTable, style: Style, row: ToolRow, columns: number): RenderElement => {
+  const t = style.theme
+  const dot = row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
+  const what = callLabel(row, style)
+  const label = `${what}${row.isInterrupted ? ' interrupted' : row.isErrored ? ' failed' : ''}`
+  return toolLayout(el, style, columns, label, dot, row.isRunning, (
+    <el.Text wrap="truncate-end" dimColor={toolDim(style)}>
+      {what}
+      {row.isInterrupted ? <el.Text dimColor> interrupted</el.Text> : row.isErrored ? <el.Text color={t.codeFlag}> failed</el.Text> : null}
+    </el.Text>
+  ))
+}
+
 export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = 100): RenderElement => {
+  if (style.toolOutput === 'quiet') return quietToolRow(el, style, row, columns)
   const { Box, Text } = el
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
@@ -668,6 +769,241 @@ export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, colu
         {row.isInterrupted ? <Text dimColor> interrupted</Text> : row.isErrored ? <Text color={t.codeFlag}> failed</Text> : null}
       </Text>
   ))
+}
+
+const READ_TOOLS = new Set(['Read', 'Grep', 'Glob', 'LS', 'NotebookRead', 'WebFetch', 'WebSearch', 'Skill'])
+
+const READ_COMMANDS = new Set([
+  'awk', 'basename', 'cat', 'cd', 'column', 'cut', 'diff', 'dirname', 'du', 'echo', 'file', 'find', 'grep', 'head', 'jq', 'less',
+  'ls', 'nl', 'pdftotext', 'printf', 'pwd', 'readlink', 'realpath', 'rg', 'sed', 'sort', 'stat', 'tail', 'test', 'tr', 'tree',
+  'true', 'uniq', 'wc', 'which',
+])
+
+const READ_SUBCOMMANDS: Record<string, RegExp> = {
+  git: /^(log|show|diff|status|blame|grep|ls-files|rev-parse|branch --show-current)\b/,
+  gh: /^((pr|issue|run|release) (view|list|diff|checks)|search)\b/,
+}
+
+const flagValue = (args: string[], i: number, flag: string): string => {
+  const arg = args[i]!
+  return arg === flag ? (args[i + 1] ?? '') : arg.slice(flag.length).replace(/^=/, '')
+}
+
+const ghApiReadsOnly = (rest: string[]): boolean =>
+  !rest.some((a, i) => {
+    if (/^(-[fF]|--field|--raw-field|--input)/.test(a)) return true
+    if (!/^(-X|--method)/.test(a)) return false
+    return !/^GET$/i.test(flagValue(rest, i, a.startsWith('--') ? '--method' : '-X'))
+  })
+
+type ShellPart = { words: string[]; piped: boolean }
+
+const HEREDOC = /<<(?!<)-?\s*(['"]?)([A-Za-z_][\w-]*)\1/g
+
+const dropHeredocBodies = (command: string): string => {
+  const lines = command.split('\n')
+  const out: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!
+    out.push(line)
+    for (const [, , end] of line.matchAll(HEREDOC)) {
+      while (i + 1 < lines.length && lines[i + 1]!.trim() !== end) i++
+      i++
+    }
+  }
+  return out.join('\n')
+}
+
+const parseShell = (source: string): { segments: ShellPart[]; redirects: boolean } => {
+  const command = dropHeredocBodies(source)
+  const segments: ShellPart[] = [{ words: [], piped: false }]
+  let word = ''
+  let quote = ''
+  let started = false
+  let redirects = false
+  const current = () => segments[segments.length - 1]!
+  const endWord = () => {
+    if (started) current().words.push(word)
+    word = ''
+    started = false
+  }
+  const endSegment = (piped: boolean) => {
+    endWord()
+    if (current().words.length) segments.push({ words: [], piped })
+    else current().piped = piped
+  }
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i]!
+    if (quote) {
+      if (ch === quote) quote = ''
+      else if (ch === '\\' && quote === '"' && /[$`"\\\n]/.test(command[i + 1] ?? '')) word += command[++i]
+      else word += ch
+    } else if (ch === '"' || ch === "'") {
+      quote = ch
+      started = true
+    } else if (ch === '\\' && command[i + 1] === '\n') {
+      i++
+    } else if (ch === '\\' && i + 1 < command.length) {
+      word += command[++i]
+      started = true
+    } else if (ch === '\n' || ch === ';') {
+      endSegment(false)
+    } else if (ch === '&' && command[i + 1] === '&') {
+      i++
+      endSegment(false)
+    } else if (ch === '&' && command[i + 1] !== '>' && command[i - 1] !== '|' && command[i - 1] !== '>') {
+      endSegment(false)
+    } else if (ch === '|') {
+      const or = command[i + 1] === '|'
+      if (or) i++
+      endSegment(!or)
+    } else if (ch === '>' || ch === '<') {
+      const harmless = ch === '>' && /^(&\d|\s*\/dev\/null)/.exec(command.slice(i + 1))
+      if (harmless) i += harmless[0].length
+      else redirects = true
+      if (/^(\d|&)$/.test(word)) {
+        word = ''
+        started = false
+      }
+      endWord()
+    } else if (/\s/.test(ch)) {
+      endWord()
+    } else {
+      word += ch
+      started = true
+    }
+  }
+  endWord()
+  return { segments: segments.filter(s => s.words.length), redirects }
+}
+
+const isAssignment = (word: string) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(word)
+
+const LEADING_KEYWORDS = new Set(['do', 'then', 'else', 'elif', 'if', 'while', 'until', '!', '{', '(', 'time'])
+const HEADER_KEYWORDS = new Set(['for', 'select', 'done', 'fi', 'esac', '}', ')'])
+
+const commandWords = (words: string[]) => {
+  let i = 0
+  while (i < words.length && (isAssignment(words[i]!) || LEADING_KEYWORDS.has(words[i]!))) i++
+  return HEADER_KEYWORDS.has(words[i] ?? '') ? [] : words.slice(i)
+}
+
+const readsOnly = ({ words }: ShellPart): boolean => {
+  const [name, ...rest] = commandWords(words)
+  if (name === undefined) return true
+  const args = rest.join(' ')
+  if (name === 'gh' && rest[0] === 'api') return ghApiReadsOnly(rest.slice(1))
+  if (name in READ_SUBCOMMANDS) return READ_SUBCOMMANDS[name]!.test(args)
+  if (!READ_COMMANDS.has(name)) return false
+  if (name === 'sed') {
+    const [script, ...files] = rest.filter(a => a !== '-n')
+    return script !== undefined && /^\d+(,\d+)?p$/.test(script) && files.every(f => !f.startsWith('-'))
+  }
+  if (name === 'find') return !rest.some(a => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/.test(a))
+  if (name === 'awk') return !/system\s*\(|getline|[|>]/.test(args)
+  if (name === 'sort') return !rest.some(a => /^(-[A-Za-z]*o|--output)/.test(a))
+  if (name === 'uniq') return operandsOf(name, rest).length < 2
+  if (name === 'tree') return !rest.some(a => /^(-o|--output)/.test(a))
+  if (name === 'rg') return !rest.some(a => /^--pre/.test(a))
+  if (name === 'pdftotext') return rest.at(-1) === '-'
+  return true
+}
+
+export const isReadOnlyCall = (tool: string, input: unknown): boolean => {
+  if (READ_TOOLS.has(tool)) return true
+  if (tool !== 'Bash' && tool !== 'PowerShell') return false
+  const command = field(input, 'command')
+  if (command === undefined) return false
+  if (/\$\(|`|<<|\btee\b/.test(command)) return false
+  const shell = parseShell(command)
+  return !shell.redirects && shell.segments.every(readsOnly)
+}
+
+const TRIVIAL_PROGRAMS = new Set(['cd', 'echo', 'export', 'printf', 'pwd', 'set', 'test', 'true'])
+
+export const programsOf = (command: string, limit = 3): string[] => {
+  const names: string[] = []
+  for (const part of parseShell(command).segments) {
+    const name = commandWords(part.words)[0]?.split('/').pop()
+    if (name && !TRIVIAL_PROGRAMS.has(name) && !names.includes(name)) names.push(name)
+  }
+  return names.length > limit ? [...names.slice(0, limit), '…'] : names
+}
+
+export const shortenPaths = (text: string, places: Places): string => {
+  const prefix = (path: string) => new RegExp(`(?<![\\w.~:/-])${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`, 'g')
+  let out = text
+  if (places.cwd) out = out.replace(prefix(places.cwd), '')
+  if (places.home) out = out.replace(prefix(places.home), '~/')
+  return out.replace(/(?<![\w.~:/-])\/[^\s'"`;|&<>()]+/g, compactPath)
+}
+
+const VALUE_FLAGS: Record<string, Set<string>> = {
+  grep: new Set(['-A', '-B', '-C', '-m', '-e', '-f', '--max-count', '--include', '--exclude', '--exclude-dir']),
+  rg: new Set(['-A', '-B', '-C', '-m', '-e', '-f', '-g', '-t', '--type', '--glob', '--max-count', '--max-depth']),
+  tree: new Set(['-L', '-P', '-I']),
+  uniq: new Set(['-f', '-s', '-w']),
+}
+
+const operandsOf = (name: string, args: string[]): string[] => {
+  const valued = VALUE_FLAGS[name]
+  const out: string[] = []
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]!
+    if (valued?.has(a)) i++
+    else if (!a.startsWith('-')) out.push(a)
+  }
+  return out
+}
+
+const describeCommand = (name: string, args: string[], places: Places): string | undefined => {
+  const files = (list: string[]) => list.map(f => shortTarget(places, f)).join(', ')
+  const ops = operandsOf(name, args)
+  if (TRIVIAL_PROGRAMS.has(name)) return ''
+  if (name === 'sed') {
+    const range = args.find(a => /^\d+(,\d+)?p$/.test(a))
+    const targets = ops.filter(a => a !== range)
+    if (!range || !targets.length) return undefined
+    const [from, to] = range.slice(0, -1).split(',')
+    return `Read ${files(targets)} lines ${from}${to ? `–${to}` : ''}`
+  }
+  if (name === 'cat' || name === 'less' || name === 'nl') return ops.length ? `Read ${files(ops)}` : undefined
+  if (name === 'pdftotext') return ops.length ? `Read ${files(ops.slice(0, 1))}` : undefined
+  if (name === 'head' || name === 'tail') {
+    const targets = ops.filter(a => !/^\d+$/.test(a))
+    return targets.length ? `Read ${name === 'head' ? 'start' : 'end'} of ${files(targets)}` : undefined
+  }
+  if (name === 'grep' || name === 'rg') {
+    const e = args.indexOf('-e')
+    const pattern = e >= 0 ? args[e + 1] : ops[0]
+    const paths = e >= 0 ? ops : ops.slice(1)
+    return pattern === undefined ? undefined : `Searched ${paths.length ? files(paths) : '.'} for "${pattern}"`
+  }
+  if (name === 'ls' || name === 'tree') return `Listed ${ops.length ? files(ops) : '.'}`
+  if (name === 'find') return `Listed ${args[0] && !args[0].startsWith('-') ? files([args[0]]) : '.'}`
+  if (name === 'wc') return ops.length ? `Counted ${files(ops)}` : undefined
+  return undefined
+}
+
+export const describeShell = (command: string, places: Places = { cwd: '', home: '' }): string | undefined => {
+  if (!isReadOnlyCall('Bash', { command })) return undefined
+  const vars = new Map<string, string>()
+  const expand = (w: string) => w.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g, (m, v: string) => vars.get(v) ?? m)
+  const parts: string[] = []
+  for (const segment of parseShell(command).segments) {
+    const words = commandWords(segment.words)
+    if (!words.length) {
+      for (const w of segment.words.filter(isAssignment)) vars.set(w.slice(0, w.indexOf('=')), expand(w.slice(w.indexOf('=') + 1)))
+      continue
+    }
+    if (segment.piped) continue
+    const [name, ...args] = words.map(expand)
+    if (args.some(a => /\$\{?[A-Za-z_]/.test(a))) return undefined
+    const text = describeCommand(name!, args, places)
+    if (text === undefined) return undefined
+    if (text) parts.push(text)
+  }
+  return parts.length ? parts.join(' · ') : undefined
 }
 
 const OUTPUT_LINES = 120
@@ -737,7 +1073,31 @@ export const groupSummary = (calls: readonly { tool: string }[]): string => {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly ToolRow[], isActive: boolean, columns = 100): RenderElement => {
+const quietToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[], isActive: boolean, columns: number): RenderElement => {
+  const t = style.theme
+  const failed = calls.filter(c => c.isErrored)
+  const running = isActive && calls.some(c => c.isRunning)
+  const dot = failed.length ? t.codeFlag : running ? t.accent : t.number
+  const labels = calls.map(c => callLabel(c, style)).filter((l, i, all) => l !== all[i - 1])
+  const label = labels.join(' · ')
+  const reasons = failed.map((c, i) => renderFailure(el, style, c.output, `r${i}`)).filter((r): r is RenderElement => r !== undefined)
+  const isShell = (c: ToolRow) => c.tool === 'Bash' || c.tool === 'PowerShell'
+  const results = calls.flatMap((c, i) => (c.isErrored || c.output === undefined || !isShell(c) || isReadOnlyCall(c.tool, c.input) ? [] : [<el.Box key={`o${i}`}>{renderShellResult(el, style, c.output)}</el.Box>]))
+  const row = toolLayout(el, style, columns, label, dot, running, (
+    <el.Text wrap="truncate-end" dimColor={toolDim(style)}>{label}</el.Text>
+  ))
+  if (!reasons.length && !results.length) return row
+  return (
+    <el.Box flexDirection="column">
+      {row}
+      {reasons}
+      {results}
+    </el.Box>
+  )
+}
+
+export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[], isActive: boolean, columns = 100): RenderElement => {
+  if (style.toolOutput === 'quiet') return quietToolGroup(el, style, calls, isActive, columns)
   const { Box, Text } = el
   const t = style.theme
   const failed = calls.filter(c => c.isErrored).length

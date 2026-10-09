@@ -9,7 +9,7 @@ import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
 import { boxArt, mermaidText, shortenEdgeLabels } from './mermaid'
 import type { Drawn } from './render'
-import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
+import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -55,6 +55,7 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 }
 
 const expandedCalls = new Set<string>()
+const readOnlyCalls = new Set<string>()
 
 const markExpanded = (id: string) => {
   expandedCalls.delete(id)
@@ -262,9 +263,11 @@ export const register: Register = (on, options) => {
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
   const probes: Probes = {}
 
+  const quiet = style.toolOutput === 'quiet'
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => {
       await locate($, style)
+      if (quiet) for (const call of e.props.calls) if (call.tool_use_id && isReadOnlyCall(call.tool, call.input)) rememberCall(readOnlyCalls, call.tool_use_id)
       if (e.props.isExpanded) {
         for (const call of e.props.calls) if (call.tool_use_id) markExpanded(call.tool_use_id)
         return next(e)
@@ -273,9 +276,22 @@ export const register: Register = (on, options) => {
     })
     on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
       await locate($, style)
+      if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns)
       return e.props.tool === 'Bash' || e.props.tool === 'PowerShell' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
     })
+    if (quiet) {
+      on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
+        await locate($, style)
+        const el = $.ui.resolve(e)
+        const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
+        const out = (e.props.output ?? {}) as Record<string, unknown>
+        if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
+        if (e.props.isErrored) return renderFailure(el, fit(e.viewport), e.props.output) ?? next(e)
+        if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
+        return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
+      })
+    }
   }
 
   on('session.start', async ($, e, next) => {

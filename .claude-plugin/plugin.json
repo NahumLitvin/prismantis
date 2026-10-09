@@ -87,6 +87,13 @@
       "default": "chat",
       "options": ["chat", "tree-dim", "tree-bold", "classic"]
     },
+    "toolOutput": {
+      "type": "string",
+      "title": "Tool output",
+      "description": "How much of a tool call shows. full: what Claude Code shows. quiet: rows say in plain words what a call did, reads, searches and listings show only their row, other shell commands show their first lines, edits keep their diff, a failed call shows the last line of its error, and a refused call its full reason. Needs toolRows on.",
+      "default": "full",
+      "options": ["full", "quiet"]
+    },
     "taskStyle": {
       "type": "string",
       "title": "Task list style",
