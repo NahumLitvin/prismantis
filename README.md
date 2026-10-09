@@ -64,9 +64,9 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 | [Right to left](#right-to-left) | Hebrew and Arabic read right to left, with bullets, quote bars and table columns mirrored |
 | [Other mods](#other-mods) | `$.prismantis.markdown` draws any markdown the way replies are drawn, for mod authors |
 
-![prismantis on the default Catppuccin Mocha theme: a boxed title, a section heading, a table, a nested list, a flowchart, a sequence diagram, a bar chart with values and its tallest bar highlighted, a line chart, highlighted TypeScript and shell blocks, a tip alert and copy buttons](docs/screenshot.png)
-
 ### Themes
+
+![Themes: plain Claude Code on the left, prismantis on the right](docs/compare/themes.png)
 
 Dark: `catppuccin-mocha` (default), `dracula`, `nord`, `tokyo-night`, `gruvbox-dark`, `rose-pine`, `everforest`, `github-dark`, `one-dark`, `solarized-dark`.
 
@@ -76,9 +76,13 @@ Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `s
 
 ### Tables
 
+![Tables: plain Claude Code on the left, prismantis on the right](docs/compare/tables.png)
+
 Header cells take the `tableHeader` color, and the default `box` style puts a double line under the header. `tableStyle` picks `box` (the default, every cell boxed), `rules`, `grid` or `minimal`. `:---:` and `---:` alignment is honored, numbers in cells get the number color, and columns shrink to fit the terminal.
 
 ### Code
+
+![Code: plain Claude Code on the left, prismantis on the right](docs/compare/code.png)
 
 Each code block gets a header row: the language on the left, a copy button on the right. The code sits indented below with no frame, so selecting it with the mouse copies only the code.
 
@@ -86,6 +90,10 @@ Each code block gets a header row: the language on the left, a copy button on th
 - **Shell** blocks (`bash`, `sh`, `zsh`, `fish`, `powershell`, unlabeled) color the command word, `--flags`, quoted strings and `# comments`, and restart after `|`, `&&` and `;`.
 
 ### Diagrams and charts
+
+![Diagrams and charts: plain Claude Code on the left, prismantis on the right](docs/compare/diagrams.png)
+
+![Diagrams and charts: plain Claude Code on the left, prismantis on the right](docs/compare/charts.png)
 
 Code blocks tagged `mermaid` draw as colored text art:
 
@@ -98,6 +106,8 @@ Code blocks tagged `mermaid` draw as colored text art:
 Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii` swaps box-drawing characters for `+ - |`. Pie charts are not supported.
 
 ### LaTeX math
+
+![LaTeX math: plain Claude Code on the left, prismantis on the right](docs/compare/latex.png)
 
 Display math, `$$…$$` on lines of its own or a ` ```math ` block, draws as a typeset image in the theme's diagram text color, one formula per line. With copy buttons on, its `⧉ copy` button copies the formula's LaTeX, since selecting an image copies blank cells. It needs [RaTeX](https://github.com/erweixin/RaTeX)'s PNG renderer, a single binary that typesets KaTeX syntax in a few milliseconds without TeX, a browser or Node:
 
@@ -116,9 +126,13 @@ Formula text matches the reply text. A terminal image fills whole rows, so a for
 
 ### Layout
 
+![Layout: plain Claude Code on the left, prismantis on the right](docs/compare/layout.png)
+
 When tables and diagrams follow each other, they share a row and wrap once the terminal runs out of width. A wide terminal shows a table, a flowchart and two charts side by side.
 
 ### Copy buttons
+
+![Copy buttons: plain Claude Code on the left, prismantis on the right](docs/compare/copy.png)
 
 - **Tables:** `⧉ md` copies the original Markdown and `⧉ art` a boxed table that pastes well into Slack. `⧉ html` copies a formatted table (headers, alignment, inline formatting) plus a tab-separated plain-text copy.
 - **Code, lists and quotes:** `[ ⧉ copy ]` on each. Code copies without its fences, lists as markdown, quotes without their `> ` markers.
@@ -136,6 +150,8 @@ Clicking works where the terminal passes clicks through, as fullscreen mode does
 
 ### Tool rows
 
+![Tool rows: plain Claude Code on the left, prismantis on the right](docs/compare/tools.png)
+
 Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. A status dot shows done, running or failed, and output still draws below.
 
 Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm test`, with `· N failed` in the flag color when any call failed. Expand a group (ctrl+o or `--verbose`): shell calls keep their colored command with the output boxed below, and other calls use Claude Code's own rows. ctrl+o on a reply shows the original text.
@@ -148,6 +164,8 @@ Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm t
 | ![chat](docs/tools/chat.png) | ![tree-dim](docs/tools/tree-dim.png) | ![tree-bold](docs/tools/tree-bold.png) | ![classic](docs/tools/classic.png) |
 
 ### Turn footer
+
+![Turn footer: plain Claude Code on the left, prismantis on the right](docs/compare/tools.png)
 
 The line that closes a turn keeps Claude Code's word and colors the duration: `✻ Baked for 6m 20s`. Terminal only, since that's the only surface that draws it.
 
@@ -163,9 +181,13 @@ The note costs about 190 tokens per prompt, and about 60 more while [LaTeX math]
 
 ### Text
 
+![Text: plain Claude Code on the left, prismantis on the right](docs/compare/text.png)
+
 **Bold**, *italic*, ~~strikethrough~~, `inline code`, links and bare URLs, clickable as terminal hyperlinks. Numbers, versions (`v2.14.0`), durations (`250ms`, `3h`), sizes (`16Gi`) and percentages (`99.9%`) take the number color, and paths like `~/src/app.ts` the path color.
 
 ### Headings, lists, quotes
+
+![Headings, lists, quotes: plain Claude Code on the left, prismantis on the right](docs/compare/headings.png)
 
 `headingStyle` picks `banner` (the default: a box around H1, a heavy rule under H2), `bold`, `underline` or `uppercase`. Terminals have one font size, so headings stand out through style and color.
 
@@ -177,6 +199,8 @@ Task lists draw as `[ ]` and `[✓]`, with done items dimmed and struck through.
 
 ### Your prompts
 
+![Your prompts: plain Claude Code on the left, prismantis on the right](docs/compare/tables.png)
+
 What you type, at the prompt or through Remote Control, draws in the theme's colors. `promptStyle` picks the look, and `off` keeps Claude Code's own. Task notifications and teammate messages are left alone.
 
 | `bubble` (default) | `bar` | `chevron` |
@@ -185,7 +209,7 @@ What you type, at the prompt or through Remote Control, draws in the theme's col
 
 ### Right to left
 
-![Hebrew drawn right to left](docs/rtl.png)
+![Right to left: plain Claude Code on the left, prismantis on the right](docs/compare/rtl.png)
 
 Hebrew and Arabic blocks are right aligned, with bullets, numbers and quote bars on the right and table columns mirrored. Code, numbers, paths and links stay left to right inside them. Terminals treat right-to-left letters differently, so prismantis detects yours and sends the letters the way it needs them. `/prismantis demo-rtl` shows every element, and the `rtl` option forces a terminal's handling or turns it off.
 
