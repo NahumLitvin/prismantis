@@ -612,7 +612,7 @@ const field = (input: unknown, ...keys: string[]): string | undefined => {
 
 const TARGET_FIELDS = ['file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description']
 
-const statusColor = (t: Theme, row: Pick<ToolRow, 'isErrored' | 'isInterrupted' | 'isRunning'>) =>
+const statusColor = (t: Theme, row: ToolRow) =>
   row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
 
 const toolDim = (style: Style) => style.toolStyle !== "classic"
