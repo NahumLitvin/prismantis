@@ -20,7 +20,7 @@ Colorful, themeable replies for [Claude Code](https://claude.com/claude-code): t
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
 | [LaTeX math](#latex-math) | `$$` and ` ```math ` formulas typeset as images in kitty and Ghostty by [RaTeX](https://github.com/erweixin/RaTeX), sized to the reply text, text everywhere else |
 | [Layout](#layout) | back-to-back tables and diagrams sit side by side and wrap on narrow terminals |
-| [Copy buttons](#copy-buttons) | `[ ⧉ copy ]` on code, tables, lists and quotes, plus `⧉ art` on tables and diagrams for pasting into Slack, and `/prismantis copy` without a mouse |
+| [Copy buttons](#copy-buttons) | `⧉ md` and `⧉ html` on tables, `[ ⧉ copy ]` on code, lists and quotes, plus `⧉ art` on tables and diagrams for pasting into Slack, and `/prismantis copy` without a mouse |
 | [Tool rows](#tool-rows) | `Ran gh pr view 12`, `Read ~/src/app.ts`, groups summed up as `Ran 3 commands, read 2 files`, with status dots |
 | [Turn footer](#turn-footer) | `✻ Baked for 6m 20s` with the duration in the number color |
 | [Slash commands](#slash-commands) | command output (`/cost`, `/context`, plugin commands) gets the same tables and code styling |
@@ -106,7 +106,21 @@ When tables and diagrams follow each other, they share a row and wrap to the nex
 
 ### Copy buttons
 
-`[ ⧉ copy ]`, drawn in Claude Code's accent color, sits on code blocks, tables, lists and quotes and puts the raw markdown on your clipboard. Quotes copy without their `> ` markers, ready to paste as a message. Diagrams get two: `⧉ source` copies the mermaid code and `⧉ art` copies the drawn art, ready to paste into a chat code block. Tables get `⧉ art` too: a plain boxed table that reads right in Slack, where pasted markdown does not. Replies end with `⧉ copy reply`, which copies the reply as Claude wrote it (one-line English narration gets none). Use it for Hebrew and Arabic: selecting right-to-left text on screen copies the letters in the order they are drawn, not the order they are read. Clicking works where the terminal passes clicks through (fullscreen mode does); terminals with copy-on-select, such as Warp, may grab the word "copy" instead. Without a mouse, `/prismantis copy` copies the last reply and `/prismantis copy code` its last code block. Since Claude Code 2.1.291 `ctrl+x` then `tab` focuses the area above the prompt, not the buttons in replies.
+Tables offer `⧉ md` for the original Markdown, `⧉ art` for a boxed table, and `⧉ html` for a formatted table.
+The HTML action copies HTML and tab-separated plain text together, then verifies both formats before reporting success.
+Applications that accept HTML can paste the table with headers, column alignment and inline formatting, including spacing inside code.
+Plain-text applications receive the table cells separated by tabs.
+`⧉ html` shows in a local macOS terminal or a Linux graphical session; over SSH, on desktop and on other systems tables offer `⧉ md` and `⧉ art`.
+
+macOS needs nothing extra. Linux needs [CopyQ](https://copyq.readthedocs.io/en/stable/installation.html) running ([Wayland caveats](https://copyq.readthedocs.io/en/stable/known-issues.html#on-linux-some-features-do-not-work-under-wayland)); on Ubuntu:
+
+```bash
+sudo apt install -y copyq && copyq --start-server && copyq config autostart true
+```
+
+Without CopyQ, or when the clipboard helper fails, `⧉ html` copies the plain text alone and the toast says why.
+
+`[ ⧉ copy ]`, drawn in Claude Code's accent color, sits on code blocks, lists and quotes and puts the raw markdown on your clipboard. Quotes copy without their `> ` markers, ready to paste as a message. Diagrams get two: `⧉ source` copies the mermaid code and `⧉ art` copies the drawn art, ready to paste into a chat code block. Tables get `⧉ art` too: a plain boxed table that reads right in Slack, where pasted markdown does not. Replies end with `⧉ copy reply`, which copies the reply as Claude wrote it (one-line English narration gets none). Use it for Hebrew and Arabic: selecting right-to-left text on screen copies the letters in the order they are drawn, not the order they are read. Clicking works where the terminal passes clicks through (fullscreen mode does); terminals with copy-on-select, such as Warp, may grab the word "copy" instead. Without a mouse, `/prismantis copy` copies the last reply and `/prismantis copy code` its last code block. Since Claude Code 2.1.291 `ctrl+x` then `tab` focuses the area above the prompt, not the buttons in replies.
 
 ### Tool rows
 

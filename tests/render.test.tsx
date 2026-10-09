@@ -211,13 +211,13 @@ test('code blocks, tables and quotes get a copy button, tables an art button, th
   const buttons = await ui.findAll({ type: 'Button' })
   expect(buttons.length).toBe(5)
   expect(buttons.every(b => b.props.variant === "primary")).toBe(true)
-  await ui.press({ key: buttons[2]!.key! })
+  await ui.press({ key: 'copy1' })
   expect(copied).toEqual(['ls -la'])
   await ui.unmount()
 })
 
 test('copyButtons off draws no buttons', { options: { copyButtons: false } }, async $ => {
-  const ui = await $.ui.mount({ ...draw('```bash\nls\n```'), surface: 'terminal' })
+  const ui = await $.ui.mount({ ...draw(`${TABLE}\n\n\`\`\`bash\nls\n\`\`\``), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)
   await ui.unmount()
 })

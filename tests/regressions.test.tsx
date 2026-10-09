@@ -3,11 +3,19 @@ import { expect, test } from 'claude-code/testing'
 
 import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
+import { tableHtml, tableText } from '../hooks/html'
 import { mermaidText } from '../hooks/mermaid'
-import { tableArt } from '../hooks/render'
+import { tableArt, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
+import { clipboardEnv, recordCopies } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
+
+const tableOf = (source: string) => {
+  const [table] = parse(source, hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  return table
+}
 
 const mount = (text: string, columns = 120) => ({
   plugin: 'prismantis',
@@ -21,12 +29,8 @@ const drawn = (node: unknown): string =>
   typeof node === 'string' ? node : ((node as { children?: unknown[] }).children ?? []).map(drawn).join('')
 
 const stubClipboard = (on: On) => {
-  const copied: string[] = []
-  on('ui.copy', (_, e) => {
-    copied.push(e.text)
-    return { value: { isCopied: true as const } }
-  })
-  return copied
+  clipboardEnv(on, 'other')
+  return recordCopies(on)
 }
 
 test('a long run of backticks parses in linear time', async () => {
@@ -49,14 +53,42 @@ test('an escaped trailing pipe stays in the cell', async () => {
   expect(table.rows[0]?.[1]?.map(n => ('text' in n ? n.text : '')).join('')).toBe('y|')
 })
 
-test('copying a table returns its exact markdown', async ($, on) => {
+for (const surface of ['terminal', 'desktop'] as const) test(`tables copy their exact Markdown on ${surface}`, async ($, on) => {
   const copied = stubClipboard(on)
   const source = '| a | b |\n|:--|--:|\n| `x\\|y` | **2** |'
-  const ui = await $.ui.mount(mount(source))
-  const [button] = await ui.findAll({ type: 'Button' })
-  await ui.press({ key: button!.key! })
+  const ui = await $.ui.mount({ ...mount(source), surface })
+  await ui.press({ key: 'copy0' })
   expect(copied).toEqual([source])
   await ui.unmount()
+})
+
+test('tab-separated copying unescapes pipes and drops inline formatting', async () => {
+  expect(tableText(tableOf('| a | b |\n|:--|--:|\n| `x\\|y` | **2** |'))).toBe('a\tb\nx|y\t2')
+})
+
+test('HTML table copying escapes content and preserves safe inline formatting', async () => {
+  const source = '| <Title> | Link |\n|:--:|--|\n| **bold *italic*** ~~old~~ `x<y` & "quoted" | [go](https://example.com/?a=1&b="2") |\n| <script>alert | [bad](javascript:alert) |\n| short |'
+  const html = tableHtml(tableOf(source))
+  expect(html).toContain('<th style="text-align: center">&lt;Title&gt;</th>')
+  expect(html).toContain('<em>italic</em>')
+  expect(html).toContain('<del>old</del>')
+  expect(html).toContain('<code style="white-space: pre-wrap">x&lt;y</code> &amp; &quot;quoted&quot;')
+  expect(html).toContain('<a href="https://example.com/?a=1&amp;b=&quot;2&quot;">go</a>')
+  expect(html).toContain('&lt;script&gt;alert')
+  expect(html).not.toContain('javascript:')
+  expect(html).toContain('<td style="text-align: left"></td>')
+})
+
+test('tab-separated copying quotes embedded separators and literal quotes', async () => {
+  expect(tableText(tableOf('| Name | Value |\n|--|--|\n| `a\tb` | "quoted" |'))).toBe('Name\tValue\n"a\tb"\t"""quoted"""')
+})
+
+test('tab-separated copying keeps link targets', async () => {
+  expect(tableText(tableOf('| Docs | Site |\n|--|--|\n| [guide](https://x.y/z) | https://a.b |'))).toBe('Docs\tSite\nguide (https://x.y/z)\thttps://a.b')
+})
+
+test('HTML copying preserves repeated spaces inside code', async () => {
+  expect(tableHtml(tableOf('| Code |\n|--|\n| `a  b` |'))).toContain('<code style="white-space: pre-wrap">a  b</code>')
 })
 
 test('copying a list returns its exact markdown', async ($, on) => {
@@ -266,6 +298,10 @@ test('a half-streamed reply with an open fence and a cut table still draws', asy
 test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
+  expect(showcaseText([])).toContain('⧉ html')
+  expect(showcaseText([])).toContain('CopyQ')
+  expect(showcaseText([])).toContain('plain text')
+  expect(blocks.some(b => b.kind === 'table' && b.align.includes('right') && b.align.includes('center'))).toBe(true)
   const kinds = new Set(blocks.map(b => b.kind))
   for (const kind of ['heading', 'paragraph', 'list', 'code', 'quote', 'alert', 'rule', 'table']) expect(kinds.has(kind as never)).toBe(true)
   expect(new Set(blocks.flatMap(b => (b.kind === 'heading' ? [b.level] : []))).size >= 4).toBe(true)
@@ -276,6 +312,33 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
+})
+
+test('mermaid boxes stay closed around wide labels', async () => {
+  const column = (line: string, marks: RegExp, nth: number) => {
+    const chars = [...line]
+    const at = chars.flatMap((ch, i) => (marks.test(ch) ? [i] : []))[nth]
+    return at === undefined ? -1 : width(chars.slice(0, at).join(''))
+  }
+  for (const source of ['graph LR\n  A[日本語テスト] --> B[終了]', 'flowchart TD\n  A[한글 라벨 상자] --> B{ko 섞인 판단}', 'sequenceDiagram\n  사용자->>서버: 요청']) {
+    const art = mermaidText(source, false, 100)
+    expect(art).not.toBeNull()
+    expect(art!).not.toContain('\uFDD0')
+    const lines = art!.split('\n')
+    const top = lines.findIndex(l => l.includes('┐'))
+    expect(column(lines[top + 1]!, /[│├┤]/, 1)).toBe(column(lines[top]!, /┐/, 0))
+  }
+})
+
+test('a mounted diagram with wide labels draws its box borders on the same column', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('```mermaid\ngraph LR\n  A[한글 라벨] --> B[終了]\n```', 160), surface })
+    const label = drawn(await ui.find({ type: 'Text', text: /한글 라벨/ }))
+    const top = drawn(await ui.find({ type: 'Text', text: /┐/ }))
+    expect(label).not.toContain('\uFDD0')
+    expect(width(label.trimEnd())).toBe(width(top.trimEnd()))
+    await ui.unmount()
+  }
 })
 
 test('every diagram on the help screen draws as art', async () => {
@@ -292,6 +355,7 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task !== undefined))).toBe(true)
   expect(blocks.some(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'link'))).toBe(true)
   expect(helpText(Object.keys(PRESETS))).toContain('/prismantis copy')
+  expect(helpText([])).toContain('HTML (macOS/Linux)')
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()

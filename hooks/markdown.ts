@@ -120,6 +120,9 @@ const mathAt = (lines: string[], start: number): { lines: string[]; end: number 
   return tex.length ? { lines: tex, end } : null
 }
 
+export const displayText = (inline: Inline[]): string =>
+  inline.map(n => (n.kind === 'link' && n.text !== n.href ? `${n.text} (${n.href})` : 'children' in n ? displayText(n.children) : n.text)).join('')
+
 export const parse = (source: string, hl: Highlight): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   const at = (n: number) => lines[n] ?? ''

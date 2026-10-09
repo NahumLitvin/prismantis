@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Dev tooling only. The mod itself has no runtime dependencies.",
   "scripts": {
+    "clipboard:check": "node clipboard-copyq-check.mjs && node clipboard-check.mjs",
     "build:vendor": "node build-vendor.mjs",
     "bench": "node bench.mjs",
     "bench:check": "node bench.mjs --check",

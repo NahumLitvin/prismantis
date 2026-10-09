@@ -1,5 +1,6 @@
 import type { PluginOptions } from 'claude-code'
 
+import type { ClipboardBackend } from './clipboard'
 import { PRESETS } from './presets'
 import type { Shape, Terminal } from './rtl'
 import { TERMINALS } from './rtl'
@@ -24,6 +25,7 @@ export type Style = {
   mermaid: boolean
   mermaidAscii: boolean
   copyButtons: boolean
+  htmlCopy: ClipboardBackend | null
   diagramHints: boolean
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
@@ -58,6 +60,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     mermaid: options.mermaid !== false,
     mermaidAscii: options.mermaidAscii === true,
     copyButtons: options.copyButtons !== false,
+    htmlCopy: null,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',

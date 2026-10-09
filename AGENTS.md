@@ -11,6 +11,8 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 | `hooks/register.tsx` | every hook (`ui.render` for AssistantMessage, CommandOutput, ToolUse, ToolGroup and TurnDuration, `prompt.submit`, the `/prismantis` command via `session.start` and `command.run`, and the `$.prismantis` noun via `engine.create` and `prismantis.markdown`) and all code that calls `$` |
 | `types/index.d.ts` | the contract for `$.prismantis`, which other mods type against |
 | `hooks/markdown.ts` | markdown to blocks and inline nodes, pure |
+| `hooks/html.ts` | tables to escaped HTML and tab-separated text, pure |
+| `hooks/clipboard.ts` | the macOS and CopyQ clipboard helper sources and their commands, pure |
 | `hooks/render.tsx` | blocks to `Box`/`Text` trees, pure |
 | `hooks/theme.ts` | presets, color validation, option merging, pure |
 | `hooks/mermaid.tsx` | mermaid box art, pure |
@@ -25,7 +27,7 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 ## Rules
 
 - Bundled code and copied palettes must be MIT. Check the license at the source repo, not a port or fork: GitHub's `license.spdx_id` misses licenses declared only in a README (Gruvbox), and ports can relicense (Tokyo Night's Neovim port is Apache-2.0, the original VS Code theme is MIT).
-- Add a dependency only when writing it ourselves is unreasonable. Use its latest release, prefer well-starred maintained projects, and record it in docs/THIRD_PARTY_NOTICES.md. The runtime dependencies today are beautiful-mermaid and Prism, both bundled. esbuild is build-time only. The one external program the mod runs is RaTeX's renderer, installed by the person as `ratex-render` and off until they set `latex`, for LaTeX math; nothing else runs.
+- Add a dependency only when writing it ourselves is unreasonable. Use its latest release, prefer well-starred maintained projects, and record it in docs/THIRD_PARTY_NOTICES.md. The bundled runtime dependencies today are beautiful-mermaid and Prism. esbuild is build-time only. Two external programs can run: the HTML table copy action runs macOS's built-in `osascript`, or an installed and running CopyQ on Linux, and LaTeX math runs RaTeX's `ratex-render`, installed by the person and off until they set `latex`. Nothing else runs.
 - Never copy code from other projects, including other mods. Read them to learn the API, then write our own.
 - No code comments. The why goes in the commit message or PR description.
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).

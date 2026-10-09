@@ -40,7 +40,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: npm install -g @anthropic-ai/claude-code@latest
+      - run: npm install -g @anthropic-ai/claude-code@2.1.294
       - name: Lay the mod API types
         run: claude --plugin-dir . -p hi || test -d .claude-plugin/types/claude-code
       - run: npx --yes -p typescript@5 tsc -p .
@@ -67,6 +67,44 @@ jobs:
           size=$(cat hooks/vendor/*.js | wc -c)
           echo "vendor bytes: $size"
           test "$size" -lt 300000
+
+  clipboard:
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: scripts
+      - run: npm --prefix scripts run clipboard:check
+      - name: Install Linux clipboard tools and isolated displays
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wl-clipboard xclip xvfb xauth sway libxcb-cursor0 libxkbcommon-x11-0 libegl1 libopengl0
+      - name: Install CopyQ
+        if: runner.os == 'Linux'
+        env:
+          COPYQ_URL: https://github.com/hluk/CopyQ/releases/download/v17.0.0/CopyQ-17.0.0-x86_64.AppImage
+          COPYQ_SHA256: b63fb78eed3300af61ce2db7bf537bf12160ef86c7122147fc1c3cceb826c0d1
+        run: |
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/copyq.AppImage" "$COPYQ_URL"
+          echo "$COPYQ_SHA256  $RUNNER_TEMP/copyq.AppImage" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/copyq.AppImage"
+          cd "$RUNNER_TEMP"
+          ./copyq.AppImage --appimage-extract > /dev/null
+          ln -s AppRun squashfs-root/copyq
+          echo "$RUNNER_TEMP/squashfs-root" >> "$GITHUB_PATH"
+          ./squashfs-root/copyq --version
+      - name: Verify HTML and plain text on Wayland and X11
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- xvfb-run -a node scripts/clipboard-linux-check.mjs
 
   conventions:
     runs-on: ubuntu-latest

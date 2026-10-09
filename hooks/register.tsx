@@ -1,10 +1,12 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, RenderElement } from 'claude-code'
+import type { EngineInterface, Register, RenderElement, RenderSurface } from 'claude-code'
 
 import type { Formula } from './latex'
 import { LATEX_DPR, LATEX_FONT_PX, fitsImage, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
 import type { Block } from './markdown'
 import { parse } from './markdown'
+import type { ClipboardBackend } from './clipboard'
+import { clipboardCommand } from './clipboard'
 import { boxArt, mermaidText } from './mermaid'
 import type { Drawn } from './render'
 import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
@@ -163,21 +165,41 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
   }))
 }
 
+const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null> => {
+  if (await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return null
+  const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
+  if (helper?.kind === 'file') return 'macos'
+  return await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : null
+}
+
+const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: string, text: string): Promise<string | null> => {
+  const command = clipboardCommand(backend, html, text)
+  const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: 5000 }).catch(() => null)
+  if (!result) return command.failure
+  return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
+}
+
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string): RenderElement[] => {
   const { Button } = el
-  const copy = (text: string | (() => string), key: string, label = '⧉ copy') =>
-    style.copyButtons ? (
+  const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
+    const copied = async (surface: RenderSurface): Promise<string> => {
+      const content = typeof text === 'function' ? text() : text
+      const backend = style.htmlCopy
+      const failure = html && backend ? await copyTable($, backend, html(), content) : undefined
+      if (failure === null) return 'Copied formatted table'
+      const result = await $.ui.copy({ text: content, surface })
+      if (!result.isCopied) return `Copy failed: ${result.reason}`
+      return failure ? `Copied as plain text (${failure})` : 'Copied'
+    }
+    return style.copyButtons && (!html || style.htmlCopy) ? (
       <Button
         key={key}
         variant="primary"
         label={label}
-        onPress={press => {
-          $.ui.copy({ text: typeof text === 'function' ? text() : text, surface: press.surface })
-            .then(r => $.ui.toast(r.isCopied ? 'Copied' : `Copy failed: ${r.reason}`))
-            .catch(() => $.ui.toast('Copy failed'))
-        }}
+        onPress={async press => $.ui.toast(await copied(press.surface).catch(() => 'Copy failed'))}
       />
     ) : null
+  }
   const drawn: Drawn = new Map()
   if (style.mermaid) {
     for (const [i, block] of blocks.entries()) {
@@ -208,6 +230,8 @@ export const register: Register = (on, options) => {
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
+  const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
+  let htmlCopy: Promise<ClipboardBackend | null> | undefined
 
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {
@@ -226,6 +250,8 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     terminal = await applyRtl($, style)
     void latexEngine($, latex)
+    htmlCopy ??= htmlBackend($)
+    style.htmlCopy = await htmlCopy
     const started = await next(e)
     await $.command
       .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
@@ -258,6 +284,8 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', async ($, e, next) => {
     await applyRtl($, style)
+    htmlCopy ??= htmlBackend($)
+    style.htmlCopy = await htmlCopy
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
     void latexEngine($, latex)
     const hints = latex.ready && !latex.stopped ? [HINT, LATEX_HINT] : [HINT]
@@ -272,7 +300,7 @@ export const register: Register = (on, options) => {
     const { Box } = el
     const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
     const math = await mathOfBlocks($, latex, e.surface, blocks)
-    return <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.props.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, fit(e.viewport), blocks, columns, math)}</Box>
+    return <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.props.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columns, math)}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
@@ -290,13 +318,14 @@ export const register: Register = (on, options) => {
     const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const math = await mathOfBlocks($, latex, e.surface, blocks)
+    const surfaceStyle = forSurface(fit(e.viewport), e.surface)
     return (
       <Box flexDirection="row">
         <Box width={2} flexShrink={0}>
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, narration ? { ...fit(e.viewport), narration } : fit(e.viewport), blocks, columns, math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined)}
+          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columns, math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined)}
         </Box>
       </Box>
     )
