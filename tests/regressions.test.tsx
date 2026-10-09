@@ -497,3 +497,14 @@ test('inline $…$ math draws without its dollar signs, prices and shell variabl
   expect(shown('costs $5 and $10 today')).toBe('costs $5 and $10 today')
   expect(shown('echo $HOME and $PATH')).toBe('echo $HOME and $PATH')
 })
+
+test('chart y-axis ticks sit an even number of rows apart', async () => {
+  const charts = [
+    'xychart-beta\n  x-axis ["11:00", "12:00", "13:00", "14:00", "15:00", "16:00"]\n  y-axis "ms" 0 --> 2500\n  bar [45, 47, 46, 2029, 2032, 2007]',
+    'xychart-beta\n  x-axis [text, head, num, code, diag]\n  y-axis "options" 0 --> 8\n  bar [7, 3, 2, 6, 2]',
+  ]
+  for (const chart of charts) for (const columns of [40, 80, 100, 160, 260]) {
+    const rows = mermaidText(chart, false, columns)!.split('\n').flatMap((l, i) => (/^\s*[\d.]+\s*[┤┼]/.test(l) ? [i] : []))
+    expect(new Set(rows.slice(1).map((r, i) => r - rows[i]!)).size).toBe(1)
+  }
+})

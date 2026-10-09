@@ -621,6 +621,10 @@
           "  "
         <Text color=#89b4fa>
           "│"
+        <Text color=#cdd6f4>
+          "                     "
+        <Text color=#89b4fa>
+          "╭────"
       <Text>
         <Text color=#cdd6f4>
           " "
@@ -631,18 +635,9 @@
         <Text color=#45475a>
           "·····················"
         <Text color=#89b4fa>
-          "╭────"
+          "│"
         <Text color=#45475a>
-          "··"
-      <Text>
-        <Text color=#cdd6f4>
-          "  "
-        <Text color=#89b4fa>
-          "│"
-        <Text color=#cdd6f4>
-          "                     "
-        <Text color=#89b4fa>
-          "│"
+          "······"
       <Text>
         <Text color=#cdd6f4>
           " "
@@ -669,15 +664,6 @@
           "╭──────╯"
         <Text color=#45475a>
           "·············"
-      <Text>
-        <Text color=#cdd6f4>
-          "  "
-        <Text color=#89b4fa>
-          "│"
-        <Text color=#cdd6f4>
-          "       "
-        <Text color=#89b4fa>
-          "│"
       <Text>
         <Text color=#cdd6f4>
           " "

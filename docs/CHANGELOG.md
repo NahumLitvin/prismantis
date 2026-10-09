@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - Inline `$…$` math draws as italic text without its dollar signs, so `($\rho = 4.3 / 5$)` reads as ρ = 4.3 / 5. Common TeX commands become symbols. Prices like `$5 and $10` and shell variables like `$HOME` stay as written.
+- Chart y-axis ticks sit the same number of rows apart. A 0 to 2500 axis used to step 2, 3, 2, 3, 2 rows between its labels, because the chart height ignored how many ticks it needed; it now takes the nearest height that divides evenly.
 
 ## [0.13.0] - 2026-10-09
 
