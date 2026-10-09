@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Slash command output that carries terminal colors, like `/context`, is left to Claude Code's own drawing. It used to be refused for its escape codes, with a dim `refused` line in the transcript.
+- A flowchart whose long edge label made it too wide for the terminal draws with that label cut short, where it used to fall back to its mermaid source. `⧉ source` still copies the full text.
+- Tool rows show file paths relative to the project, and under the home directory as `~/…`, like Claude Code's own rows, instead of the full absolute path.
 - Mermaid boxes stay closed around Korean, Chinese and Japanese labels. beautiful-mermaid counts each character as one column, so a wide character pushed the right border inward by one column per character. Wide characters are now measured as two columns before layout and drawn in their real width, in flowcharts, sequence diagrams and chart axes alike ([#56](https://github.com/NahumLitvin/prismantis/pull/56)).
 
 ## [0.12.0] - 2026-10-07

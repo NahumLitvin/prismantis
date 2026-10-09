@@ -482,3 +482,27 @@ test('toolStyle tree-bold draws one-line narration in bold', { options: { toolSt
   expect((await long.find({ type: 'Text', text: /^First\.$/ }))?.props.bold).toBeFalsy()
   await long.unmount()
 })
+
+test('slash command output with terminal escape codes is left to the engine', async ($, on) => {
+  engine(on)
+  const colored = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'CommandOutput', props: { command: 'context', args: '', text: '\u001b[1mContext Usage\u001b[22m\n\u001b[38;5;246m⛁ 3.8k tokens\u001b[39m', isErrored: false } })
+  expect(await colored.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await colored.unmount()
+})
+
+test('tool rows show paths relative to the project, and ~ for the home directory', async ($, on) => {
+  mock.env(on, { HOME: '/home/demo' })
+  on('session.cwd', () => ({ value: '/home/demo/tank-monitor' }))
+  const row = async (file_path: string) => {
+    const ui = await $.ui.mount({ plugin: 'prismantis', component: 'ToolUse', props: call('Read', { file_path }, `p-${file_path}`), viewport: { columns: 100, rows: 10 }, surface: 'terminal' })
+    const text = (await ui.find({ type: 'Text', text: /^Read / }))?.text
+    await ui.unmount()
+    return text
+  }
+  expect(await row('/home/demo/tank-monitor/logs/hourly.csv')).toContain('Read logs/hourly.csv')
+  expect(await row('/home/demo/notes/todo.md')).toContain('Read ~/notes/todo.md')
+  expect(await row('/etc/hosts')).toContain('Read /etc/hosts')
+  const group = await $.ui.mount({ plugin: 'prismantis', component: 'ToolGroup', props: { calls: [call('Read', { file_path: '/home/demo/tank-monitor/src/pool.ts' }, 'g1')], isActive: false, isExpanded: false }, viewport: { columns: 100, rows: 10 }, surface: 'terminal' })
+  expect(await group.find({ type: 'Text', text: /last: src\/pool\.ts$/ })).toBeDefined()
+  await group.unmount()
+})

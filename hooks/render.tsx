@@ -614,16 +614,31 @@ const toolLayout = (el: ElementTable, style: Style, columns: number, label: stri
   )
 }
 
+export const shortPath = (style: Style, path: string): string => {
+  for (const [root, prefix] of [[style.cwd, ''], [style.home, '~/']] as const) {
+    const base = root.replace(/\/+$/, '')
+    if (base !== '' && path.startsWith(`${base}/`)) return prefix + path.slice(base.length + 1)
+  }
+  return path
+}
+
+const PATH_FIELDS = ['file_path', 'notebook_path', 'path']
+
+const targetOf = (style: Style, input: unknown, fields: string[]): { target?: string; isPathField: boolean } => {
+  const target = field(input, ...fields)
+  const isPathField = target !== undefined && PATH_FIELDS.some(k => field(input, k) === target)
+  return { target: isPathField ? shortPath(style, target!) : target, isPathField }
+}
+
 export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = 100): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
   const verb = VERBS[row.tool] ?? row.tool.replace(/^mcp__([^_]+)__/, '$1 ')
-  const target = isShell
-    ? field(row.input, 'command')?.split('\n')[0]
-    : field(row.input, 'file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description')
+  const found = isShell ? { target: field(row.input, 'command')?.split('\n')[0], isPathField: false } : targetOf(style, row.input, ['file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description'])
+  const target = found.target
   const dot = row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
-  const isPath = target !== undefined && /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target)
+  const isPath = target !== undefined && (found.isPathField || /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target))
 
   const label = `${verb}${target === undefined ? "" : ` ${target}`}${row.isInterrupted ? " interrupted" : row.isErrored ? " failed" : ""}`
   return toolLayout(el, style, columns, label, dot, row.isRunning, (
@@ -710,7 +725,7 @@ export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly 
   const running = isActive && calls.some(c => c.isRunning)
   const dot = failed ? t.codeFlag : running ? t.accent : t.number
   const last = calls[calls.length - 1]
-  const lastTarget = last ? field(last.input, 'command', 'file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description')?.split('\n')[0] : undefined
+  const lastTarget = last ? targetOf(style, last.input, ['command', 'file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description']).target?.split('\n')[0] : undefined
   const label = `${groupSummary(calls)}${failed ? ` · ${failed} failed` : ""}${lastTarget ? ` · last: ${lastTarget}` : ""}`
   return toolLayout(el, style, columns, label, dot, running, (
       <Text wrap="truncate-end" dimColor={toolDim(style)}>
