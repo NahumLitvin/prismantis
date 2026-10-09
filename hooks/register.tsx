@@ -7,7 +7,7 @@ import type { Block } from './markdown'
 import { parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { boxArt, mermaidText } from './mermaid'
+import { boxArt, mermaidText, shortenEdgeLabels } from './mermaid'
 import type { Drawn } from './render'
 import { remember, renderBlocks, renderExpandedShell, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
@@ -165,6 +165,11 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
   }))
 }
 
+const locate = async ($: EngineInterface, style: Style) => {
+  style.cwd ||= await $.session.cwd().catch(() => '')
+  style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? ''
+}
+
 const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null> => {
   if (await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return null
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
@@ -204,8 +209,13 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   if (style.mermaid) {
     for (const [i, block] of blocks.entries()) {
       if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
-      const art = mermaidText(block.lines.join('\n'), style.mermaidAscii, columns)
-      if (art !== null && art.split('\n').every(l => width(l) <= columns - 2)) drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
+      const source = block.lines.join('\n')
+      for (const max of [Infinity, 24, 12]) {
+        const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
+        if (art === null || !art.split('\n').every(l => width(l) <= columns - 2)) continue
+        drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
+        break
+      }
     }
   }
   const Image = 'Image' in el ? el.Image : null
@@ -234,14 +244,16 @@ export const register: Register = (on, options) => {
   let htmlCopy: Promise<ClipboardBackend | null> | undefined
 
   if (options.toolRows !== false) {
-    on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {
+    on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => {
+      await locate($, style)
       if (e.props.isExpanded) {
         for (const call of e.props.calls) if (call.tool_use_id) expandedCalls.add(call.tool_use_id)
         return next(e)
       }
       return renderToolGroup($.ui.resolve(e), fit(e.viewport), e.props.calls, e.props.isActive, e.viewport?.columns)
     })
-    on('ui.render', { component: 'ToolUse' }, ($, e, next) => {
+    on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
+      await locate($, style)
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns)
       return e.props.tool === 'Bash' || e.props.tool === 'PowerShell' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
     })
@@ -249,6 +261,7 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     terminal = await applyRtl($, style)
+    await locate($, style)
     void latexEngine($, latex)
     htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
@@ -284,6 +297,7 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', async ($, e, next) => {
     await applyRtl($, style)
+    await locate($, style)
     htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
@@ -294,6 +308,7 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => {
     if (e.props.isErrored) return next(e)
+    if (e.props.text.includes('\u001b')) return next(e)
     const blocks = parseCached(e.props.text)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve(e)
