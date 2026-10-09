@@ -40,7 +40,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: npm install -g @anthropic-ai/claude-code@latest
+      - run: npm install -g @anthropic-ai/claude-code@2.1.294
       - name: Lay the mod API types
         run: claude --plugin-dir . -p hi || test -d .claude-plugin/types/claude-code
       - run: npx --yes -p typescript@5 tsc -p .
