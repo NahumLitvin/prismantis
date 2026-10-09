@@ -4,11 +4,14 @@
 
 > Sees 16 colors. Your terminal only had 8.
 
-![prismantis in a real Claude Code session: tool calls dimmed on the right and Claude on the left, your prompt in a bubble, then headings, an alert, a table, a bar chart and a flowchart](docs/demo.gif)
+![The same six prompts in plain Claude Code on the left and with prismantis on the right: a table, a bar chart, a flowchart, LaTeX math, a diff and an incident summary with a warning callout and a checklist](docs/compare.gif)
+
+<sub>Same prompt, same model, left plain Claude Code, right with prismantis. The LaTeX scene uses [#50](https://github.com/NahumLitvin/prismantis/pull/50), not released yet.</sub>
 
 ## TL;DR
 
-- Colorful, themeable replies for [Claude Code](https://claude.com/claude-code): tables, code, diagrams, charts and tool calls, in 15 palettes plus `mono`, with copy buttons on everything.
+- Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, colored tables and code, and quiet tool rows. Typeset LaTeX math is next, in [#50](https://github.com/NahumLitvin/prismantis/pull/50).
+- 15 palettes plus `mono`, and copy buttons on everything.
 - Two commands to install, `/plugin` to turn it off. Claude Code's own renderer comes back the moment you do.
 - No network calls. The only program it ever runs is the clipboard helper for one-click HTML table copy, and only when you click.
 
@@ -20,7 +23,7 @@
 /plugin install prismantis@prismantis
 ```
 
-Then run `/prismantis demo` to see every feature in one reply.
+Then run `/prismantis demo` for a tour of the main features.
 
 ## Install
 
@@ -44,19 +47,19 @@ claude plugin uninstall prismantis@prismantis
 | --- | --- |
 | [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 16 themes and 20 color slots you can override |
 | [Tables](#tables) | colored headers, rules, column alignment, colored numbers, sized to the terminal |
-| [Code](#code) | a language header and copy button, Prism highlighting in 24 languages, shell lines colored like a prompt |
+| [Code](#code) | a language header and copy button, Prism highlighting in two dozen languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
 | [Layout](#layout) | back-to-back tables and diagrams sit side by side and wrap on narrow terminals |
 | [Copy buttons](#copy-buttons) | `⧉ md`, `⧉ art` and `⧉ html` on tables, `[ ⧉ copy ]` on code, lists and quotes, `/prismantis copy` without a mouse |
 | [Tool rows](#tool-rows) | `Ran gh pr view 12`, `Read ~/src/app.ts`, groups summed up as `Ran 3 commands, read 2 files`, with status dots |
 | [Turn footer](#turn-footer) | `✻ Baked for 6m 20s` with the duration in the number color |
 | [Slash commands](#slash-commands) | command output (`/cost`, `/context`, plugin commands) gets the same tables and code styling |
-| [Other mods](#other-mods) | `$.prismantis.markdown` draws any markdown the way replies are drawn |
 | [Diagram hints](#diagram-hints) | a short model-only note on each prompt so Claude reaches for diagrams and charts when they help |
 | [Text](#text) | bold, italic, strikethrough, inline code, links, versions, durations, percentages and paths in their own colors |
 | [Headings, lists, quotes](#headings-lists-quotes) | 4 heading styles, nested lists, task lists, quotes with an accent bar |
 | [Your prompts](#your-prompts) | what you type draws in a bubble, an accent bar or a chevron, so you find your turns when you scroll back |
 | [Right to left](#right-to-left) | Hebrew and Arabic read right to left, with bullets, quote bars and table columns mirrored |
+| [Other mods](#other-mods) | `$.prismantis.markdown` draws any markdown the way replies are drawn, for mod authors |
 
 ![prismantis on the default Catppuccin Mocha theme: a boxed title, a section heading, a table, a nested list, a flowchart, a sequence diagram, a bar chart with values and its tallest bar highlighted, a line chart, highlighted TypeScript and shell blocks, a tip alert and copy buttons](docs/screenshot.png)
 
@@ -70,14 +73,14 @@ Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `s
 
 ### Tables
 
-Header cells take the `tableHeader` color and a double line runs under the header. `tableStyle` picks `box` (the default, every cell boxed), `rules`, `grid` or `minimal`. `:---:` and `---:` alignment is honored, numbers in cells get the number color, and columns shrink to fit the terminal.
+Header cells take the `tableHeader` color, and the default `box` style puts a double line under the header. `tableStyle` picks `box` (the default, every cell boxed), `rules`, `grid` or `minimal`. `:---:` and `---:` alignment is honored, numbers in cells get the number color, and columns shrink to fit the terminal.
 
 ### Code
 
 Each code block gets a header row: the language on the left, a copy button on the right. The code sits indented below with no frame, so selecting it with the mouse copies only the code.
 
 - **Prism** highlights JavaScript, TypeScript, JSX/TSX, Python, Go, Rust, Java, Kotlin, Swift, C, C++, C#, Ruby, JSON, YAML, TOML, SQL, HTML, CSS, Dockerfile, HCL and diff.
-- **Shell** blocks (`bash`, `sh`, `zsh`, unlabeled) color the command word, `--flags`, quoted strings and `# comments`, and restart after `|`, `&&` and `;`.
+- **Shell** blocks (`bash`, `sh`, `zsh`, `fish`, `powershell`, unlabeled) color the command word, `--flags`, quoted strings and `# comments`, and restart after `|`, `&&` and `;`.
 
 ### Diagrams and charts
 
@@ -86,7 +89,7 @@ Code blocks tagged `mermaid` draw as colored text art:
 - flowcharts (`graph LR`, `graph TD`, decisions), sequence, state, class and ER diagrams
 - bar and line charts with `xychart-beta`, sized to the terminal width
 - each box and participant gets its own theme color, the same at both ends of a sequence diagram
-- bars in a multi-series chart get one color per series; a single-series chart prints each value above its bar and colors the tallest one
+- bars in a multi-series chart get their own colors; a single-series chart prints each value above its bar and colors the tallest one
 - gridlines stay dim, axis numbers use the number color
 
 Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii` swaps box-drawing characters for `+ - |`. Pie charts are not supported.
@@ -115,7 +118,7 @@ Clicking works where the terminal passes clicks through, as fullscreen mode does
 
 Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. A status dot shows done, running or failed, and output still draws below.
 
-Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm test`, with a red count when any call failed. Expand a group (ctrl+o or `--verbose`) and its calls draw with Claude Code's own rows. ctrl+o on a reply shows the original text.
+Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm test`, with `· N failed` in the flag color when any call failed. Expand a group (ctrl+o or `--verbose`): shell calls keep their colored command with the output boxed below, and other calls use Claude Code's own rows. ctrl+o on a reply shows the original text.
 
 `toolStyle` keeps tool rows apart from what Claude says:
 
@@ -140,7 +143,7 @@ The note costs about 190 tokens per prompt. It's off whenever `mermaid` is off, 
 
 ### Text
 
-**Bold**, *italic*, ~~strikethrough~~, `inline code`, links and bare URLs, clickable as terminal hyperlinks (where the terminal has none, the URL shows dimmed after the text). Numbers, versions (`v2.14.0`), durations (`250ms`, `3h`), sizes (`16Gi`) and percentages (`99.9%`) take the number color, and paths like `~/src/app.ts` the path color.
+**Bold**, *italic*, ~~strikethrough~~, `inline code`, links and bare URLs, clickable as terminal hyperlinks. Numbers, versions (`v2.14.0`), durations (`250ms`, `3h`), sizes (`16Gi`) and percentages (`99.9%`) take the number color, and paths like `~/src/app.ts` the path color.
 
 ### Headings, lists, quotes
 
@@ -173,16 +176,20 @@ Open `/config` and look for the **prismantis** rows, or set values in `~/.claude
 ```json
 {
   "pluginConfigs": {
-    "prismantis": {
-      "theme": "tokyo-night",
-      "tableStyle": "grid",
-      "headingStyle": "banner",
-      "tableHeaderColor": "#ffcc00",
-      "numberColor": "cyan"
+    "prismantis@prismantis": {
+      "options": {
+        "theme": "tokyo-night",
+        "tableStyle": "grid",
+        "headingStyle": "banner",
+        "tableHeaderColor": "#ffcc00",
+        "numberColor": "cyan"
+      }
     }
   }
 }
 ```
+
+Options sit under `options`, keyed by the plugin's install name. Project settings are not read for plugin options.
 
 | Option | Values | Default |
 | --- | --- | --- |
@@ -232,7 +239,7 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 
 - **A setting or update didn't take:** run `/reload`. A session keeps what it loaded.
 - **A diagram shows as code:** its source is over 80 lines or 8,000 characters, it's wider than the window, it doesn't parse, or `mermaid` is off. Widen the terminal or split the diagram.
-- **No `⧉ html` on tables:** you're over SSH, on desktop, or on Linux with no graphical session. `⧉ md` and `⧉ art` still work.
+- **No `⧉ html` on tables:** you're over SSH, in the desktop app or VS Code, or on Linux with no graphical session. `⧉ md` and `⧉ art` still work.
 - **`⧉ html` copied plain text only:** CopyQ isn't running, or the clipboard helper failed. The toast says why.
 - **Clicking a copy button selects the word "copy":** your terminal copies on select. Use `/prismantis copy`.
 
@@ -250,7 +257,7 @@ To change the code, read [AGENTS.md](AGENTS.md) instead.
 
 - **What it is:** a Claude Code mod (function hooks in TypeScript) that redraws assistant replies, slash-command output, tool rows, the turn footer and user prompts. It changes how things look. The one thing it sends the model is the optional diagram hint below.
 - **Install:** `/plugin marketplace add NahumLitvin/prismantis`, then `/plugin install prismantis@prismantis`. Needs Claude Code 2.1.287+. Changes apply after `/reload`.
-- **Configure:** `/prismantis theme <name>` is the only setter at runtime. Every other option is a key under `pluginConfigs.prismantis` in `~/.claude/settings.json` (or a row in `/config`), then `/reload`. Options and defaults are in the [Configure](#configure) table; the machine-readable source is `userConfig` in [.claude-plugin/plugin.json](.claude-plugin/plugin.json). Color values that don't parse are ignored.
+- **Configure:** `/prismantis theme <name>` is the only setter at runtime. Every other option is a key under `pluginConfigs["prismantis@prismantis"].options` in `~/.claude/settings.json` (or a row in `/config`), then `/reload`. Options and defaults are in the [Configure](#configure) table; the machine-readable source is `userConfig` in [.claude-plugin/plugin.json](.claude-plugin/plugin.json). Color values that don't parse are ignored.
 - **Side effects:** no network. The only program it runs is the `⧉ html` clipboard helper: `/usr/bin/osascript` on macOS, `copyq` on Linux, 5 second timeout, only when the user presses the button. With `diagramHints` on, it adds about 190 tokens of model-only context to each typed prompt.
 - **Turning it off:** `"enabled": false`, or disable the plugin in `/plugin`.
 - **For other mods:** `$.prismantis.markdown({ surface, text, columns })`, typed in [types/index.d.ts](types/index.d.ts). See [Other mods](#other-mods).
@@ -272,7 +279,7 @@ Edits hot-reload in that session. Before a PR run `claude plugin validate .` and
 
 ### Other mods
 
-A mod that draws markdown in its own pane or band can have prismantis draw it in the user's theme with `$.prismantis.markdown`, passing the surface, the text and its width in columns.
+Other mods can draw markdown in the user's theme with `$.prismantis.markdown`. Pass the surface, the text and the content width in columns.
 
 - It answers the tree to draw, or `undefined` when prismantis is disabled or the text holds nothing to draw.
 - It throws when prismantis isn't installed, so call it in a `try`.
