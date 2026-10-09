@@ -795,3 +795,14 @@ test('tool rows show paths relative to the project, and ~ for the home directory
   expect(await group.find({ type: 'Text', text: /last: src\/pool\.ts$/ })).toBeDefined()
   await group.unmount()
 })
+
+test('git --output and awk -f are not reads, and an error starting with "at" is not stack noise', () => {
+  const shell = (command: string) => isReadOnlyCall('Bash', { command })
+  expect(shell('git log --oneline -5')).toBe(true)
+  expect(shell('git log --output=log.txt')).toBe(false)
+  expect(shell('git diff --output patch.diff')).toBe(false)
+  expect(shell("awk -F, '{print $1}' data.csv")).toBe(true)
+  expect(shell('awk -f transform.awk data.csv')).toBe(false)
+  expect(errorReason('at least one tank id is required')).toBe('at least one tank id is required')
+  expect(errorReason('TypeError: boom\n    at run (/app/src/pool.ts:12:5)\n    at main.js:3:1')).toBe('TypeError: boom')
+})

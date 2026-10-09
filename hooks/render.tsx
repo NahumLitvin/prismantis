@@ -680,7 +680,7 @@ export const renderShellResult = (el: ElementTable, style: Style, output: unknow
   )
 }
 
-const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s.*|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i
+const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s+(\S+\s+\()?\S+:\d+(:\d+)?\)?|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i
 
 const REFUSAL = /^(Error:\s*)?(The user doesn't want to proceed|Permission (for|to) .*\bdenied|The server-side auto mode classifier|\S+ hook error:)/i
 
@@ -740,7 +740,7 @@ const callLabel = (call: ToolRow, style: Style): string => {
 
 const quietToolRow = (el: ElementTable, style: Style, row: ToolRow, columns: number): RenderElement => {
   const t = style.theme
-  const dot = row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
+  const dot = statusColor(t, row)
   const what = callLabel(row, style)
   const label = `${what}${row.isInterrupted ? ' interrupted' : row.isErrored ? ' failed' : ''}`
   return toolLayout(el, style, columns, label, dot, row.isRunning, (
@@ -895,14 +895,14 @@ const readsOnly = ({ words }: ShellPart): boolean => {
   if (name === undefined) return true
   const args = rest.join(' ')
   if (name === 'gh' && rest[0] === 'api') return ghApiReadsOnly(rest.slice(1))
-  if (name in READ_SUBCOMMANDS) return READ_SUBCOMMANDS[name]!.test(args)
+  if (name in READ_SUBCOMMANDS) return READ_SUBCOMMANDS[name]!.test(args) && !(name === 'git' && rest.some(a => /^--output\b/.test(a)))
   if (!READ_COMMANDS.has(name)) return false
   if (name === 'sed') {
     const [script, ...files] = rest.filter(a => a !== '-n')
     return script !== undefined && /^\d+(,\d+)?p$/.test(script) && files.every(f => !f.startsWith('-'))
   }
   if (name === 'find') return !rest.some(a => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/.test(a))
-  if (name === 'awk') return !/system\s*\(|getline|[|>]/.test(args)
+  if (name === 'awk') return !rest.some(a => /^(-f|--file)/.test(a)) && !/system\s*\(|getline|[|>]/.test(args)
   if (name === 'sort') return !rest.some(a => /^(-[A-Za-z]*o|--output)/.test(a))
   if (name === 'uniq') return operandsOf(name, rest).length < 2
   if (name === 'tree') return !rest.some(a => /^(-o|--output)/.test(a))
