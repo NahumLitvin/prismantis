@@ -18,6 +18,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Only `https` and `http://localhost` links become clickable terminal hyperlinks, which every supported Claude Code accepts. On 2.1.287 a `mailto:` or plain `http:` link made Claude Code throw out the whole reply and draw its own. Other links, `javascript:` and `file:` included, draw as link text.
 - Earlier replies stay parsed while a long reply streams in, and code and diagrams are not highlighted again on desktop, in fullscreen Apple Terminal or when another mod draws markdown through `$.prismantis.markdown`.
 - The terminal is detected once per session instead of on every prompt, and the list of expanded tool calls no longer grows for the whole session.
+- A left-to-right flowchart too wide for the terminal draws top to bottom, where it used to fall back to its mermaid source. A five-node pipeline with two-line labels went from 155 columns to 77.
 
 ## [0.12.0] - 2026-10-07
 

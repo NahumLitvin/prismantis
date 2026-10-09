@@ -212,6 +212,14 @@ test('a chart that opens with a %% comment still draws', async $ => {
   await ui.unmount()
 })
 
+test('a left-to-right flowchart too wide for the terminal draws top-down instead of as source', async () => {
+  const chain = ['flowchart LR', ...['A', 'B', 'C', 'D', 'E'].map((n, i, a) => (i ? `  ${a[i - 1]} --> ${n}["step ${n} with a long label"]` : '')).filter(Boolean)].join('\n')
+  const art = mermaidText(chain, false, 100)
+  expect(art).not.toBeNull()
+  expect(art!.split('\n').every(l => width(l) <= 98)).toBe(true)
+  expect(art).toContain('▼')
+})
+
 test('a GitHub alert draws its title and body, and copies without the > markers', async ($, on) => {
   const copied = stubClipboard(on)
   const ui = await $.ui.mount(mount('> [!WARNING]\n> disk is almost full'))

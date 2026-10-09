@@ -42,8 +42,17 @@ const labelBars = (art: string, source: string): string => {
   return grid.map(row => row.join('').trimEnd()).join('\n')
 }
 
-export const mermaidText =(source: string, ascii: boolean, columns: number): string | null => {
+const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
+
+export const mermaidText = (source: string, ascii: boolean, columns: number): string | null => {
   if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
+  const art = draw(source, ascii, columns)
+  const fits = (a: string) => a.split('\n').every(l => width(l) <= columns - 2)
+  if (art === null || fits(art) || !SIDEWAYS.test(source)) return art
+  return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
+}
+
+const draw = (source: string, ascii: boolean, columns: number): string | null => {
   const isChart = /^\s*xychart/.test(source)
   const padded = padWide(source)
   const size = chartSize(columns, isChart ? padded : '')
