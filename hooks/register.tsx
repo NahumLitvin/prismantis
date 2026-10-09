@@ -261,7 +261,6 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     terminal = await applyRtl($, style)
-    await locate($, style)
     void latexEngine($, latex)
     htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
@@ -297,7 +296,6 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', async ($, e, next) => {
     await applyRtl($, style)
-    await locate($, style)
     htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)

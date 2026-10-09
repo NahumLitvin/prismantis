@@ -140,7 +140,7 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
   )
 }
 
-const EDGE_LABEL = /(-[-.=]+\s*)"([^"\n]+)"(\s*[-.=]+>)|\|([^|\n]+)\||(\s-[-.=]\s+)([^"|\n]+?)(\s+[-.=]+>)/g
+const EDGE_LABEL = /(-[-.=]+\s*)"([^"\n]+)"(\s*[-.=]+>)|\|([^|\n]+)\|/g
 
 const cap = (label: string, max: number) => {
   const flat = label.replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim()
@@ -149,7 +149,5 @@ const cap = (label: string, max: number) => {
 }
 
 export const shortenEdgeLabels = (source: string, max: number): string =>
-  source.replace(EDGE_LABEL, (m, open, quoted, close, piped, bareOpen, bare, bareClose) =>
-    quoted !== undefined ? `${open}"${cap(quoted, max)}"${close}`
-      : piped !== undefined ? `|${cap(piped, max)}|`
-        : `${bareOpen}${cap(bare, max)}${bareClose}`)
+  source.replace(EDGE_LABEL, (m, open, quoted, close, piped) =>
+    quoted !== undefined ? `${open}"${cap(quoted, max)}"${close}` : `|${cap(piped, max)}|`)
