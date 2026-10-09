@@ -493,7 +493,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 }
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
-export type Drawn = Map<number, { element: RenderElement; art: string }>
+export type Drawn = Map<number, { element: RenderElement; art?: string }>
 
 const copySource = (block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n') : block.kind === 'table' || block.kind === 'list' ? block.raw : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n') : undefined
@@ -562,7 +562,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       </Box>
     )
   })
-  const isFigure = (b: number) => blocks[b]?.kind === 'table' || drawn.has(b)
+  const isFigure = (b: number) => blocks[b]?.kind === 'table' || drawn.get(b)?.art !== undefined
   const out: RenderElement[] = []
   for (let b = 0; b < rendered.length; b++) {
     if (!isFigure(b) || !isFigure(b + 1)) {
