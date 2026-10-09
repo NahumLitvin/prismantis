@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Chart y-axis ticks sit the same number of rows apart. A 0 to 2500 axis used to step 2, 3, 2, 3, 2 rows between its labels, because the chart height ignored how many ticks it needed; it now takes the nearest height that divides evenly.
+
 ## [0.13.0] - 2026-10-09
 
 ### Added
