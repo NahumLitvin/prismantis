@@ -781,7 +781,7 @@ test('slash command output with terminal escape codes is left to the engine', as
 
 test('tool rows show paths relative to the project, and ~ for the home directory', async ($, on) => {
   mock.env(on, { HOME: '/home/demo' })
-  on('session.cwd', () => ({ value: '/home/demo/tank-monitor' }))
+  on('session.root', () => ({ value: '/home/demo/tank-monitor' }))
   const row = async (file_path: string) => {
     const ui = await $.ui.mount({ plugin: 'prismantis', component: 'ToolUse', props: call('Read', { file_path }, `p-${file_path}`), viewport: { columns: 100, rows: 10 }, surface: 'terminal' })
     const text = (await ui.find({ type: 'Text', text: /^Read / }))?.text
@@ -805,4 +805,19 @@ test('git --output and awk -f are not reads, and an error starting with "at" is 
   expect(shell('awk -f transform.awk data.csv')).toBe(false)
   expect(errorReason('at least one tank id is required')).toBe('at least one tank id is required')
   expect(errorReason('TypeError: boom\n    at run (/app/src/pool.ts:12:5)\n    at main.js:3:1')).toBe('TypeError: boom')
+})
+
+test('tool row paths follow the project root after a worktree move', async ($, on) => {
+  mock.env(on, { HOME: '/home/demo' })
+  let root = '/home/demo/tank-monitor'
+  on('session.root', () => ({ value: root }))
+  const row = async (file_path: string, id: string) => {
+    const ui = await $.ui.mount({ plugin: 'prismantis', component: 'ToolUse', props: call('Read', { file_path }, id), viewport: { columns: 100, rows: 10 }, surface: 'terminal' })
+    const text = (await ui.find({ type: 'Text', text: /^Read / }))?.text
+    await ui.unmount()
+    return text
+  }
+  expect(await row('/home/demo/tank-monitor/src/pool.ts', 'w1')).toContain('Read src/pool.ts')
+  root = '/home/demo/worktrees/tank-monitor-fix'
+  expect(await row('/home/demo/worktrees/tank-monitor-fix/src/pool.ts', 'w2')).toContain('Read src/pool.ts')
 })

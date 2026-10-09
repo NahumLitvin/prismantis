@@ -175,7 +175,7 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
 }
 
 const locate = async ($: EngineInterface, style: Style) => {
-  style.cwd ||= await $.session.cwd().catch(() => '')
+  style.cwd = await $.session.root().catch(() => style.cwd)
   style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? ''
 }
 
