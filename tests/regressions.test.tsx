@@ -4,7 +4,7 @@ import { expect, test } from 'claude-code/testing'
 import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
-import { mermaidText } from '../hooks/mermaid'
+import { mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import { tableArt, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 import { clipboardEnv, recordCopies } from './clipboard-env'
@@ -307,7 +307,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(new Set(blocks.flatMap(b => (b.kind === 'heading' ? [b.level] : []))).size >= 4).toBe(true)
   expect(new Set(blocks.flatMap(b => (b.kind === 'alert' ? [b.level] : []))).size).toBe(5)
   const langs = blocks.flatMap(b => (b.kind === 'code' ? [b.lang] : []))
-  for (const lang of ['bash', 'json', 'mermaid']) expect(langs.includes(lang)).toBe(true)
+  for (const lang of ['bash', 'json', 'mermaid', 'math']) expect(langs.includes(lang)).toBe(true)
   const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
@@ -456,4 +456,26 @@ test('double underscores inside a word stay literal, as in mcp__serena__activate
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
 
   expect(block?.kind === 'paragraph' ? inlineText(block.inline) : null).toBe('Call mcp__serena__activate_project, not this.')
+})
+
+test('a flowchart whose long edge label makes it too wide draws with the label shortened, not as source', async ($, on) => {
+  const source = [
+    'flowchart TD',
+    '  A["Tank sensor<br/>posts a reading every 10s"] --> B["POST to ingest :8080"]',
+    '  B --> C["writeReading(tankId, tempC, ph)"]',
+    '  C --> D{"pool.connect()<br/>free connection within 2000ms?"}',
+    '  D -- yes --> E["INSERT INTO readings"]',
+    '  D -- no --> X1["BLOCKED: acquire timeout<br/>pool 4/4 busy, reading fails"]',
+    '  E --> F["client.release() back to pool"]',
+    '  E -. "slow INSERT holds the connection<br/>(no query timeout in code)" .-> X2["BLOCKED: connection held,<br/>starves the pool"]',
+    '  F --> G[("readings table<br/>tanks-db.internal")]',
+    '  G --> H["Dashboard polls readings"]',
+  ].join('\n')
+  expect(mermaidText(source, false, 108)!.split('\n').some(l => width(l) > 106)).toBe(true)
+  expect(shortenEdgeLabels(source, 24)).toContain('-. "slow INSERT holds the c…" .->')
+  expect(shortenEdgeLabels('graph LR\n  A -->|a very long edge label here| B', 12)).toContain('|a very long…|')
+  const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```', 112))
+  expect(await ui.find({ type: 'Text', text: /Tank sensor/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /flowchart TD/ })).toBeUndefined()
+  await ui.unmount()
 })

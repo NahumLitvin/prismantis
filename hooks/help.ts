@@ -48,6 +48,7 @@ Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatt
 
 > [!WARNING]
 > Terminals that copy on select (Warp) can turn a click on a copy button into a selection. Use the keyboard shortcut.
+> Selecting a typeset formula copies blank cells. Its copy button copies the LaTeX.
 
 > [!CAUTION]
 > Claude Code refuses trees over 20000 nodes. A code block past about 500 highlighted lines falls back to plain text.
@@ -79,6 +80,12 @@ Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` i
 \`\`\`json
 { "theme": "dracula", "headingStyle": "banner", "mermaid": true }
 \`\`\`
+
+#### Math
+
+$$
+\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}
+$$
 
 #### Diagrams
 

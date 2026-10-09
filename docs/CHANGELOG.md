@@ -7,9 +7,13 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - Tables offer `⧉ md`, `⧉ art` and `⧉ html` copy actions. `⧉ html` copies the table as HTML, with headers, column alignment and inline formatting, together with tab-separated plain text, and verifies both before reporting success. `⧉ html` shows in a local macOS terminal or a Linux graphical session, where it needs CopyQ running; over SSH, on desktop and on other systems tables offer `⧉ md` and `⧉ art`. Without CopyQ, or when the clipboard helper fails, the action copies the plain text alone.
+- LaTeX math: `$$…$$` and ` ```math ` formulas draw as typeset images in kitty and Ghostty through [RaTeX](https://github.com/erweixin/RaTeX)'s renderer, sized to the reply text and padded to whole rows, with a copy button for the LaTeX. Off by default: the `latex` option turns it on, and `ratex-render` must be on your `PATH`. Without the renderer or in other terminals they stay text in a `math` code block. New option `latex` ([#43](https://github.com/NahumLitvin/prismantis/issues/43)).
 
 ### Fixed
 
+- Slash command output that carries terminal colors, like `/context`, is left to Claude Code's own drawing. It used to be refused for its escape codes, with a dim `refused` line in the transcript.
+- A flowchart whose long edge label made it too wide for the terminal draws with that label cut short, where it used to fall back to its mermaid source. `⧉ source` still copies the full text.
+- Tool rows show file paths relative to the project, and under the home directory as `~/…`, like Claude Code's own rows, instead of the full absolute path.
 - Mermaid boxes stay closed around Korean, Chinese and Japanese labels. beautiful-mermaid counts each character as one column, so a wide character pushed the right border inward by one column per character. Wide characters are now measured as two columns before layout and drawn in their real width, in flowcharts, sequence diagrams and chart axes alike ([#56](https://github.com/NahumLitvin/prismantis/pull/56)).
 - Only `http`, `https` and `mailto` links become clickable terminal hyperlinks, the same rule the HTML table copy uses. A `javascript:` or `file:` link draws as plain link text.
 - Earlier replies stay parsed while a long reply streams in, and code and diagrams are not highlighted again on desktop, in fullscreen Apple Terminal or when another mod draws markdown through `$.prismantis.markdown`.

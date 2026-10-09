@@ -30,6 +30,9 @@ export type Style = {
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
   shape: Shape
+  latex: boolean
+  cwd: string
+  home: string
 }
 
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)|ansi256\(\d{1,3}\)|(black|red|green|yellow|blue|magenta|cyan|white|gray|grey)(Bright)?)$/i
@@ -64,5 +67,8 @@ export const resolveStyle = (options: PluginOptions): Style => {
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',
     shape: rtl === 'auto' || rtl === 'off' ? 'visual' : TERMINALS[rtl],
+    latex: options.latex === true,
+    cwd: '',
+    home: '',
   }
 }

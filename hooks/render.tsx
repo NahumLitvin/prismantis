@@ -506,7 +506,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 }
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
-export type Drawn = Map<number, { element: RenderElement; art: string }>
+export type Drawn = Map<number, { element: RenderElement; art?: string }>
 
 const copySource = (block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n') : block.kind === 'table' || block.kind === 'list' ? block.raw : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n') : undefined
@@ -576,7 +576,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       </Box>
     )
   })
-  const isFigure = (b: number) => blocks[b]?.kind === 'table' || drawn.has(b)
+  const isFigure = (b: number) => blocks[b]?.kind === 'table' || drawn.get(b)?.art !== undefined
   const out: RenderElement[] = []
   for (let b = 0; b < rendered.length; b++) {
     if (!isFigure(b) || !isFigure(b + 1)) {
@@ -633,16 +633,31 @@ const toolLayout = (el: ElementTable, style: Style, columns: number, label: stri
   )
 }
 
+export const shortPath = (style: Style, path: string): string => {
+  for (const [root, prefix] of [[style.cwd, ''], [style.home, '~/']] as const) {
+    const base = root.replace(/\/+$/, '')
+    if (base !== '' && path.startsWith(`${base}/`)) return prefix + path.slice(base.length + 1)
+  }
+  return path
+}
+
+const PATH_FIELDS = ['file_path', 'notebook_path', 'path']
+
+const targetOf = (style: Style, input: unknown, fields: string[]): { target?: string; isPathField: boolean } => {
+  const target = field(input, ...fields)
+  const isPathField = target !== undefined && PATH_FIELDS.some(k => field(input, k) === target)
+  return { target: isPathField ? shortPath(style, target!) : target, isPathField }
+}
+
 export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = 100): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
   const verb = VERBS[row.tool] ?? row.tool.replace(/^mcp__([^_]+)__/, '$1 ')
-  const target = isShell
-    ? field(row.input, 'command')?.split('\n')[0]
-    : field(row.input, ...TARGET_FIELDS)
+  const found = isShell ? { target: field(row.input, 'command')?.split('\n')[0], isPathField: false } : targetOf(style, row.input, [...TARGET_FIELDS])
+  const target = found.target
   const dot = statusColor(t, row)
-  const isPath = target !== undefined && /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target)
+  const isPath = target !== undefined && (found.isPathField || /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target))
 
   const label = `${verb}${target === undefined ? "" : ` ${target}`}${row.isInterrupted ? " interrupted" : row.isErrored ? " failed" : ""}`
   return toolLayout(el, style, columns, label, dot, row.isRunning, (
@@ -729,7 +744,7 @@ export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly 
   const running = isActive && calls.some(c => c.isRunning)
   const dot = failed ? t.codeFlag : running ? t.accent : t.number
   const last = calls[calls.length - 1]
-  const lastTarget = last ? field(last.input, 'command', ...TARGET_FIELDS)?.split('\n')[0] : undefined
+  const lastTarget = last ? targetOf(style, last.input, ['command', ...TARGET_FIELDS]).target?.split('\n')[0] : undefined
   const summary = groupSummary(calls)
   const label = `${summary}${failed ? ` · ${failed} failed` : ""}${lastTarget ? ` · last: ${lastTarget}` : ""}`
   return toolLayout(el, style, columns, label, dot, running, (

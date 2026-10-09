@@ -13,7 +13,7 @@ export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }
   | { kind: 'paragraph'; inline: Inline[] }
   | { kind: 'list'; ordered: boolean; items: { marker: string; depth: number; task?: boolean; inline: Inline[] }[] }
-  | { kind: 'code'; lang: string; lines: string[] }
+  | { kind: 'code'; lang: string; lines: string[]; isOpen?: true }
   | { kind: 'quote'; inline: Inline[] }
   | { kind: 'alert'; level: AlertLevel; inline: Inline[] }
   | { kind: 'rule' }
@@ -101,6 +101,25 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
 export const inlineText = (inline: Inline[]): string =>
   inline.map(n => ('children' in n ? inlineText(n.children) : n.text)).join('')
 
+const mathAt = (lines: string[], start: number): { lines: string[]; end: number } | null => {
+  const trimmed = (n: number) => (lines[n] ?? '').trim()
+  const first = trimmed(start)
+  if (!first.startsWith('$$')) return null
+  const open = first.slice(2)
+  let end = start
+  if (!(open.length >= 2 && open.endsWith('$$'))) {
+    end = start + 1
+    while (end < lines.length && !trimmed(end).endsWith('$$')) {
+      if (trimmed(end) === '') return null
+      end++
+    }
+    if (end === lines.length) return null
+  }
+  const body = end === start ? [open.slice(0, -2)] : [open, ...lines.slice(start + 1, end), trimmed(end).slice(0, -2)]
+  const tex = body.filter(line => line.trim() !== '').map((line, i, all) => (i === 0 || i === all.length - 1 ? line.trim() : line))
+  return tex.length ? { lines: tex, end } : null
+}
+
 export const displayText = (inline: Inline[]): string =>
   inline.map(n => (n.kind === 'link' && n.text !== n.href ? `${n.text} (${n.href})` : 'children' in n ? displayText(n.children) : n.text)).join('')
 
@@ -130,7 +149,14 @@ export const parse = (source: string, hl: Highlight): Block[] => {
       const body: string[] = []
       i++
       while (i < lines.length && !closer.test(at(i))) body.push(at(i++))
-      add({ kind: 'code', lang: fence[2] ?? '', lines: body }, start, i + 1)
+      add({ kind: 'code', lang: fence[2] ?? '', lines: body, ...(i < lines.length ? {} : { isOpen: true as const }) }, start, i + 1)
+      continue
+    }
+    const math = mathAt(lines, i)
+    if (math) {
+      flush(i)
+      add({ kind: 'code', lang: 'math', lines: math.lines }, i, math.end + 1)
+      i = math.end
       continue
     }
     if (line.trim() === '') {

@@ -220,7 +220,7 @@
     "diagramTextColor": {
       "type": "string",
       "title": "Diagram text",
-      "description": "Color for diagram labels. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
+      "description": "Color for diagram labels and LaTeX formulas. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
     "toolRows": {
@@ -274,8 +274,14 @@
     "diagramHints": {
       "type": "boolean",
       "title": "Diagram hints",
-      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams and charts render here. About 190 tokens per prompt. Off when mermaid is off.",
+      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams and charts render here, and LaTeX formulas when the renderer runs. About 190 tokens per prompt, about 60 more with LaTeX. Off when mermaid is off.",
       "default": true
+    },
+    "latex": {
+      "type": "boolean",
+      "title": "LaTeX math",
+      "description": "Draw $$ and ```math formulas as typeset images in kitty and Ghostty (not under tmux) with RaTeX's renderer, installed as ratex-render on your PATH. Off runs nothing. Formulas that can't be drawn stay as text.",
+      "default": false
     }
   }
 }
