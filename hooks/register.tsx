@@ -1,5 +1,9 @@
+import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderSurface } from 'claude-code'
 
+import type { Formula } from './latex'
+import { LATEX_DPR, LATEX_FONT_PX, fitsImage, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
+import type { Block } from './markdown'
 import { parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
@@ -21,6 +25,8 @@ const HINT = [
   'Skip diagrams for simple answers.',
   'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
 ].join(' ')
+
+const LATEX_HINT = 'This terminal typesets LaTeX math: a formula in $$…$$ on lines of its own, or in a ```math block, renders as an image (KaTeX syntax). Inline $…$ does not render, so write inline math as plain text or Unicode.'
 
 const detectTerminal = async ($: EngineInterface): Promise<Terminal | null> => {
   const program = await $.env.get('TERM_PROGRAM')
@@ -50,6 +56,115 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 
 const expandedCalls = new Set<string>()
 
+const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
+const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
+
+type Typeset = Exclude<Formula, { error: true }> & { tex: string }
+
+const showsImages = async ($: EngineInterface): Promise<boolean> => {
+  if (await $.env.get('TMUX')) return false
+  const terminal = await detectTerminal($)
+  return terminal === 'kitty' || terminal === 'ghostty'
+}
+
+type Latex = { command: string; dir: string }
+type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; ready?: Latex | null; stopped?: boolean; queue: Promise<void> }
+
+const formulaKey = (latex: LatexSession, tex: string) => `${latex.color}\0${tex}`
+
+const typeset = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], fontSize = LATEX_FONT_PX, dpr = LATEX_DPR): Promise<Formula[]> => {
+  const { stdout } = await $.process.run(
+    [engine.command, '--output-dir', engine.dir, '--color', latex.color, '--background-color', 'transparent', '--font-size', String(fontSize), '--dpr', String(dpr)],
+    { stdin: `${texs.join('\n')}\n`, timeoutMs: 2000 },
+  )
+  const rendered = renderedOf(stdout)
+  return Promise.all(texs.map(async (_, i): Promise<Formula> => {
+    if (!rendered.has(i + 1)) return { error: true }
+    const png = await $.fs.read(`${engine.dir}/${String(i + 1).padStart(4, '0')}.png`, { as: 'bytes' }).then(r => r.base64, () => '')
+    const size = png ? pngSize(png) : null
+    return size && fitsImage(png) ? { png, ...size } : { error: true }
+  }))
+}
+
+const withPadding = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], results: Formula[]): Promise<Formula[]> => {
+  const padded: Formula[] = []
+  for (const [i, result] of results.entries()) {
+    const pad = 'png' in result ? padFor(result) : null
+    const [again] = pad ? await typeset($, latex, engine, [texs[i]!], pad.fontSize, pad.dpr).catch((): Formula[] => []) : []
+    padded.push(again && 'png' in again && 'png' in result ? { ...result, padded: again } : result)
+  }
+  return padded
+}
+
+const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Latex | null> => {
+  if (!latex.style.latex || !(await $.session.surfaces()).includes('terminal') || !(await showsImages($))) return null
+  const tmp = (await $.env.get('TMPDIR')) ?? (await $.env.get('TEMP')) ?? '/tmp'
+  const suffix = (await read($, latexDir)) || crypto.randomUUID()
+  await update($, latexDir, () => suffix)
+  const engine = { command: 'ratex-render', dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${await $.session.id()}-${suffix}` }
+  const [probe] = await typeset($, latex, engine, ['x^2'])
+  return probe && 'png' in probe ? engine : null
+}
+
+const latexEngine = ($: EngineInterface, latex: LatexSession): Promise<Latex | null> =>
+  (latex.engine ??= startLatex($, latex)
+    .catch(() => null)
+    .then(engine => {
+      latex.ready = engine
+      if (engine) $.ui.invalidate('ui.render')
+      return engine
+    }))
+
+const stopLatex = (latex: LatexSession) => {
+  latex.stopped = true
+  latex.pending.clear()
+  latex.batch = []
+}
+
+const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: string[]): Promise<void> => {
+  const engine = await latexEngine($, latex)
+  if (!engine || latex.stopped) return
+  const results = await typeset($, latex, engine, texs).then(
+    done => withPadding($, latex, engine, texs, done),
+    () => null,
+  )
+  if (!results) return stopLatex(latex)
+  const fresh = texs.map((tex, i) => [formulaKey(latex, tex), results[i]!] as const)
+  await update($, formulas, store => keepFormulas(store, fresh, latex.wanted))
+  latex.wanted.clear()
+  for (const tex of texs) latex.pending.delete(formulaKey(latex, tex))
+}
+
+const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: string, blocks: Block[]): Promise<Map<number, Typeset>> => {
+  const maths = [...blocks.entries()].flatMap(([i, block]) => {
+    const tex = mathOf(block)
+    return tex === null ? [] : [{ i, tex, key: formulaKey(latex, tex) }]
+  })
+  if (surface !== 'terminal' || maths.length === 0) return new Map()
+  void latexEngine($, latex)
+  if (!latex.ready) return new Map()
+  for (const { key } of maths) latex.wanted.add(key)
+  const store = (await read($, formulas)) as Record<string, Formula>
+  const missing = latex.stopped ? [] : [...new Map(maths.map(({ key, tex }) => [key, tex]))].filter(([key]) => !store[key] && !latex.pending.has(key))
+  if (missing.length) {
+    if (latex.batch.length === 0) {
+      $.clock.after(0, () => {
+        const texs = latex.batch
+        latex.batch = []
+        latex.queue = latex.queue.then(() => typesetLater($, latex, texs)).catch(() => stopLatex(latex))
+      })
+    }
+    for (const [key, tex] of missing) {
+      latex.pending.add(key)
+      latex.batch.push(tex)
+    }
+  }
+  return new Map(maths.flatMap(({ i, tex, key }) => {
+    const formula = store[key]
+    return formula && 'png' in formula ? [[i, { tex, ...formula }] as const] : []
+  }))
+}
+
 const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null> => {
   if (await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return null
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
@@ -64,7 +179,7 @@ const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: st
   return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
 }
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, reply?: string): RenderElement[] => {
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
     const copied = async (surface: RenderSurface): Promise<string> => {
@@ -93,6 +208,13 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       if (art !== null && art.split('\n').every(l => width(l) <= columns - 2)) drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
     }
   }
+  const Image = 'Image' in el ? el.Image : null
+  if (Image) {
+    for (const [i, formula] of math) {
+      const picked = pickFormula(formula, columns)
+      if (picked) drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picked.picture.png }} columns={picked.fit.columns} rows={picked.fit.rows} alt={formula.tex} /> })
+    }
+  }
   const elements = renderBlocks(el, style, blocks, columns, drawn, copy)
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
   return button ? [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>] : elements
@@ -107,6 +229,7 @@ export const register: Register = (on, options) => {
   const shared = new Map<string, ReturnType<typeof parse>>()
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
+  const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
   const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
   let htmlCopy: Promise<ClipboardBackend | null> | undefined
 
@@ -126,6 +249,7 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     terminal = await applyRtl($, style)
+    void latexEngine($, latex)
     htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
     const started = await next(e)
@@ -163,17 +287,20 @@ export const register: Register = (on, options) => {
     htmlCopy ??= htmlBackend($)
     style.htmlCopy = await htmlCopy
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
-    return next({ ...e, context: [...(e.context ?? []), HINT] })
+    void latexEngine($, latex)
+    const hints = latex.ready && !latex.stopped ? [HINT, LATEX_HINT] : [HINT]
+    return next({ ...e, context: [...(e.context ?? []), ...hints] })
   })
 
-  on('ui.render', { component: 'CommandOutput' }, ($, e, next) => {
+  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => {
     if (e.props.isErrored) return next(e)
     const blocks = parseCached(e.props.text)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve(e)
     const { Box } = el
     const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
-    return <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.props.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columns)}</Box>
+    const math = await mathOfBlocks($, latex, e.surface, blocks)
+    return <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.props.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columns, math)}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
@@ -183,13 +310,14 @@ export const register: Register = (on, options) => {
     return renderUserPrompt($.ui.resolve(e), fit(e.viewport), e.props.text, Math.max(20, (e.viewport?.columns ?? 100) - 4))
   })
 
-  on('ui.render', { component: 'AssistantMessage' }, ($, e, next) => {
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     const blocks = parseCached(e.props.text)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve(e)
     const { Box, Text } = el
     const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
+    const math = await mathOfBlocks($, latex, e.surface, blocks)
     const surfaceStyle = forSurface(fit(e.viewport), e.surface)
     return (
       <Box flexDirection="row">
@@ -197,7 +325,7 @@ export const register: Register = (on, options) => {
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columns, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined)}
+          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columns, math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined)}
         </Box>
       </Box>
     )

@@ -6,14 +6,14 @@
 
 ![The same six prompts in plain Claude Code on the left and with prismantis on the right: a table, a bar chart, a flowchart, LaTeX math, a diff and an incident summary with a warning callout and a checklist](docs/compare.gif)
 
-<sub>Same prompt, same model, left plain Claude Code, right with prismantis. The LaTeX scene uses [#50](https://github.com/NahumLitvin/prismantis/pull/50), not released yet.</sub>
+<sub>Same prompt, same model, left plain Claude Code, right with prismantis. LaTeX needs RaTeX installed and `latex` on.</sub>
 
 ## TL;DR
 
-- Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, colored tables and code, and quiet tool rows. Typeset LaTeX math is next, in [#50](https://github.com/NahumLitvin/prismantis/pull/50).
+- Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, typeset LaTeX math in kitty and Ghostty, colored tables and code, and quiet tool rows.
 - 15 palettes plus `mono`, and copy buttons on everything.
 - Two commands to install, `/plugin` to turn it off. Claude Code's own renderer comes back the moment you do.
-- No network calls. The only program it ever runs is the clipboard helper for one-click HTML table copy, and only when you click.
+- No network calls. It runs a program only when you click `⧉ html` (the clipboard helper) or turn on LaTeX (RaTeX's renderer).
 
 ```
 /plugin marketplace add NahumLitvin/prismantis
@@ -41,6 +41,8 @@ To uninstall:
 claude plugin uninstall prismantis@prismantis
 ```
 
+For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX math](#latex-math). Until then formulas draw as text.
+
 ## Features
 
 | Feature | What you get |
@@ -49,6 +51,7 @@ claude plugin uninstall prismantis@prismantis
 | [Tables](#tables) | colored headers, rules, column alignment, colored numbers, sized to the terminal |
 | [Code](#code) | a language header and copy button, Prism highlighting in two dozen languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
+| [LaTeX math](#latex-math) | `$$` and ` ```math ` formulas typeset as images in kitty and Ghostty by [RaTeX](https://github.com/erweixin/RaTeX), text everywhere else |
 | [Layout](#layout) | back-to-back tables and diagrams sit side by side and wrap on narrow terminals |
 | [Copy buttons](#copy-buttons) | `⧉ md`, `⧉ art` and `⧉ html` on tables, `[ ⧉ copy ]` on code, lists and quotes, `/prismantis copy` without a mouse |
 | [Tool rows](#tool-rows) | `Ran gh pr view 12`, `Read ~/src/app.ts`, groups summed up as `Ran 3 commands, read 2 files`, with status dots |
@@ -93,6 +96,23 @@ Code blocks tagged `mermaid` draw as colored text art:
 - gridlines stay dim, axis numbers use the number color
 
 Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii` swaps box-drawing characters for `+ - |`. Pie charts are not supported.
+
+### LaTeX math
+
+Display math, `$$…$$` on lines of its own or a ` ```math ` block, draws as a typeset image in the theme's diagram text color, one formula per line. With copy buttons on, its `⧉ copy` button copies the formula's LaTeX, since selecting an image copies blank cells. It needs [RaTeX](https://github.com/erweixin/RaTeX)'s PNG renderer, a single binary that typesets KaTeX syntax in a few milliseconds without TeX, a browser or Node:
+
+```bash
+gh release download -R erweixin/RaTeX -p 'ratex-cli-*-aarch64-apple-darwin.tar.gz'
+tar -xzf ratex-cli-*.tar.gz
+mkdir -p ~/.local/bin
+install ratex-cli-*/render ~/.local/bin/ratex-render
+```
+
+Pick the archive for your platform (`x86_64-apple-darwin`, `x86_64-unknown-linux-musl`, ...). Any directory on your `PATH` works, but the file must be named `ratex-render`.
+
+LaTeX is off until you set `latex` to `true`. Then prismantis runs `ratex-render` once in kitty and Ghostty, outside tmux, and keeps LaTeX on only if that test formula comes back. If a later run fails, formulas already drawn stay and new ones stay text until you `/reload`. A reply shown before the test finishes draws its formulas as text, then redraws them as images. Anywhere else, without the renderer, or with `latex` off, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` stays text.
+
+Formula text matches the reply text. A terminal image fills whole rows, so a formula that falls between two row counts is rendered again with more padding rather than stretched.
 
 ### Layout
 
@@ -139,7 +159,7 @@ Output from slash commands, built-in or from other plugins, is drawn like a repl
 
 Claude rarely writes a chart unless it knows the terminal can draw one. With `diagramHints` on (the default), each prompt you type carries a short note that only the model reads. It says tables, alerts, code, mermaid diagrams and `xychart-beta` charts render here, and asks for commands in fenced blocks, since only those get a copy button.
 
-The note costs about 190 tokens per prompt. It's off whenever `mermaid` is off, and skipped for headless `claude -p` runs and background notifications.
+The note costs about 190 tokens per prompt, and about 60 more while [LaTeX math](#latex-math) is on, when it also says `$$` formulas render. It's off whenever `mermaid` is off, and skipped for headless `claude -p` runs and background notifications.
 
 ### Text
 
@@ -208,6 +228,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
+| `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
 
 A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name (`green`, `cyanBright`). Values that don't parse are ignored. Every token has a `<token>Color` option and a row in `/config`:
@@ -233,7 +254,7 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 | `tableRule` | table rules |
 | `bullet` | list bullets and numbers |
 | `diagram` | diagram lines |
-| `diagramText` | diagram labels |
+| `diagramText` | diagram labels and LaTeX formulas |
 
 ## Troubleshooting
 
@@ -258,7 +279,7 @@ To change the code, read [AGENTS.md](AGENTS.md) instead.
 - **What it is:** a Claude Code mod (function hooks in TypeScript) that redraws assistant replies, slash-command output, tool rows, the turn footer and user prompts. It changes how things look. The one thing it sends the model is the optional diagram hint below.
 - **Install:** `/plugin marketplace add NahumLitvin/prismantis`, then `/plugin install prismantis@prismantis`. Needs Claude Code 2.1.287+. Changes apply after `/reload`.
 - **Configure:** `/prismantis theme <name>` is the only setter at runtime. Every other option is a key under `pluginConfigs["prismantis@prismantis"].options` in `~/.claude/settings.json` (or a row in `/config`), then `/reload`. Options and defaults are in the [Configure](#configure) table; the machine-readable source is `userConfig` in [.claude-plugin/plugin.json](.claude-plugin/plugin.json). Color values that don't parse are ignored.
-- **Side effects:** no network. The only program it runs is the `⧉ html` clipboard helper: `/usr/bin/osascript` on macOS, `copyq` on Linux, 5 second timeout, only when the user presses the button. With `diagramHints` on, it adds about 190 tokens of model-only context to each typed prompt.
+- **Side effects:** no network. Programs it runs: the `⧉ html` clipboard helper (`/usr/bin/osascript` on macOS, `copyq` on Linux, 5 second timeout, only on a click), and `ratex-render` while `latex` is on. With `diagramHints` on, it adds about 190 tokens of model-only context to each typed prompt.
 - **Turning it off:** `"enabled": false`, or disable the plugin in `/plugin`.
 - **For other mods:** `$.prismantis.markdown({ surface, text, columns })`, typed in [types/index.d.ts](types/index.d.ts). See [Other mods](#other-mods).
 
