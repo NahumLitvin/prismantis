@@ -22,25 +22,35 @@ const wrapRanges = (text: string, w: number): [number, number][] => {
   if (width(text) <= w) return [[0, text.length]]
   const out: [number, number][] = []
   let line: [number, number] | undefined
+  let used = 0
   for (const word of text.matchAll(/\S+/g)) {
     let start = word.index
     const end = start + word[0].length
-    while (width(text.slice(start, end)) > w) {
+    let size = width(word[0])
+    while (size > w) {
       if (line) out.push(line)
       line = undefined
       let cut = start
+      let taken = 0
       for (const g of graphemes(text.slice(start, end))) {
-        if (cut > start && width(text.slice(start, cut + g.length)) > w) break
+        const step = width(g)
+        if (cut > start && taken + step > w) break
         cut += g.length
+        taken += step
       }
       out.push([start, cut])
       start = cut
+      size -= taken
     }
     if (start === end) continue
-    if (line && width(text.slice(line[0], end)) <= w) line = [line[0], end]
-    else {
+    const joined = line ? used + width(text.slice(line[1], start)) + size : Infinity
+    if (line && joined <= w) {
+      line = [line[0], end]
+      used = joined
+    } else {
       if (line) out.push(line)
       line = [start, end]
+      used = size
     }
   }
   if (line) out.push(line)
@@ -268,10 +278,9 @@ export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   return ['```', ...art, '```'].join('\n')
 }
 
-const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string) => {
+const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string, rtl: boolean) => {
   const { Box, Text } = el
   const t = style.theme
-  const rtl = isRtlTable(style, block)
   const box = style.tableStyle === 'box'
   const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
   const natural = block.header.map((h, c) =>
@@ -505,6 +514,7 @@ const copySource = (block: Block): string | undefined =>
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
+  const rtlTables = blocks.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const rendered = blocks.map((block, b) => {
     const key = `b${b}`
     switch (block.kind) {
@@ -533,7 +543,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       case 'list':
         return renderList(el, style, block, columns, key)
       case 'table':
-        return renderTable(el, style, block, columns, key)
+        return renderTable(el, style, block, columns, key, rtlTables[b]!)
     }
   })
   const copied = rendered.map((element, b) => {
@@ -560,7 +570,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         {button}
       </Box>
     ) : (
-      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || (block?.kind === 'table' && isRtlTable(style, block))) ? {} : { alignSelf: 'flex-start' as const })}>
+      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
         <Box justifyContent="flex-end">{button}</Box>
         {element}
       </Box>
@@ -600,6 +610,11 @@ const field = (input: unknown, ...keys: string[]): string | undefined => {
   return undefined
 }
 
+const TARGET_FIELDS = ['file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description']
+
+const statusColor = (t: Theme, row: Pick<ToolRow, 'isErrored' | 'isInterrupted' | 'isRunning'>) =>
+  row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
+
 const toolDim = (style: Style) => style.toolStyle !== "classic"
 
 const toolGutter = ({ Box, Text }: ElementTable, style: Style, color: string | undefined, running: boolean) =>
@@ -625,8 +640,8 @@ export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, colu
   const verb = VERBS[row.tool] ?? row.tool.replace(/^mcp__([^_]+)__/, '$1 ')
   const target = isShell
     ? field(row.input, 'command')?.split('\n')[0]
-    : field(row.input, 'file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description')
-  const dot = row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
+    : field(row.input, ...TARGET_FIELDS)
+  const dot = statusColor(t, row)
   const isPath = target !== undefined && /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target)
 
   const label = `${verb}${target === undefined ? "" : ` ${target}`}${row.isInterrupted ? " interrupted" : row.isErrored ? " failed" : ""}`
@@ -653,7 +668,7 @@ export const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow
   const stderr = lines(out.stderr)
   const shown = [...stdout.map(text => ({ text, color: undefined as string | undefined })), ...stderr.map(text => ({ text, color: t.codeFlag as string | undefined }))]
   const visible = shown.slice(0, OUTPUT_LINES)
-  const dot = row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
+  const dot = statusColor(t, row)
   return (
     <Box flexDirection="column">
       <Box flexDirection="row">
@@ -714,11 +729,12 @@ export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly 
   const running = isActive && calls.some(c => c.isRunning)
   const dot = failed ? t.codeFlag : running ? t.accent : t.number
   const last = calls[calls.length - 1]
-  const lastTarget = last ? field(last.input, 'command', 'file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description')?.split('\n')[0] : undefined
-  const label = `${groupSummary(calls)}${failed ? ` · ${failed} failed` : ""}${lastTarget ? ` · last: ${lastTarget}` : ""}`
+  const lastTarget = last ? field(last.input, 'command', ...TARGET_FIELDS)?.split('\n')[0] : undefined
+  const summary = groupSummary(calls)
+  const label = `${summary}${failed ? ` · ${failed} failed` : ""}${lastTarget ? ` · last: ${lastTarget}` : ""}`
   return toolLayout(el, style, columns, label, dot, running, (
       <Text wrap="truncate-end" dimColor={toolDim(style)}>
-        <Text bold={!toolDim(style)} dimColor={toolDim(style)}>{groupSummary(calls)}</Text>
+        <Text bold={!toolDim(style)} dimColor={toolDim(style)}>{summary}</Text>
         {failed ? <Text color={t.codeFlag}>{` · ${failed} failed`}</Text> : null}
         {lastTarget ? <Text dimColor>{` · last: ${lastTarget}`}</Text> : null}
       </Text>
