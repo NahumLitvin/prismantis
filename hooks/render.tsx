@@ -2,7 +2,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
-import { displayText, inlineText, isWebLink } from './markdown'
+import { displayText, inlineText } from './markdown'
 import { commentTail, commentVisual, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
@@ -100,7 +100,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'code':
         return <Text key={key} color={t.inlineCode}>{n.text}</Text>
       case 'link':
-        return isWebLink(n.href)
+        return /^(https:|http:\/\/localhost\b)/i.test(n.href)
           ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
           : <Text key={key} color={t.link} underline>{n.text}</Text>
       case 'number':
