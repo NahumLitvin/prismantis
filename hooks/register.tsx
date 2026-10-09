@@ -110,8 +110,8 @@ const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Late
   const suffix = (await read($, latexDir)) || crypto.randomUUID()
   await update($, latexDir, () => suffix)
   const engine = { command: 'ratex-render', dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${await $.session.id()}-${suffix}` }
-  const [probe] = await typeset($, latex, engine, ['x^2'])
-  return probe && 'png' in probe ? engine : null
+  const [check] = await typeset($, latex, engine, ['x^2'])
+  return check && 'png' in check ? engine : null
 }
 
 const latexEngine = ($: EngineInterface, latex: LatexSession): Promise<Latex | null> =>
