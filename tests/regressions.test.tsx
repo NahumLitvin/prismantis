@@ -444,6 +444,14 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
   await ui.unmount()
 })
 
+test('only web and mail links become terminal hyperlinks', async $ => {
+  const ui = await $.ui.mount(mount('[docs](https://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [disk](file:///etc/passwd)'))
+  const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
+  expect(links).toEqual(['https://example.com', 'mailto:a@example.com'])
+  expect(await ui.find({ type: 'Text', text: /^run$/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
 

@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - Mermaid boxes stay closed around Korean, Chinese and Japanese labels. beautiful-mermaid counts each character as one column, so a wide character pushed the right border inward by one column per character. Wide characters are now measured as two columns before layout and drawn in their real width, in flowcharts, sequence diagrams and chart axes alike ([#56](https://github.com/NahumLitvin/prismantis/pull/56)).
+- Only `http`, `https` and `mailto` links become clickable terminal hyperlinks, the same rule the HTML table copy uses. A `javascript:` or `file:` link draws as plain link text.
+- Earlier replies stay parsed while a long reply streams in, and code and diagrams are not highlighted again on desktop, in fullscreen Apple Terminal or when another mod draws markdown through `$.prismantis.markdown`.
+- The terminal is detected once per session instead of on every prompt, and the list of expanded tool calls no longer grows for the whole session.
 
 ## [0.12.0] - 2026-10-07
 
