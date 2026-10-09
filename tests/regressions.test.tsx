@@ -487,3 +487,13 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
   expect(await ui.find({ type: 'Text', text: /flowchart TD/ })).toBeUndefined()
   await ui.unmount()
 })
+
+test('inline $…$ math draws without its dollar signs, prices and shell variables stay text', async () => {
+  const shown = (s: string) => {
+    const [block] = parse(s, hl)
+    return block?.kind === 'paragraph' ? block.inline.map(n => (n.kind === 'math' ? `[${n.text}]` : 'children' in n ? inlineText(n.children) : n.text)).join('') : ''
+  }
+  expect(shown('runs at ($\\rho = 4.3 / 5$) with $L = \\lambda \\cdot W$')).toBe('runs at ([ρ = 4.3 / 5]) with [L = λ · W]')
+  expect(shown('costs $5 and $10 today')).toBe('costs $5 and $10 today')
+  expect(shown('echo $HOME and $PATH')).toBe('echo $HOME and $PATH')
+})

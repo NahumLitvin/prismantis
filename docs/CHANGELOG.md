@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Inline `$…$` math draws as italic text without its dollar signs, so `($\rho = 4.3 / 5$)` reads as ρ = 4.3 / 5. Common TeX commands become symbols. Prices like `$5 and $10` and shell variables like `$HOME` stay as written.
+
 ## [0.13.0] - 2026-10-09
 
 ### Added
