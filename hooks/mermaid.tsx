@@ -1,10 +1,11 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { remember } from './render'
+import { cells, graphemes, remember, width } from './render'
 import type { Style } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
 const MAX_LINES = 80
+const PAD = '\uFDD0'
 const textCache = new Map<string, string | null>()
 
 export const chartSize = (columns: number, source = '') => {
@@ -13,6 +14,8 @@ export const chartSize = (columns: number, source = '') => {
   const width = Math.max(24, Math.min(60, Math.max(Math.floor(columns / 6), fit), columns - 12))
   return { width, height: Math.max(8, Math.min(20, Math.round(width * 0.3))) }
 }
+
+const padWide = (source: string) => (/^[\x00-\x7F]*$/.test(source) ? source : graphemes(source).map(g => (g.length === 1 && width(g) === 2 ? g + PAD : g)).join(''))
 
 const unquoteCategories = (source: string) =>
   source.replace(/^(\s*x-axis\b[^[\n]*\[)([^\]\n]*)\]/m, (_, head: string, items: string) => `${head}${items.replace(/"([^"]*)"/g, (_q, s: string) => s.replaceAll(',', ' '))}]`)
@@ -42,13 +45,14 @@ const labelBars = (art: string, source: string): string => {
 export const mermaidText =(source: string, ascii: boolean, columns: number): string | null => {
   if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
   const isChart = /^\s*xychart/.test(source)
-  const size = chartSize(columns, isChart ? source : '')
+  const padded = padWide(source)
+  const size = chartSize(columns, isChart ? padded : '')
   const key = `${ascii}:${isChart ? size.width : 0}:${source}`
   return remember(textCache, key, () => {
     try {
       if (isChart) setChartSize(size.width, size.height)
-      const art = renderMermaidAscii(unquoteCategories(source.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
-      return isChart ? labelBars(art, source) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')
+      const art = renderMermaidAscii(unquoteCategories(padded.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
+      return (isChart ? labelBars(art, padded) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')).replaceAll(PAD, '')
     } catch {
       return null
     }
@@ -60,7 +64,7 @@ const ARROW = /[►◄▲▼]/
 
 const paint = (art: string, style: Style): (string | undefined)[][] => {
   const t = style.theme
-  const grid = art.split('\n').map(l => [...l])
+  const grid = art.split('\n').map(cells)
   const cell = (r: number, c: number) => grid[r]?.[c] ?? ''
   const color: (string | undefined)[][] = grid.map(row => row.map(() => undefined))
   const palette = [...new Set([t.link, t.number, t.heading, t.emphasis, t.path, t.codeFlag, t.accent])].filter((c): c is string => c !== undefined)
@@ -120,7 +124,7 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
       {art.split('\n').map((line, i) => {
-        const chars = [...line]
+        const chars = cells(line)
         const parts: RenderElement[] = []
         let at = 0
         while (at < chars.length) {

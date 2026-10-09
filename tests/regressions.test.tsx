@@ -5,7 +5,7 @@ import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
 import { mermaidText } from '../hooks/mermaid'
-import { tableArt } from '../hooks/render'
+import { tableArt, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 import { clipboardEnv, recordCopies } from './clipboard-env'
 
@@ -312,6 +312,33 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
+})
+
+test('mermaid boxes stay closed around wide labels', async () => {
+  const column = (line: string, marks: RegExp, nth: number) => {
+    const chars = [...line]
+    const at = chars.flatMap((ch, i) => (marks.test(ch) ? [i] : []))[nth]
+    return at === undefined ? -1 : width(chars.slice(0, at).join(''))
+  }
+  for (const source of ['graph LR\n  A[日本語テスト] --> B[終了]', 'flowchart TD\n  A[한글 라벨 상자] --> B{ko 섞인 판단}', 'sequenceDiagram\n  사용자->>서버: 요청']) {
+    const art = mermaidText(source, false, 100)
+    expect(art).not.toBeNull()
+    expect(art!).not.toContain('\uFDD0')
+    const lines = art!.split('\n')
+    const top = lines.findIndex(l => l.includes('┐'))
+    expect(column(lines[top + 1]!, /[│├┤]/, 1)).toBe(column(lines[top]!, /┐/, 0))
+  }
+})
+
+test('a mounted diagram with wide labels draws its box borders on the same column', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('```mermaid\ngraph LR\n  A[한글 라벨] --> B[終了]\n```', 160), surface })
+    const label = drawn(await ui.find({ type: 'Text', text: /한글 라벨/ }))
+    const top = drawn(await ui.find({ type: 'Text', text: /┐/ }))
+    expect(label).not.toContain('\uFDD0')
+    expect(width(label.trimEnd())).toBe(width(top.trimEnd()))
+    await ui.unmount()
+  }
 })
 
 test('every diagram on the help screen draws as art', async () => {
