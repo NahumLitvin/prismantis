@@ -654,7 +654,7 @@ export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, colu
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
   const verb = VERBS[row.tool] ?? row.tool.replace(/^mcp__([^_]+)__/, '$1 ')
-  const found = isShell ? { target: field(row.input, 'command')?.split('\n')[0], isPathField: false } : targetOf(style, row.input, [...TARGET_FIELDS])
+  const found = isShell ? { target: field(row.input, 'command')?.split('\n')[0], isPathField: false } : targetOf(style, row.input, TARGET_FIELDS)
   const target = found.target
   const dot = statusColor(t, row)
   const isPath = target !== undefined && (found.isPathField || /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target))
