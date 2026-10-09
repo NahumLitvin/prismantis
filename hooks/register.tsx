@@ -50,11 +50,29 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 
 const expandedCalls = new Set<string>()
 
+const markExpanded = (id: string) => {
+  expandedCalls.delete(id)
+  expandedCalls.add(id)
+  if (expandedCalls.size > 500) expandedCalls.delete(expandedCalls.values().next().value!)
+}
+
+const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.columns ?? 100) - 4)
+
 const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null> => {
   if (await $.env.get('SSH_CONNECTION') || await $.env.get('SSH_TTY')) return null
   const helper = await $.fs.stat('/usr/bin/osascript').catch(() => null)
   if (helper?.kind === 'file') return 'macos'
   return await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : null
+}
+
+type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null> }
+
+const probe = async ($: EngineInterface, style: Style, probes: Probes): Promise<Terminal | null> => {
+  probes.terminal ??= applyRtl($, style)
+  const terminal = await probes.terminal
+  probes.htmlCopy ??= htmlBackend($)
+  style.htmlCopy = await probes.htmlCopy
+  return terminal
 }
 
 const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: string, text: string): Promise<string | null> => {
@@ -108,12 +126,13 @@ export const register: Register = (on, options) => {
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
-  let htmlCopy: Promise<ClipboardBackend | null> | undefined
+  const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
+  const probes: Probes = {}
 
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, ($, e, next) => {
       if (e.props.isExpanded) {
-        for (const call of e.props.calls) if (call.tool_use_id) expandedCalls.add(call.tool_use_id)
+        for (const call of e.props.calls) if (call.tool_use_id) markExpanded(call.tool_use_id)
         return next(e)
       }
       return renderToolGroup($.ui.resolve(e), fit(e.viewport), e.props.calls, e.props.isActive, e.viewport?.columns)
@@ -125,9 +144,7 @@ export const register: Register = (on, options) => {
   }
 
   on('session.start', async ($, e, next) => {
-    terminal = await applyRtl($, style)
-    htmlCopy ??= htmlBackend($)
-    style.htmlCopy = await htmlCopy
+    terminal = await probe($, style, probes)
     const started = await next(e)
     await $.command
       .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
@@ -147,7 +164,7 @@ export const register: Register = (on, options) => {
       return { text: result.isCopied ? `Copied the last ${code ? 'code block' : 'reply'}.` : `Copy failed: ${result.reason}` }
     }
     if (sub === 'demo-rtl') {
-      await applyRtl($, style)
+      terminal = await probe($, style, probes)
       return { text: rtlShowcaseText() }
     }
     if (sub !== 'theme' || !name) return { text: helpText(PRESET_NAMES) }
@@ -159,9 +176,7 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'TurnDuration' }, ($, e) => renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs))
 
   on('prompt.submit', async ($, e, next) => {
-    await applyRtl($, style)
-    htmlCopy ??= htmlBackend($)
-    style.htmlCopy = await htmlCopy
+    terminal = await probe($, style, probes)
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
     return next({ ...e, context: [...(e.context ?? []), HINT] })
   })
@@ -172,15 +187,14 @@ export const register: Register = (on, options) => {
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve(e)
     const { Box } = el
-    const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
-    return <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.props.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columns)}</Box>
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport))}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
     const kind = e.props.origin.kind
     const own = kind === 'composer' || kind === 'bridge' || (kind === 'unclassified' && !e.props.from && !e.props.task)
     if (style.promptStyle === 'off' || !own) return next(e)
-    return renderUserPrompt($.ui.resolve(e), fit(e.viewport), e.props.text, Math.max(20, (e.viewport?.columns ?? 100) - 4))
+    return renderUserPrompt($.ui.resolve(e), fit(e.viewport), e.props.text, columnsOf(e.viewport))
   })
 
   on('ui.render', { component: 'AssistantMessage' }, ($, e, next) => {
@@ -188,7 +202,6 @@ export const register: Register = (on, options) => {
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve(e)
     const { Box, Text } = el
-    const columns = Math.max(20, (e.viewport?.columns ?? 100) - 4)
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const surfaceStyle = forSurface(fit(e.viewport), e.surface)
     return (
@@ -197,7 +210,7 @@ export const register: Register = (on, options) => {
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columns, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined)}
+          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined)}
         </Box>
       </Box>
     )
@@ -208,6 +221,6 @@ export const register: Register = (on, options) => {
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
-    return { value: <Box flexDirection="column" rowGap={1} {...(style.reorder && hasRtl(e.text) ? { width: '100%' } : {})}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
+    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
   })
 }
