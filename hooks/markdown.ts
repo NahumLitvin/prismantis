@@ -4,6 +4,7 @@ export type Inline =
   | { kind: 'emphasis'; children: Inline[] }
   | { kind: 'strike'; children: Inline[] }
   | { kind: 'code'; text: string }
+  | { kind: 'math'; text: string }
   | { kind: 'link'; text: string; href: string }
   | { kind: 'number'; text: string }
   | { kind: 'path'; text: string }
@@ -52,7 +53,7 @@ const splitRow = (line: string): string[] => {
   return cells
 }
 
-const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+?)\*\*|(?<![\w_])__([^_]+?)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)_(?!\w)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g
+const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+?)\*\*|(?<![\w_])__([^_]+?)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)_(?!\w)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])/g
 const NUMBER = /(?<![\w.#/-])(v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/])/g
 const PATH = /(?<![\w/.:])((?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]*)*)/g
 
@@ -92,11 +93,26 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
     else if (m[7] !== undefined) out.push({ kind: 'strike', children: parseInline(m[7], hl) })
     else if (m[8] !== undefined || m[9] !== undefined) out.push({ kind: 'emphasis', children: parseInline(m[8] ?? m[9] ?? "", hl) })
     else if (m[10] !== undefined) out.push({ kind: 'link', text: m[10], href: m[10] })
+    else if (m[11] !== undefined) out.push(...(isTex(m[11]) ? [{ kind: 'math' as const, text: texText(m[11]) }] : decorate(m[0], hl)))
     at = m.index + m[0].length
   }
   if (at < text.length) out.push(...decorate(text.slice(at), hl))
   return out
 }
+
+const TEX: Record<string, string> = {
+  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ', epsilon: 'ε', theta: 'θ', lambda: 'λ', mu: 'μ', pi: 'π', rho: 'ρ', sigma: 'σ', Sigma: 'Σ', tau: 'τ', phi: 'φ', omega: 'ω', Omega: 'Ω',
+  cdot: '·', times: '×', div: '÷', pm: '±', le: '≤', leq: '≤', ge: '≥', geq: '≥', neq: '≠', ne: '≠', approx: '≈', infty: '∞', to: '→', rightarrow: '→', Rightarrow: '⇒', sum: 'Σ', sqrt: '√', lceil: '⌈', rceil: '⌉', lfloor: '⌊', rfloor: '⌋',
+}
+
+const isTex = (tex: string) => /[\\^_={}]/.test(tex) || /^[A-Za-z]$/.test(tex)
+
+const texText = (tex: string) =>
+  tex
+    .replace(/\\(?:text|mathrm|mathit|operatorname)\{([^{}]*)\}/g, '$1')
+    .replace(/\\([A-Za-z]+)/g, (all, name: string) => TEX[name] ?? all)
+    .replace(/\\[,;:! ]/g, ' ')
+    .replace(/[{}]/g, '')
 
 export const inlineText = (inline: Inline[]): string =>
   inline.map(n => ('children' in n ? inlineText(n.children) : n.text)).join('')

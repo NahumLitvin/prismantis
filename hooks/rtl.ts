@@ -20,7 +20,7 @@ export const TERMINALS = {
 
 export type Terminal = keyof typeof TERMINALS
 
-type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'number' | 'path' | 'link' | 'dim' }
+type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'math' | 'number' | 'path' | 'link' | 'dim' }
 type Unit = { ch: string; fmt: Fmt }
 
 const R = /[֐-׿؀-ٟ٪-ۯۺ-ݿࢠ-ࣿיִ-﷿ﹰ-﻿]/
@@ -90,7 +90,7 @@ const reorder = (all: Unit[], base: Dir): Unit[] => {
   const strong = all.map((u, i) => {
     const own = classify(u.ch)
     if (own) return own
-    if (u.fmt.leaf === 'code' || u.fmt.leaf === 'path') return 'L'
+    if (u.fmt.leaf === 'code' || u.fmt.leaf === 'math' || u.fmt.leaf === 'path') return 'L'
     return TERMINATOR.test(u.ch) && (DIGIT.test(all[i - 1]?.ch ?? '') || DIGIT.test(all[i + 1]?.ch ?? '')) ? 'L' : null
   })
   const prev: (Dir | null)[] = []

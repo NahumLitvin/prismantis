@@ -19,6 +19,7 @@ const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
     case 'emphasis': return `<em>${inlineHtml(node.children)}</em>`
     case 'strike': return `<del>${inlineHtml(node.children)}</del>`
     case 'code': return `<code style="white-space: pre-wrap">${escapeHtml(node.text)}</code>`
+    case 'math': return `<em>${escapeHtml(node.text)}</em>`
     case 'link': return isWebLink(node.href)
       ? `<a href="${escapeHtml(node.href)}">${escapeHtml(node.text)}</a>`
       : escapeHtml(node.text)

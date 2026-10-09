@@ -488,6 +488,16 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
   await ui.unmount()
 })
 
+test('inline $…$ math draws without its dollar signs, prices and shell variables stay text', async () => {
+  const shown = (s: string) => {
+    const [block] = parse(s, hl)
+    return block?.kind === 'paragraph' ? block.inline.map(n => (n.kind === 'math' ? `[${n.text}]` : 'children' in n ? inlineText(n.children) : n.text)).join('') : ''
+  }
+  expect(shown('runs at ($\\rho = 4.3 / 5$) with $L = \\lambda \\cdot W$')).toBe('runs at ([ρ = 4.3 / 5]) with [L = λ · W]')
+  expect(shown('costs $5 and $10 today')).toBe('costs $5 and $10 today')
+  expect(shown('echo $HOME and $PATH')).toBe('echo $HOME and $PATH')
+})
+
 test('chart y-axis ticks sit an even number of rows apart', async () => {
   const charts = [
     'xychart-beta\n  x-axis ["11:00", "12:00", "13:00", "14:00", "15:00", "16:00"]\n  y-axis "ms" 0 --> 2500\n  bar [45, 47, 46, 2029, 2032, 2007]',
