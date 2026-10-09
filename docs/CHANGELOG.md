@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `toolOutput: quiet` shows what Claude did, not what it read. Reads, searches, listings, web fetches and shell commands made only of read-only programs draw their row and nothing under it, and the row says it in plain words (`Read src/report.py lines 1–10`, `Searched src/ for "TODO"`); a shell call without such a form shows its description and the programs it ran. Other shell commands draw their first lines and a count, without the approval line, also inside a collapsed group. Edits keep their diff. A failed call shows the last real line of its error, a refused call (permission rule, auto mode classifier) its full reason. The ids of read-only calls are kept to the last 2000, so a long session does not grow them ([#53](https://github.com/NahumLitvin/prismantis/issues/53)).
+
 ## [0.13.1] - 2026-10-09
 
 ### Fixed

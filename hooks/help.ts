@@ -67,7 +67,7 @@ Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`
 
 ### Tool rows
 
-Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`.
+Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1–40\`, \`Searched src/ for "TODO"\`.
 
 ### Quotes and rules
 
