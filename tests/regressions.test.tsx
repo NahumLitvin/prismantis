@@ -212,6 +212,14 @@ test('a chart that opens with a %% comment still draws', async $ => {
   await ui.unmount()
 })
 
+test('a left-to-right flowchart too wide for the terminal draws top-down instead of as source', async () => {
+  const chain = ['flowchart LR', ...['A', 'B', 'C', 'D', 'E'].map((n, i, a) => (i ? `  ${a[i - 1]} --> ${n}["step ${n} with a long label"]` : '')).filter(Boolean)].join('\n')
+  const art = mermaidText(chain, false, 100)
+  expect(art).not.toBeNull()
+  expect(art!.split('\n').every(l => width(l) <= 98)).toBe(true)
+  expect(art).toContain('▼')
+})
+
 test('a GitHub alert draws its title and body, and copies without the > markers', async ($, on) => {
   const copied = stubClipboard(on)
   const ui = await $.ui.mount(mount('> [!WARNING]\n> disk is almost full'))
@@ -479,4 +487,25 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
   expect(await ui.find({ type: 'Text', text: /Tank sensor/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /flowchart TD/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('inline $…$ math draws without its dollar signs, prices and shell variables stay text', async () => {
+  const shown = (s: string) => {
+    const [block] = parse(s, hl)
+    return block?.kind === 'paragraph' ? block.inline.map(n => (n.kind === 'math' ? `[${n.text}]` : 'children' in n ? inlineText(n.children) : n.text)).join('') : ''
+  }
+  expect(shown('runs at ($\\rho = 4.3 / 5$) with $L = \\lambda \\cdot W$')).toBe('runs at ([ρ = 4.3 / 5]) with [L = λ · W]')
+  expect(shown('costs $5 and $10 today')).toBe('costs $5 and $10 today')
+  expect(shown('echo $HOME and $PATH')).toBe('echo $HOME and $PATH')
+})
+
+test('chart y-axis ticks sit an even number of rows apart', async () => {
+  const charts = [
+    'xychart-beta\n  x-axis ["11:00", "12:00", "13:00", "14:00", "15:00", "16:00"]\n  y-axis "ms" 0 --> 2500\n  bar [45, 47, 46, 2029, 2032, 2007]',
+    'xychart-beta\n  x-axis [text, head, num, code, diag]\n  y-axis "options" 0 --> 8\n  bar [7, 3, 2, 6, 2]',
+  ]
+  for (const chart of charts) for (const columns of [40, 80, 100, 160, 260]) {
+    const rows = mermaidText(chart, false, columns)!.split('\n').flatMap((l, i) => (/^\s*[\d.]+\s*[┤┼]/.test(l) ? [i] : []))
+    expect(new Set(rows.slice(1).map((r, i) => r - rows[i]!)).size).toBe(1)
+  }
 })

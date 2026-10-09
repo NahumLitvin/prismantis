@@ -2,7 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.13.1] - 2026-10-09
+
+### Fixed
+
+- Inline `$…$` math draws as italic text without its dollar signs, so `($\rho = 4.3 / 5$)` reads as ρ = 4.3 / 5. Common TeX commands become symbols. Prices like `$5 and $10` and shell variables like `$HOME` stay as written.
+- Chart y-axis ticks sit the same number of rows apart. A 0 to 2500 axis used to step 2, 3, 2, 3, 2 rows between its labels, because the chart height ignored how many ticks it needed; it now takes the nearest height that divides evenly.
+
+## [0.13.0] - 2026-10-09
 
 ### Added
 
@@ -19,6 +26,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Only `https` and `http://localhost` links become clickable terminal hyperlinks, which every supported Claude Code accepts. On 2.1.287 a `mailto:` or plain `http:` link made Claude Code throw out the whole reply and draw its own. Other links, `javascript:` and `file:` included, draw as link text.
 - Earlier replies stay parsed while a long reply streams in, and code and diagrams are not highlighted again on desktop, in fullscreen Apple Terminal or when another mod draws markdown through `$.prismantis.markdown`.
 - The terminal is detected once per session instead of on every prompt, and the list of expanded tool calls no longer grows for the whole session.
+- A left-to-right flowchart too wide for the terminal draws top to bottom, where it used to fall back to its mermaid source. A five-node pipeline with two-line labels went from 155 columns to 77.
 
 ## [0.12.0] - 2026-10-07
 

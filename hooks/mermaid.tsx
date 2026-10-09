@@ -42,16 +42,39 @@ const labelBars = (art: string, source: string): string => {
   return grid.map(row => row.join('').trimEnd()).join('\n')
 }
 
-export const mermaidText =(source: string, ascii: boolean, columns: number): string | null => {
+const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
+
+export const mermaidText = (source: string, ascii: boolean, columns: number): string | null => {
   if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
+  const art = draw(source, ascii, columns)
+  const fits = (a: string) => a.split('\n').every(l => width(l) <= columns - 2)
+  if (art === null || fits(art) || !SIDEWAYS.test(source)) return art
+  return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
+}
+
+const evenTicks = (art: string) => {
+  const rows = art.split('\n').flatMap((line, i) => (/^\s*-?[\d.,]+[kMG%]?\s*[┤┼+|]/.test(line) ? [i] : []))
+  return rows.slice(2).every((row, i) => row - rows[i + 1]! === rows[1]! - rows[0]!)
+}
+
+const draw = (source: string, ascii: boolean, columns: number): string | null => {
   const isChart = /^\s*xychart/.test(source)
   const padded = padWide(source)
   const size = chartSize(columns, isChart ? padded : '')
   const key = `${ascii}:${isChart ? size.width : 0}:${source}`
   return remember(textCache, key, () => {
     try {
-      if (isChart) setChartSize(size.width, size.height)
-      const art = renderMermaidAscii(unquoteCategories(padded.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
+      const render = () => renderMermaidAscii(unquoteCategories(padded.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
+      let art = ''
+      for (const height of isChart ? [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8, -8].map(d => size.height + d).filter(h => h >= 6) : [0]) {
+        if (isChart) setChartSize(size.width, height)
+        art = render()
+        if (!isChart || evenTicks(art)) break
+      }
+      if (isChart && !evenTicks(art)) {
+        setChartSize(size.width, size.height)
+        art = render()
+      }
       return (isChart ? labelBars(art, padded) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')).replaceAll(PAD, '')
     } catch {
       return null
