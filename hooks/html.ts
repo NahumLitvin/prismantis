@@ -1,5 +1,5 @@
 import type { Block, Inline } from './markdown'
-import { displayText } from './markdown'
+import { displayText, isWebLink } from './markdown'
 
 const tsvCell = (cell: Inline[]): string => {
   const text = displayText(cell)
@@ -19,7 +19,7 @@ const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
     case 'emphasis': return `<em>${inlineHtml(node.children)}</em>`
     case 'strike': return `<del>${inlineHtml(node.children)}</del>`
     case 'code': return `<code style="white-space: pre-wrap">${escapeHtml(node.text)}</code>`
-    case 'link': return /^(https?:|mailto:)/i.test(node.href)
+    case 'link': return isWebLink(node.href)
       ? `<a href="${escapeHtml(node.href)}">${escapeHtml(node.text)}</a>`
       : escapeHtml(node.text)
     default: return escapeHtml(node.text)

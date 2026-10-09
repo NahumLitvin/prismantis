@@ -1,7 +1,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { cells, graphemes, remember, width } from './render'
-import type { Style } from './theme'
+import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
 const MAX_LINES = 80
@@ -115,11 +115,11 @@ const paint = (art: string, style: Style): (string | undefined)[][] => {
   return color
 }
 
-const painted = new WeakMap<Style, Map<string, (string | undefined)[][]>>()
+const painted = new WeakMap<Theme, Map<string, (string | undefined)[][]>>()
 
 export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string): RenderElement => {
-  const cache = painted.get(style) ?? new Map<string, (string | undefined)[][]>()
-  painted.set(style, cache)
+  const cache = painted.get(style.theme) ?? new Map<string, (string | undefined)[][]>()
+  painted.set(style.theme, cache)
   const colors = remember(cache, art, () => paint(art, style))
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
