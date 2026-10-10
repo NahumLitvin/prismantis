@@ -511,7 +511,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
 export type Drawn = Map<number, { element: RenderElement; art?: string }>
-type Fold = (id: string, hidden: number, key: string) => { folded: boolean; element: RenderElement } | null
+export type Fold = (id: string, hidden: number, key: string) => { folded: boolean; element: RenderElement } | null
 
 const NUMBER_AT = 10
 const NUMBER_MAX = 400
@@ -711,8 +711,17 @@ export const renderShellResult = (el: ElementTable, style: Style, output: unknow
 }
 
 const DIFF_LINES = 20
+const DIFF_MAX = 400
 
 type DiffLine = { mark: '+' | '-' | ' '; num: number; text: string }
+
+const HEX = /^#[0-9a-f]{6}$/i
+
+export const tint = (base: string | undefined, color: string | undefined, share = 0.2): string | undefined => {
+  if (!base || !color || !HEX.test(base) || !HEX.test(color)) return undefined
+  const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16)
+  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * (1 - share) + channel(color, i) * share).toString(16).padStart(2, '0')).join('')}`
+}
 
 export const diffLines = (output: unknown): DiffLine[] | undefined => {
   if (output === null || typeof output !== 'object') return undefined
@@ -738,32 +747,39 @@ export const diffLines = (output: unknown): DiffLine[] | undefined => {
   return rows
 }
 
-export const renderDiffCard = (el: ElementTable, style: Style, output: unknown): RenderElement | undefined => {
+export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold?: Fold, id = ''): RenderElement | undefined => {
   const rows = diffLines(output)
   if (rows === undefined) return undefined
   const { Box, Text } = el
   const t = style.theme
   const added = rows.filter(r => r.mark === '+').length
   const removed = rows.filter(r => r.mark === '-').length
-  const shown = rows.slice(0, DIFF_LINES)
+  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, 'fold') : null
+  const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
   const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
   const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
+  const tints = { '+': tint(t.rule, t.number), '-': tint(t.rule, t.codeFlag), ' ': undefined }
   return (
     <Box flexDirection="row">
       <Text dimColor>{'  ⎿  '}</Text>
       <Box flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
         <Text>
-          <Text color={t.number}>{`+${added}`}</Text>
+          <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
           <Text> </Text>
-          <Text color={t.codeFlag}>{`−${removed}`}</Text>
+          <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
         </Text>
-        {shown.map((r, i) => (
-          <Text key={`d${i}`} wrap="truncate-end">
-            <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
-            <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} ${r.text === '' ? ' ' : r.text}`}</Text>
-          </Text>
-        ))}
-        {rows.length > shown.length ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
+        {shown.map((r, i) => {
+          const bg = tints[r.mark]
+          return (
+            <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
+              <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
+              <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
+              <Text color={bg ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
+            </Box>
+          )
+        })}
+        {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
+        {toggle?.element ?? null}
       </Box>
     </Box>
   )

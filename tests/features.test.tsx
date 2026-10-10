@@ -4,7 +4,7 @@ import type { TestBody } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
-import { columnWidths, describeShell, diffLines, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
+import { columnWidths, describeShell, diffLines, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -840,24 +840,63 @@ for (const toolOutput of ['full', 'quiet'] as const) {
       const ui = await $.ui.mount(editResult(surface, 'Edit', patch))
       expect((await ui.find({ type: 'Text', text: /^\+2$/ }))?.props.color).toBe(t.number)
       expect((await ui.find({ type: 'Text', text: /^−1$/ }))?.props.color).toBe(t.codeFlag)
-      expect((await ui.find({ type: 'Text', text: /^\+ const c = 4$/ }))?.props.color).toBe(t.number)
-      expect((await ui.find({ type: 'Text', text: /^- const b = 2$/ }))?.props.color).toBe(t.codeFlag)
-      expect((await ui.find({ type: 'Text', text: /^  const a = 1$/ }))?.props.dimColor).toBe(true)
+      expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe(t.number)
+      expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(t.codeFlag)
+      expect((await ui.find({ type: 'Text', text: /^const a = 1$/ }))?.props.dimColor).toBe(true)
+      const row = (text: RegExp) => ui.find({ type: 'Box', text })
+      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
+      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(tint(t.rule, t.codeFlag))
+      expect((await row(/^4   const a = 1$/))?.props.backgroundColor).toBeUndefined()
+      expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
       expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
       await ui.unmount()
     }
   })
 }
 
-test('a long diff card stops at 20 lines and counts the rest', async ($, on) => {
+test('a long diff card folds to 20 lines, opens on press up to 400, and folds back', async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const content = Array.from({ length: 25 }, (_, i) => `line ${i + 1}`).join('\n')
     const ui = await $.ui.mount(editResult(surface, 'Write', { type: 'create', filePath: '/tmp/new.txt', content }))
     expect(await ui.find({ type: 'Text', text: /^\+25$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^\+ line 20$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^\+ line 21$/ })).toBeUndefined()
-    expect(await ui.find({ type: 'Text', text: /^… \+5 lines$/ })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: /^−0$/ }))?.props.dimColor).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^\+25$/ }))?.props.dimColor).toBe(false)
+    expect(await ui.find({ type: 'Text', text: /^line 20$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^line 21$/ })).toBeUndefined()
+    expect((await ui.find({ key: 'fold' }))?.props.label).toBe('+5 more lines')
+    await ui.press({ key: 'fold' })
+    expect(await ui.find({ type: 'Text', text: /^line 25$/ })).toBeDefined()
+    expect((await ui.find({ key: 'fold' }))?.props.label).toBe('show less')
+    await ui.press({ key: 'fold' })
+    expect(await ui.find({ type: 'Text', text: /^line 21$/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('an opened diff card stops at 400 lines and counts the rest', async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const content = Array.from({ length: 450 }, (_, i) => `line ${i + 1}`).join('\n')
+    const ui = await $.ui.mount(editResult(surface, 'Write', { type: 'create', filePath: '/tmp/big.txt', content }))
+    await ui.press({ key: 'fold' })
+    expect(await ui.find({ type: 'Text', text: /^line 400$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^line 401$/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^… \+50 lines$/ })).toBeDefined()
+    expect((await ui.findAll({})).length).toBeLessThan(2000)
+    await ui.unmount()
+  }
+})
+
+test('a long diff line wraps right of the gutter and mark', async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const long = Array.from({ length: 30 }, (_, i) => `word${i}`).join(' ')
+    const ui = await $.ui.mount({ ...editResult(surface, 'Write', { type: 'create', filePath: '/tmp/w.txt', content: long }), viewport: { columns: 60, rows: 20 } })
+    const line = await ui.find({ type: 'Text', text: long })
+    expect(line?.props.wrap).not.toBe('truncate-end')
+    expect(await ui.find({ type: 'Text', text: /^1 $/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^\+ $/ })).toBeDefined()
     await ui.unmount()
   }
 })
