@@ -324,6 +324,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
   expect(showcaseText([])).toContain('+M more lines')
   expect(blocks.some(b => b.kind === 'code' && b.lines.length > 30)).toBe(true)
+  expect(showcaseText([])).toContain('diff card headed `+N −M`')
 })
 
 test('mermaid boxes stay closed around wide labels', async () => {
@@ -367,6 +368,8 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task !== undefined))).toBe(true)
   expect(blocks.some(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'link'))).toBe(true)
   expect(helpText(Object.keys(PRESETS))).toContain('/prismantis copy')
+  expect(helpText([])).toContain('`random`')
+  expect(showcaseText([])).toContain('/prismantis theme random')
   expect(helpText([])).toContain('HTML (macOS/Linux)')
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)

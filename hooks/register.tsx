@@ -8,12 +8,12 @@ import { parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
 import { boxArt, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
-import type { Drawn } from './render'
-import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
+import type { Drawn, Fold } from './render'
+import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
-import { resolveStyle } from './theme'
+import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
 import type { Terminal } from './rtl'
 import { TERMINALS, hasRtl } from './rtl'
 
@@ -204,6 +204,12 @@ const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: st
   return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
 }
 
+const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, open?: string[]): Fold => (id, hidden, key) => {
+  if (!open) return null
+  const folded = !open.includes(id)
+  return { folded, element: <el.Button key={key} variant="secondary" label={folded ? `+${hidden} more lines` : 'show less'} onPress={() => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))} /> }
+}
+
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string, open?: string[]): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
@@ -252,12 +258,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       if (picked) drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picked.picture.png }} columns={picked.fit.columns} rows={picked.fit.rows} alt={formula.tex} /> })
     }
   }
-  const fold = (id: string, hidden: number, key: string) => {
-    if (!open) return null
-    const folded = !open.includes(id)
-    return { folded, element: <Button key={key} variant="secondary" label={folded ? `+${hidden} more lines` : 'show less'} onPress={() => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))} /> }
-  }
-  const elements = renderBlocks(el, style, blocks, columns, drawn, copy, fold)
+  const elements = renderBlocks(el, style, blocks, columns, drawn, copy, folder($, el, open))
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
   return button ? [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>] : elements
 }
@@ -265,7 +266,8 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
-  const style = resolveStyle(options)
+  let themeName = pickTheme(options.theme)
+  const style = resolveStyle({ ...options, theme: themeName })
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
   const shared = new Map<string, ReturnType<typeof parse>>()
@@ -293,18 +295,21 @@ export const register: Register = (on, options) => {
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns)
       return e.props.tool === 'Bash' || e.props.tool === 'PowerShell' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
     })
-    if (quiet) {
-      on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
-        await locate($, style)
+    on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
+      if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) {
         const el = $.ui.resolve(e)
-        const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
-        const out = (e.props.output ?? {}) as Record<string, unknown>
-        if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
-        if (e.props.isErrored) return renderFailure(el, fit(e.viewport), e.props.output) ?? next(e)
-        if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
-        return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
-      })
-    }
+        return renderDiffCard(el, fit(e.viewport), e.props.output, folder($, el, await read($, unfolded)), e.props.tool_use_id) ?? next(e)
+      }
+      if (!quiet) return next(e)
+      await locate($, style)
+      const el = $.ui.resolve(e)
+      const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
+      const out = (e.props.output ?? {}) as Record<string, unknown>
+      if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
+      if (e.props.isErrored) return renderFailure(el, fit(e.viewport), e.props.output) ?? next(e)
+      if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
+      return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
+    })
   }
 
   on('session.start', async ($, e, next) => {
@@ -312,13 +317,15 @@ export const register: Register = (on, options) => {
     void latexEngine($, latex)
     const started = await next(e)
     await $.command
-      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
+      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme [<name> | random] | copy [code] | demo]' })
       .catch(() => undefined)
     return started
   })
 
   on('command.run', { command: 'prismantis' }, async ($, e) => {
-    const [sub, name] = e.args.trim().split(/\s+/)
+    const [first, second] = e.args.trim().split(/\s+/)
+    const themeArgs = [...PRESET_NAMES, 'random']
+    const [sub, name] = themeArgs.includes(first ?? '') ? ['theme', first] : [first, second]
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
@@ -332,10 +339,17 @@ export const register: Register = (on, options) => {
       terminal = await probe($, style, probes)
       return { text: rtlShowcaseText() }
     }
-    if (sub !== 'theme' || !name) return { text: helpText(PRESET_NAMES) }
-    if (!(PRESET_NAMES as readonly string[]).includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}` }
+    if (sub !== 'theme') return { text: helpText(PRESET_NAMES) }
+    if (!name) return { text: options.theme === 'random' ? `current: ${themeName} (random)\nkeep it: /prismantis theme ${themeName}` : `current: ${themeName}` }
+    if (!themeArgs.includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
     const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
-    return { text: result.deny ? `Could not switch theme: ${result.deny}` : `Theme set to ${name}.` }
+    if (result.deny) return { text: `Could not switch theme: ${result.deny}` }
+    if (name !== 'random' || options.theme !== 'random') return { text: `Theme set to ${name}.` }
+    const others = RANDOM_THEMES.filter(t => t !== themeName)
+    themeName = others[Math.floor(Math.random() * others.length)]!
+    Object.assign(style, resolveStyle({ ...options, theme: themeName }))
+    $.ui.invalidate('ui.render')
+    return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
   })
 
   on('ui.render', { component: 'TurnDuration' }, ($, e) => renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs))

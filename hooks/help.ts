@@ -1,3 +1,5 @@
+import { RANDOM_THEMES } from './theme'
+
 export const showcaseText = (themes: readonly string[]): string => `
 # prismantis
 
@@ -8,7 +10,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 | Command | Does |
 |---------|------|
 | \`/prismantis\` | This screen |
-| \`/prismantis theme <name>\` | Switch theme on the spot |
+| \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/config\` | Edit any option |
 
@@ -20,9 +22,10 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 \`\`\`bash
 /prismantis theme nord
 /prismantis theme github-light
+/prismantis theme random
 \`\`\`
 
-1. Dark: ${themes.filter(t => !/latte|light|dawn/.test(t) && t !== 'mono').join(', ')}
+1. Dark: ${themes.filter(t => RANDOM_THEMES.includes(t)).join(', ')}
 2. Light: ${themes.filter(t => /latte|light|dawn/.test(t)).join(', ')}
 3. Plain
    - mono
@@ -68,6 +71,8 @@ Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`
 ### Tool rows
 
 Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1–40\`, \`Searched src/ for "TODO"\`.
+
+Each edit or new file draws as a diff card headed \`+N −M\`: added and removed lines on a faint tint of the number and flag colors, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest.
 
 ### Quotes and rules
 
@@ -171,14 +176,14 @@ export const helpText = (themes: readonly string[]): string => `
 
 | Command | Does |
 |---------|------|
-| \`/prismantis theme <name>\` | Switch theme on the spot |
+| \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/prismantis demo\` | Full showcase, every element and diagram |
 | \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |
 
 ### ${themes.length} themes
 
-- Dark: ${themes.filter(t => !/latte|light|dawn/.test(t) && t !== 'mono').join(', ')}
+- Dark: ${themes.filter(t => RANDOM_THEMES.includes(t)).join(', ')}
 - Light: ${themes.filter(t => /latte|light|dawn/.test(t)).join(', ')}
 - Plain: mono, no color, only bold and dim
 

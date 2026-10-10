@@ -81,6 +81,8 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 
 ![The same reply in all 15 color themes, ten dark and five light: a tip box, a task list, a flowchart and a bar chart](docs/themes.png)
 
+![Random theme: plain Claude Code on the left, prismantis with theme random on the right](docs/compare/random-theme.png)
+
 Dark: `catppuccin-mocha` (default), `dracula`, `nord`, `tokyo-night`, `gruvbox-dark`, `rose-pine`, `everforest`, `github-dark`, `one-dark`, `solarized-dark`.
 
 Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `solarized-light`.
@@ -168,6 +170,8 @@ Clicking works where the terminal passes clicks through, as fullscreen mode does
 ### Tool rows
 
 ![Tool rows: plain Claude Code on the left, prismantis on the right](docs/compare/tools.png)
+
+![Diff cards: plain Claude Code on the left, prismantis on the right](docs/compare/diff-cards.png)
 
 Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. A status dot shows done, running or failed, and output still draws below.
 
@@ -261,7 +265,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | Option | Values | Default |
 | --- | --- | --- |
 | `enabled` | `true`, `false` | `true` |
-| `theme` | see [Themes](#themes) | `catppuccin-mocha` |
+| `theme` | see [Themes](#themes), or `random` for a new dark color preset each time the mod loads | `catppuccin-mocha` |
 | `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `promptStyle` | `bubble`, `bar`, `chevron`, `off` | `bubble` |

@@ -1,7 +1,7 @@
 import type { PluginOptions } from 'claude-code'
 
 import type { ClipboardBackend } from './clipboard'
-import { PRESETS } from './presets'
+import { PRESET_NAMES, PRESETS } from './presets'
 import type { Shape, Terminal } from './rtl'
 import { TERMINALS } from './rtl'
 
@@ -42,6 +42,13 @@ export const isColor = (value: unknown): value is string => typeof value === 'st
 
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback
+
+export const RANDOM_THEMES: readonly string[] = PRESET_NAMES.filter(t => !/latte|light|dawn/.test(t) && t !== 'mono')
+
+export const pickTheme = (value: unknown, random = Math.random): string => {
+  const name = value === 'random' ? RANDOM_THEMES[Math.floor(random() * RANDOM_THEMES.length)] : value
+  return (PRESET_NAMES as readonly unknown[]).includes(name) ? String(name) : 'catppuccin-mocha'
+}
 
 export const resolveStyle = (options: PluginOptions): Style => {
   const base: Theme = (PRESETS as Record<string, Theme>)[String(options.theme)] ?? PRESETS['catppuccin-mocha']
