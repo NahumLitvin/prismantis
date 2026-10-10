@@ -796,6 +796,32 @@ test('tool rows show paths relative to the project, and ~ for the home directory
   await group.unmount()
 })
 
+test('tool rows shorten Windows paths against a backslashed root, with USERPROFILE as home', async ($, on) => {
+  mock.env(on, { USERPROFILE: 'C:\\Users\\demo' })
+  on('session.root', () => ({ value: 'C:\\Users\\demo\\tank-monitor' }))
+  const row = async (file_path: string) => {
+    const ui = await $.ui.mount({ plugin: 'prismantis', component: 'ToolUse', props: call('Read', { file_path }, `w-${file_path}`), viewport: { columns: 100, rows: 10 }, surface: 'terminal' })
+    const text = (await ui.find({ type: 'Text', text: /^Read / }))?.text
+    await ui.unmount()
+    return text
+  }
+  expect(await row('C:\\Users\\demo\\tank-monitor\\logs\\hourly.csv')).toContain('Read logs\\hourly.csv')
+  expect(await row('c:\\users\\demo\\notes\\todo.md')).toContain('Read ~\\notes\\todo.md')
+  expect(await row('D:\\other\\hosts')).toContain('Read D:\\other\\hosts')
+})
+
+test('drive-letter roots match case-insensitively and with any separator, POSIX roots stay exact', () => {
+  const windows = { cwd: 'E:\\p\\app\\', home: 'E:\\p' }
+  expect(shortTarget(windows, 'E:\\p\\app\\src\\main.ts')).toBe('src\\main.ts')
+  expect(shortTarget(windows, 'e:/p/app/src/main.ts')).toBe('src/main.ts')
+  expect(shortTarget(windows, 'E:\\p\\notes.md')).toBe('~\\notes.md')
+  expect(shortTarget(windows, 'E:\\p\\app2\\x.ts')).toBe('~\\app2\\x.ts')
+  expect(shortTarget(windows, 'D:\\p\\app\\x.ts')).toBe('D:\\p\\app\\x.ts')
+  const posix = { cwd: '/home/dev/app', home: '/home/dev' }
+  expect(shortTarget(posix, '/home/dev/App/x.ts')).toBe('~/App/x.ts')
+  expect(shortTarget(posix, '/home/dev/app/x.ts')).toBe('x.ts')
+})
+
 test('git --output and awk -f are not reads, and an error starting with "at" is not stack noise', () => {
   const shell = (command: string) => isReadOnlyCall('Bash', { command })
   expect(shell('git log --oneline -5')).toBe(true)

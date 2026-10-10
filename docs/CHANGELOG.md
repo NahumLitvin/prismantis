@@ -10,6 +10,12 @@ All notable changes to this project are documented here. The format follows [Kee
 - Footnotes draw as superscript marks numbered by first reference, with the notes collected under a dim rule at the end of the reply. A reference without a definition stays as written ([#18](https://github.com/NahumLitvin/prismantis/issues/18)).
 - A mermaid block that stays source says why in one dim line above it: `diagram is 188 cols, terminal is 120` when the art is wider than the terminal, `diagram failed to render` when a supported diagram type throws, and `pie diagrams draw as source for now` for types the renderer has no drawing for (pie, gantt, mindmap, timeline, journey, gitGraph). A block still streaming shows no note. Bar and line chart heights are now tested against their values ([#33](https://github.com/NahumLitvin/prismantis/issues/33), [#63](https://github.com/NahumLitvin/prismantis/issues/63)).
 
+## [Unreleased]
+
+### Fixed
+
+- Tool rows on Windows show paths relative to the project (`Wrote notes\scratch.md`) instead of the full `E:\…` path. The project root and the tool's path both come backslashed there, and the match looked for a `/`; both sides are now compared with forward slashes, case-insensitively under a drive letter, and `~` falls back to `USERPROFILE` when `HOME` is unset ([#83](https://github.com/NahumLitvin/prismantis/issues/83)).
+
 ## [0.14.0] - 2026-10-09
 
 ### Added

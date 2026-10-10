@@ -669,10 +669,15 @@ const toolLayout = (el: ElementTable, style: Style, columns: number, label: stri
 
 type Places = Pick<Style, 'cwd' | 'home'>
 
+const slashes = (path: string): string => path.replace(/\\/g, '/').replace(/\/+$/, '')
+
+const folded = (path: string): string => (/^[a-z]:(\/|$)/i.test(path) ? path.toLowerCase() : path)
+
 export const shortPath = (style: Places, path: string): string => {
-  for (const [root, prefix] of [[style.cwd, ''], [style.home, '~/']] as const) {
-    const base = root.replace(/\/+$/, '')
-    if (base !== '' && path.startsWith(`${base}/`)) return prefix + path.slice(base.length + 1)
+  const target = folded(slashes(path))
+  for (const [root, home] of [[style.cwd, false], [style.home, true]] as const) {
+    const base = folded(slashes(root))
+    if (base !== '' && target.startsWith(`${base}/`)) return home ? `~${path.slice(base.length)}` : path.slice(base.length + 1)
   }
   return path
 }

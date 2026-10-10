@@ -177,7 +177,7 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
 
 const locate = async ($: EngineInterface, style: Style) => {
   style.cwd = await $.session.root().catch(() => style.cwd)
-  style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? ''
+  style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? (await $.env.get('USERPROFILE').catch(() => undefined)) ?? ''
 }
 
 const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null> => {
