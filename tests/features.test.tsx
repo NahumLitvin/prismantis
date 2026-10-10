@@ -572,7 +572,7 @@ test('headless runs get no render hint', async ($, on) => {
   expect((seen[0] ?? []).some(c => c.includes('prismantis'))).toBe(false)
 })
 
-test('/prismantis theme <name> switches the theme through config', async ($, on) => {
+test('/prismantis theme <name> and /prismantis <name> switch the theme through config', async ($, on) => {
   const writes: { key: string; value: unknown }[] = []
   on('config.set', (_, e) => {
     writes.push({ key: e.key, value: e.value })
@@ -581,6 +581,9 @@ test('/prismantis theme <name> switches the theme through config', async ($, on)
   const result = await $.command.run({ command: 'prismantis', args: 'theme nord', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(writes).toEqual([{ key: 'prismantis.theme', value: 'nord' }])
   expect(result.text).toBe('Theme set to nord.')
+  const short = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  expect(writes.at(-1)).toEqual({ key: 'prismantis.theme', value: 'random' })
+  expect(short.text).toBe('Theme set to random.')
 })
 
 test('/prismantis rejects unknown themes and lists the real ones', async ($, on) => {

@@ -319,7 +319,8 @@ export const register: Register = (on, options) => {
   })
 
   on('command.run', { command: 'prismantis' }, async ($, e) => {
-    const [sub, name] = e.args.trim().split(/\s+/)
+    const [first, second] = e.args.trim().split(/\s+/)
+    const [sub, name] = [...PRESET_NAMES, 'random'].includes(first ?? '') ? ['theme', first] : [first, second]
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
