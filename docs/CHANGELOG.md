@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A mermaid block that stays source says why in one dim line above it: `diagram is 188 cols, terminal is 120: shorten labels` when the art is wider than the terminal, `diagram failed to render` when the renderer gave up. Bar and line chart heights are now tested against their values ([#33](https://github.com/NahumLitvin/prismantis/issues/33), [#63](https://github.com/NahumLitvin/prismantis/issues/63)).
+
 ## [0.14.0] - 2026-10-09
 
 ### Added

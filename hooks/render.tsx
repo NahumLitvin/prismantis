@@ -508,7 +508,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 }
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
-export type Drawn = Map<number, { element: RenderElement; art?: string }>
+export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string }>
 
 const copySource = (block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n') : block.kind === 'table' || block.kind === 'list' ? block.raw : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n') : undefined
@@ -533,6 +533,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       case 'code':
         return drawn.get(b)?.element ?? (
           <Box key={key} flexDirection="column" alignSelf="flex-start">
+            {drawn.get(b)?.note ? <Text color={t.codeComment} dimColor>{drawn.get(b)?.note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
               {copy?.(block.lines.join('\n'), `copy${b}`) ?? null}
@@ -551,7 +552,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const copied = rendered.map((element, b) => {
     const block = blocks[b]
     const text = block ? copySource(block) : undefined
-    const isPlainCode = block?.kind === 'code' && !drawn.has(b)
+    const isPlainCode = block?.kind === 'code' && !drawn.get(b)?.element
     const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block?.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null

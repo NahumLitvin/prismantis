@@ -229,12 +229,16 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     for (const [i, block] of blocks.entries()) {
       if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
       const source = block.lines.join('\n')
+      let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
         const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
-        if (art === null || !art.split('\n').every(l => width(l) <= columns - 2)) continue
+        const wide = art === null ? Infinity : Math.max(...art.split('\n').map(width))
+        narrowest = Math.min(narrowest, wide)
+        if (art === null || wide > columns - 2) continue
         drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
         break
       }
+      if (!drawn.has(i)) drawn.set(i, { note: narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}: shorten labels` })
     }
   }
   const Image = 'Image' in el ? el.Image : null

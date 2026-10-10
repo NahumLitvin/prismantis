@@ -352,7 +352,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(3)
+  expect(diagrams.length).toBe(4)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -508,4 +508,60 @@ test('chart y-axis ticks sit an even number of rows apart', async () => {
     const rows = mermaidText(chart, false, columns)!.split('\n').flatMap((l, i) => (/^\s*[\d.]+\s*[┤┼]/.test(l) ? [i] : []))
     expect(new Set(rows.slice(1).map((r, i) => r - rows[i]!)).size).toBe(1)
   }
+})
+
+const heights = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }, kind: 'bar' | 'line') => {
+  const byTick = new Map<string, string>()
+  let axis = ''
+  for (const { text } of await ui.findAll({ type: 'Text' })) {
+    const at = text.search(/[┤┼]/)
+    const tick = text.match(/^\s*(\d+)[┤┼]/)?.[1]
+    if (at < 0) continue
+    const line = text.slice(at)
+    if (tick !== undefined) {
+      if (line.length > (byTick.get(tick)?.length ?? 0)) byTick.set(tick, line)
+    } else if (/^\s*┼─/.test(text) && line.length > axis.length) axis = line
+  }
+  const rows = [...byTick.values()]
+  const columns = kind === 'bar'
+    ? [...new Set(rows.flatMap(r => [...r].flatMap((ch, c) => (ch === '█' && r[c - 1] !== '█' ? [c] : []))))].sort((a, b) => a - b)
+    : [...axis].flatMap((ch, c) => (ch === '┬' ? [c] : []))
+  return columns.map(c => (kind === 'bar' ? rows.filter(r => r[c] === '█').length - 1 : rows.length - 1 - rows.findIndex(r => /[╭╮╯╰│─]/.test(r[c] ?? ''))))
+}
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  for (const kind of ['bar', 'line'] as const) {
+    for (const values of [[3, 7, 5], [2, 3, 4, 16]]) {
+      test(`${kind} chart heights follow their values on ${surface}: ${values.join(', ')}`, async $ => {
+        const labels = values.map((_, i) => `L${i + 1}`).join(', ')
+        const ui = await $.ui.mount({ ...mount(`\`\`\`mermaid\nxychart-beta\n  x-axis [${labels}]\n  y-axis 0 --> ${Math.max(...values) + 2}\n  ${kind} [${values.join(', ')}]\n\`\`\``), surface })
+        const got = await heights(ui, kind)
+        const tallest = Math.max(...got)
+        expect(got.length).toBe(values.length)
+        values.forEach((v, i) => expect(Math.abs(got[i]! - (tallest * v) / Math.max(...values)) <= 1).toBe(true))
+        await ui.unmount()
+      })
+    }
+  }
+}
+
+test('a diagram too wide for the terminal shows its source under a note with its width', async $ => {
+  const workers = Array.from({ length: 16 }, (_, i) => `W${i + 1}[Worker ${i + 1}]`).join(' & ')
+  const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n  Q[Queue] --> ' + workers + '\n```'))
+  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols, terminal is \d+: shorten labels$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a diagram the renderer cannot draw shows its source under a failure note', async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n' + '  A --> B\n'.repeat(900) + '```'))
+  expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a diagram that fits draws without a note', async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\nflowchart LR\n  A --> B\n```'))
+  expect(await ui.find({ type: 'Text', text: /^diagram (is|failed)/ })).toBeUndefined()
+  await ui.unmount()
 })
