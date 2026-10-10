@@ -69,6 +69,8 @@ Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`
 
 Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1–40\`, \`Searched src/ for "TODO"\`.
 
+Each edit or new file draws as a diff card headed \`+N −M\`: added lines in the number color, removed lines in the flag color, the first 20 lines and a count of the rest.
+
 ### Quotes and rules
 
 > A quote keeps its text when you copy it, without the \`> \` markers.

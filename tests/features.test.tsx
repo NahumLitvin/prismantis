@@ -4,7 +4,7 @@ import type { TestBody } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
-import { columnWidths, describeShell, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
+import { columnWidths, describeShell, diffLines, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -820,4 +820,62 @@ test('tool row paths follow the project root after a worktree move', async ($, o
   expect(await row('/home/demo/tank-monitor/src/pool.ts', 'w1')).toContain('Read src/pool.ts')
   root = '/home/demo/worktrees/tank-monitor-fix'
   expect(await row('/home/demo/worktrees/tank-monitor-fix/src/pool.ts', 'w2')).toContain('Read src/pool.ts')
+})
+
+const patch = { filePath: '/tmp/app.ts', structuredPatch: [{ oldStart: 4, newStart: 4, lines: [' const a = 1', '-const b = 2', '+const b = 3', '+const c = 4'] }] }
+const editResult = (surface: 'terminal' | 'desktop', tool: string, output: unknown, isErrored = false) =>
+  ({ plugin: 'prismantis', surface, component: 'ToolResult' as const, props: { tool_use_id: `d-${surface}`, tool, output, isErrored } })
+
+test('diff lines number old and new sides, and a new file is all additions', () => {
+  expect(diffLines(patch)?.map(r => `${r.num}${r.mark}${r.text}`)).toEqual(['4 const a = 1', '5-const b = 2', '5+const b = 3', '6+const c = 4'])
+  expect(diffLines({ type: 'create', content: 'one\ntwo\n' })?.map(r => r.mark + r.text)).toEqual(['+one', '+two'])
+  expect(diffLines({ stdout: 'x' })).toBeUndefined()
+  expect(diffLines('Updated file')).toBeUndefined()
+})
+
+for (const toolOutput of ['full', 'quiet'] as const) {
+  test(`edits draw a diff card with counts and colored lines (toolOutput ${toolOutput})`, { options: { toolOutput } }, async ($, on) => {
+    engine(on)
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount(editResult(surface, 'Edit', patch))
+      expect((await ui.find({ type: 'Text', text: /^\+2$/ }))?.props.color).toBe(t.number)
+      expect((await ui.find({ type: 'Text', text: /^−1$/ }))?.props.color).toBe(t.codeFlag)
+      expect((await ui.find({ type: 'Text', text: /^\+ const c = 4$/ }))?.props.color).toBe(t.number)
+      expect((await ui.find({ type: 'Text', text: /^- const b = 2$/ }))?.props.color).toBe(t.codeFlag)
+      expect((await ui.find({ type: 'Text', text: /^  const a = 1$/ }))?.props.dimColor).toBe(true)
+      expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+      await ui.unmount()
+    }
+  })
+}
+
+test('a long diff card stops at 20 lines and counts the rest', async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const content = Array.from({ length: 25 }, (_, i) => `line ${i + 1}`).join('\n')
+    const ui = await $.ui.mount(editResult(surface, 'Write', { type: 'create', filePath: '/tmp/new.txt', content }))
+    expect(await ui.find({ type: 'Text', text: /^\+25$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^\+ line 20$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^\+ line 21$/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^… \+5 lines$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('edits the card cannot parse, failed edits and other tools go to the engine', async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    for (const [tool, output, isErrored] of [['Edit', 'File updated', false], ['Write', patch, true], ['Read', patch, false]] as const) {
+      const ui = await $.ui.mount(editResult(surface, tool, output, isErrored))
+      expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+      await ui.unmount()
+    }
+  }
+})
+
+test('edits keep the engine diff when tool rows are off', { options: { toolRows: false } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await ui.unmount()
 })

@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Code blocks of 10 lines or more get dim line numbers, and blocks over 30 lines fold to their first 20 with a `+M more lines` button that opens the rest and a `show less` button that folds it back. `⧉ copy` still copies the whole block. The last 500 opened blocks are remembered ([#16](https://github.com/NahumLitvin/prismantis/issues/16)).
 - Footnotes draw as superscript marks numbered by first reference, with the notes collected under a dim rule at the end of the reply. A reference without a definition stays as written ([#18](https://github.com/NahumLitvin/prismantis/issues/18)).
+- Edit and Write results draw as a diff card: a rounded box headed `+N −M`, added lines in the theme's number color, removed lines in its flag color, line numbers and context dimmed, the first 20 lines and then `… +K lines`. A new file shows as all additions. Results it cannot read go to Claude Code's own drawing, and `toolRows: false` turns it off with the other tool rows ([#15](https://github.com/NahumLitvin/prismantis/issues/15)).
 
 ## [0.14.0] - 2026-10-09
 
