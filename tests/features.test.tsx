@@ -3,7 +3,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
-import { PRESETS } from '../hooks/presets'
+import { PRESET_NAMES, PRESETS } from '../hooks/presets'
+import { pickTheme } from '../hooks/theme'
 import { columnWidths, describeShell, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
@@ -593,6 +594,28 @@ test('/prismantis rejects unknown themes and lists the real ones', async ($, on)
   expect(bad.text?.startsWith('Unknown theme "neon".')).toBe(true)
   const list = await $.command.run({ command: 'prismantis', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(list.text?.includes('dracula')).toBe(true)
+})
+
+test('theme random can pick every preset and falls back on junk', async () => {
+  const n = PRESET_NAMES.length
+  const picks = PRESET_NAMES.map((_, i) => pickTheme('random', () => (i + 0.5) / n))
+  expect(picks).toEqual([...PRESET_NAMES])
+  expect(pickTheme('nord')).toBe('nord')
+  expect(pickTheme('neon')).toBe('catppuccin-mocha')
+})
+
+test('/prismantis theme reports the random pick and how to keep it', { options: { theme: 'random' } }, async $ => {
+  const run = () => $.command.run({ command: 'prismantis', args: 'theme', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const first = (await run()).text ?? ''
+  const name = /^current: (\S+) \(random\)\nkeep it: \/prismantis theme (\S+)$/.exec(first)
+  expect(name?.[1]).toBe(name?.[2])
+  expect((PRESET_NAMES as readonly string[]).includes(name?.[1] ?? '')).toBe(true)
+  expect((await run()).text).toBe(first)
+})
+
+test('/prismantis theme reports a fixed theme without the random note', { options: { theme: 'nord' } }, async $ => {
+  const result = await $.command.run({ command: 'prismantis', args: 'theme', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  expect(result.text).toBe('current: nord')
 })
 
 test('task list items parse as checked or open, nested ones too', async () => {
