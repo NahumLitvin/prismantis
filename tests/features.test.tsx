@@ -583,7 +583,12 @@ test('/prismantis theme <name> and /prismantis <name> switch the theme through c
   expect(result.text).toBe('Theme set to nord.')
   const short = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(writes.at(-1)).toEqual({ key: 'prismantis.theme', value: 'random' })
-  expect(short.text).toBe('Theme set to random.')
+  const first = /^Theme set to random: (\S+) for now\.\nkeep it: \/prismantis theme \1$/.exec(short.text ?? '')?.[1]
+  const again = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const second = /^Theme set to random: (\S+) for now\./.exec(again.text ?? '')?.[1]
+  expect(RANDOM_THEMES).toContain(first)
+  expect(RANDOM_THEMES).toContain(second)
+  expect(second).not.toBe(first)
 })
 
 test('/prismantis rejects unknown themes and lists the real ones', async ($, on) => {
@@ -849,4 +854,19 @@ test('tool row paths follow the project root after a worktree move', async ($, o
   expect(await row('/home/demo/tank-monitor/src/pool.ts', 'w1')).toContain('Read src/pool.ts')
   root = '/home/demo/worktrees/tank-monitor-fix'
   expect(await row('/home/demo/worktrees/tank-monitor-fix/src/pool.ts', 'w2')).toContain('Read src/pool.ts')
+})
+
+test('/prismantis random redraws replies in the new pick', { options: { theme: 'random' } }, async ($, on) => {
+  on('config.set', (_, e) => ({ value: e.value }))
+  const heading = async () => {
+    const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'AssistantMessage', props: { text: '# Tanks', isFirstOfReply: true }, viewport: { columns: 120, rows: 40 } })
+    const color = (await ui.find({ type: 'Text', text: /^Tanks$/ }))?.props.color
+    await ui.unmount()
+    return color
+  }
+  const run = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const picked = /^Theme set to random: (\S+) for now/.exec(run.text ?? '')?.[1] ?? ''
+  const want = (PRESETS as Record<string, { heading?: string }>)[picked]?.heading
+  expect(want).toBeDefined()
+  expect(await heading()).toBe(want)
 })

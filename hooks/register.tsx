@@ -13,7 +13,7 @@ import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderExpandedShe
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
-import { pickTheme, resolveStyle } from './theme'
+import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
 import type { Terminal } from './rtl'
 import { TERMINALS, hasRtl } from './rtl'
 
@@ -265,7 +265,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
-  const themeName = pickTheme(options.theme)
+  let themeName = pickTheme(options.theme)
   const style = resolveStyle({ ...options, theme: themeName })
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
@@ -338,7 +338,13 @@ export const register: Register = (on, options) => {
     if (!name) return { text: options.theme === 'random' ? `current: ${themeName} (random)\nkeep it: /prismantis theme ${themeName}` : `current: ${themeName}` }
     if (![...PRESET_NAMES, 'random'].includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
     const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
-    return { text: result.deny ? `Could not switch theme: ${result.deny}` : `Theme set to ${name}.` }
+    if (result.deny) return { text: `Could not switch theme: ${result.deny}` }
+    if (name !== 'random') return { text: `Theme set to ${name}.` }
+    const others = RANDOM_THEMES.filter(t => t !== themeName)
+    themeName = others[Math.floor(Math.random() * others.length)]!
+    Object.assign(style, resolveStyle({ ...options, theme: themeName }))
+    $.ui.invalidate('ui.render')
+    return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
   })
 
   on('ui.render', { component: 'TurnDuration' }, ($, e) => renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs))
