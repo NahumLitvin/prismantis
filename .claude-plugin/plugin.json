@@ -28,7 +28,7 @@
     "theme": {
       "type": "string",
       "title": "Theme",
-      "description": "Base palette, from popular MIT-licensed themes. Light variants: catppuccin-latte, gruvbox-light, rose-pine-dawn, github-light, solarized-light. mono uses bold and dim only. random picks one at each session start.",
+      "description": "Base palette, from popular MIT-licensed themes. Light variants: catppuccin-latte, gruvbox-light, rose-pine-dawn, github-light, solarized-light. mono uses bold and dim only. random picks one each time the mod loads (session start or reload).",
       "default": "catppuccin-mocha",
       "options": [
         "catppuccin-mocha",
