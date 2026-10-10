@@ -509,7 +509,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
 export type Drawn = Map<number, { element: RenderElement; art?: string }>
-type Fold = (id: string, hidden: number, key: string) => RenderElement | null
+type Fold = (id: string, hidden: number, key: string) => { folded: boolean; element: RenderElement } | null
 
 const NUMBER_AT = 10
 const NUMBER_MAX = 400
@@ -546,8 +546,8 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const done = drawn.get(b)?.element
         if (done) return done
         const lines = block.lines
-        const more = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) ?? null : null
-        const shown = more ? FOLD_SHOW : lines.length
+        const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
+        const shown = toggle?.folded ? FOLD_SHOW : lines.length
         const rows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
         const gutter = String(lines.length).length
         return (
@@ -558,7 +558,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
               {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
-              {more}
+              {toggle?.element ?? null}
             </Box>
           </Box>
         )

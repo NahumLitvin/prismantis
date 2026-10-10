@@ -321,7 +321,7 @@ test('a wrapped numbered line keeps its continuation after the gutter', async $ 
   await ui.unmount()
 })
 
-test('long code blocks fold to 20 lines, expand on press, and copy every line', async ($, on) => {
+test('long code blocks fold to 20 lines, open and fold back on press, and copy every line', async ($, on) => {
   const copied: string[] = []
   on('ui.copy', (_, e) => {
     copied.push(e.text)
@@ -336,7 +336,10 @@ test('long code blocks fold to 20 lines, expand on press, and copy every line', 
     expect(copied.at(-1)).toBe(Array.from({ length: n }, (_, i) => `step ${i + 1}`).join('\n'))
     await ui.press({ key: 'fold0' })
     expect(await ui.find({ type: 'Text', text: new RegExp(`^${n}  $`) })).toBeDefined()
-    expect(await ui.find({ key: 'fold0' })).toBeUndefined()
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
+    await ui.press({ key: 'fold0' })
+    expect(await ui.find({ type: 'Text', text: /^21  $/ })).toBeUndefined()
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe(`+${n - 20} more lines`)
     await ui.unmount()
   }
 })

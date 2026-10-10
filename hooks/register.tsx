@@ -245,9 +245,11 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       if (picked) drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picked.picture.png }} columns={picked.fit.columns} rows={picked.fit.rows} alt={formula.tex} /> })
     }
   }
-  const fold = (id: string, hidden: number, key: string) => !open || open.includes(id) ? null : (
-    <Button key={key} variant="secondary" label={`+${hidden} more lines`} onPress={() => update($, unfolded, ids => [...ids, id].slice(-500))} />
-  )
+  const fold = (id: string, hidden: number, key: string) => {
+    if (!open) return null
+    const folded = !open.includes(id)
+    return { folded, element: <Button key={key} variant="secondary" label={folded ? `+${hidden} more lines` : 'show less'} onPress={() => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))} /> }
+  }
   const elements = renderBlocks(el, style, blocks, columns, drawn, copy, fold)
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
   return button ? [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>] : elements

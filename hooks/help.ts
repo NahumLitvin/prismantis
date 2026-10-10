@@ -81,7 +81,7 @@ Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` i
 { "theme": "dracula", "headingStyle": "banner", "mermaid": true }
 \`\`\`
 
-Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a \`+M more lines\` button; \`⧉ copy\` still copies the whole block.
+Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a \`+M more lines\` button, \`show less\` folds them back; \`⧉ copy\` still copies the whole block.
 
 \`\`\`ts
 type Item = { name: string; price: number; qty: number }
