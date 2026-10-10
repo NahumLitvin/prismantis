@@ -43,8 +43,10 @@ export const isColor = (value: unknown): value is string => typeof value === 'st
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback
 
+export const RANDOM_THEMES = PRESET_NAMES.filter(t => !/latte|light|dawn/.test(t) && t !== 'mono')
+
 export const pickTheme = (value: unknown, random = Math.random): string => {
-  const name = value === 'random' ? PRESET_NAMES[Math.floor(random() * PRESET_NAMES.length)] : value
+  const name = value === 'random' ? RANDOM_THEMES[Math.floor(random() * RANDOM_THEMES.length)] : value
   return (PRESET_NAMES as readonly unknown[]).includes(name) ? String(name) : 'catppuccin-mocha'
 }
 

@@ -4,7 +4,7 @@ import type { TestBody } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
-import { pickTheme } from '../hooks/theme'
+import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
 import { columnWidths, describeShell, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
@@ -597,9 +597,12 @@ test('/prismantis rejects unknown themes and lists the real ones', async ($, on)
 })
 
 test('theme random can pick every preset and falls back on junk', async () => {
-  const n = PRESET_NAMES.length
-  const picks = PRESET_NAMES.map((_, i) => pickTheme('random', () => (i + 0.5) / n))
-  expect(picks).toEqual([...PRESET_NAMES])
+  const n = RANDOM_THEMES.length
+  const picks = RANDOM_THEMES.map((_, i) => pickTheme('random', () => (i + 0.5) / n))
+  expect(picks).toEqual([...RANDOM_THEMES])
+  expect(RANDOM_THEMES).not.toContain('mono')
+  expect(RANDOM_THEMES.some(t => /latte|light|dawn/.test(t))).toBe(false)
+  expect(RANDOM_THEMES.length).toBeGreaterThan(5)
   expect(pickTheme('nord')).toBe('nord')
   expect(pickTheme('neon')).toBe('catppuccin-mocha')
 })

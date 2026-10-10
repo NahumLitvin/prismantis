@@ -9,7 +9,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Code blocks of 10 lines or more get dim line numbers, and blocks over 30 lines fold to their first 20 with a `+M more lines` button that opens the rest and a `show less` button that folds it back. `⧉ copy` still copies the whole block. The last 500 opened blocks are remembered ([#16](https://github.com/NahumLitvin/prismantis/issues/16)).
 - Footnotes draw as superscript marks numbered by first reference, with the notes collected under a dim rule at the end of the reply. A reference without a definition stays as written ([#18](https://github.com/NahumLitvin/prismantis/issues/18)).
 - A mermaid block that stays source says why in one dim line above it: `diagram is 188 cols, terminal is 120` when the art is wider than the terminal, `diagram failed to render` when a supported diagram type throws, and `pie diagrams draw as source for now` for types the renderer has no drawing for (pie, gantt, mindmap, timeline, journey, gitGraph). A block still streaming shows no note. Bar and line chart heights are now tested against their values ([#33](https://github.com/NahumLitvin/prismantis/issues/33), [#63](https://github.com/NahumLitvin/prismantis/issues/63)).
-- `theme: random` picks a preset each time the mod loads (session start or reload) and keeps it until the next load. `/prismantis theme` shows the pick and the command to keep it ([#21](https://github.com/NahumLitvin/prismantis/issues/21)).
+- `theme: random` picks one of the dark color presets each time the mod loads (session start or reload) and keeps it until the next load. `/prismantis theme` shows the pick and the command to keep it ([#21](https://github.com/NahumLitvin/prismantis/issues/21)).
 
 ## [0.14.0] - 2026-10-09
 
