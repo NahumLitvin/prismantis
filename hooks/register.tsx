@@ -238,7 +238,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
         drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
         break
       }
-      if (!drawn.has(i)) drawn.set(i, { note: narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}: shorten labels` })
+      if (!drawn.has(i)) drawn.set(i, { note: narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
     }
   }
   const Image = 'Image' in el ? el.Image : null

@@ -548,7 +548,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
 test('a diagram too wide for the terminal shows its source under a note with its width', async $ => {
   const workers = Array.from({ length: 16 }, (_, i) => `W${i + 1}[Worker ${i + 1}]`).join(' & ')
   const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n  Q[Queue] --> ' + workers + '\n```'))
-  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols, terminal is \d+: shorten labels$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols, terminal is \d+$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
   await ui.unmount()
 })
