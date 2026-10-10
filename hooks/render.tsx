@@ -749,7 +749,7 @@ export const diffLines = (output: unknown): DiffLine[] | undefined => {
   return rows
 }
 
-export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold?: Fold, id = ''): RenderElement | undefined => {
+export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
   const rows = diffLines(output)
   if (rows === undefined) return undefined
   const { Box, Text } = el
