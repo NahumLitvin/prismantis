@@ -696,7 +696,13 @@ export const diffLines = (output: unknown): DiffLine[] | undefined => {
     for (const l of hunk.lines) {
       if (typeof l !== 'string' || l.startsWith('\\')) continue
       const mark = l[0] === '+' || l[0] === '-' ? l[0] : ' '
-      rows.push({ mark, num: mark === '-' ? o++ : (mark === ' ' && o++, n++), text: l.slice(1) })
+      let num: number
+      if (mark === '-') num = o++
+      else {
+        if (mark === ' ') o++
+        num = n++
+      }
+      rows.push({ mark, num, text: l.slice(1) })
     }
   }
   return rows
