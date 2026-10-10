@@ -111,6 +111,8 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
         return <Text key={key} color={t.path}>{n.text}</Text>
       case 'dim':
         return <Text key={key} dimColor>{n.text}</Text>
+      case 'footnote':
+        return <Text key={key} color={t.accent}>{n.text}</Text>
     }
   })
 }
@@ -567,6 +569,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         return renderList(el, style, block, columns, key)
       case 'table':
         return renderTable(el, style, block, columns, key, rtlTables[b]!)
+      case 'notes':
+        return (
+          <Box key={key} flexDirection="column">
+            <Text dimColor>{'─'.repeat(Math.min(columns, 12))}</Text>
+            {block.notes.map((note, i) => <Text key={`${key}.${i}`} dimColor>{note.mark} {renderInline(el, style, note.inline, `${key}.${i}`)}</Text>)}
+          </Box>
+        )
     }
   })
   const copied = rendered.map((element, b) => {
