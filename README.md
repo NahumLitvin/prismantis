@@ -187,6 +187,8 @@ The note costs about 190 tokens per prompt, and about 60 more while [LaTeX math]
 
 ![Text: plain Claude Code on the left, prismantis on the right](docs/compare/text.png)
 
+![Footnotes: plain Claude Code on the left, prismantis on the right](docs/compare/footnotes.png)
+
 **Bold**, *italic*, ~~strikethrough~~, `inline code`, links and bare URLs, clickable as terminal hyperlinks. Numbers, versions (`v2.14.0`), durations (`250ms`, `3h`), sizes (`16Gi`) and percentages (`99.9%`) take the number color, and paths like `~/src/app.ts` the path color.
 
 ### Headings, lists, quotes
