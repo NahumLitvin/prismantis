@@ -44,6 +44,13 @@ const labelBars = (art: string, source: string): string => {
 
 const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
 
+const SUPPORTED = /^(flowchart|graph|statediagram(-v2)?|xychart(-beta)?|sequencediagram|classdiagram|erdiagram)$/i
+
+export const unsupportedKind = (source: string): string | undefined => {
+  const kind = source.replace(/^(\s*%%[^\n]*\n)+/, '').trim().split(/\s/)[0] ?? ''
+  return kind && !SUPPORTED.test(kind) ? kind : undefined
+}
+
 export const mermaidText = (source: string, ascii: boolean, columns: number): string | null => {
   if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
   const art = draw(source, ascii, columns)

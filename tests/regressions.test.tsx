@@ -560,6 +560,24 @@ test('a diagram the renderer cannot draw shows its source under a failure note',
   await ui.unmount()
 })
 
+test('a diagram type the renderer has no drawing for says so instead of failing', async $ => {
+  for (const kind of ['pie', 'gantt', 'mindmap', 'timeline', 'journey', 'gitGraph']) {
+    const ui = await $.ui.mount(mount('```mermaid\n' + kind + '\n  title T\n```'))
+    expect(await ui.find({ type: 'Text', text: `${kind} diagrams draw as source for now` })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('a half-streamed diagram shows no note until its fence closes', async $ => {
+  const open = await $.ui.mount(mount('```mermaid\npie\n  "a" : 3'))
+  expect(await open.find({ type: 'Text', text: /diagram|draw as source/ })).toBeUndefined()
+  await open.unmount()
+  const closed = await $.ui.mount(mount('```mermaid\npie\n  "a" : 3\n```'))
+  expect(await closed.find({ type: 'Text', text: /^pie diagrams draw as source for now$/ })).toBeDefined()
+  await closed.unmount()
+})
+
 test('a diagram that fits draws without a note', async $ => {
   const ui = await $.ui.mount(mount('```mermaid\nflowchart LR\n  A --> B\n```'))
   expect(await ui.find({ type: 'Text', text: /^diagram (is|failed)/ })).toBeUndefined()

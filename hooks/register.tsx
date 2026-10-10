@@ -7,7 +7,7 @@ import type { Block } from './markdown'
 import { parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { boxArt, mermaidText, shortenEdgeLabels } from './mermaid'
+import { boxArt, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
 import type { Drawn } from './render'
 import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
@@ -238,7 +238,10 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
         drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
         break
       }
-      if (!drawn.has(i)) drawn.set(i, { note: narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
+      if (!drawn.has(i) && !block.isOpen) {
+        const kind = unsupportedKind(source)
+        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
+      }
     }
   }
   const Image = 'Image' in el ? el.Image : null

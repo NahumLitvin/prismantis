@@ -531,9 +531,10 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       case 'rule':
         return <Text key={key} color={t.rule} dimColor={!t.rule}>{'─'.repeat(Math.max(8, Math.min(columns, 80)))}</Text>
       case 'code':
+        const note = drawn.get(b)?.note
         return drawn.get(b)?.element ?? (
           <Box key={key} flexDirection="column" alignSelf="flex-start">
-            {drawn.get(b)?.note ? <Text color={t.codeComment} dimColor>{drawn.get(b)?.note}</Text> : null}
+            {note ? <Text color={t.codeComment} dimColor>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
               {copy?.(block.lines.join('\n'), `copy${b}`) ?? null}
