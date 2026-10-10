@@ -48,9 +48,6 @@ Dependencies and licenses:
 - Add a dependency only when writing it ourselves is unreasonable. Use its latest release, prefer well-starred maintained projects, and record it in docs/THIRD_PARTY_NOTICES.md. The bundled runtime dependencies today are beautiful-mermaid and Prism. esbuild is build-time only.
 - Two external programs can run: the HTML table copy action runs macOS's built-in `osascript`, or an installed and running CopyQ on Linux, and LaTeX math runs RaTeX's `ratex-render`, installed by the person and off until they set `latex`. Nothing else runs.
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).
-
-Releases:
-
 - Feature and fix PRs add their CHANGELOG entry under `## [Unreleased]` and leave the version alone. Only the release commit sets the version, so parallel PRs never fight over it.
 
 ## Mod API facts that bite
