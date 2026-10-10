@@ -557,7 +557,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
               {copy?.(lines.join('\n'), `copy${b}`) ?? null}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
-              {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? { ...row, children: [<Text key="n" color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>, ...(row.children ?? [])] } : row)}
+              {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
               {more}
             </Box>
           </Box>
