@@ -8,7 +8,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 | Command | Does |
 |---------|------|
 | \`/prismantis\` | This screen |
-| \`/prismantis theme <name>\` | Switch theme on the spot |
+| \`/prismantis theme <name>\` | Switch theme on the spot, \`random\` for a new one each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/config\` | Edit any option |
 
@@ -20,6 +20,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 \`\`\`bash
 /prismantis theme nord
 /prismantis theme github-light
+/prismantis theme random
 \`\`\`
 
 1. Dark: ${themes.filter(t => !/latte|light|dawn/.test(t) && t !== 'mono').join(', ')}
@@ -120,7 +121,7 @@ export const helpText = (themes: readonly string[]): string => `
 
 | Command | Does |
 |---------|------|
-| \`/prismantis theme <name>\` | Switch theme on the spot |
+| \`/prismantis theme <name>\` | Switch theme on the spot, \`random\` for a new one each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/prismantis demo\` | Full showcase, every element and diagram |
 | \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |

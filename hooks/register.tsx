@@ -13,7 +13,7 @@ import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderExpandedShe
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
-import { resolveStyle } from './theme'
+import { pickTheme, resolveStyle } from './theme'
 import type { Terminal } from './rtl'
 import { TERMINALS, hasRtl } from './rtl'
 
@@ -252,7 +252,8 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
-  const style = resolveStyle(options)
+  const themeName = pickTheme(options.theme)
+  const style = resolveStyle({ ...options, theme: themeName })
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
   const shared = new Map<string, ReturnType<typeof parse>>()
@@ -299,7 +300,7 @@ export const register: Register = (on, options) => {
     void latexEngine($, latex)
     const started = await next(e)
     await $.command
-      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
+      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme [<name> | random] | copy [code] | demo]' })
       .catch(() => undefined)
     return started
   })
@@ -319,8 +320,9 @@ export const register: Register = (on, options) => {
       terminal = await probe($, style, probes)
       return { text: rtlShowcaseText() }
     }
-    if (sub !== 'theme' || !name) return { text: helpText(PRESET_NAMES) }
-    if (!(PRESET_NAMES as readonly string[]).includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}` }
+    if (sub !== 'theme') return { text: helpText(PRESET_NAMES) }
+    if (!name) return { text: options.theme === 'random' ? `current: ${themeName} (random)\nkeep it: /prismantis theme ${themeName}` : `current: ${themeName}` }
+    if (![...PRESET_NAMES, 'random'].includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
     const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
     return { text: result.deny ? `Could not switch theme: ${result.deny}` : `Theme set to ${name}.` }
   })

@@ -68,6 +68,8 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 
 ![Themes: plain Claude Code on the left, prismantis on the right](docs/compare/themes.png)
 
+![Random theme: plain Claude Code on the left, prismantis with theme random on the right](docs/compare/random-theme.png)
+
 Dark: `catppuccin-mocha` (default), `dracula`, `nord`, `tokyo-night`, `gruvbox-dark`, `rose-pine`, `everforest`, `github-dark`, `one-dark`, `solarized-dark`.
 
 Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `solarized-light`.
@@ -242,7 +244,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | Option | Values | Default |
 | --- | --- | --- |
 | `enabled` | `true`, `false` | `true` |
-| `theme` | see [Themes](#themes) | `catppuccin-mocha` |
+| `theme` | see [Themes](#themes), or `random` for a new preset each time the mod loads | `catppuccin-mocha` |
 | `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `promptStyle` | `bubble`, `bar`, `chevron`, `off` | `bubble` |
