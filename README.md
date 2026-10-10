@@ -1,8 +1,21 @@
 <h1 align="center"><img src="docs/brand/banner.png" alt="prismantis" width="640"></h1>
 
-[![ci](https://github.com/NahumLitvin/prismantis/actions/workflows/ci.yml/badge.svg)](https://github.com/NahumLitvin/prismantis/actions/workflows/ci.yml)
+<p align="center"><em>Sees 16 colors. Your terminal only had 8.</em></p>
 
-> Sees 16 colors. Your terminal only had 8.
+<p align="center">
+  <a href="https://github.com/NahumLitvin/prismantis/releases"><img src="https://img.shields.io/github/v/release/NahumLitvin/prismantis?style=flat-square&color=cba6f7" alt="Release"></a>
+  <a href="https://github.com/NahumLitvin/prismantis/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/NahumLitvin/prismantis/ci.yml?branch=main&style=flat-square&label=ci" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/NahumLitvin/prismantis?style=flat-square&color=cba6f7" alt="License"></a>
+  <img src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-cba6f7?style=flat-square" alt="Claude Code 2.1.287 or later">
+</p>
+
+<p align="center">
+  <a href="#install"><strong>Install</strong></a> ·
+  <a href="#themes">Themes</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#configure">Configure</a> ·
+  <a href="docs/CHANGELOG.md">Changelog</a>
+</p>
 
 ![The same six prompts in plain Claude Code on the left and with prismantis on the right: a table, a bar chart, a flowchart, LaTeX math, a diff and an incident summary with a warning callout and a checklist](docs/compare.gif)
 
@@ -66,7 +79,7 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 
 ### Themes
 
-![Themes: plain Claude Code on the left, prismantis on the right](docs/compare/themes.png)
+![The same reply in all 15 color themes, ten dark and five light: a tip box, a task list, a flowchart and a bar chart](docs/themes.png)
 
 Dark: `catppuccin-mocha` (default), `dracula`, `nord`, `tokyo-night`, `gruvbox-dark`, `rose-pine`, `everforest`, `github-dark`, `one-dark`, `solarized-dark`.
 
@@ -83,6 +96,8 @@ Header cells take the `tableHeader` color, and the default `box` style puts a do
 ### Code
 
 ![Code: plain Claude Code on the left, prismantis on the right](docs/compare/code.png)
+
+![Code fold: plain Claude Code on the left, prismantis numbering and folding a 45 line block on the right](docs/compare/code-fold.png)
 
 Each code block gets a header row: the language on the left, a copy button on the right. The code sits indented below with no frame, so selecting it with the mouse copies only the code.
 
@@ -165,13 +180,13 @@ Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm t
 | dimmed on the right, capped at 60% of the width | tucked under the sentence with `⎿`, dimmed | `tree-dim` with one-line sentences in bold | bold verb and status dot, full brightness |
 | ![chat](docs/tools/chat.png) | ![tree-dim](docs/tools/tree-dim.png) | ![tree-bold](docs/tools/tree-bold.png) | ![classic](docs/tools/classic.png) |
 
-`toolOutput` picks how much of a call shows. The default, `full`, is what Claude Code shows. `quiet`, set in `/config` or as `"toolOutput": "quiet"` in `settings.json`, shows what Claude did, not what it read. Read, Grep, Glob, web fetches and shell commands made only of read-only programs (`cat`, `grep`, `rg`, `ls`, `find`, `git log`, `gh pr view`, …) draw their row and nothing under it, and the row says it in plain words: `Read src/report.py lines 1–10`, `Searched src/ for "TODO"`, `Listed tests`. A shell call with no such form shows the description Claude gave it and the programs it ran: `Run the unit tests · python3`. Other shell commands show their first 3 lines and a count, without the approval line, also when Claude Code folded the call into a collapsed group. Edits keep Claude Code's diff. A failed call shows the last real line of its error instead of `Exit code 1`; a refused call (a permission rule, the auto mode classifier) shows its full reason. A command counts as read-only only when every part of it is, after a quote-aware split on `;`, `&&`, `||`, `|`, `&` and newlines, with no redirect into a file, no `$(…)`, no heredoc and no write flags (`sed -i`, `find -delete`, …); in doubt, the result shows. Needs `toolRows` on.
+`toolOutput: quiet` shows what Claude did, not what it read: reads, searches and read-only shell commands draw one plain row like `Read src/report.py lines 1–10` and nothing under it. Edits keep their diff and failures show their real error; the full rules are in [docs/tool-output.md](docs/tool-output.md).
 
 ![quiet: rows say what was read, nothing drawn under reads](docs/tools/quiet.png)
 
 ### Turn footer
 
-![Turn footer: plain Claude Code on the left, prismantis on the right](docs/compare/tools.png)
+![Turn footer: plain Claude Code on the left, prismantis on the right](docs/compare/footer.png)
 
 The line that closes a turn keeps Claude Code's word and colors the duration: `✻ Baked for 6m 20s`. Terminal only, since that's the only surface that draws it.
 
@@ -189,6 +204,8 @@ The note costs about 190 tokens per prompt, and about 60 more while [LaTeX math]
 
 ![Text: plain Claude Code on the left, prismantis on the right](docs/compare/text.png)
 
+![Footnotes: plain Claude Code on the left, prismantis on the right](docs/compare/footnotes.png)
+
 **Bold**, *italic*, ~~strikethrough~~, `inline code`, links and bare URLs, clickable as terminal hyperlinks. Numbers, versions (`v2.14.0`), durations (`250ms`, `3h`), sizes (`16Gi`) and percentages (`99.9%`) take the number color, and paths like `~/src/app.ts` the path color.
 
 ### Headings, lists, quotes
@@ -205,7 +222,7 @@ Task lists draw as `[ ]` and `[✓]`, with done items dimmed and struck through.
 
 ### Your prompts
 
-![Your prompts: plain Claude Code on the left, prismantis on the right](docs/compare/tables.png)
+![Your prompts: plain Claude Code on the left, prismantis on the right](docs/compare/prompts.png)
 
 What you type, at the prompt or through Remote Control, draws in the theme's colors. `promptStyle` picks the look, and `off` keeps Claude Code's own. Task notifications and teammate messages are left alone.
 
@@ -327,7 +344,7 @@ git clone https://github.com/NahumLitvin/prismantis
 claude --plugin-dir ./prismantis
 ```
 
-Edits hot-reload in that session. Before a PR run `claude plugin validate .` and `claude plugin test .`, and print [docs/demo.md](docs/demo.md) to check the look. `npm --prefix scripts run bench` times a full render of the demo reply, so speed claims can be checked on any machine. CI also type-checks, rebuilds the vendored bundles byte for byte and installs from a clean config. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) and [AGENTS.md](AGENTS.md).
+Edits hot-reload in that session. Before a PR run `claude plugin validate .` and `claude plugin test .`, and print [docs/demo.md](docs/demo.md) to check the look. `npm --prefix scripts run bench` times a full render of the demo reply, so speed claims can be checked on any machine. The full rules and verify loop are in [AGENTS.md](AGENTS.md).
 
 ### Other mods
 
