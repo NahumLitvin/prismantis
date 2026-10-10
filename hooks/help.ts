@@ -1,3 +1,5 @@
+import { RANDOM_THEMES } from './theme'
+
 export const showcaseText = (themes: readonly string[]): string => `
 # prismantis
 
@@ -8,7 +10,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 | Command | Does |
 |---------|------|
 | \`/prismantis\` | This screen |
-| \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new one each time the mod loads |
+| \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/config\` | Edit any option |
 
@@ -23,7 +25,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 /prismantis theme random
 \`\`\`
 
-1. Dark: ${themes.filter(t => !/latte|light|dawn/.test(t) && t !== 'mono').join(', ')}
+1. Dark: ${themes.filter(t => RANDOM_THEMES.includes(t)).join(', ')}
 2. Light: ${themes.filter(t => /latte|light|dawn/.test(t)).join(', ')}
 3. Plain
    - mono
@@ -172,14 +174,14 @@ export const helpText = (themes: readonly string[]): string => `
 
 | Command | Does |
 |---------|------|
-| \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new one each time the mod loads |
+| \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/prismantis demo\` | Full showcase, every element and diagram |
 | \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |
 
 ### ${themes.length} themes
 
-- Dark: ${themes.filter(t => !/latte|light|dawn/.test(t) && t !== 'mono').join(', ')}
+- Dark: ${themes.filter(t => RANDOM_THEMES.includes(t)).join(', ')}
 - Light: ${themes.filter(t => /latte|light|dawn/.test(t)).join(', ')}
 - Plain: mono, no color, only bold and dim
 

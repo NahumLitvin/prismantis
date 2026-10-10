@@ -320,7 +320,8 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'prismantis' }, async ($, e) => {
     const [first, second] = e.args.trim().split(/\s+/)
-    const [sub, name] = [...PRESET_NAMES, 'random'].includes(first ?? '') ? ['theme', first] : [first, second]
+    const themeArgs = [...PRESET_NAMES, 'random']
+    const [sub, name] = themeArgs.includes(first ?? '') ? ['theme', first] : [first, second]
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
@@ -336,10 +337,10 @@ export const register: Register = (on, options) => {
     }
     if (sub !== 'theme') return { text: helpText(PRESET_NAMES) }
     if (!name) return { text: options.theme === 'random' ? `current: ${themeName} (random)\nkeep it: /prismantis theme ${themeName}` : `current: ${themeName}` }
-    if (![...PRESET_NAMES, 'random'].includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
+    if (!themeArgs.includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
     const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
     if (result.deny) return { text: `Could not switch theme: ${result.deny}` }
-    if (name !== 'random') return { text: `Theme set to ${name}.` }
+    if (name !== 'random' || options.theme !== 'random') return { text: `Theme set to ${name}.` }
     const others = RANDOM_THEMES.filter(t => t !== themeName)
     themeName = others[Math.floor(Math.random() * others.length)]!
     Object.assign(style, resolveStyle({ ...options, theme: themeName }))

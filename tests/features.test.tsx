@@ -583,9 +583,14 @@ test('/prismantis theme <name> and /prismantis <name> switch the theme through c
   expect(result.text).toBe('Theme set to nord.')
   const short = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(writes.at(-1)).toEqual({ key: 'prismantis.theme', value: 'random' })
-  const first = /^Theme set to random: (\S+) for now\.\nkeep it: \/prismantis theme \1$/.exec(short.text ?? '')?.[1]
-  const again = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
-  const second = /^Theme set to random: (\S+) for now\./.exec(again.text ?? '')?.[1]
+  expect(short.text).toBe('Theme set to random.')
+})
+
+test('/prismantis random re-rolls on every call once the setting is random', { options: { theme: 'random' } }, async ($, on) => {
+  on('config.set', (_, e) => ({ value: e.value }))
+  const roll = async () => (await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })).text ?? ''
+  const first = /^Theme set to random: (\S+) for now\.\nkeep it: \/prismantis theme \1$/.exec(await roll())?.[1]
+  const second = /^Theme set to random: (\S+) for now\./.exec(await roll())?.[1]
   expect(RANDOM_THEMES).toContain(first)
   expect(RANDOM_THEMES).toContain(second)
   expect(second).not.toBe(first)
@@ -604,7 +609,7 @@ test('/prismantis rejects unknown themes and lists the real ones', async ($, on)
   expect(list.text?.includes('dracula')).toBe(true)
 })
 
-test('theme random can pick every preset and falls back on junk', async () => {
+test('theme random can pick every dark color preset, never mono or a light one, and falls back on junk', async () => {
   const n = RANDOM_THEMES.length
   const picks = RANDOM_THEMES.map((_, i) => pickTheme('random', () => (i + 0.5) / n))
   expect(picks).toEqual([...RANDOM_THEMES])
