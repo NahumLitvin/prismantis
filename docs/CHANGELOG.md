@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A mermaid block that stays source says why in one dim line above it: `diagram is 188 cols, terminal is 120` when the art is wider than the terminal, `diagram failed to render` when a supported diagram type throws, and `pie diagrams draw as source for now` for types the renderer has no drawing for (pie, gantt, mindmap, timeline, journey, gitGraph). A block still streaming shows no note. Bar and line chart heights are now tested against their values ([#33](https://github.com/NahumLitvin/prismantis/issues/33), [#63](https://github.com/NahumLitvin/prismantis/issues/63)).
+
 ## [0.14.0] - 2026-10-09
 
 ### Added
