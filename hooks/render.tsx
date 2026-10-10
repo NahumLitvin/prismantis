@@ -512,6 +512,7 @@ export type Drawn = Map<number, { element: RenderElement; art?: string }>
 type Fold = (id: string, hidden: number, key: string) => RenderElement | null
 
 const NUMBER_AT = 10
+const NUMBER_MAX = 400
 const FOLD_AT = 30
 const FOLD_SHOW = 20
 
@@ -556,7 +557,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
               {copy?.(lines.join('\n'), `copy${b}`) ?? null}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
-              {lines.length < NUMBER_AT ? rows : rows.map((row, i) => row.type === 'Text' ? { ...row, children: [<Text key="n" color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>, ...(row.children ?? [])] } : row)}
+              {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? { ...row, children: [<Text key="n" color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>, ...(row.children ?? [])] } : row)}
               {more}
             </Box>
           </Box>

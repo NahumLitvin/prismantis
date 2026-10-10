@@ -84,6 +84,8 @@ Header cells take the `tableHeader` color, and the default `box` style puts a do
 
 ![Code: plain Claude Code on the left, prismantis on the right](docs/compare/code.png)
 
+![Code fold: plain Claude Code on the left, prismantis numbering and folding a 45 line block on the right](docs/compare/code-fold.png)
+
 Each code block gets a header row: the language on the left, a copy button on the right. The code sits indented below with no frame, so selecting it with the mouse copies only the code.
 
 - **Prism** highlights JavaScript, TypeScript, JSX/TSX, Python, Go, Rust, Java, Kotlin, Swift, C, C++, C#, Ruby, JSON, YAML, TOML, SQL, HTML, CSS, Dockerfile, HCL and diff.
