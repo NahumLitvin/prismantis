@@ -509,11 +509,23 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
 export type Drawn = Map<number, { element: RenderElement; art?: string }>
+type Fold = (id: string, hidden: number, key: string) => RenderElement | null
+
+const NUMBER_AT = 10
+const NUMBER_MAX = 400
+const FOLD_AT = 30
+const FOLD_SHOW = 20
+
+const codeId = (lines: string[]): string => {
+  let h = 5381
+  for (const line of lines) for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+  return `${lines.length}:${(h >>> 0).toString(36)}`
+}
 
 const copySource = (block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n') : block.kind === 'table' || block.kind === 'list' ? block.raw : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n') : undefined
 
-export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton): RenderElement[] => {
+export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
   const rtlTables = blocks.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
@@ -530,18 +542,27 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         return renderAlert(el, style, block, columns, key)
       case 'rule':
         return <Text key={key} color={t.rule} dimColor={!t.rule}>{'─'.repeat(Math.max(8, Math.min(columns, 80)))}</Text>
-      case 'code':
-        return drawn.get(b)?.element ?? (
+      case 'code': {
+        const done = drawn.get(b)?.element
+        if (done) return done
+        const lines = block.lines
+        const more = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) ?? null : null
+        const shown = more ? FOLD_SHOW : lines.length
+        const rows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
+        const gutter = String(lines.length).length
+        return (
           <Box key={key} flexDirection="column" alignSelf="flex-start">
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
-              {copy?.(block.lines.join('\n'), `copy${b}`) ?? null}
+              {copy?.(lines.join('\n'), `copy${b}`) ?? null}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
-              {(isShellLang(block.lang) ? null : highlightBlock(el, style, block.lines, block.lang, key)) ?? block.lines.map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))}
+              {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
+              {more}
             </Box>
           </Box>
         )
+      }
       case 'list':
         return renderList(el, style, block, columns, key)
       case 'table':

@@ -13,6 +13,6 @@ declare module 'claude-code' {
     prismantis: Prismantis<RenderSurface, RenderElement>
   }
   interface PluginState {
-    prismantis: { formulas: Record<string, unknown>; dir: string }
+    prismantis: { formulas: Record<string, unknown>; dir: string; unfolded: string[] }
   }
 }
