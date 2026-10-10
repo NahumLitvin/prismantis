@@ -321,6 +321,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
+  expect(showcaseText([])).toContain('diff card headed `+N −M`')
 })
 
 test('mermaid boxes stay closed around wide labels', async () => {

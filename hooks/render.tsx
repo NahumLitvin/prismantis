@@ -680,6 +680,59 @@ export const renderShellResult = (el: ElementTable, style: Style, output: unknow
   )
 }
 
+const DIFF_LINES = 20
+
+type DiffLine = { mark: '+' | '-' | ' '; num: number; text: string }
+
+export const diffLines = (output: unknown): DiffLine[] | undefined => {
+  if (output === null || typeof output !== 'object') return undefined
+  const out = output as { type?: unknown; content?: unknown; structuredPatch?: unknown }
+  if (out.type === 'create' && typeof out.content === 'string') return lines(out.content).map((text, i) => ({ mark: '+', num: i + 1, text }))
+  if (!Array.isArray(out.structuredPatch) || out.structuredPatch.length === 0) return undefined
+  const rows: DiffLine[] = []
+  for (const hunk of out.structuredPatch as { oldStart?: unknown; newStart?: unknown; lines?: unknown }[]) {
+    if (typeof hunk?.oldStart !== 'number' || typeof hunk.newStart !== 'number' || !Array.isArray(hunk.lines)) return undefined
+    let [o, n] = [hunk.oldStart, hunk.newStart]
+    for (const l of hunk.lines) {
+      if (typeof l !== 'string' || l.startsWith('\\')) continue
+      const mark = l[0] === '+' || l[0] === '-' ? l[0] : ' '
+      rows.push({ mark, num: mark === '-' ? o++ : (mark === ' ' && o++, n++), text: l.slice(1) })
+    }
+  }
+  return rows
+}
+
+export const renderDiffCard = (el: ElementTable, style: Style, output: unknown): RenderElement | undefined => {
+  const rows = diffLines(output)
+  if (rows === undefined) return undefined
+  const { Box, Text } = el
+  const t = style.theme
+  const added = rows.filter(r => r.mark === '+').length
+  const removed = rows.filter(r => r.mark === '-').length
+  const shown = rows.slice(0, DIFF_LINES)
+  const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
+  const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
+  return (
+    <Box flexDirection="row">
+      <Text dimColor>{'  ⎿  '}</Text>
+      <Box flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
+        <Text>
+          <Text color={t.number}>{`+${added}`}</Text>
+          <Text> </Text>
+          <Text color={t.codeFlag}>{`−${removed}`}</Text>
+        </Text>
+        {shown.map((r, i) => (
+          <Text key={`d${i}`} wrap="truncate-end">
+            <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
+            <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} ${r.text === '' ? ' ' : r.text}`}</Text>
+          </Text>
+        ))}
+        {rows.length > shown.length ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
+      </Box>
+    </Box>
+  )
+}
+
 const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s+(\S+\s+\()?\S+:\d+(:\d+)?\)?|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i
 
 const REFUSAL = /^(Error:\s*)?(The user doesn't want to proceed|Permission (for|to) .*\bdenied|The server-side auto mode classifier|\S+ hook error:)/i

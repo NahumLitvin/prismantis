@@ -9,7 +9,7 @@ import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
 import { boxArt, mermaidText, shortenEdgeLabels } from './mermaid'
 import type { Drawn } from './render'
-import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
+import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -280,18 +280,18 @@ export const register: Register = (on, options) => {
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns)
       return e.props.tool === 'Bash' || e.props.tool === 'PowerShell' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
     })
-    if (quiet) {
-      on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
-        await locate($, style)
-        const el = $.ui.resolve(e)
-        const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
-        const out = (e.props.output ?? {}) as Record<string, unknown>
-        if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
-        if (e.props.isErrored) return renderFailure(el, fit(e.viewport), e.props.output) ?? next(e)
-        if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
-        return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
-      })
-    }
+    on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
+      if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) return renderDiffCard($.ui.resolve(e), fit(e.viewport), e.props.output) ?? next(e)
+      if (!quiet) return next(e)
+      await locate($, style)
+      const el = $.ui.resolve(e)
+      const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
+      const out = (e.props.output ?? {}) as Record<string, unknown>
+      if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
+      if (e.props.isErrored) return renderFailure(el, fit(e.viewport), e.props.output) ?? next(e)
+      if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
+      return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
+    })
   }
 
   on('session.start', async ($, e, next) => {
