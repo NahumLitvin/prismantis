@@ -244,7 +244,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | Option | Values | Default |
 | --- | --- | --- |
 | `enabled` | `true`, `false` | `true` |
-| `theme` | see [Themes](#themes), or `random` for a new preset each session | `catppuccin-mocha` |
+| `theme` | see [Themes](#themes), or `random` for a new preset each time the mod loads | `catppuccin-mocha` |
 | `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `promptStyle` | `bubble`, `bar`, `chevron`, `off` | `bubble` |

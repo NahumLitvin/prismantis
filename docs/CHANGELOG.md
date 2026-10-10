@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- `theme: random` picks a preset at each session start and keeps it for the whole session. `/prismantis theme` shows the pick and the command to keep it ([#21](https://github.com/NahumLitvin/prismantis/issues/21)).
+- `theme: random` picks a preset each time the mod loads (session start or reload) and keeps it until the next load. `/prismantis theme` shows the pick and the command to keep it ([#21](https://github.com/NahumLitvin/prismantis/issues/21)).
 
 ## [0.14.0] - 2026-10-09
 
