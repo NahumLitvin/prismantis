@@ -2,6 +2,7 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
+import { clockText, endedAt, sentAt } from '../hooks/clock'
 import { parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
 import { columnWidths, describeShell, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
@@ -411,6 +412,49 @@ test('turn footer keeps the word and colors the duration', async $ => {
   await ui.unmount()
 })
 
+const local = (day: number, h: number, m: number, sec = 0) => new Date(2026, 9, day, h, m, sec).getTime()
+
+test('clock times read as 24h, 24h with seconds or 12h, with the date when not today', () => {
+  const now = local(10, 18, 0)
+  expect(clockText(local(10, 14, 32, 5), now, '24h')).toBe('14:32')
+  expect(clockText(local(10, 14, 32, 5), now, '24h-seconds')).toBe('14:32:05')
+  expect(clockText(local(10, 14, 32, 5), now, '12h')).toBe('2:32 PM')
+  expect(clockText(local(10, 0, 5), now, '12h')).toBe('12:05 AM')
+  expect(clockText(local(9, 23, 5), now, '24h')).toBe('Oct 9 23:05')
+})
+
+test('prompt rows take send times in order, and turn lines the nearest end', () => {
+  const claims = new Map<string, number>()
+  const list = [{ text: 'again', at: 1 }, { text: 'hi there', at: 2 }, { text: 'again', at: 3 }]
+  expect(sentAt(claims, 'a', 'again', list)).toBe(1)
+  expect(sentAt(claims, 'b', ' hi   there\n', list)).toBe(2)
+  expect(sentAt(claims, 'c', 'again', list)).toBe(3)
+  expect(sentAt(claims, 'a', 'again', list)).toBe(1)
+  expect(sentAt(claims, 'd', 'never sent', list)).toBeUndefined()
+  const ends = [{ durationMs: 5000, at: 10 }, { durationMs: 60000, at: 20 }, { durationMs: 5200, at: 30 }]
+  expect(endedAt(ends, 5200)).toBe(30)
+  expect(endedAt(ends, 60400)).toBe(20)
+  expect(endedAt(ends, 90000)).toBeUndefined()
+})
+
+test('clock adds the end time to the turn footer', { options: { clock: '24h' } }, async ($, on) => {
+  mock.clock(on, { now: local(10, 14, 32) })
+  on('turn.complete', async (_$, e) => ({ text: e.answer }))
+  await $.turn.complete({ answer: 'done', durationMs: 380000, isAborted: false, turnId: 't1', reason: 'answer' })
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 380000 } })
+  expect((await ui.find({ type: 'Text', text: /^14:32$/ }))?.props.color).toBe(t.number)
+  await ui.unmount()
+})
+
+test('clock off, or a turn it never saw, leaves the turn footer as it was', async ($, on) => {
+  mock.clock(on, { now: local(10, 14, 32) })
+  on('turn.complete', async (_$, e) => ({ text: e.answer }))
+  await $.turn.complete({ answer: 'done', durationMs: 380000, isAborted: false, turnId: 't1', reason: 'answer' })
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 380000 } })
+  expect(await ui.find({ type: 'Text', text: /^14:32$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('slash command output renders as markdown, errors stay native', async ($, on) => {
   engine(on)
   const ok = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'CommandOutput', props: { command: 'cost', args: '', text: '| a | b |\n|---|---|\n| 1 | 2 |', isErrored: false } })
@@ -713,6 +757,33 @@ test('promptStyle off and task notifications keep the engine look', { options: {
   engine(on)
   const ui = await $.ui.mount(prompt('hi'))
   expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('clock puts the send time before your prompt', { options: { clock: '24h-seconds' } }, async ($, on) => {
+  mock.clock(on, { now: local(10, 9, 7, 3) })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  await $.prompt.submit({ text: 'how many frog raids?', wait: false, origin: { kind: 'composer' } })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...prompt('how many frog raids?', 'composer', surface), requestId: 'row-1' })
+    expect((await ui.find({ type: 'Text', text: /^09:07:03 $/ }))?.props.color).toBe(t.codeComment)
+    await ui.unmount()
+  }
+  const unsent = await $.ui.mount(prompt('typed before this session'))
+  expect(await unsent.find({ type: 'Text', text: /^\d\d:\d\d:\d\d $/ })).toBeUndefined()
+  await unsent.unmount()
+})
+
+test('clock with promptStyle off stamps the engine row', { options: { clock: '24h', promptStyle: 'off' } }, async ($, on) => {
+  mock.clock(on, { now: local(10, 9, 7) })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{e.component === 'UserMessage' ? String(e.props.text) : 'engine'}</Text>
+  })
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
+  const ui = await $.ui.mount(prompt('hi'))
+  expect(await ui.find({ type: 'Text', text: /^\[09:07\] hi$/ })).toBeDefined()
   await ui.unmount()
 })
 

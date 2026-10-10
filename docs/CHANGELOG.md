@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `clock` shows when you sent each prompt and when each turn finished: the time goes before your prompt and after the duration on the turn's last line (`✻ Baked for 1m 55s · 14:32`). `24h`, `24h-seconds` or `12h`; a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. Prompts and turns from before the session started get no time. Off by default. New option `clock`.
+
 ## [0.14.0] - 2026-10-09
 
 ### Added

@@ -15,6 +15,7 @@ Prismantis is a Claude Code mod that redraws assistant replies with themeable co
 | `hooks/clipboard.ts` | the macOS and CopyQ clipboard helper sources and their commands, pure |
 | `hooks/render.tsx` | blocks to `Box`/`Text` trees, pure |
 | `hooks/theme.ts` | presets, color validation, option merging, pure |
+| `hooks/clock.ts` | clock times for prompts and turn lines: the format, and which recorded time a row takes, pure |
 | `hooks/mermaid.tsx` | mermaid box art, pure |
 | `hooks/latex.ts` | LaTeX math: the formula in a math block, PNG size, fitting and padding an image to terminal rows, reading RaTeX's report, pure |
 | `hooks/rtl.ts` | Hebrew and Arabic: simplified bidi over styled inline runs, line wrapping in reading order, comment tails, pure |
