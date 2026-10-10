@@ -157,15 +157,14 @@ const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight):
   const fix = (nodes: Inline[]): Inline[] => nodes.map(n =>
     n.kind === 'footnote' ? (order.has(n.text) ? { kind: 'footnote', text: markOf(order.get(n.text)!) } : { kind: 'text', text: `[^${n.text}]` })
     : 'children' in n ? { ...n, children: fix(n.children) } : n)
-  const inlines = (b: Block): Inline[][] =>
-    'inline' in b ? [b.inline] : b.kind === 'list' ? b.items.map(it => it.inline) : b.kind === 'table' ? [...b.header, ...b.rows.flat()] : []
-  blocks.forEach(b => inlines(b).forEach(seen))
+  const mapInlines = (b: Block, f: (nodes: Inline[]) => Inline[]): Block =>
+    'inline' in b ? { ...b, inline: f(b.inline) }
+    : b.kind === 'list' ? { ...b, items: b.items.map(it => ({ ...it, inline: f(it.inline) })) }
+    : b.kind === 'table' ? { ...b, header: b.header.map(f), rows: b.rows.map(r => r.map(f)) }
+    : b
+  blocks.forEach(b => mapInlines(b, nodes => (seen(nodes), nodes)))
   for (const label of defs.keys()) if (!order.has(label)) order.set(label, order.size + 1)
-  const out = blocks.map((b): Block =>
-    'inline' in b ? { ...b, inline: fix(b.inline) }
-    : b.kind === 'list' ? { ...b, items: b.items.map(it => ({ ...it, inline: fix(it.inline) })) }
-    : b.kind === 'table' ? { ...b, header: b.header.map(fix), rows: b.rows.map(r => r.map(fix)) }
-    : b)
+  const out = blocks.map(b => mapInlines(b, fix))
   const notes = [...defs].sort(([a], [b]) => order.get(a)! - order.get(b)!).map(([label, text]) => ({ mark: markOf(order.get(label)!), inline: fix(parseInline(text, hl)) }))
   return defs.size ? [...out, { kind: 'notes', notes, raw: '' }] : out
 }
