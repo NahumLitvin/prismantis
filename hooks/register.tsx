@@ -246,7 +246,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     }
   }
   const fold = (id: string, hidden: number, key: string) => !open || open.includes(id) ? null : (
-    <Button key={key} variant="secondary" label={`+${hidden} more lines`} onPress={() => update($, unfolded, ids => [...ids.filter(x => x !== id), id].slice(-500))} />
+    <Button key={key} variant="secondary" label={`+${hidden} more lines`} onPress={() => update($, unfolded, ids => [...ids, id].slice(-500))} />
   )
   const elements = renderBlocks(el, style, blocks, columns, drawn, copy, fold)
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
