@@ -306,6 +306,7 @@ test('a half-streamed reply with an open fence and a cut table still draws', asy
 test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`clock`')
   expect(showcaseText([])).toContain('⧉ html')
   expect(showcaseText([])).toContain('CopyQ')
   expect(showcaseText([])).toContain('plain text')

@@ -1125,18 +1125,20 @@ export const formatDuration = (ms: number): string => {
   return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`
 }
 
-export const renderTurnDuration = ({ Text }: ElementTable, style: Style, word: string, durationMs: number): RenderElement => (
+export const renderTurnDuration = ({ Text }: ElementTable, style: Style, word: string, durationMs: number, time?: string): RenderElement => (
   <Text color={style.theme.codeComment}>
     {`✻ ${word} for `}
     <Text color={style.theme.number}>{formatDuration(durationMs)}</Text>
+    {time === undefined ? null : ' · '}
+    {time === undefined ? null : <Text color={style.theme.number}>{time}</Text>}
   </Text>
 )
 
-export const renderUserPrompt = (el: ElementTable, style: Style, text: string, columns: number): RenderElement => {
+export const renderUserPrompt = (el: ElementTable, style: Style, text: string, columns: number, time?: string): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const color = style.promptStyle === 'chevron' ? t.accent : t.heading
-  const lines = text.split('\n').map(line => flowOf(style, [{ kind: 'text', text: line }], columns - 4))
+  const lines = text.split('\n').map(line => flowOf(style, [{ kind: 'text', text: line }], columns - 4 - (time === undefined ? 0 : time.length + 1)))
   const rtl = lines.some(l => l?.base === 'R')
   const body = (
     <Box flexDirection="column" {...(rtl ? { alignItems: 'flex-end' as const } : {})}>
@@ -1146,9 +1148,11 @@ export const renderUserPrompt = (el: ElementTable, style: Style, text: string, c
       })}
     </Box>
   )
+  const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
+  const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
   if (style.promptStyle === 'bubble') {
-    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'}>{body}</Box>
+    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'}>{content}</Box>
   }
   const mark = <Text color={t.accent} bold>{style.promptStyle === 'bar' ? (rtl ? ' ▐' : '▌ ') : rtl ? ' ‹' : '› '}</Text>
-  return <Box flexDirection="row" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? body : mark}{rtl ? mark : body}</Box>
+  return <Box flexDirection="row" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>
 }

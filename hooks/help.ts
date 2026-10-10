@@ -63,7 +63,7 @@ Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatt
 
 ### Your prompts
 
-Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`, \`chevron\` or \`off\` in \`/config\`.
+Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`, \`chevron\` or \`off\` in \`/config\`. Set \`clock\` to \`24h\`, \`24h-seconds\` or \`12h\` and each prompt shows when you sent it, and each turn's last line when it finished.
 
 ### Tool rows
 
