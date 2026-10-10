@@ -20,7 +20,7 @@ export const TERMINALS = {
 
 export type Terminal = keyof typeof TERMINALS
 
-type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'math' | 'number' | 'path' | 'link' | 'dim' }
+type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'math' | 'number' | 'path' | 'link' | 'dim' | 'footnote' }
 type Unit = { ch: string; fmt: Fmt }
 
 const R = /[֐-׿؀-ٟ٪-ۯۺ-ݿࢠ-ࣿיִ-﷿ﹰ-﻿]/

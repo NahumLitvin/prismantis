@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Footnotes draw as superscript marks numbered by first reference, with the notes collected under a dim rule at the end of the reply. A reference without a definition stays as written ([#18](https://github.com/NahumLitvin/prismantis/issues/18)).
+
 ## [0.14.0] - 2026-10-09
 
 ### Added

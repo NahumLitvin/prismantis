@@ -89,6 +89,13 @@ $$
 
 #### Diagrams
 
+### Footnotes
+
+Latency fell to 120ms[^lat] after the cache change[^cache].
+
+[^lat]: Median of 50 runs.
+[^cache]: Entries expire after 10m.
+
 \`\`\`mermaid
 flowchart LR
     R[Reply] --> P[Parse]

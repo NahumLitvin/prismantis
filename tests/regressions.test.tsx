@@ -319,6 +319,7 @@ test('the help screen shows every element prismantis draws', async () => {
   const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
+  expect(kinds.has('notes')).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
 })
@@ -509,3 +510,22 @@ test('chart y-axis ticks sit an even number of rows apart', async () => {
     expect(new Set(rows.slice(1).map((r, i) => r - rows[i]!)).size).toBe(1)
   }
 })
+
+test('footnotes number by first reference, collect at the end, and undefined ones stay literal', () => {
+  const blocks = parse('Two[^b] and one[^a] and ghost[^x].\n\n[^a]: first\n    more\n[^b]: second\n\n```\n[^c]: not a note\n```', hl)
+  const [para, code, notes] = blocks
+  expect(blocks).toHaveLength(3)
+  expect(code).toMatchObject({ kind: 'code' })
+  expect(para?.kind === 'paragraph' ? inlineText(para.inline) : '').toBe('Two¹ and one² and ghost[^x].')
+  expect(notes?.kind === 'notes' ? notes.notes.map(n => `${n.mark} ${inlineText(n.inline)}`) : []).toEqual(['¹ second', '² first more'])
+  expect(parse('plain [^1] text', hl)[0]).toMatchObject({ kind: 'paragraph' })
+})
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`footnote marks and the notes block draw on ${surface}`, async ($) => {
+    const ui = await $.ui.mount({ ...mount('Fast[^a].\n\n[^a]: Measured twice.'), surface })
+    expect(await ui.find({ type: 'Text', text: /^¹$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /¹ Measured twice\./ })).toBeDefined()
+    await ui.unmount()
+  })
+}
