@@ -18,9 +18,9 @@ claude plugin test .
 tsc -p .
 ```
 
-`tsc -p .` needs `.claude-plugin/types/`, which appears after running `claude --plugin-dir .` once.
+`tsc -p .` needs `.claude-plugin/types/`, which appears after running `claude --plugin-dir .` once. CI gates live in `.github/workflows/ci.yml`.
 
-Tests prove the tree; only a screenshot proves the look. Any change to what gets drawn needs a `live-check` screenshot of `/prismantis demo` (and `/prismantis` when the help changed), looked at before the PR opens.
+Tests prove the tree; only a screenshot proves the look. Any change to what gets drawn needs a `live-check` screenshot of `/prismantis demo` (and `/prismantis` when the help changed), looked at before the PR opens and attached to it.
 
 Render and performance regressions:
 
