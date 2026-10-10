@@ -87,14 +87,14 @@ $$
 \\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}
 $$
 
-#### Diagrams
-
-### Footnotes
+#### Footnotes
 
 Latency fell to 120ms[^lat] after the cache change[^cache].
 
 [^lat]: Median of 50 runs.
 [^cache]: Entries expire after 10m.
+
+#### Diagrams
 
 \`\`\`mermaid
 flowchart LR
