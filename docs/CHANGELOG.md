@@ -12,8 +12,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - `theme: random` picks one of the dark color presets each time the mod loads (session start or reload) and keeps it until the next load; with random set, each `/prismantis random` re-rolls and redraws right away. `/prismantis theme` shows the pick and the command to keep it, and a bare `/prismantis <theme>` switches like `/prismantis theme <theme>` ([#21](https://github.com/NahumLitvin/prismantis/issues/21)).
 - Edit and Write results draw as a diff card: a rounded box headed `+N −M`, added and removed lines on a faint background tint blended from the theme's number and flag colors, line numbers and context dimmed, a zero count dimmed, long lines wrapped right of the line numbers. Diffs over 20 lines fold behind a `+K more lines` button like code blocks, and an opened card stops at 400 lines. A new file shows as all additions. Results it cannot read go to Claude Code's own drawing, and `toolRows: false` turns it off with the other tool rows ([#15](https://github.com/NahumLitvin/prismantis/issues/15)).
 
-## [Unreleased]
-
 ### Fixed
 
 - Tool rows on Windows show paths relative to the project (`Wrote notes\scratch.md`) instead of the full `E:\…` path. The project root and the tool's path both come backslashed there, and the match looked for a `/`; both sides are now compared with forward slashes, case-insensitively under a drive letter, and `~` falls back to `USERPROFILE` when `HOME` is unset ([#83](https://github.com/NahumLitvin/prismantis/issues/83)).
