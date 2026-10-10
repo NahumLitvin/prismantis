@@ -7,13 +7,13 @@ import type { Block } from './markdown'
 import { parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { boxArt, mermaidText, shortenEdgeLabels } from './mermaid'
+import { boxArt, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
 import type { Drawn, Fold } from './render'
 import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
-import { resolveStyle } from './theme'
+import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
 import type { Terminal } from './rtl'
 import { TERMINALS, hasRtl } from './rtl'
 
@@ -236,11 +236,18 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     for (const [i, block] of blocks.entries()) {
       if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
       const source = block.lines.join('\n')
+      let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
         const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
-        if (art === null || !art.split('\n').every(l => width(l) <= columns - 2)) continue
+        const wide = art === null ? Infinity : Math.max(...art.split('\n').map(width))
+        narrowest = Math.min(narrowest, wide)
+        if (art === null || wide > columns - 2) continue
         drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
         break
+      }
+      if (!drawn.has(i) && !block.isOpen) {
+        const kind = unsupportedKind(source)
+        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
       }
     }
   }
@@ -259,7 +266,8 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
-  const style = resolveStyle(options)
+  let themeName = pickTheme(options.theme)
+  const style = resolveStyle({ ...options, theme: themeName })
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
   const shared = new Map<string, ReturnType<typeof parse>>()
@@ -309,13 +317,15 @@ export const register: Register = (on, options) => {
     void latexEngine($, latex)
     const started = await next(e)
     await $.command
-      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
+      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme [<name> | random] | copy [code] | demo]' })
       .catch(() => undefined)
     return started
   })
 
   on('command.run', { command: 'prismantis' }, async ($, e) => {
-    const [sub, name] = e.args.trim().split(/\s+/)
+    const [first, second] = e.args.trim().split(/\s+/)
+    const themeArgs = [...PRESET_NAMES, 'random']
+    const [sub, name] = themeArgs.includes(first ?? '') ? ['theme', first] : [first, second]
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
@@ -329,10 +339,17 @@ export const register: Register = (on, options) => {
       terminal = await probe($, style, probes)
       return { text: rtlShowcaseText() }
     }
-    if (sub !== 'theme' || !name) return { text: helpText(PRESET_NAMES) }
-    if (!(PRESET_NAMES as readonly string[]).includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}` }
+    if (sub !== 'theme') return { text: helpText(PRESET_NAMES) }
+    if (!name) return { text: options.theme === 'random' ? `current: ${themeName} (random)\nkeep it: /prismantis theme ${themeName}` : `current: ${themeName}` }
+    if (!themeArgs.includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
     const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
-    return { text: result.deny ? `Could not switch theme: ${result.deny}` : `Theme set to ${name}.` }
+    if (result.deny) return { text: `Could not switch theme: ${result.deny}` }
+    if (name !== 'random' || options.theme !== 'random') return { text: `Theme set to ${name}.` }
+    const others = RANDOM_THEMES.filter(t => t !== themeName)
+    themeName = others[Math.floor(Math.random() * others.length)]!
+    Object.assign(style, resolveStyle({ ...options, theme: themeName }))
+    $.ui.invalidate('ui.render')
+    return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
   })
 
   on('ui.render', { component: 'TurnDuration' }, ($, e) => renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs))

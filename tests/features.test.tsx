@@ -3,7 +3,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
-import { PRESETS } from '../hooks/presets'
+import { PRESET_NAMES, PRESETS } from '../hooks/presets'
+import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
 import { columnWidths, describeShell, diffLines, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
@@ -571,7 +572,7 @@ test('headless runs get no render hint', async ($, on) => {
   expect((seen[0] ?? []).some(c => c.includes('prismantis'))).toBe(false)
 })
 
-test('/prismantis theme <name> switches the theme through config', async ($, on) => {
+test('/prismantis theme <name> and /prismantis <name> switch the theme through config', async ($, on) => {
   const writes: { key: string; value: unknown }[] = []
   on('config.set', (_, e) => {
     writes.push({ key: e.key, value: e.value })
@@ -580,6 +581,19 @@ test('/prismantis theme <name> switches the theme through config', async ($, on)
   const result = await $.command.run({ command: 'prismantis', args: 'theme nord', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(writes).toEqual([{ key: 'prismantis.theme', value: 'nord' }])
   expect(result.text).toBe('Theme set to nord.')
+  const short = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  expect(writes.at(-1)).toEqual({ key: 'prismantis.theme', value: 'random' })
+  expect(short.text).toBe('Theme set to random.')
+})
+
+test('/prismantis random re-rolls on every call once the setting is random', { options: { theme: 'random' } }, async ($, on) => {
+  on('config.set', (_, e) => ({ value: e.value }))
+  const roll = async () => (await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })).text ?? ''
+  const first = /^Theme set to random: (\S+) for now\.\nkeep it: \/prismantis theme \1$/.exec(await roll())?.[1]
+  const second = /^Theme set to random: (\S+) for now\./.exec(await roll())?.[1]
+  expect(RANDOM_THEMES).toContain(first)
+  expect(RANDOM_THEMES).toContain(second)
+  expect(second).not.toBe(first)
 })
 
 test('/prismantis rejects unknown themes and lists the real ones', async ($, on) => {
@@ -593,6 +607,31 @@ test('/prismantis rejects unknown themes and lists the real ones', async ($, on)
   expect(bad.text?.startsWith('Unknown theme "neon".')).toBe(true)
   const list = await $.command.run({ command: 'prismantis', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(list.text?.includes('dracula')).toBe(true)
+})
+
+test('theme random can pick every dark color preset, never mono or a light one, and falls back on junk', async () => {
+  const n = RANDOM_THEMES.length
+  const picks = RANDOM_THEMES.map((_, i) => pickTheme('random', () => (i + 0.5) / n))
+  expect(picks).toEqual([...RANDOM_THEMES])
+  expect(RANDOM_THEMES).not.toContain('mono')
+  expect(RANDOM_THEMES.some(t => /latte|light|dawn/.test(t))).toBe(false)
+  expect(RANDOM_THEMES.length).toBeGreaterThan(5)
+  expect(pickTheme('nord')).toBe('nord')
+  expect(pickTheme('neon')).toBe('catppuccin-mocha')
+})
+
+test('/prismantis theme reports the random pick and how to keep it', { options: { theme: 'random' } }, async $ => {
+  const run = () => $.command.run({ command: 'prismantis', args: 'theme', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const first = (await run()).text ?? ''
+  const name = /^current: (\S+) \(random\)\nkeep it: \/prismantis theme (\S+)$/.exec(first)
+  expect(name?.[1]).toBe(name?.[2])
+  expect((PRESET_NAMES as readonly string[]).includes(name?.[1] ?? '')).toBe(true)
+  expect((await run()).text).toBe(first)
+})
+
+test('/prismantis theme reports a fixed theme without the random note', { options: { theme: 'nord' } }, async $ => {
+  const result = await $.command.run({ command: 'prismantis', args: 'theme', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  expect(result.text).toBe('current: nord')
 })
 
 test('task list items parse as checked or open, nested ones too', async () => {
@@ -820,6 +859,21 @@ test('tool row paths follow the project root after a worktree move', async ($, o
   expect(await row('/home/demo/tank-monitor/src/pool.ts', 'w1')).toContain('Read src/pool.ts')
   root = '/home/demo/worktrees/tank-monitor-fix'
   expect(await row('/home/demo/worktrees/tank-monitor-fix/src/pool.ts', 'w2')).toContain('Read src/pool.ts')
+})
+
+test('/prismantis random redraws replies in the new pick', { options: { theme: 'random' } }, async ($, on) => {
+  on('config.set', (_, e) => ({ value: e.value }))
+  const heading = async () => {
+    const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'AssistantMessage', props: { text: '# Tanks', isFirstOfReply: true }, viewport: { columns: 120, rows: 40 } })
+    const color = (await ui.find({ type: 'Text', text: /^Tanks$/ }))?.props.color
+    await ui.unmount()
+    return color
+  }
+  const run = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const picked = /^Theme set to random: (\S+) for now/.exec(run.text ?? '')?.[1] ?? ''
+  const want = (PRESETS as Record<string, { heading?: string }>)[picked]?.heading
+  expect(want).toBeDefined()
+  expect(await heading()).toBe(want)
 })
 
 const patch = { filePath: '/tmp/app.ts', structuredPatch: [{ oldStart: 4, newStart: 4, lines: [' const a = 1', '-const b = 2', '+const b = 3', '+const c = 4'] }] }

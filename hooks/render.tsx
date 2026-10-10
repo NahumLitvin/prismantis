@@ -510,7 +510,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 }
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
-export type Drawn = Map<number, { element: RenderElement; art?: string }>
+export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string }>
 export type Fold = (id: string, hidden: number, key: string) => { folded: boolean; element: RenderElement } | null
 
 const NUMBER_AT = 10
@@ -547,6 +547,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       case 'code': {
         const done = drawn.get(b)?.element
         if (done) return done
+        const note = drawn.get(b)?.note
         const lines = block.lines
         const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
@@ -554,6 +555,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const gutter = String(lines.length).length
         return (
           <Box key={key} flexDirection="column" alignSelf="flex-start">
+            {note ? <Text color={t.codeComment} dimColor>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
               {copy?.(lines.join('\n'), `copy${b}`) ?? null}
@@ -581,7 +583,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const copied = rendered.map((element, b) => {
     const block = blocks[b]
     const text = block ? copySource(block) : undefined
-    const isPlainCode = block?.kind === 'code' && !drawn.has(b)
+    const isPlainCode = block?.kind === 'code' && !drawn.get(b)?.element
     const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block?.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
