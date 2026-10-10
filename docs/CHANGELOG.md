@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Edit and Write results draw as a diff card: a rounded box headed `+N −M`, added lines in the theme's number color, removed lines in its flag color, line numbers and context dimmed, the first 20 lines and then `… +K lines`. A new file shows as all additions. Results it cannot read go to Claude Code's own drawing, and `toolRows: false` turns it off with the other tool rows ([#15](https://github.com/NahumLitvin/prismantis/issues/15)).
+
 ## [0.14.0] - 2026-10-09
 
 ### Added
