@@ -95,6 +95,8 @@ Each code block gets a header row: the language on the left, a copy button on th
 
 ![Diagrams and charts: plain Claude Code on the left, prismantis on the right](docs/compare/charts.png)
 
+![Diagram too wide: plain Claude Code on the left, prismantis falling back to the source with a note on the right](docs/compare/fallback-note.png)
+
 Code blocks tagged `mermaid` draw as colored text art:
 
 - flowcharts (`graph LR`, `graph TD`, decisions), sequence, state, class and ER diagrams
