@@ -555,7 +555,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const gutter = String(lines.length).length
         return (
           <Box key={key} flexDirection="column" alignSelf="flex-start">
-            {note ? <Text color={t.codeComment} dimColor>{note}</Text> : null}
+            {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
               {copy?.(lines.join('\n'), `copy${b}`) ?? null}
@@ -688,7 +688,9 @@ const compactPath = (path: string): string => {
   return [...parts.slice(0, 3), '…', ...parts.slice(-2)].join('/')
 }
 
-export const shortTarget = (places: Places, path: string): string => (path === places.cwd ? '.' : path === places.home ? '~' : compactPath(shortPath(places, path)))
+const sameDir = (a: string, b: string): boolean => a !== '' && folded(slashes(a)) === folded(slashes(b))
+
+export const shortTarget = (places: Places, path: string): string => (sameDir(places.cwd, path) ? '.' : sameDir(places.home, path) ? '~' : compactPath(shortPath(places, path)))
 
 
 const PATH_FIELDS = ['file_path', 'notebook_path', 'path']

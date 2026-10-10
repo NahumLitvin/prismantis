@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The note above a mermaid block that stays source (`diagram is 244 cols, terminal is 96`) drew in near-white body color; it now uses the same gray as the `── mermaid` label under it.
+- A tool row whose path is the project root prints `.` also when a Windows drive root differs in letter case or separators (`e:\projects\example` against `E:\projects\example`); POSIX paths still compare exactly.
+- The benchmark baseline in `docs/bench-baseline.json` is refreshed, so `bench:check` no longer flags every stage on current hardware.
+
 ## [0.15.0] - 2026-10-10
 
 ### Added

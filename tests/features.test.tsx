@@ -998,3 +998,10 @@ test('edits keep the engine diff when tool rows are off', { options: { toolRows:
   expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a root spelled with another case or separators prints as the dot, but only for drive letters', () => {
+  expect(shortTarget({ cwd: 'E:\\projects\\example', home: 'E:\\u' }, 'e:\\projects\\example')).toBe('.')
+  expect(shortTarget({ cwd: 'E:\\projects\\example', home: 'E:\\u' }, 'e:/projects/example/')).toBe('.')
+  expect(shortTarget({ cwd: '/home/dev/app', home: '/home/dev' }, '/home/dev/app')).toBe('.')
+  expect(shortTarget({ cwd: '/home/dev/app', home: '/home/dev' }, '/home/dev/App')).toBe('~/App')
+})
