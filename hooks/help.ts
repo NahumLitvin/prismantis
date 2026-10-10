@@ -81,6 +81,43 @@ Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` i
 { "theme": "dracula", "headingStyle": "banner", "mermaid": true }
 \`\`\`
 
+Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a \`+M more lines\` button; \`⧉ copy\` still copies the whole block.
+
+\`\`\`ts
+type Item = { name: string; price: number; qty: number }
+
+const basket: Item[] = [
+  { name: 'apples', price: 1.2, qty: 3 },
+  { name: 'oranges', price: 0.8, qty: 5 },
+  { name: 'pears', price: 1.5, qty: 2 },
+  { name: 'plums', price: 2.1, qty: 4 },
+  { name: 'grapes', price: 3.4, qty: 1 },
+  { name: 'lemons', price: 0.6, qty: 6 },
+  { name: 'melons', price: 4.0, qty: 1 },
+  { name: 'cherries', price: 5.5, qty: 2 },
+  { name: 'figs', price: 2.8, qty: 3 },
+  { name: 'limes', price: 0.5, qty: 8 },
+  { name: 'peaches', price: 1.9, qty: 4 },
+  { name: 'kiwis', price: 0.9, qty: 6 },
+]
+
+const total = (items: Item[]): number =>
+  items.reduce((sum, item) => sum + item.price * item.qty, 0)
+
+const cheapest = (items: Item[]): Item | undefined =>
+  [...items].sort((a, b) => a.price - b.price)[0]
+
+const byName = (items: Item[]): Item[] =>
+  [...items].sort((a, b) => a.name.localeCompare(b.name))
+
+const receipt = (items: Item[]): string[] =>
+  byName(items).map(item => \`\${item.name.padEnd(10)} \${item.qty} x \${item.price.toFixed(2)}\`)
+
+console.log(receipt(basket).join('\\n'))
+console.log('total', total(basket).toFixed(2))
+console.log('cheapest', cheapest(basket)?.name)
+\`\`\`
+
 #### Math
 
 $$

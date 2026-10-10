@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Code blocks of 10 lines or more get dim line numbers, and blocks over 30 lines fold to their first 20 with a `+M more lines` button that opens the rest. `⧉ copy` still copies the whole block. The last 500 opened blocks are remembered ([#16](https://github.com/NahumLitvin/prismantis/issues/16)).
+
 ## [0.14.0] - 2026-10-09
 
 ### Added
