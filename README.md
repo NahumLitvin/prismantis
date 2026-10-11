@@ -213,7 +213,7 @@ What you type, at the prompt or through Remote Control, draws in the theme's col
 
 `clock` adds the time: each prompt shows when you sent it, and the line that closes each turn when it finished (`✻ Baked for 1m 55s · 14:32`). It reads `24h` or `12h`, and a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. Off by default.
 
-| `clock: 24h-seconds` on a prompt | and on a turn's last line |
+| `clock: 24h` on a prompt | and on a turn's last line |
 |---|---|
 | ![a prompt bubble that starts with the time it was sent](docs/clock/prompt.png) | ![a turn line that ends with the time it finished](docs/clock/turn.png) |
 
