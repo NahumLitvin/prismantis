@@ -83,9 +83,9 @@
     "clock": {
       "type": "string",
       "title": "Clock times",
-      "description": "Shows when you sent each prompt and when each turn finished. 24h: 14:32. 24h-seconds: 14:32:05. 12h: 2:32 PM. A time from another day gets its date. off: no times.",
+      "description": "Shows when you sent each prompt and when each turn finished. 24h: 14:32. 12h: 2:32 PM. A time from another day gets its date. off: no times.",
       "default": "off",
-      "options": ["off", "24h", "24h-seconds", "12h"]
+      "options": ["off", "24h", "12h"]
     },
     "toolStyle": {
       "type": "string",

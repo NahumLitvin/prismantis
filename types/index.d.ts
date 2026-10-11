@@ -18,6 +18,7 @@ declare module 'claude-code' {
       dir: string
       sent: { text: string; at: number }[]
       turnEnds: { durationMs: number; at: number }[]
+      drawn: StateFamily<number>
     }
   }
 }

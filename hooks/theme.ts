@@ -12,7 +12,7 @@ export const TOKENS = [
 
 export type Theme = Partial<Record<(typeof TOKENS)[number], string>>
 
-export type Clock = 'off' | '24h' | '24h-seconds' | '12h'
+export type Clock = 'off' | '24h' | '12h'
 
 export type Style = {
   theme: Theme
@@ -60,7 +60,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     tableStyle: pick(options.tableStyle, ['box', 'rules', 'grid', 'minimal'] as const, 'box'),
     taskStyle: pick(options.taskStyle, ['checks', 'ticks', 'box', 'progress'] as const, 'checks'),
     promptStyle: pick(options.promptStyle, ['bubble', 'bar', 'chevron', 'off'] as const, 'bubble'),
-    clock: pick(options.clock, ['off', '24h', '24h-seconds', '12h'] as const, 'off'),
+    clock: pick(options.clock, ['off', '24h', '12h'] as const, 'off'),
     toolStyle: pick(options.toolStyle, ['chat', 'tree-dim', 'tree-bold', 'classic'] as const, 'chat'),
     toolOutput: pick(options.toolOutput, ['full', 'quiet'] as const, 'full'),
     highlightNumbers: options.highlightNumbers !== false,

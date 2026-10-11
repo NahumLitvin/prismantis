@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderSurface } from 'claude-code'
 
-import { clockText, endedAt, sentAt, withSent, withTurnEnd } from './clock'
+import { clockText, endedAt, promptKey, sentAt, withRecord } from './clock'
 import type { Formula } from './latex'
 import { LATEX_DPR, LATEX_FONT_PX, fitsImage, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
 import type { Block } from './markdown'
@@ -70,7 +70,15 @@ const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
 const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
 const sent = atom({ plugin: 'prismantis', key: 'sent' } as const, [])
 const turnEnds = atom({ plugin: 'prismantis', key: 'turnEnds' } as const, [])
-const sentClaims = new Map<string, number>()
+
+const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
+  const ref = { plugin: 'prismantis', key: 'drawn', id } as const
+  const { value } = await $.state.get(ref)
+  if (value !== undefined) return value
+  const now = await $.clock.now()
+  $.clock.after(0, () => void $.state.set(ref, now, { ifVersion: 0 }))
+  return now
+}
 
 type Typeset = Exclude<Formula, { error: true }> & { tex: string }
 
@@ -330,27 +338,23 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'TurnDuration' }, async ($, e) => {
-    const at = style.clock === 'off' ? undefined : endedAt(await read($, turnEnds), e.props.durationMs)
+    const at = style.clock === 'off' ? undefined : endedAt(await read($, turnEnds), e.props.durationMs, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
     return renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs, time)
   })
 
   on('turn.complete', async ($, e, next) => {
     if (style.clock !== 'off' && e.agentId === undefined) {
-      try {
-        const at = await $.clock.now()
-        await update($, turnEnds, list => withTurnEnd(list, e.durationMs, at))
-      } catch {}
+      const at = await $.clock.now()
+      await update($, turnEnds, list => withRecord(list, { durationMs: e.durationMs, at }))
     }
     return next(e)
   })
 
   on('prompt.submit', async ($, e, next) => {
     if (style.clock !== 'off' && (e.origin.kind === 'composer' || e.origin.kind === 'bridge')) {
-      try {
-        const at = await $.clock.now()
-        await update($, sent, list => withSent(list, e.text, at))
-      } catch {}
+      const at = await $.clock.now()
+      await update($, sent, list => withRecord(list, { text: promptKey(e.text), at }))
     }
     terminal = await probe($, style, probes)
     if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
@@ -374,7 +378,7 @@ export const register: Register = (on, options) => {
     const kind = e.props.origin.kind
     const own = kind === 'composer' || kind === 'bridge' || (kind === 'unclassified' && !e.props.from && !e.props.task)
     if (!own) return next(e)
-    const at = style.clock === 'off' ? undefined : sentAt(sentClaims, e.requestId, e.props.text, await read($, sent))
+    const at = style.clock === 'off' ? undefined : sentAt(await read($, sent), e.props.text, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
     if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
     return renderUserPrompt($.ui.resolve(e), fit(e.viewport), e.props.text, columnsOf(e.viewport), time)

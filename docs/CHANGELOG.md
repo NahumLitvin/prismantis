@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- `clock` shows when you sent each prompt and when each turn finished: the time goes before your prompt and after the duration on the turn's last line (`✻ Baked for 1m 55s · 14:32`). `24h`, `24h-seconds` or `12h`; a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. Prompts and turns from before the session started get no time. Off by default. New option `clock`.
+- `clock` shows when you sent each prompt and when each turn finished: the time goes before your prompt and after the duration on the turn's last line (`✻ Baked for 1m 55s · 14:32`). `24h` or `12h`; a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. A row takes only a time recorded before it was first drawn, so prompts and turns from before a resume get no time, and an old row that redraws never takes a new one. Off by default. New option `clock`.
 
 ## [0.14.0] - 2026-10-09
 
