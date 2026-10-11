@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A fenced code block indented under a list item draws as a code block inside that item, with its own copy button, highlighting and fold, and the text after it stays in the item. Before, the fences showed as text in the item, and a blank line inside the block ended the list and turned the rest of the reply into code. `/prismantis copy code` finds these blocks too ([#87](https://github.com/NahumLitvin/prismantis/issues/87)).
+
 ## [0.15.0] - 2026-10-10
 
 ### Added

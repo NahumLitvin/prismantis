@@ -330,7 +330,7 @@ export const register: Register = (on, options) => {
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
       if (!reply) return { text: 'Nothing to copy yet.' }
-      const code = name === 'code' ? parseCached(reply.text).findLast(b => b.kind === 'code') : undefined
+      const code = name === 'code' ? parseCached(reply.text).flatMap(b => (b.kind === 'list' ? b.items.flatMap(it => it.blocks ?? []) : [b])).findLast(b => b.kind === 'code') : undefined
       if (name === 'code' && code?.kind !== 'code') return { text: 'The last reply has no code block.' }
       const result = await $.ui.copy({ text: code?.kind === 'code' ? code.lines.join('\n') : reply.text })
       return { text: result.isCopied ? `Copied the last ${code ? 'code block' : 'reply'}.` : `Copy failed: ${result.reason}` }

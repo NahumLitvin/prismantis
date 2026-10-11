@@ -468,7 +468,7 @@ const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
 const TASK_GLYPHS = { checks: ['[ ]', '[✓]'], ticks: ['○', '✓'], box: ['□', '✓'], progress: ['○', '✓'] } as const
 
-const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'list' }>, columns: number, key: string) => {
+const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'list' }>, columns: number, key: string, copy?: CopyButton, fold?: Fold) => {
   const { Box, Text } = el
   const t = style.theme
   const tasks = block.items.filter(item => item.task !== undefined)
@@ -489,19 +489,26 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         const k = `${key}.${i}`
         const glyph = item.task !== undefined ? TASK_GLYPHS[style.taskStyle][item.task ? 1 : 0] : /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
         const glyphColor = item.task && tick ? t.accent : t.bullet
-        const rtl = flowOf(style, item.inline, columns - item.depth * 2 - glyph.length - 1)
-        if (rtl?.base === 'R') {
-          return (
-            <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
-              <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k)}</Box>
-              <Text color={glyphColor}>{` ${glyph}`}</Text>
-            </Box>
-          )
-        }
-        return (
+        const pad = item.depth * 2 + glyph.length + 1
+        const rtl = flowOf(style, item.inline, columns - pad)
+        const row = rtl?.base === 'R' ? (
+          <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
+            <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k)}</Box>
+            <Text color={glyphColor}>{` ${glyph}`}</Text>
+          </Box>
+        ) : (
           <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
             <Text color={glyphColor}>{`${glyph} `}</Text>
             <Text dimColor={item.task === true} strikethrough={item.task === true && strike}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>
+          </Box>
+        )
+        if (!item.blocks) return row
+        const scoped: CopyButton | undefined = copy && ((text, id, label, html) => copy(text, `${k}.${id}`, label, html))
+        const scopedFold: Fold | undefined = fold && ((id, hidden, key) => fold(id, hidden, `${k}.${key}`))
+        return (
+          <Box key={k} flexDirection="column">
+            {row}
+            <Box flexDirection="column" paddingLeft={pad}>{renderBlocks(el, style, item.blocks, columns - pad, new Map(), scoped, scopedFold)}</Box>
           </Box>
         )
       })}
@@ -568,7 +575,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         )
       }
       case 'list':
-        return renderList(el, style, block, columns, key)
+        return renderList(el, style, block, columns, key, copy, fold)
       case 'table':
         return renderTable(el, style, block, columns, key, rtlTables[b]!)
       case 'notes':

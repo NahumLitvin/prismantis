@@ -715,6 +715,12 @@ test('/prismantis copy code copies the last code block of the last reply', async
   expect(result.text).toBe('Copied the last code block.')
 })
 
+test('/prismantis copy code finds a code block under a list item', async ($, on) => {
+  const copied = transcript(on, [{ role: 'assistant', text: '1. Setup:\n   ```bash\n   npm i\n   ```\n2. Next' }])
+  await $.command.run(run('copy code'))
+  expect(copied).toEqual(['npm i'])
+})
+
 test('/prismantis copy says so when there is nothing to copy', async ($, on) => {
   const copied = transcript(on, [{ role: 'assistant', text: 'no code here' }])
   expect((await $.command.run(run('copy code'))).text).toBe('The last reply has no code block.')

@@ -14,7 +14,7 @@ export type Inline =
 export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }
   | { kind: 'paragraph'; inline: Inline[] }
-  | { kind: 'list'; ordered: boolean; items: { marker: string; depth: number; task?: boolean; inline: Inline[] }[] }
+  | { kind: 'list'; ordered: boolean; items: ListItem[] }
   | { kind: 'code'; lang: string; lines: string[]; isOpen?: true }
   | { kind: 'quote'; inline: Inline[] }
   | { kind: 'alert'; level: AlertLevel; inline: Inline[] }
@@ -22,6 +22,8 @@ export type Block = { raw: string } & (
   | { kind: 'table'; header: Inline[][]; align: ('left' | 'right' | 'center')[]; rows: Inline[][][] }
   | { kind: 'notes'; notes: { mark: string; inline: Inline[] }[] }
 )
+
+export type ListItem = { marker: string; depth: number; task?: boolean; inline: Inline[]; blocks?: Block[] }
 
 type Draft = Block extends infer B ? (B extends unknown ? Omit<B, 'raw'> : never) : never
 
@@ -159,7 +161,7 @@ const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight):
     : 'children' in n ? { ...n, children: fix(n.children) } : n)
   const mapInlines = (b: Block, f: (nodes: Inline[]) => Inline[]): Block =>
     'inline' in b ? { ...b, inline: f(b.inline) }
-    : b.kind === 'list' ? { ...b, items: b.items.map(it => ({ ...it, inline: f(it.inline) })) }
+    : b.kind === 'list' ? { ...b, items: b.items.map(it => ({ ...it, inline: f(it.inline), ...(it.blocks ? { blocks: it.blocks.map(c => mapInlines(c, f)) } : {}) })) }
     : b.kind === 'table' ? { ...b, header: b.header.map(f), rows: b.rows.map(r => r.map(f)) }
     : b
   blocks.forEach(b => mapInlines(b, nodes => (seen(nodes), nodes)))
@@ -190,6 +192,8 @@ const notesOf = (source: string): Map<string, string> => {
   }
   return defs
 }
+
+const indentOf = (line: string): number => (line.match(/^\s*/)?.[0] ?? '').replace(/\t/g, '  ').length
 
 const parseBlocks = (source: string, hl: Highlight): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
@@ -278,7 +282,7 @@ const parseBlocks = (source: string, hl: Highlight): Block[] => {
       flush(i)
       const start = i
       const ordered = /\d/.test(item[2] ?? '')
-      const items: { marker: string; depth: number; task?: boolean; inline: Inline[] }[] = []
+      const items: ListItem[] = []
       const contentIndent: number[] = []
       while (i < lines.length) {
         const it = LIST_ITEM.exec(at(i))
@@ -287,11 +291,34 @@ const parseBlocks = (source: string, hl: Highlight): Block[] => {
           const task = /^\[([ xX])\]\s+(.*)$/.exec(it[3] ?? '')
           items.push({ marker: it[2] ?? '-', depth: Math.floor((it[1] ?? '').replace(/\t/g, '  ').length / 2), ...(task ? { task: task[1] !== ' ' } : {}), inline: parseInline(task ? task[2]! : it[3] ?? '', hl) })
         } else if (/^\s{2,}\S/.test(at(i)) && items.length) {
-          const indent = (at(i).match(/^\s*/)?.[0] ?? '').replace(/\t/g, '  ').length
+          const indent = indentOf(at(i))
           let owner = items.length - 1
           while (owner > 0 && contentIndent[owner]! > indent) owner--
           const target = items[owner]!
-          target.inline = [...target.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+          const fence = FENCE.exec(at(i))
+          const last = target.blocks?.at(-1)
+          if (fence) {
+            const from = i
+            const run = fence[1] ?? '```'
+            const closer = new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
+            const strip = new RegExp(`^ {0,${indent}}`)
+            const body: string[] = []
+            i++
+            while (i < lines.length && !closer.test(at(i)) && (at(i).trim() === '' || indentOf(at(i)) >= indent)) body.push(at(i++).replace(strip, ''))
+            const isOpen = i === lines.length
+            if (!isOpen && !closer.test(at(i))) {
+              while (body.at(-1)?.trim() === '') body.pop()
+              i--
+            }
+            target.blocks = [...(target.blocks ?? []), { kind: 'code', lang: fence[2] ?? '', lines: body, ...(isOpen ? { isOpen: true as const } : {}), raw: lines.slice(from, i + 1).join('\n') }]
+          } else if (last?.kind === 'paragraph') {
+            last.inline = [...last.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+            last.raw += `\n${at(i)}`
+          } else if (last) {
+            target.blocks!.push({ kind: 'paragraph', inline: parseInline(at(i).trim(), hl), raw: at(i) })
+          } else {
+            target.inline = [...target.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+          }
         } else {
           break
         }

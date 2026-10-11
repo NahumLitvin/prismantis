@@ -608,3 +608,70 @@ test('a diagram that fits draws without a note', async $ => {
   expect(await ui.find({ type: 'Text', text: /^diagram (is|failed)/ })).toBeUndefined()
   await ui.unmount()
 })
+
+const STEPS = '1. Setup:\n   ```bash\n   npm i\n   ```\n   Then build.\n2. Next'
+
+const listOf = (source: string) => {
+  const [list] = parse(source, hl)
+  if (list?.kind !== 'list') throw new Error('not a list')
+  return list
+}
+
+test('a fence under a list item is a code block inside that item, and text after it stays in the item', async () => {
+  const list = listOf(STEPS)
+  expect(list.items.map(i => [i.marker, inlineText(i.inline)])).toEqual([['1.', 'Setup:'], ['2.', 'Next']])
+  const [code, after] = list.items[0]?.blocks ?? []
+  expect(code?.kind === 'code' && [code.lang, code.lines, code.isOpen]).toEqual(['bash', ['npm i'], undefined])
+  expect(after?.kind === 'paragraph' && inlineText(after.inline)).toBe('Then build.')
+  expect(list.raw).toBe(STEPS)
+})
+
+test('a blank line inside a fence under a list item keeps the list and the rest of the reply intact', async () => {
+  const blocks = parse('1. Setup:\n   ```bash\n   a\n\n   b\n   ```\n2. Next\n\n## Phase 3\ntext', hl)
+  expect(blocks.map(b => b.kind)).toEqual(['list', 'heading', 'paragraph'])
+  const list = blocks[0]
+  if (list?.kind !== 'list') throw new Error('not a list')
+  expect(list.items.map(i => i.marker)).toEqual(['1.', '2.'])
+  const code = list.items[0]?.blocks?.[0]
+  expect(code?.kind === 'code' && code.lines).toEqual(['a', '', 'b'])
+})
+
+test('an unindented fence after a list ends the list', async () => {
+  expect(parse('1. a\n```bash\nx\n```', hl).map(b => b.kind)).toEqual(['list', 'code'])
+})
+
+test('a fence under an item ends where the item does when it never closes', async () => {
+  const blocks = parse('1. Setup:\n   ```bash\n   npm i\n\n## Next\ntext', hl)
+  expect(blocks.map(b => b.kind)).toEqual(['list', 'heading', 'paragraph'])
+  const code = blocks[0]?.kind === 'list' ? blocks[0].items[0]?.blocks?.[0] : undefined
+  expect(code?.kind === 'code' && [code.lines, code.isOpen]).toEqual([['npm i'], undefined])
+})
+
+test('a half-streamed fence under a list item is an open code block in the item', async () => {
+  const code = listOf('1. Setup:\n   ```bash\n   npm i').items[0]?.blocks?.[0]
+  expect(code?.kind === 'code' && [code.lines, code.isOpen]).toEqual([['npm i'], true])
+})
+
+test('footnotes after a fence inside a list item are numbered', async () => {
+  const [list] = parse('1. a\n   ```\n   x\n   ```\n   see[^n]\n\n[^n]: note', hl)
+  const after = list?.kind === 'list' ? list.items[0]?.blocks?.[1] : undefined
+  expect(after?.kind === 'paragraph' && after.inline.some(n => n.kind === 'footnote' && n.text === '¹')).toBe(true)
+})
+
+test('a code block under a list item draws indented inside the list with its own copy button', async ($, on) => {
+  const copied = recordCopies(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    copied.length = 0
+    const ui = await $.ui.mount({ ...mount(STEPS), surface })
+    const header = await ui.find({ type: 'Text', text: /^── bash$/ })
+    expect(header).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^2\. $/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Then build\.$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /```/ })).toBeUndefined()
+    const indented = (await ui.findAll({ type: 'Box' })).find(b => b.props.paddingLeft === 3 && b.text?.includes('npm i'))
+    expect(indented?.text).toContain('Then build.')
+    await ui.press({ key: 'b0.0.copy0' })
+    expect(copied).toEqual(['npm i'])
+    await ui.unmount()
+  }
+})
