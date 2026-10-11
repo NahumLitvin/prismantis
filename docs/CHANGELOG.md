@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - A fenced code block indented under a list item draws as a code block inside that item, with its own copy button, highlighting and fold, and the text after it stays in the item. Before, the fences showed as text in the item, and a blank line inside the block ended the list and turned the rest of the reply into code. `/prismantis copy code` finds these blocks too ([#87](https://github.com/NahumLitvin/prismantis/issues/87)).
+- The note above a mermaid block that stays source (`diagram is 244 cols, terminal is 96`) drew in near-white body color; it now uses the same gray as the `── mermaid` label under it.
+- A tool row whose path is the project root prints `.` also when a Windows drive root differs in letter case or separators (`e:\projects\example` against `E:\projects\example`); POSIX paths still compare exactly.
+- The benchmark baseline in `docs/bench-baseline.json` is refreshed, so `bench:check` no longer flags every stage on current hardware.
 
 ## [0.15.0] - 2026-10-10
 
