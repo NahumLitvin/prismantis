@@ -8,13 +8,13 @@ import type { Block } from './markdown'
 import { parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { boxArt, mermaidText, shortenEdgeLabels } from './mermaid'
-import type { Drawn } from './render'
-import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
+import { boxArt, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
+import type { Drawn, Fold } from './render'
+import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
-import { resolveStyle } from './theme'
+import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
 import type { Terminal } from './rtl'
 import { TERMINALS, hasRtl } from './rtl'
 
@@ -68,6 +68,7 @@ const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.c
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
 const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
+const unfolded = atom({ plugin: 'prismantis', key: 'unfolded' } as const, [] as string[])
 const sent = atom({ plugin: 'prismantis', key: 'sent' } as const, [])
 const turnEnds = atom({ plugin: 'prismantis', key: 'turnEnds' } as const, [])
 
@@ -188,7 +189,7 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
 
 const locate = async ($: EngineInterface, style: Style) => {
   style.cwd = await $.session.root().catch(() => style.cwd)
-  style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? ''
+  style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? (await $.env.get('USERPROFILE').catch(() => undefined)) ?? ''
 }
 
 const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null> => {
@@ -215,7 +216,13 @@ const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: st
   return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
 }
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string): RenderElement[] => {
+const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, open?: string[]): Fold => (id, hidden, key) => {
+  if (!open) return null
+  const folded = !open.includes(id)
+  return { folded, element: <el.Button key={key} variant="secondary" label={folded ? `+${hidden} more lines` : 'show less'} onPress={() => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))} /> }
+}
+
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string, open?: string[]): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
     const copied = async (surface: RenderSurface): Promise<string> => {
@@ -241,11 +248,18 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     for (const [i, block] of blocks.entries()) {
       if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
       const source = block.lines.join('\n')
+      let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
         const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
-        if (art === null || !art.split('\n').every(l => width(l) <= columns - 2)) continue
+        const wide = art === null ? Infinity : Math.max(...art.split('\n').map(width))
+        narrowest = Math.min(narrowest, wide)
+        if (art === null || wide > columns - 2) continue
         drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
         break
+      }
+      if (!drawn.has(i) && !block.isOpen) {
+        const kind = unsupportedKind(source)
+        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
       }
     }
   }
@@ -256,7 +270,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       if (picked) drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picked.picture.png }} columns={picked.fit.columns} rows={picked.fit.rows} alt={formula.tex} /> })
     }
   }
-  const elements = renderBlocks(el, style, blocks, columns, drawn, copy)
+  const elements = renderBlocks(el, style, blocks, columns, drawn, copy, folder($, el, open))
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
   return button ? [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>] : elements
 }
@@ -264,7 +278,8 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
-  const style = resolveStyle(options)
+  let themeName = pickTheme(options.theme)
+  const style = resolveStyle({ ...options, theme: themeName })
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
   const shared = new Map<string, ReturnType<typeof parse>>()
@@ -292,18 +307,21 @@ export const register: Register = (on, options) => {
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns)
       return e.props.tool === 'Bash' || e.props.tool === 'PowerShell' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
     })
-    if (quiet) {
-      on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
-        await locate($, style)
+    on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
+      if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) {
         const el = $.ui.resolve(e)
-        const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
-        const out = (e.props.output ?? {}) as Record<string, unknown>
-        if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
-        if (e.props.isErrored) return renderFailure(el, fit(e.viewport), e.props.output) ?? next(e)
-        if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
-        return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
-      })
-    }
+        return renderDiffCard(el, fit(e.viewport), e.props.output, folder($, el, await read($, unfolded)), e.props.tool_use_id) ?? next(e)
+      }
+      if (!quiet) return next(e)
+      await locate($, style)
+      const el = $.ui.resolve(e)
+      const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
+      const out = (e.props.output ?? {}) as Record<string, unknown>
+      if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
+      if (e.props.isErrored) return renderFailure(el, fit(e.viewport), e.props.output) ?? next(e)
+      if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
+      return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
+    })
   }
 
   on('session.start', async ($, e, next) => {
@@ -311,18 +329,20 @@ export const register: Register = (on, options) => {
     void latexEngine($, latex)
     const started = await next(e)
     await $.command
-      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme <name> | copy [code] | demo]' })
+      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme [<name> | random] | copy [code] | demo]' })
       .catch(() => undefined)
     return started
   })
 
   on('command.run', { command: 'prismantis' }, async ($, e) => {
-    const [sub, name] = e.args.trim().split(/\s+/)
+    const [first, second] = e.args.trim().split(/\s+/)
+    const themeArgs = [...PRESET_NAMES, 'random']
+    const [sub, name] = themeArgs.includes(first ?? '') ? ['theme', first] : [first, second]
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
       if (!reply) return { text: 'Nothing to copy yet.' }
-      const code = name === 'code' ? parseCached(reply.text).findLast(b => b.kind === 'code') : undefined
+      const code = name === 'code' ? parseCached(reply.text).flatMap(b => (b.kind === 'list' ? b.items.flatMap(it => it.blocks ?? []) : [b])).findLast(b => b.kind === 'code') : undefined
       if (name === 'code' && code?.kind !== 'code') return { text: 'The last reply has no code block.' }
       const result = await $.ui.copy({ text: code?.kind === 'code' ? code.lines.join('\n') : reply.text })
       return { text: result.isCopied ? `Copied the last ${code ? 'code block' : 'reply'}.` : `Copy failed: ${result.reason}` }
@@ -331,10 +351,17 @@ export const register: Register = (on, options) => {
       terminal = await probe($, style, probes)
       return { text: rtlShowcaseText() }
     }
-    if (sub !== 'theme' || !name) return { text: helpText(PRESET_NAMES) }
-    if (!(PRESET_NAMES as readonly string[]).includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}` }
+    if (sub !== 'theme') return { text: helpText(PRESET_NAMES) }
+    if (!name) return { text: options.theme === 'random' ? `current: ${themeName} (random)\nkeep it: /prismantis theme ${themeName}` : `current: ${themeName}` }
+    if (!themeArgs.includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
     const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
-    return { text: result.deny ? `Could not switch theme: ${result.deny}` : `Theme set to ${name}.` }
+    if (result.deny) return { text: `Could not switch theme: ${result.deny}` }
+    if (name !== 'random' || options.theme !== 'random') return { text: `Theme set to ${name}.` }
+    const others = RANDOM_THEMES.filter(t => t !== themeName)
+    themeName = others[Math.floor(Math.random() * others.length)]!
+    Object.assign(style, resolveStyle({ ...options, theme: themeName }))
+    $.ui.invalidate('ui.render')
+    return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
   })
 
   on('ui.render', { component: 'TurnDuration' }, async ($, e) => {
@@ -371,7 +398,8 @@ export const register: Register = (on, options) => {
     const el = $.ui.resolve(e)
     const { Box } = el
     const math = await mathOfBlocks($, latex, e.surface, blocks)
-    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport), math)}</Box>
+    const open = await read($, unfolded)
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport), math, undefined, open)}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
@@ -392,13 +420,14 @@ export const register: Register = (on, options) => {
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const surfaceStyle = forSurface(fit(e.viewport), e.surface)
+    const open = await read($, unfolded)
     return (
       <Box flexDirection="row">
         <Box width={2} flexShrink={0}>
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined)}
+          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined, open)}
         </Box>
       </Box>
     )

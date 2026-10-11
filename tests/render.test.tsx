@@ -294,3 +294,52 @@ test('tableStyle rules keeps the open look', { options: { tableStyle: 'rules' } 
   expect(await ui.find({ type: 'Text', text: /┌|│/ })).toBeUndefined()
   await ui.unmount()
 })
+
+const longCode = (n: number) => `\`\`\`text\n${Array.from({ length: n }, (_, i) => `step ${i + 1}`).join('\n')}\n\`\`\``
+
+test('code blocks of 10+ lines get one numbered Text per line, shorter ones none', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...draw(longCode(12)), surface })
+    expect(await ui.find({ type: 'Text', text: /^ 1  $/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^12  $/ })).toBeDefined()
+    await ui.unmount()
+    const short = await $.ui.mount({ ...draw(longCode(9)), surface })
+    expect(await short.find({ type: 'Text', text: /^step 9$/ })).toBeDefined()
+    expect(await short.find({ type: 'Text', text: /^9  step 9$/ })).toBeUndefined()
+    await short.unmount()
+  }
+})
+
+test('a wrapped numbered line keeps its continuation after the gutter', async $ => {
+  const long = `${'word '.repeat(40).trim()}`
+  const text = `\`\`\`text\n${[long, ...Array.from({ length: 11 }, (_, i) => `step ${i + 2}`)].join('\n')}\n\`\`\``
+  const ui = await $.ui.mount({ ...draw(text), surface: 'terminal' })
+  const rows = (await ui.findAll({ type: 'Box' })).filter(b => b.props.flexDirection === 'row' && /^ 1  /.test(b.text ?? ''))
+  expect(rows.length).toBe(1)
+  expect((await ui.find({ type: 'Text', text: /^ 1  $/ }))).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: long }))).toBeDefined()
+  await ui.unmount()
+})
+
+test('long code blocks fold to 20 lines, open and fold back on press, and copy every line', async ($, on) => {
+  const copied: string[] = []
+  on('ui.copy', (_, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  for (const [surface, n] of [['terminal', 40], ['desktop', 45]] as const) {
+    const ui = await $.ui.mount({ ...draw(longCode(n)), surface })
+    expect(await ui.find({ type: 'Text', text: /^20  $/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^21  $/ })).toBeUndefined()
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe(`+${n - 20} more lines`)
+    await ui.press({ key: 'copy0' })
+    expect(copied.at(-1)).toBe(Array.from({ length: n }, (_, i) => `step ${i + 1}`).join('\n'))
+    await ui.press({ key: 'fold0' })
+    expect(await ui.find({ type: 'Text', text: new RegExp(`^${n}  $`) })).toBeDefined()
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
+    await ui.press({ key: 'fold0' })
+    expect(await ui.find({ type: 'Text', text: /^21  $/ })).toBeUndefined()
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe(`+${n - 20} more lines`)
+    await ui.unmount()
+  }
+})

@@ -16,6 +16,7 @@ declare module 'claude-code' {
     prismantis: {
       formulas: Record<string, unknown>
       dir: string
+      unfolded: string[]
       sent: { text: string; at: number }[]
       turnEnds: { durationMs: number; at: number }[]
       drawn: StateFamily<number>

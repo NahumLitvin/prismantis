@@ -320,8 +320,12 @@ test('the help screen shows every element prismantis draws', async () => {
   const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
+  expect(kinds.has('notes')).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
+  expect(showcaseText([])).toContain('+M more lines')
+  expect(blocks.some(b => b.kind === 'code' && b.lines.length > 30)).toBe(true)
+  expect(showcaseText([])).toContain('diff card headed `+N −M`')
 })
 
 test('mermaid boxes stay closed around wide labels', async () => {
@@ -353,7 +357,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(3)
+  expect(diagrams.length).toBe(4)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -365,6 +369,8 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task !== undefined))).toBe(true)
   expect(blocks.some(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'link'))).toBe(true)
   expect(helpText(Object.keys(PRESETS))).toContain('/prismantis copy')
+  expect(helpText([])).toContain('`random`')
+  expect(showcaseText([])).toContain('/prismantis theme random')
   expect(helpText([])).toContain('HTML (macOS/Linux)')
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)
@@ -508,5 +514,177 @@ test('chart y-axis ticks sit an even number of rows apart', async () => {
   for (const chart of charts) for (const columns of [40, 80, 100, 160, 260]) {
     const rows = mermaidText(chart, false, columns)!.split('\n').flatMap((l, i) => (/^\s*[\d.]+\s*[┤┼]/.test(l) ? [i] : []))
     expect(new Set(rows.slice(1).map((r, i) => r - rows[i]!)).size).toBe(1)
+  }
+})
+
+test('footnotes number by first reference, collect at the end, and undefined ones stay literal', () => {
+  const blocks = parse('Two[^b] and one[^a] and ghost[^x].\n\n[^a]: first\n    more\n[^b]: second\n\n```\n[^c]: not a note\n```', hl)
+  const [para, code, notes] = blocks
+  expect(blocks).toHaveLength(3)
+  expect(code).toMatchObject({ kind: 'code' })
+  expect(para?.kind === 'paragraph' ? inlineText(para.inline) : '').toBe('Two¹ and one² and ghost[^x].')
+  expect(notes?.kind === 'notes' ? notes.notes.map(n => `${n.mark} ${inlineText(n.inline)}`) : []).toEqual(['¹ second', '² first more'])
+  expect(parse('plain [^1] text', hl)[0]).toMatchObject({ kind: 'paragraph' })
+})
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`footnote marks and the notes block draw on ${surface}`, async ($) => {
+    const ui = await $.ui.mount({ ...mount('Fast[^a].\n\n[^a]: Measured twice.'), surface })
+    expect(await ui.find({ type: 'Text', text: /^¹$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /¹ Measured twice\./ })).toBeDefined()
+    await ui.unmount()
+  })
+}
+
+const heights = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }, kind: 'bar' | 'line') => {
+  const byTick = new Map<string, string>()
+  let axis = ''
+  for (const { text } of await ui.findAll({ type: 'Text' })) {
+    const at = text.search(/[┤┼]/)
+    const tick = text.match(/^\s*(\d+)[┤┼]/)?.[1]
+    if (at < 0) continue
+    const line = text.slice(at)
+    if (tick !== undefined) {
+      if (line.length > (byTick.get(tick)?.length ?? 0)) byTick.set(tick, line)
+    } else if (/^\s*┼─/.test(text) && line.length > axis.length) axis = line
+  }
+  const rows = [...byTick.values()]
+  const columns = kind === 'bar'
+    ? [...new Set(rows.flatMap(r => [...r].flatMap((ch, c) => (ch === '█' && r[c - 1] !== '█' ? [c] : []))))].sort((a, b) => a - b)
+    : [...axis].flatMap((ch, c) => (ch === '┬' ? [c] : []))
+  return columns.map(c => (kind === 'bar' ? rows.filter(r => r[c] === '█').length - 1 : rows.length - 1 - rows.findIndex(r => /[╭╮╯╰│─]/.test(r[c] ?? ''))))
+}
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  for (const kind of ['bar', 'line'] as const) {
+    for (const values of [[3, 7, 5], [2, 3, 4, 16]]) {
+      test(`${kind} chart heights follow their values on ${surface}: ${values.join(', ')}`, async $ => {
+        const labels = values.map((_, i) => `L${i + 1}`).join(', ')
+        const ui = await $.ui.mount({ ...mount(`\`\`\`mermaid\nxychart-beta\n  x-axis [${labels}]\n  y-axis 0 --> ${Math.max(...values) + 2}\n  ${kind} [${values.join(', ')}]\n\`\`\``), surface })
+        const got = await heights(ui, kind)
+        const tallest = Math.max(...got)
+        expect(got.length).toBe(values.length)
+        values.forEach((v, i) => expect(Math.abs(got[i]! - (tallest * v) / Math.max(...values)) <= 1).toBe(true))
+        await ui.unmount()
+      })
+    }
+  }
+}
+
+test('a diagram too wide for the terminal shows its source under a note with its width', async $ => {
+  const workers = Array.from({ length: 16 }, (_, i) => `W${i + 1}[Worker ${i + 1}]`).join(' & ')
+  const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n  Q[Queue] --> ' + workers + '\n```'))
+  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols, terminal is \d+$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`the fallback note is drawn in the comment color like the label on ${surface}`, async $ => {
+    const workers = Array.from({ length: 16 }, (_, i) => `W${i + 1}[Worker ${i + 1}]`).join(' & ')
+    const ui = await $.ui.mount({ ...mount('```mermaid\nflowchart TD\n  Q[Queue] --> ' + workers + '\n```'), surface })
+    const note = await ui.find({ type: 'Text', text: /^diagram is/ })
+    const label = await ui.find({ type: 'Text', text: /^── mermaid$/ })
+    expect(note?.props.color).toBe(PRESETS['catppuccin-mocha'].codeComment)
+    expect(note?.props).toEqual(label?.props)
+    await ui.unmount()
+  })
+}
+
+test('a diagram the renderer cannot draw shows its source under a failure note', async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n' + '  A --> B\n'.repeat(900) + '```'))
+  expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a diagram type the renderer has no drawing for says so instead of failing', async $ => {
+  for (const kind of ['pie', 'gantt', 'mindmap', 'timeline', 'journey', 'gitGraph']) {
+    const ui = await $.ui.mount(mount('```mermaid\n' + kind + '\n  title T\n```'))
+    expect(await ui.find({ type: 'Text', text: `${kind} diagrams draw as source for now` })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('a half-streamed diagram shows no note until its fence closes', async $ => {
+  const open = await $.ui.mount(mount('```mermaid\npie\n  "a" : 3'))
+  expect(await open.find({ type: 'Text', text: /diagram|draw as source/ })).toBeUndefined()
+  await open.unmount()
+  const closed = await $.ui.mount(mount('```mermaid\npie\n  "a" : 3\n```'))
+  expect(await closed.find({ type: 'Text', text: /^pie diagrams draw as source for now$/ })).toBeDefined()
+  await closed.unmount()
+})
+
+test('a diagram that fits draws without a note', async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\nflowchart LR\n  A --> B\n```'))
+  expect(await ui.find({ type: 'Text', text: /^diagram (is|failed)/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+const STEPS = '1. Setup:\n   ```bash\n   npm i\n   ```\n   Then build.\n2. Next'
+
+const listOf = (source: string) => {
+  const [list] = parse(source, hl)
+  if (list?.kind !== 'list') throw new Error('not a list')
+  return list
+}
+
+test('a fence under a list item is a code block inside that item, and text after it stays in the item', async () => {
+  const list = listOf(STEPS)
+  expect(list.items.map(i => [i.marker, inlineText(i.inline)])).toEqual([['1.', 'Setup:'], ['2.', 'Next']])
+  const [code, after] = list.items[0]?.blocks ?? []
+  expect(code?.kind === 'code' && [code.lang, code.lines, code.isOpen]).toEqual(['bash', ['npm i'], undefined])
+  expect(after?.kind === 'paragraph' && inlineText(after.inline)).toBe('Then build.')
+  expect(list.raw).toBe(STEPS)
+})
+
+test('a blank line inside a fence under a list item keeps the list and the rest of the reply intact', async () => {
+  const blocks = parse('1. Setup:\n   ```bash\n   a\n\n   b\n   ```\n2. Next\n\n## Phase 3\ntext', hl)
+  expect(blocks.map(b => b.kind)).toEqual(['list', 'heading', 'paragraph'])
+  const list = blocks[0]
+  if (list?.kind !== 'list') throw new Error('not a list')
+  expect(list.items.map(i => i.marker)).toEqual(['1.', '2.'])
+  const code = list.items[0]?.blocks?.[0]
+  expect(code?.kind === 'code' && code.lines).toEqual(['a', '', 'b'])
+})
+
+test('an unindented fence after a list ends the list', async () => {
+  expect(parse('1. a\n```bash\nx\n```', hl).map(b => b.kind)).toEqual(['list', 'code'])
+})
+
+test('a fence under an item ends where the item does when it never closes', async () => {
+  const blocks = parse('1. Setup:\n   ```bash\n   npm i\n\n## Next\ntext', hl)
+  expect(blocks.map(b => b.kind)).toEqual(['list', 'heading', 'paragraph'])
+  const code = blocks[0]?.kind === 'list' ? blocks[0].items[0]?.blocks?.[0] : undefined
+  expect(code?.kind === 'code' && [code.lines, code.isOpen]).toEqual([['npm i'], undefined])
+})
+
+test('a half-streamed fence under a list item is an open code block in the item', async () => {
+  const code = listOf('1. Setup:\n   ```bash\n   npm i').items[0]?.blocks?.[0]
+  expect(code?.kind === 'code' && [code.lines, code.isOpen]).toEqual([['npm i'], true])
+})
+
+test('footnotes after a fence inside a list item are numbered', async () => {
+  const [list] = parse('1. a\n   ```\n   x\n   ```\n   see[^n]\n\n[^n]: note', hl)
+  const after = list?.kind === 'list' ? list.items[0]?.blocks?.[1] : undefined
+  expect(after?.kind === 'paragraph' && after.inline.some(n => n.kind === 'footnote' && n.text === '¹')).toBe(true)
+})
+
+test('a code block under a list item draws indented inside the list with its own copy button', async ($, on) => {
+  const copied = recordCopies(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    copied.length = 0
+    const ui = await $.ui.mount({ ...mount(STEPS), surface })
+    const header = await ui.find({ type: 'Text', text: /^── bash$/ })
+    expect(header).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^2\. $/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Then build\.$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /```/ })).toBeUndefined()
+    const indented = (await ui.findAll({ type: 'Box' })).find(b => b.props.paddingLeft === 3 && b.text?.includes('npm i'))
+    expect(indented?.text).toContain('Then build.')
+    await ui.press({ key: 'b0.0.copy0' })
+    expect(copied).toEqual(['npm i'])
+    await ui.unmount()
   }
 })

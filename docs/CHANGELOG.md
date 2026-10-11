@@ -8,6 +8,29 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `clock` shows when you sent each prompt and when each turn finished: the time goes before your prompt and after the duration on the turn's last line (`✻ Baked for 1m 55s · 14:32`). `24h` or `12h`; a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. A row takes only a time recorded before it was first drawn, so prompts and turns from before a resume get no time, and an old row that redraws never takes a new one. Off by default. New option `clock`.
 
+## [0.15.1] - 2026-10-11
+
+### Fixed
+
+- A fenced code block indented under a list item draws as a code block inside that item, with its own copy button, highlighting and fold, and the text after it stays in the item. Before, the fences showed as text in the item, and a blank line inside the block ended the list and turned the rest of the reply into code. `/prismantis copy code` finds these blocks too ([#87](https://github.com/NahumLitvin/prismantis/issues/87)).
+- The note above a mermaid block that stays source (`diagram is 244 cols, terminal is 96`) drew in near-white body color; it now uses the same gray as the `── mermaid` label under it.
+- A tool row whose path is the project root prints `.` also when a Windows drive root differs in letter case or separators (`e:\projects\example` against `E:\projects\example`); POSIX paths still compare exactly.
+- The benchmark baseline in `docs/bench-baseline.json` is refreshed, so `bench:check` no longer flags every stage on current hardware.
+
+## [0.15.0] - 2026-10-10
+
+### Added
+
+- Code blocks of 10 lines or more get dim line numbers, and blocks over 30 lines fold to their first 20 with a `+M more lines` button that opens the rest and a `show less` button that folds it back. `⧉ copy` still copies the whole block. The last 500 opened blocks are remembered ([#16](https://github.com/NahumLitvin/prismantis/issues/16)).
+- Footnotes draw as superscript marks numbered by first reference, with the notes collected under a dim rule at the end of the reply. A reference without a definition stays as written ([#18](https://github.com/NahumLitvin/prismantis/issues/18)).
+- A mermaid block that stays source says why in one dim line above it: `diagram is 188 cols, terminal is 120` when the art is wider than the terminal, `diagram failed to render` when a supported diagram type throws, and `pie diagrams draw as source for now` for types the renderer has no drawing for (pie, gantt, mindmap, timeline, journey, gitGraph). A block still streaming shows no note. Bar and line chart heights are now tested against their values ([#33](https://github.com/NahumLitvin/prismantis/issues/33), [#63](https://github.com/NahumLitvin/prismantis/issues/63)).
+- `theme: random` picks one of the dark color presets each time the mod loads (session start or reload) and keeps it until the next load; with random set, each `/prismantis random` re-rolls and redraws right away. `/prismantis theme` shows the pick and the command to keep it, and a bare `/prismantis <theme>` switches like `/prismantis theme <theme>` ([#21](https://github.com/NahumLitvin/prismantis/issues/21)).
+- Edit and Write results draw as a diff card: a rounded box headed `+N −M`, added and removed lines on a faint background tint blended from the theme's number and flag colors, line numbers and context dimmed, a zero count dimmed, long lines wrapped right of the line numbers. Diffs over 20 lines fold behind a `+K more lines` button like code blocks, and an opened card stops at 400 lines. A new file shows as all additions. Results it cannot read go to Claude Code's own drawing, and `toolRows: false` turns it off with the other tool rows ([#15](https://github.com/NahumLitvin/prismantis/issues/15)).
+
+### Fixed
+
+- Tool rows on Windows show paths relative to the project (`Wrote notes\scratch.md`) instead of the full `E:\…` path. The project root and the tool's path both come backslashed there, and the match looked for a `/`; both sides are now compared with forward slashes, case-insensitively under a drive letter, and `~` falls back to `USERPROFILE` when `HOME` is unset ([#83](https://github.com/NahumLitvin/prismantis/issues/83)).
+
 ## [0.14.0] - 2026-10-09
 
 ### Added

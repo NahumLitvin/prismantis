@@ -9,17 +9,21 @@ export type Inline =
   | { kind: 'number'; text: string }
   | { kind: 'path'; text: string }
   | { kind: 'dim'; text: string }
+  | { kind: 'footnote'; text: string }
 
 export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }
   | { kind: 'paragraph'; inline: Inline[] }
-  | { kind: 'list'; ordered: boolean; items: { marker: string; depth: number; task?: boolean; inline: Inline[] }[] }
+  | { kind: 'list'; ordered: boolean; items: ListItem[] }
   | { kind: 'code'; lang: string; lines: string[]; isOpen?: true }
   | { kind: 'quote'; inline: Inline[] }
   | { kind: 'alert'; level: AlertLevel; inline: Inline[] }
   | { kind: 'rule' }
   | { kind: 'table'; header: Inline[][]; align: ('left' | 'right' | 'center')[]; rows: Inline[][][] }
+  | { kind: 'notes'; notes: { mark: string; inline: Inline[] }[] }
 )
+
+export type ListItem = { marker: string; depth: number; task?: boolean; inline: Inline[]; blocks?: Block[] }
 
 type Draft = Block extends infer B ? (B extends unknown ? Omit<B, 'raw'> : never) : never
 
@@ -32,6 +36,8 @@ const MAX_INLINE = 4000
 const TABLE_SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/
 const FENCE = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/
+const NOTE_DEF = /^\[\^([^\]\s]+)\]:\s*(.*)$/
+const SUPERSCRIPT = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 
 const splitRow = (line: string): string[] => {
   const trimmed = line.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '')
@@ -53,7 +59,7 @@ const splitRow = (line: string): string[] => {
   return cells
 }
 
-const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+?)\*\*|(?<![\w_])__([^_]+?)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)_(?!\w)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])/g
+const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+?)\*\*|(?<![\w_])__([^_]+?)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)_(?!\w)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])|\[\^([^\]\s]+)\]/g
 const NUMBER = /(?<![\w.#/-])(v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/])/g
 const PATH = /(?<![\w/.:])((?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]*)*)/g
 
@@ -94,6 +100,7 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
     else if (m[8] !== undefined || m[9] !== undefined) out.push({ kind: 'emphasis', children: parseInline(m[8] ?? m[9] ?? "", hl) })
     else if (m[10] !== undefined) out.push({ kind: 'link', text: m[10], href: m[10] })
     else if (m[11] !== undefined) out.push(...(isTex(m[11]) ? [{ kind: 'math' as const, text: texText(m[11]) }] : decorate(m[0], hl)))
+    else if (m[12] !== undefined) out.push({ kind: 'footnote', text: m[12] })
     at = m.index + m[0].length
   }
   if (at < text.length) out.push(...decorate(text.slice(at), hl))
@@ -141,7 +148,54 @@ export const displayText = (inline: Inline[]): string =>
 
 export const isWebLink = (href: string): boolean => /^(https?:|mailto:)/i.test(href)
 
+const markOf = (n: number) => [...String(n)].map(d => SUPERSCRIPT[Number(d)]).join('')
+
+const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight): Block[] => {
+  const order = new Map<string, number>()
+  const seen = (nodes: Inline[]): void => nodes.forEach(n => {
+    if (n.kind === 'footnote' && defs.has(n.text) && !order.has(n.text)) order.set(n.text, order.size + 1)
+    else if ('children' in n) seen(n.children)
+  })
+  const fix = (nodes: Inline[]): Inline[] => nodes.map(n =>
+    n.kind === 'footnote' ? (order.has(n.text) ? { kind: 'footnote', text: markOf(order.get(n.text)!) } : { kind: 'text', text: `[^${n.text}]` })
+    : 'children' in n ? { ...n, children: fix(n.children) } : n)
+  const mapInlines = (b: Block, f: (nodes: Inline[]) => Inline[]): Block =>
+    'inline' in b ? { ...b, inline: f(b.inline) }
+    : b.kind === 'list' ? { ...b, items: b.items.map(it => ({ ...it, inline: f(it.inline), ...(it.blocks ? { blocks: it.blocks.map(c => mapInlines(c, f)) } : {}) })) }
+    : b.kind === 'table' ? { ...b, header: b.header.map(f), rows: b.rows.map(r => r.map(f)) }
+    : b
+  blocks.forEach(b => mapInlines(b, nodes => (seen(nodes), nodes)))
+  for (const label of defs.keys()) if (!order.has(label)) order.set(label, order.size + 1)
+  const out = blocks.map(b => mapInlines(b, fix))
+  const notes = [...defs].sort(([a], [b]) => order.get(a)! - order.get(b)!).map(([label, text]) => ({ mark: markOf(order.get(label)!), inline: fix(parseInline(text, hl)) }))
+  return defs.size ? [...out, { kind: 'notes', notes, raw: '' }] : out
+}
+
 export const parse = (source: string, hl: Highlight): Block[] => {
+  const blocks = parseBlocks(source, hl)
+  return source.includes('[^') ? numberNotes(blocks, notesOf(source), hl) : blocks
+}
+
+const notesOf = (source: string): Map<string, string> => {
+  const defs = new Map<string, string>()
+  const lines = source.replace(/\r\n?/g, '\n').split('\n')
+  let fenced = false
+  let last: string | undefined
+  for (const line of lines) {
+    if (FENCE.test(line)) fenced = !fenced
+    const def = fenced ? null : NOTE_DEF.exec(line)
+    if (def) {
+      last = def[1]!
+      if (!defs.has(last)) defs.set(last, def[2] ?? '')
+    } else if (last !== undefined && /^\s{2,}\S/.test(line)) defs.set(last, `${defs.get(last)} ${line.trim()}`)
+    else last = undefined
+  }
+  return defs
+}
+
+const indentOf = (line: string): number => (line.match(/^\s*/)?.[0] ?? '').replace(/\t/g, '  ').length
+
+const parseBlocks = (source: string, hl: Highlight): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   const at = (n: number) => lines[n] ?? ''
   const blocks: Block[] = []
@@ -177,6 +231,11 @@ export const parse = (source: string, hl: Highlight): Block[] => {
     }
     if (line.trim() === '') {
       flush(i)
+      continue
+    }
+    if (NOTE_DEF.test(line)) {
+      flush(i)
+      while (/^\s{2,}\S/.test(at(i + 1))) i++
       continue
     }
     const heading = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line)
@@ -223,7 +282,7 @@ export const parse = (source: string, hl: Highlight): Block[] => {
       flush(i)
       const start = i
       const ordered = /\d/.test(item[2] ?? '')
-      const items: { marker: string; depth: number; task?: boolean; inline: Inline[] }[] = []
+      const items: ListItem[] = []
       const contentIndent: number[] = []
       while (i < lines.length) {
         const it = LIST_ITEM.exec(at(i))
@@ -232,11 +291,34 @@ export const parse = (source: string, hl: Highlight): Block[] => {
           const task = /^\[([ xX])\]\s+(.*)$/.exec(it[3] ?? '')
           items.push({ marker: it[2] ?? '-', depth: Math.floor((it[1] ?? '').replace(/\t/g, '  ').length / 2), ...(task ? { task: task[1] !== ' ' } : {}), inline: parseInline(task ? task[2]! : it[3] ?? '', hl) })
         } else if (/^\s{2,}\S/.test(at(i)) && items.length) {
-          const indent = (at(i).match(/^\s*/)?.[0] ?? '').replace(/\t/g, '  ').length
+          const indent = indentOf(at(i))
           let owner = items.length - 1
           while (owner > 0 && contentIndent[owner]! > indent) owner--
           const target = items[owner]!
-          target.inline = [...target.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+          const fence = FENCE.exec(at(i))
+          const last = target.blocks?.at(-1)
+          if (fence) {
+            const from = i
+            const run = fence[1] ?? '```'
+            const closer = new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
+            const strip = new RegExp(`^ {0,${indent}}`)
+            const body: string[] = []
+            i++
+            while (i < lines.length && !closer.test(at(i)) && (at(i).trim() === '' || indentOf(at(i)) >= indent)) body.push(at(i++).replace(strip, ''))
+            const isOpen = i === lines.length
+            if (!isOpen && !closer.test(at(i))) {
+              while (body.at(-1)?.trim() === '') body.pop()
+              i--
+            }
+            target.blocks = [...(target.blocks ?? []), { kind: 'code', lang: fence[2] ?? '', lines: body, ...(isOpen ? { isOpen: true as const } : {}), raw: lines.slice(from, i + 1).join('\n') }]
+          } else if (last?.kind === 'paragraph') {
+            last.inline = [...last.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+            last.raw += `\n${at(i)}`
+          } else if (last) {
+            target.blocks!.push({ kind: 'paragraph', inline: parseInline(at(i).trim(), hl), raw: at(i) })
+          } else {
+            target.inline = [...target.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+          }
         } else {
           break
         }

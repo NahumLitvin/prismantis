@@ -111,6 +111,8 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
         return <Text key={key} color={t.path}>{n.text}</Text>
       case 'dim':
         return <Text key={key} dimColor>{n.text}</Text>
+      case 'footnote':
+        return <Text key={key} color={t.accent}>{n.text}</Text>
     }
   })
 }
@@ -466,7 +468,7 @@ const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
 const TASK_GLYPHS = { checks: ['[ ]', '[✓]'], ticks: ['○', '✓'], box: ['□', '✓'], progress: ['○', '✓'] } as const
 
-const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'list' }>, columns: number, key: string) => {
+const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'list' }>, columns: number, key: string, copy?: CopyButton, fold?: Fold) => {
   const { Box, Text } = el
   const t = style.theme
   const tasks = block.items.filter(item => item.task !== undefined)
@@ -487,19 +489,26 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         const k = `${key}.${i}`
         const glyph = item.task !== undefined ? TASK_GLYPHS[style.taskStyle][item.task ? 1 : 0] : /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
         const glyphColor = item.task && tick ? t.accent : t.bullet
-        const rtl = flowOf(style, item.inline, columns - item.depth * 2 - glyph.length - 1)
-        if (rtl?.base === 'R') {
-          return (
-            <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
-              <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k)}</Box>
-              <Text color={glyphColor}>{` ${glyph}`}</Text>
-            </Box>
-          )
-        }
-        return (
+        const pad = item.depth * 2 + glyph.length + 1
+        const rtl = flowOf(style, item.inline, columns - pad)
+        const row = rtl?.base === 'R' ? (
+          <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
+            <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k)}</Box>
+            <Text color={glyphColor}>{` ${glyph}`}</Text>
+          </Box>
+        ) : (
           <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
             <Text color={glyphColor}>{`${glyph} `}</Text>
             <Text dimColor={item.task === true} strikethrough={item.task === true && strike}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>
+          </Box>
+        )
+        if (!item.blocks) return row
+        const scoped: CopyButton | undefined = copy && ((text, id, label, html) => copy(text, `${k}.${id}`, label, html))
+        const scopedFold: Fold | undefined = fold && ((id, hidden, key) => fold(id, hidden, `${k}.${key}`))
+        return (
+          <Box key={k} flexDirection="column">
+            {row}
+            <Box flexDirection="column" paddingLeft={pad}>{renderBlocks(el, style, item.blocks, columns - pad, new Map(), scoped, scopedFold)}</Box>
           </Box>
         )
       })}
@@ -508,12 +517,24 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 }
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
-export type Drawn = Map<number, { element: RenderElement; art?: string }>
+export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string }>
+export type Fold = (id: string, hidden: number, key: string) => { folded: boolean; element: RenderElement } | null
+
+const NUMBER_AT = 10
+const NUMBER_MAX = 400
+const FOLD_AT = 30
+const FOLD_SHOW = 20
+
+const codeId = (lines: string[]): string => {
+  let h = 5381
+  for (const line of lines) for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+  return `${lines.length}:${(h >>> 0).toString(36)}`
+}
 
 const copySource = (block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n') : block.kind === 'table' || block.kind === 'list' ? block.raw : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n') : undefined
 
-export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton): RenderElement[] => {
+export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
   const rtlTables = blocks.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
@@ -530,28 +551,46 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         return renderAlert(el, style, block, columns, key)
       case 'rule':
         return <Text key={key} color={t.rule} dimColor={!t.rule}>{'─'.repeat(Math.max(8, Math.min(columns, 80)))}</Text>
-      case 'code':
-        return drawn.get(b)?.element ?? (
+      case 'code': {
+        const done = drawn.get(b)?.element
+        if (done) return done
+        const note = drawn.get(b)?.note
+        const lines = block.lines
+        const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
+        const shown = toggle?.folded ? FOLD_SHOW : lines.length
+        const rows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
+        const gutter = String(lines.length).length
+        return (
           <Box key={key} flexDirection="column" alignSelf="flex-start">
+            {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
-              {copy?.(block.lines.join('\n'), `copy${b}`) ?? null}
+              {copy?.(lines.join('\n'), `copy${b}`) ?? null}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
-              {(isShellLang(block.lang) ? null : highlightBlock(el, style, block.lines, block.lang, key)) ?? block.lines.map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))}
+              {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
+              {toggle?.element ?? null}
             </Box>
           </Box>
         )
+      }
       case 'list':
-        return renderList(el, style, block, columns, key)
+        return renderList(el, style, block, columns, key, copy, fold)
       case 'table':
         return renderTable(el, style, block, columns, key, rtlTables[b]!)
+      case 'notes':
+        return (
+          <Box key={key} flexDirection="column">
+            <Text dimColor>{'─'.repeat(Math.min(columns, 12))}</Text>
+            {block.notes.map((note, i) => <Text key={`${key}.${i}`} dimColor>{note.mark} {renderInline(el, style, note.inline, `${key}.${i}`)}</Text>)}
+          </Box>
+        )
     }
   })
   const copied = rendered.map((element, b) => {
     const block = blocks[b]
     const text = block ? copySource(block) : undefined
-    const isPlainCode = block?.kind === 'code' && !drawn.has(b)
+    const isPlainCode = block?.kind === 'code' && !drawn.get(b)?.element
     const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block?.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
@@ -637,10 +676,15 @@ const toolLayout = (el: ElementTable, style: Style, columns: number, label: stri
 
 type Places = Pick<Style, 'cwd' | 'home'>
 
+const slashes = (path: string): string => path.replace(/\\/g, '/').replace(/\/+$/, '')
+
+const folded = (path: string): string => (/^[a-z]:(\/|$)/i.test(path) ? path.toLowerCase() : path)
+
 export const shortPath = (style: Places, path: string): string => {
-  for (const [root, prefix] of [[style.cwd, ''], [style.home, '~/']] as const) {
-    const base = root.replace(/\/+$/, '')
-    if (base !== '' && path.startsWith(`${base}/`)) return prefix + path.slice(base.length + 1)
+  const target = folded(slashes(path))
+  for (const [root, home] of [[style.cwd, false], [style.home, true]] as const) {
+    const base = folded(slashes(root))
+    if (base !== '' && target.startsWith(`${base}/`)) return home ? `~${path.slice(base.length)}` : path.slice(base.length + 1)
   }
   return path
 }
@@ -651,7 +695,9 @@ const compactPath = (path: string): string => {
   return [...parts.slice(0, 3), '…', ...parts.slice(-2)].join('/')
 }
 
-export const shortTarget = (places: Places, path: string): string => (path === places.cwd ? '.' : path === places.home ? '~' : compactPath(shortPath(places, path)))
+const sameDir = (a: string, b: string): boolean => a !== '' && folded(slashes(a)) === folded(slashes(b))
+
+export const shortTarget = (places: Places, path: string): string => (sameDir(places.cwd, path) ? '.' : sameDir(places.home, path) ? '~' : compactPath(shortPath(places, path)))
 
 
 const PATH_FIELDS = ['file_path', 'notebook_path', 'path']
@@ -675,6 +721,81 @@ export const renderShellResult = (el: ElementTable, style: Style, output: unknow
       <Box flexDirection="column">
         {head.length === 0 ? <Text dimColor>(No output)</Text> : head.map((l, i) => <Text key={`l${i}`} wrap="truncate-end">{l === '' ? ' ' : l}</Text>)}
         {shown.length > head.length ? <Text dimColor>{`… +${shown.length - head.length} lines`}</Text> : null}
+      </Box>
+    </Box>
+  )
+}
+
+const DIFF_LINES = 20
+const DIFF_MAX = 400
+
+type DiffLine = { mark: '+' | '-' | ' '; num: number; text: string }
+
+const HEX = /^#[0-9a-f]{6}$/i
+
+export const tint = (base: string | undefined, color: string | undefined, share = 0.2): string | undefined => {
+  if (!base || !color || !HEX.test(base) || !HEX.test(color)) return undefined
+  const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16)
+  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * (1 - share) + channel(color, i) * share).toString(16).padStart(2, '0')).join('')}`
+}
+
+export const diffLines = (output: unknown): DiffLine[] | undefined => {
+  if (output === null || typeof output !== 'object') return undefined
+  const out = output as { type?: unknown; content?: unknown; structuredPatch?: unknown }
+  if (out.type === 'create' && typeof out.content === 'string') return lines(out.content).map((text, i) => ({ mark: '+', num: i + 1, text }))
+  if (!Array.isArray(out.structuredPatch) || out.structuredPatch.length === 0) return undefined
+  const rows: DiffLine[] = []
+  for (const hunk of out.structuredPatch as { oldStart?: unknown; newStart?: unknown; lines?: unknown }[]) {
+    if (typeof hunk?.oldStart !== 'number' || typeof hunk.newStart !== 'number' || !Array.isArray(hunk.lines)) return undefined
+    let [o, n] = [hunk.oldStart, hunk.newStart]
+    for (const l of hunk.lines) {
+      if (typeof l !== 'string' || l.startsWith('\\')) continue
+      const mark = l[0] === '+' || l[0] === '-' ? l[0] : ' '
+      let num: number
+      if (mark === '-') num = o++
+      else {
+        if (mark === ' ') o++
+        num = n++
+      }
+      rows.push({ mark, num, text: l.slice(1) })
+    }
+  }
+  return rows
+}
+
+export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
+  const rows = diffLines(output)
+  if (rows === undefined) return undefined
+  const { Box, Text } = el
+  const t = style.theme
+  const added = rows.filter(r => r.mark === '+').length
+  const removed = rows.filter(r => r.mark === '-').length
+  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, 'fold') : null
+  const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
+  const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
+  const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
+  const tints = { '+': tint(t.rule, t.number), '-': tint(t.rule, t.codeFlag), ' ': undefined }
+  return (
+    <Box flexDirection="row">
+      <Text dimColor>{'  ⎿  '}</Text>
+      <Box flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
+        <Text>
+          <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
+          <Text> </Text>
+          <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
+        </Text>
+        {shown.map((r, i) => {
+          const bg = tints[r.mark]
+          return (
+            <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
+              <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
+              <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
+              <Text color={bg ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
+            </Box>
+          )
+        })}
+        {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
+        {toggle?.element ?? null}
       </Box>
     </Box>
   )
