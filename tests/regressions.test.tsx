@@ -4,7 +4,7 @@ import { expect, test } from 'claude-code/testing'
 import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
-import { mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
+import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import { tableArt, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 import { clipboardEnv, recordCopies } from './clipboard-env'
@@ -308,6 +308,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`clock`')
   expect(showcaseText([])).toContain('⧉ html')
+  expect(showcaseText([])).toContain('<i>Reply</i>')
   expect(showcaseText([])).toContain('CopyQ')
   expect(showcaseText([])).toContain('plain text')
   expect(blocks.some(b => b.kind === 'table' && b.align.includes('right') && b.align.includes('center'))).toBe(true)
@@ -493,6 +494,18 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
   const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```', 112))
   expect(await ui.find({ type: 'Text', text: /Tank sensor/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /flowchart TD/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async ($, on) => {
+  const art = mermaidText('flowchart TD\n  A["metrics-server<br/><i>one slow scrape</i>"] --> B["<b>kubelet</b>"]', false, 80)!
+  expect(art).toContain('one slow scrape')
+  expect(art).toContain('kubelet')
+  expect(art).not.toMatch(/<\/?[ib]>/)
+  expect(inlineMarks('A["x<br/><i>one slow</i>"] --> B["<b>kubelet</b>"]')).toEqual([[[...'one slow'], { italic: true }], [[...'kubelet'], { bold: true }]])
+  const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n  A["metrics-server<br/><i>one slow scrape</i>"] --> B["<b>kubelet</b>"]\n```', 80))
+  expect((await ui.find({ type: 'Text', text: /^scrape$/ }))?.props.italic).toBe(true)
+  expect((await ui.find({ type: 'Text', text: /^kubelet$/ }))?.props.bold).toBe(true)
   await ui.unmount()
 })
 

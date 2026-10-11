@@ -51,7 +51,17 @@ export const unsupportedKind = (source: string): string | undefined => {
   return kind && !SUPPORTED.test(kind) ? kind : undefined
 }
 
+const INLINE_TAG = /<\/?(?:b|i|u|s|em|strong|del|code|small|sub|sup|span|mark)\b[^<>\n]*>/gi
+
+type Mark = { italic?: boolean; bold?: boolean; underline?: boolean; strikethrough?: boolean }
+const TAG_MARK: Record<string, keyof Mark> = { i: 'italic', em: 'italic', b: 'bold', strong: 'bold', u: 'underline', s: 'strikethrough', del: 'strikethrough' }
+
+export const inlineMarks = (source: string): [string[], Mark][] =>
+  [...source.matchAll(/<(i|em|b|strong|u|s|del)\b[^<>\n]*>([^<\n]+)<\/\1\s*>/gi)]
+    .map(m => [cells(m[2]!.trim()), { [TAG_MARK[m[1]!.toLowerCase()]!]: true }] as [string[], Mark])
+
 export const mermaidText = (source: string, ascii: boolean, columns: number): string | null => {
+  source = source.replace(INLINE_TAG, '')
   if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
   const art = draw(source, ascii, columns)
   const fits = (a: string) => a.split('\n').every(l => width(l) <= columns - 2)
@@ -147,7 +157,7 @@ const paint = (art: string, style: Style): (string | undefined)[][] => {
 
 const painted = new WeakMap<Theme, Map<string, (string | undefined)[][]>>()
 
-export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string): RenderElement => {
+export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string, marks: [string[], Mark][] = []): RenderElement => {
   const cache = painted.get(style.theme) ?? new Map<string, (string | undefined)[][]>()
   painted.set(style.theme, cache)
   const colors = remember(cache, art, () => paint(art, style))
@@ -155,13 +165,18 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
     <Box key={key} flexDirection="column" paddingLeft={2}>
       {art.split('\n').map((line, i) => {
         const chars = cells(line)
+        const marked: (Mark | undefined)[] = chars.map(() => undefined)
+        for (const [phrase, mark] of marks)
+          for (let c = 0; c + phrase.length <= chars.length; c++)
+            if (phrase.every((ch, k) => chars[c + k] === ch)) for (let k = 0; k < phrase.length; k++) marked[c + k] = mark
         const parts: RenderElement[] = []
         let at = 0
         while (at < chars.length) {
           const hue = colors[i]?.[at]
+          const mark = marked[at]
           let end = at + 1
-          while (end < chars.length && colors[i]?.[end] === hue) end++
-          parts.push(<Text key={`t${parts.length}`} color={hue}>{chars.slice(at, end).join('')}</Text>)
+          while (end < chars.length && colors[i]?.[end] === hue && marked[end] === mark) end++
+          parts.push(<Text key={`t${parts.length}`} color={hue} {...mark}>{chars.slice(at, end).join('')}</Text>)
           at = end
         }
         return <Text key={`${key}.${i}`}>{parts.length ? parts : ' '}</Text>

@@ -140,9 +140,9 @@ Latency fell to 120ms[^lat] after the cache change[^cache].
 
 \`\`\`mermaid
 flowchart LR
-    R[Reply] --> P[Parse]
-    P --> D[Draw]
-    D --> S[Screen]
+    R["<i>Reply</i>"] --> P["<b>Parse</b>"]
+    P --> D["<u>Draw</u>"]
+    D --> S["<s>Screen</s>"]
 \`\`\`
 
 \`\`\`mermaid

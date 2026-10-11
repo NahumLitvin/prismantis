@@ -8,7 +8,7 @@ import type { Block } from './markdown'
 import { parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { boxArt, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
+import { boxArt, inlineMarks, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
 import type { Drawn, Fold } from './render'
 import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
@@ -254,7 +254,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
         const wide = art === null ? Infinity : Math.max(...art.split('\n').map(width))
         narrowest = Math.min(narrowest, wide)
         if (art === null || wide > columns - 2) continue
-        drawn.set(i, { element: boxArt(el, style, art, `b${i}`), art })
+        drawn.set(i, { element: boxArt(el, style, art, `b${i}`, inlineMarks(source)), art })
         break
       }
       if (!drawn.has(i) && !block.isOpen) {

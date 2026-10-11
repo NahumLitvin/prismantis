@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `clock` shows when you sent each prompt and when each turn finished: the time goes before your prompt and after the duration on the turn's last line (`✻ Baked for 1m 55s · 14:32`). `24h` or `12h`; a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. A row takes only a time recorded before it was first drawn, so prompts and turns from before a resume get no time, and an old row that redraws never takes a new one. Off by default. New option `clock`.
 
+### Fixed
+
+- Inline HTML tags in mermaid labels draw as styles, not as literal tags: `<i>`/`<em>` italic, `<b>`/`<strong>` bold, `<u>` underline, `<s>`/`<del>` struck. Other inline tags such as `<code>` and `<span>` are dropped and their text kept.
+
 ## [0.15.1] - 2026-10-11
 
 ### Fixed
