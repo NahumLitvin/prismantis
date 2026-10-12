@@ -277,7 +277,7 @@
     "mermaid": {
       "type": "boolean",
       "title": "Mermaid diagrams",
-      "description": "Draw ```mermaid blocks as colored box art sized to the terminal. Off leaves the code as written.",
+      "description": "Draw ```mermaid blocks as diagrams sized to the terminal, using images when mermaidImages detects support or colored text otherwise. Off leaves the code as written.",
       "default": true
     },
     "copyButtons": {
@@ -290,6 +290,12 @@
       "type": "boolean",
       "title": "Diagram hints",
       "description": "Attach a short note, read by the model and never shown, to each prompt you type or another plugin sends, saying tables, code, mermaid diagrams, charts and figures render here, and LaTeX formulas when the renderer runs. About 630 tokens per prompt (about 275 for the main part, about 360 for figures), about 80 more with LaTeX. Off when mermaid is off.",
+      "default": true
+    },
+    "mermaidImages": {
+      "type": "boolean",
+      "title": "Mermaid images",
+      "description": "Draw Mermaid diagrams as images in kitty, Ghostty and iTerm2 (outside tmux) when rsvg-convert is installed. True detects support automatically; false keeps colored text diagrams.",
       "default": true
     },
     "latex": {

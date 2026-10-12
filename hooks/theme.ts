@@ -27,6 +27,7 @@ export type Style = {
   highlightNumbers: boolean
   highlightPaths: boolean
   mermaid: boolean
+  mermaidImages: boolean
   mermaidAscii: boolean
   copyButtons: boolean
   htmlCopy: ClipboardBackend | null
@@ -73,6 +74,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     highlightNumbers: options.highlightNumbers !== false,
     highlightPaths: options.highlightPaths !== false,
     mermaid: options.mermaid !== false,
+    mermaidImages: options.mermaidImages !== false,
     mermaidAscii: options.mermaidAscii === true,
     copyButtons: options.copyButtons !== false,
     htmlCopy: null,

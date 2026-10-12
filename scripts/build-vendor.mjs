@@ -1,5 +1,5 @@
 import { build } from 'esbuild'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 const bundledPackages = new Set()
 const track = result => {
@@ -99,6 +99,35 @@ track(await build({
     },
   }],
 }))
+
+track(await build({
+  metafile: true,
+  stdin: {
+    contents: "export { renderMermaidSVG } from './mermaid-svg.ts'",
+    resolveDir: '.',
+    loader: 'ts',
+  },
+  bundle: true,
+  format: 'esm',
+  platform: 'neutral',
+  target: 'es2023',
+  minify: true,
+  outfile: '../hooks/vendor/mermaid-svg.js',
+  legalComments: 'none',
+  plugins: [{
+    name: 'svg-class-constants',
+    setup(api) {
+      api.onLoad({ filter: /beautiful-mermaid\/src\/class\/layout\.ts$/ }, args => {
+        const source = readFileSync(args.path, 'utf8')
+        const constants = source.match(/export const CLS = \{[\s\S]*?\} as const/)
+        if (!constants) throw new Error('Class SVG renderer no longer exports CLS')
+        return { contents: constants[0], loader: 'ts' }
+      })
+    },
+  }],
+}))
+
+writeFileSync('../hooks/vendor/mermaid-svg.d.ts', 'export declare function renderMermaidSVG(source: string, options?: { bg?: string; fg?: string; line?: string; accent?: string; muted?: string; surface?: string; border?: string; font?: string; padding?: number; transparent?: boolean }): string\n')
 
 for (const name of bundledPackages) {
   const { license } = JSON.parse(readFileSync(`node_modules/${name}/package.json`, 'utf8'))

@@ -40,7 +40,11 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-## Optional system clipboard tools
+`hooks/vendor/mermaid-svg.js` bundles beautiful-mermaid's SVG drawing code and grid layout, built with the adapter in `scripts/mermaid-svg.ts`. Sequence diagrams and charts use its SVG layouts. The bundle contains only MIT code and excludes ELK.
+
+## Optional system tools
+
+Mermaid images call an installed [librsvg](https://github.com/GNOME/librsvg) `rsvg-convert` executable ([LGPL-2.1-or-later](https://github.com/GNOME/librsvg/blob/main/COPYING.LIB)). It is supplied by the user's system and is not bundled with prismantis.
 
 On Linux, HTML copying calls an installed and running [CopyQ](https://github.com/hluk/CopyQ) (GPL-3.0-or-later).
 CopyQ is supplied by the user's system and is not bundled with prismantis.

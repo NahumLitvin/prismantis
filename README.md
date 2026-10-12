@@ -26,7 +26,7 @@
 - Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, typeset LaTeX math in kitty, Ghostty and iTerm2, colored tables and code, and quiet tool rows.
 - 15 palettes plus `mono`, and copy buttons on everything.
 - Two commands to install, `/plugin` to turn it off. Claude Code's own renderer comes back the moment you do.
-- No network calls. It runs a program only when you click `⧉ html` (the clipboard helper) or turn on LaTeX (RaTeX's renderer).
+- No network calls. It runs a program only when you click `⧉ html` (the clipboard helper), turn on LaTeX (RaTeX's renderer), or draw Mermaid images (`rsvg-convert`).
 
 ```
 /plugin marketplace add NahumLitvin/prismantis
@@ -108,6 +108,20 @@ Each code block gets a header row: the language on the left, a copy button on th
 - **Shell** blocks (`bash`, `sh`, `zsh`, `fish`, `powershell`, unlabeled) color the command word, `--flags`, quoted strings and `# comments`, and restart after `|`, `&&` and `;`.
 
 ### Diagrams and charts
+
+With `mermaidImages: true` (the default), diagrams draw as images in kitty, Ghostty and iTerm2, outside tmux, when `rsvg-convert` is on your `PATH`.
+Install it with `brew install librsvg` on macOS or `sudo apt install librsvg2-bin` on Debian/Ubuntu, then `/reload`.
+Set `mermaidImages` to `false` in `/config` to keep colored text diagrams.
+The `mermaid` option still turns all diagram rendering off; `mermaidAscii` applies to text diagrams.
+
+Images use the current theme and fit the terminal width, up to 48 rows tall.
+While a diagram is streaming or its image is being prepared, it draws as text.
+Unsupported terminals, tmux, missing renderers and conversion failures keep the text fallback.
+A missing or timed-out renderer disables further image attempts until `/reload`.
+The copy button copies the Mermaid source; selecting image cells does not copy its labels.
+
+The SVG renderer uses beautiful-mermaid's MIT grid layout for flowcharts, state, class and ER diagrams, and its SVG layouts for sequences and charts.
+PNG conversion uses the system's `rsvg-convert`; no browser or network service is involved.
 
 ![Diagrams and charts: plain Claude Code on the left, prismantis on the right](docs/compare/diagrams.png)
 
@@ -318,6 +332,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
+| `mermaidImages` | `true` (auto-detect), `false` (text diagrams) | `true` |
 | `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
 
@@ -370,7 +385,7 @@ To change the code, read [AGENTS.md](AGENTS.md) instead.
 - **What it is:** a Claude Code mod (function hooks in TypeScript) that redraws assistant replies, slash-command output, tool rows, the turn footer and user prompts. It changes how things look, and with `diagramHints` on (the default) it also asks Claude to build a reply around pictures when they make it easier to grasp, with the core on the first screen as a picture or a sentence. The one thing it sends the model is the optional diagram hint below.
 - **Install:** `/plugin marketplace add NahumLitvin/prismantis`, then `/plugin install prismantis@prismantis`. Needs Claude Code 2.1.287+. Changes apply after `/reload`.
 - **Configure:** `/prismantis theme <name>` is the only setter at runtime. Every other option is a key under `pluginConfigs["prismantis@prismantis"].options` in `~/.claude/settings.json` (or a row in `/config`), then `/reload`. Options and defaults are in the [Configure](#configure) table; the machine-readable source is `userConfig` in [.claude-plugin/plugin.json](.claude-plugin/plugin.json). Color values that don't parse are ignored.
-- **Side effects:** no network. Programs it runs: the `⧉ html` clipboard helper (`/usr/bin/osascript` on macOS, `copyq` on Linux, 5 second timeout, only on a click), and `ratex-render` while `latex` is on. With `diagramHints` on, it adds about 630 tokens of model-only context (about 710 while `latex` is on) to each prompt you type and each prompt another plugin sends, as broken down under [Diagram hints](#diagram-hints).
+- **Side effects:** no network. Programs it runs: the `⧉ html` clipboard helper (`/usr/bin/osascript` on macOS, `copyq` on Linux, 5 second timeout, only on a click), `ratex-render` while `latex` is on, and `rsvg-convert` for Mermaid images (5 second timeout) while `mermaidImages` is on and the terminal supports images. Mermaid conversion reuses one temporary PNG per plugin session and caches results in session state. With `diagramHints` on, it adds about 630 tokens of model-only context (about 710 while `latex` is on) to each prompt you type and each prompt another plugin sends, as broken down under [Diagram hints](#diagram-hints).
 - **Turning it off:** `"enabled": false`, or disable the plugin in `/plugin`.
 - **For other mods:** `$.prismantis.markdown({ surface, text, columns })`, typed in [types/index.d.ts](types/index.d.ts). See [Other mods](#other-mods).
 

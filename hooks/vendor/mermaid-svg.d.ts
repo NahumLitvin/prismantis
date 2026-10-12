@@ -1,0 +1,1 @@
+export declare function renderMermaidSVG(source: string, options?: { bg?: string; fg?: string; line?: string; accent?: string; muted?: string; surface?: string; border?: string; font?: string; padding?: number; transparent?: boolean }): string

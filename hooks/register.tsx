@@ -10,6 +10,8 @@ import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
 import { FIGURE_HINT, drawFigure, isFigureLang } from './figure'
 import { boxArt, inlineMarks, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
+import { diagramKey, diagramSource, diagramSvg, fitDiagram } from './mermaid-image'
+import type { DiagramImage, DiagramResult } from './mermaid-image'
 import type { Drawn, Fold } from './render'
 import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
@@ -72,6 +74,7 @@ const markExpanded = (id: string) => {
 const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.columns ?? 100) - 4)
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
+const diagrams = atom({ plugin: 'prismantis', key: 'diagrams' } as const, {})
 const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
 const unfolded = atom({ plugin: 'prismantis', key: 'unfolded' } as const, [] as string[])
 const sent = atom({ plugin: 'prismantis', key: 'sent' } as const, [])
@@ -92,6 +95,56 @@ const showsImages = async ($: EngineInterface): Promise<boolean> => {
   if (await $.env.get('TMUX')) return false
   const terminal = await detectTerminal($)
   return terminal === 'kitty' || terminal === 'ghostty' || terminal === 'iterm'
+}
+
+type DiagramSession = { style: Style; pending: Set<string>; queue: Promise<void>; capable?: Promise<boolean>; path?: string; stopped?: boolean }
+
+const rasterizeDiagram = async ($: EngineInterface, session: DiagramSession, key: string, source: string, columns: number, theme: Style['theme']): Promise<void> => {
+  try {
+    if (session.stopped) return
+    let result: DiagramResult = { error: true }
+    const svg = diagramSvg(source, theme)
+    const fit = svg && fitDiagram(svg, columns)
+    if (fit) {
+      if (!session.path) {
+        const tmp = (await $.env.get('TMPDIR')) ?? (await $.env.get('TEMP')) ?? '/tmp'
+        session.path = `${tmp.replace(/[\\/]+$/, '')}/prismantis-mermaid-${crypto.randomUUID()}.png`
+      }
+      const run = await $.process.run(['rsvg-convert', '--format=png', '--output', session.path], { stdin: fit.svg, timeoutMs: 5000 })
+      if (run.exitCode === 0) {
+        const { base64 } = await $.fs.read(session.path, { as: 'bytes' })
+        const size = pngSize(base64)
+        if (size && size.width === fit.columns * 16 && size.height === fit.rows * 32 && fitsImage(base64)) result = { png: base64, columns: fit.columns, rows: fit.rows }
+      } else if (run.exitCode === 127) session.stopped = true
+    }
+    await update($, diagrams, store => keepFormulas(store, [[key, result]], session.pending))
+  } catch {
+    session.stopped = true
+  } finally {
+    session.pending.delete(key)
+  }
+}
+
+const imagesOfBlocks = async ($: EngineInterface, session: DiagramSession, surface: string, blocks: Block[], columns: number): Promise<Map<number, DiagramImage>> => {
+  if (surface !== 'terminal' || !session.style.mermaid || !session.style.mermaidImages) return new Map()
+  const sources = [...blocks.entries()].flatMap(([i, block]) => {
+    const source = diagramSource(block)
+    return source === null ? [] : [{ i, source, key: diagramKey(source, session.style.theme, columns) }]
+  })
+  if (!sources.length || !(await (session.capable ??= showsImages($).catch(() => false)))) return new Map()
+  const stored = (await read($, diagrams)) as Record<string, DiagramResult>
+  for (const { key, source } of sources) {
+    if (stored[key] || session.stopped || session.pending.has(key)) continue
+    session.pending.add(key)
+    const theme = { ...session.style.theme }
+    $.clock.after(0, () => {
+      session.queue = session.queue.then(() => rasterizeDiagram($, session, key, source, columns, theme))
+    })
+  }
+  return new Map(sources.flatMap(({ i, key }) => {
+    const picture = stored[key]
+    return picture && 'png' in picture ? [[i, picture] as const] : []
+  }))
 }
 
 type Latex = { command: string; dir: string }
@@ -227,7 +280,7 @@ const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolv
   return { folded, element: <el.Button key={key} variant="secondary" label={folded ? `+${hidden} more lines` : 'show less'} onPress={() => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))} /> }
 }
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string, open?: string[]): RenderElement[] => {
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string, open?: string[], pictures: Map<number, DiagramImage> = new Map()): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
     const copied = async (surface: RenderSurface): Promise<string> => {
@@ -249,10 +302,16 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     ) : null
   }
   const drawn: Drawn = new Map()
+  const Image = 'Image' in el ? el.Image : null
   if (style.mermaid) {
     for (const [i, block] of blocks.entries()) {
       if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
       const source = block.lines.join('\n')
+      const picture = pictures.get(i)
+      if (Image && picture) {
+        drawn.set(i, { element: <el.Box key={`b${i}`} paddingLeft={2}><Image source={{ png: picture.png }} columns={picture.columns} rows={picture.rows} alt={source} /></el.Box> })
+        continue
+      }
       let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
         const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
@@ -273,7 +332,6 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     const figure = drawFigure(el, style, block, columns, `b${i}`)
     if (figure) drawn.set(i, figure)
   }
-  const Image = 'Image' in el ? el.Image : null
   if (Image) {
     for (const [i, formula] of math) {
       const picked = pickFormula(formula, columns)
@@ -301,6 +359,7 @@ export const register: Register = (on, options) => {
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
+  const diagramSession: DiagramSession = { style, pending: new Set(), queue: Promise.resolve() }
   const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
   const probes: Probes = {}
@@ -413,8 +472,9 @@ export const register: Register = (on, options) => {
     const el = $.ui.resolve(e)
     const { Box } = el
     const math = await mathOfBlocks($, latex, e.surface, blocks)
+    const pictures = await imagesOfBlocks($, diagramSession, e.surface, blocks, columnsOf(e.viewport))
     const open = await read($, unfolded)
-    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport), math, undefined, open)}</Box>
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport), math, undefined, open, pictures)}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
@@ -434,6 +494,7 @@ export const register: Register = (on, options) => {
     const { Box, Text } = el
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const math = await mathOfBlocks($, latex, e.surface, blocks)
+    const pictures = await imagesOfBlocks($, diagramSession, e.surface, blocks, columnsOf(e.viewport))
     const surfaceStyle = forSurface(fit(e.viewport), e.surface)
     const open = await read($, unfolded)
     return (
@@ -442,17 +503,19 @@ export const register: Register = (on, options) => {
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined, open)}
+          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined, open, pictures)}
         </Box>
       </Box>
     )
   })
 
-  on('prismantis.markdown', ($, e, next) => {
+  on('prismantis.markdown', async ($, e, next) => {
     const blocks = parseCached(e.text, shared, 20)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
-    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
+    const columns = Math.max(20, e.columns || 0)
+    const pictures = await imagesOfBlocks($, diagramSession, e.surface, blocks, columns)
+    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, columns, undefined, undefined, undefined, pictures)}</Box> }
   })
 }

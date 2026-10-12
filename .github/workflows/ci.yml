@@ -66,13 +66,18 @@ jobs:
         run: npm --prefix scripts run build:vendor && git diff --exit-code hooks/vendor
       - name: Render snapshots match
         run: npm --prefix scripts run snapshot
+      - name: Mermaid SVGs convert to PNGs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+          npm --prefix scripts run check:mermaid-images
       - name: Node counts stay within baseline (timings reported, not gated)
         run: npm --prefix scripts run bench:check -- --no-time
       - name: Bundles stay light
         run: |
           size=$(cat hooks/vendor/*.js | wc -c)
           echo "vendor bytes: $size"
-          test "$size" -lt 300000
+          test "$size" -lt 350000
 
   clipboard:
     timeout-minutes: 5

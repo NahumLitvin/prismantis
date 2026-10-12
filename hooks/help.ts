@@ -138,6 +138,8 @@ Latency fell to 120ms[^lat] after the cache change[^cache].
 
 #### Diagrams
 
+\`mermaidImages\` draws diagrams as images in kitty, Ghostty and iTerm2 when \`rsvg-convert\` is installed. Set it to \`false\` for colored text diagrams.
+
 \`\`\`mermaid
 flowchart LR
     R["<i>Reply</i>"] --> P["<b>Parse</b>"]
@@ -163,7 +165,7 @@ xychart-beta
     bar [7, 3, 2, 6, 2]
 \`\`\`
 
-A diagram wider than the terminal stays source, with a dim line saying why:
+In text mode, a diagram wider than the terminal stays source, with a dim line saying why:
 
 \`\`\`mermaid
 flowchart TD
@@ -205,7 +207,7 @@ Docs and issues: https://github.com/NahumLitvin/prismantis
 
 ### Task lists
 
-- [x] Tables, diagrams and charts drawn in the terminal
+- [x] Tables, diagrams and charts; \`mermaidImages\` auto-detects image support and \`rsvg-convert\`
 - [x] Copy tables as Markdown, art or HTML (macOS/Linux)
 - [ ] Pick a \`taskStyle\` in \`/config\`: checks, ticks, box or progress
 
