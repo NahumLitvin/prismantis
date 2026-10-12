@@ -17,6 +17,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - Tables whose delimiter row uses one dash per cell (`|-|-|`), valid GFM, now draw as tables. Before, they drew as one line of text.
+- Flowchart edges written without spaces around the arrow, such as `A-->B`, `A-.->B` or `A-->|yes|B`, draw as edges. Before, the first node took in the arrow's dashes and the diagram drew one box labeled `A--` and no arrows. Node names with a hyphen, such as `my-node`, still draw whole.
 
 ## [0.17.1] - 2026-10-12
 

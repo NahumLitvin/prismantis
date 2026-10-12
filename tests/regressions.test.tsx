@@ -352,6 +352,20 @@ test('mermaid boxes stay closed around wide labels', async () => {
   }
 })
 
+test('flowchart edges written without spaces draw the same as with spaces', async () => {
+  for (const [compact, spaced] of [
+    ['flowchart LR\n  A-->B-->C', 'flowchart LR\n  A --> B --> C'],
+    ['flowchart LR\n  my-node-->other-node', 'flowchart LR\n  my-node --> other-node'],
+    ['graph TD\n  A-.->B==>C---D', 'graph TD\n  A -.-> B ==> C --- D'],
+    ['flowchart LR\n  A-->|yes|B', 'flowchart LR\n  A -->|yes| B'],
+    ['flowchart LR\n  A[Start]-->B{ok?}', 'flowchart LR\n  A[Start] --> B{ok?}'],
+  ]) {
+    const art = mermaidText(spaced!, false, 100)
+    expect(art).not.toBeNull()
+    expect(mermaidText(compact!, false, 100)).toBe(art)
+  }
+})
+
 test('a mounted diagram with wide labels draws its box borders on the same column', async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...mount('```mermaid\ngraph LR\n  A[한글 라벨] --> B[終了]\n```', 160), surface })

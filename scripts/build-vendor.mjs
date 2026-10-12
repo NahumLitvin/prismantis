@@ -26,6 +26,11 @@ const CLEAR_LABEL_GAPS = `export function clearLabelGaps(canvas: Canvas, label: 
 const DRAW = /beautiful-mermaid\/src\/ascii\/draw\.ts$/
 const DRAW_ANCHOR = '  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...labelCanvases)'
 const DRAW_IMPORT = 'import { mkCanvas, copyCanvas,'
+const PARSER = /beautiful-mermaid\/src\/parser\.ts$/
+const NODE_ID_START = 'const NODE_PATTERNS'
+const NODE_ID_END = 'const CLASS_SHORTHAND_REGEX'
+const NODE_ID = '[\\w-]+'
+const NODE_ID_BEFORE_ARROW = '(?:\\w|-(?![-.>]))+'
 
 const PRISM_LANGUAGES = ['clike', 'markup', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'python', 'go', 'rust', 'java', 'kotlin', 'swift', 'c', 'cpp', 'csharp', 'ruby', 'json', 'yaml', 'toml', 'sql', 'diff', 'docker', 'hcl']
 
@@ -95,6 +100,15 @@ track(await build({
           .replace(DRAW_ANCHOR, `${DRAW_ANCHOR}\n  for (const label of labelCanvases) clearLabelGaps(graph.canvas, label)`)
           .replace(DRAW_IMPORT, DRAW_IMPORT.replace('{ ', '{ clearLabelGaps, '))
         return { contents: patched, loader: 'ts' }
+      })
+      api.onLoad({ filter: PARSER }, args => {
+        const src = readFileSync(args.path, 'utf8')
+        const start = src.indexOf(NODE_ID_START)
+        const end = src.indexOf(NODE_ID_END, start)
+        if (start < 0 || end < 0) throw new Error('parser.ts no longer declares NODE_PATTERNS before CLASS_SHORTHAND_REGEX')
+        const ids = src.slice(start, end)
+        if (!ids.includes(NODE_ID)) throw new Error(`parser.ts node patterns no longer use ${NODE_ID}`)
+        return { contents: src.slice(0, start) + ids.replaceAll(NODE_ID, NODE_ID_BEFORE_ARROW) + src.slice(end), loader: 'ts' }
       })
     },
   }],
