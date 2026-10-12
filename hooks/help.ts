@@ -169,6 +169,15 @@ A diagram wider than the terminal stays source, with a dim line saying why:
 flowchart TD
     Q[Queue] --> W1[Worker 1] & W2[Worker 2] & W3[Worker 3] & W4[Worker 4] & W5[Worker 5] & W6[Worker 6] & W7[Worker 7] & W8[Worker 8] & W9[Worker 9] & W10[Worker 10] & W11[Worker 11] & W12[Worker 12] & W13[Worker 13] & W14[Worker 14] & W15[Worker 15] & W16[Worker 16]
 \`\`\`
+
+A figure draws as written, its markup colored by role:
+
+\`\`\`figure
+{note:          0 s         10 s  12 s            later}
+Provider  {accent:●───────────}{warn:✗ timeout}             {accent:●} retry, same event
+Handler   {ok:■■■■■■■■■■■■■■■■■■} 200 into the void
+Booked    0                 {ok:1}               {warn:2} twice
+\`\`\`
 `
 
 export const helpText = (themes: readonly string[]): string => `

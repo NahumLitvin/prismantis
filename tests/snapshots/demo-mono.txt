@@ -320,6 +320,42 @@
       <Text>
         <Text>
           "    GotG2   IW     EG    GotG3"
+  <Box>
+    <Box>
+      <Text>
+        <Text>
+          "          0 s         10 s  12 s            later"
+      <Text>
+        <Text>
+          "Provider  "
+        <Text>
+          "●───────────"
+        <Text bold>
+          "✗ timeout"
+        <Text>
+          "             "
+        <Text>
+          "●"
+        <Text>
+          " retry, same event"
+      <Text>
+        <Text>
+          "Handler   "
+        <Text>
+          "■■■■■■■■■■■■■■■■■■"
+        <Text>
+          " 200 into the void"
+      <Text>
+        <Text>
+          "Booked    0                 "
+        <Text>
+          "1"
+        <Text>
+          "               "
+        <Text bold>
+          "2"
+        <Text>
+          " twice"
 <Box>
   <Box row>
     <Text>

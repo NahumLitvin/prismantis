@@ -692,6 +692,42 @@
       <Text>
         <Text color=#1f2328>
           "    GotG2   IW     EG    GotG3"
+  <Box>
+    <Box>
+      <Text>
+        <Text color=#953800>
+          "          0 s         10 s  12 s            later"
+      <Text>
+        <Text color=#1f2328>
+          "Provider  "
+        <Text color=#0969da>
+          "●───────────"
+        <Text color=#cf222e>
+          "✗ timeout"
+        <Text color=#1f2328>
+          "             "
+        <Text color=#0969da>
+          "●"
+        <Text color=#1f2328>
+          " retry, same event"
+      <Text>
+        <Text color=#1f2328>
+          "Handler   "
+        <Text color=#116329>
+          "■■■■■■■■■■■■■■■■■■"
+        <Text color=#1f2328>
+          " 200 into the void"
+      <Text>
+        <Text color=#1f2328>
+          "Booked    0                 "
+        <Text color=#116329>
+          "1"
+        <Text color=#1f2328>
+          "               "
+        <Text color=#cf222e>
+          "2"
+        <Text color=#1f2328>
+          " twice"
 <Box>
   <Box row>
     <Text color=#6e7781>

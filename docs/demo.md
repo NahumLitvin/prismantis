@@ -43,6 +43,13 @@ xychart-beta
   line [2, 4, 6, 9]
 ```
 
+```figure
+{note:          0 s         10 s  12 s            later}
+Provider  {accent:●───────────}{warn:✗ timeout}             {accent:●} retry, same event
+Handler   {ok:■■■■■■■■■■■■■■■■■■} 200 into the void
+Booked    0                 {ok:1}               {warn:2} twice
+```
+
 ```ts
 const master = "Shifu" // wise, short
 export function train(student: string, dumplings = 3) {

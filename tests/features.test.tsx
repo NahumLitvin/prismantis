@@ -3,6 +3,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
 import { clockText, endedAt, sentAt } from '../hooks/clock'
+import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
@@ -490,6 +491,7 @@ test('your prompts carry the render hint as model-only context', async ($, on) =
   await $.prompt.submit({ text: 'show me deploys per day', wait: false, origin: { kind: 'composer' } })
   expect(seen[0]?.some(c => c.includes('prismantis'))).toBe(true)
   expect(seen[0]?.some(c => c.includes('fenced block') && c.includes('copy button'))).toBe(true)
+  expect(seen[0]).toContain(FIGURE_HINT)
 })
 
 test('no render hint when diagramHints is off', { options: { diagramHints: false } }, async ($, on) => {
@@ -500,7 +502,21 @@ test('no render hint when diagramHints is off', { options: { diagramHints: false
     return { text: e.text, context: e.context }
   })
   await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
+  expect(seen).toHaveLength(1)
   expect((seen[0] ?? []).some(c => c.includes('prismantis'))).toBe(false)
+  expect(seen[0] ?? []).not.toContain(FIGURE_HINT)
+})
+
+test('no figure hint when mermaid is off', { options: { mermaid: false } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
+  expect(seen).toHaveLength(1)
+  expect(seen[0] ?? []).not.toContain(FIGURE_HINT)
 })
 
 test('a continuation line joins the list item it is indented under', async () => {
@@ -627,7 +643,9 @@ test('headless runs get no render hint', async ($, on) => {
     return { text: e.text, context: e.context }
   })
   await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'sdk' } })
+  expect(seen).toHaveLength(1)
   expect((seen[0] ?? []).some(c => c.includes('prismantis'))).toBe(false)
+  expect(seen[0] ?? []).not.toContain(FIGURE_HINT)
 })
 
 test('/prismantis theme <name> and /prismantis <name> switch the theme through config', async ($, on) => {

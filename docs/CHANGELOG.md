@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Figures: code blocks tagged `figure` draw line by line as written, colored by role markup such as `{warn:timeout}`, for what reads better as a picture than as a diagram (a timeout racing a retry, a screen layout, before and after). Roles take existing theme colors, so themes and color overrides apply: `accent` the diagram color, `dim` the comment color, `strong` the strong color, and `warn`, `ok` and `note` the theme's reddest, greenest and most amber accent color, each a different one, so their meaning holds in every preset; `warn` draws bold in a theme without colors (`mono`). A figure stays a code block while it streams, when it has more than 80 lines, when a line is wider than the window or than 100 columns, or when a glyph may draw as an emoji or takes two columns, a control character, direction mark or other character that draws no column is in it, or role markup is wrong; a closed figure that stays code says why in one dim line above it, as diagrams do. Frames are not checked: a box that does not close or a side, corner or divider out of its column draws as written. Figures draw with `mermaid` off too, with `⧉ source` still copying the block as written.
+- The model-only note behind `diagramHints` gains a part on figures: when a reply explains something with structure, lead the chat reply with a picture that carries the core and shows what explains it (time to scale against a limit, cases crossing a boundary, states side by side), with unknown numbers marked as examples, add pictures only when they show something new, and keep the prose to what they do not show, with ## headings, using the same steps, states, numbers and order where picture, prose and a list cover the same thing; then the role markup, at most 74 columns so a figure fits an 80-column window, and the glyphs one column wide; flows, sequences and charts stay mermaid. The main part now also skips a diagram that repeats what a figure shows, and skips diagrams and pictures in short or simple answers. The note is now about 870 tokens per typed prompt, measured with Claude's tokenizer (earlier entries counted characters divided by four).
+
+### Changed
+
+- With `diagramHints` on (the default), the model-only note grows from about 270 to about 870 tokens per typed prompt, and besides saying what renders it now asks Claude to lead a reply that explains, compares or plans something with a figure and to keep the prose to what the figure does not show. Turn `diagramHints` off to drop the whole note.
+
 ## [0.17.0] - 2026-10-12
 
 ### Changed
