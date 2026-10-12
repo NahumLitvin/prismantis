@@ -289,7 +289,7 @@
     "diagramHints": {
       "type": "boolean",
       "title": "Diagram hints",
-      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams, charts and figures render here, and LaTeX formulas when the renderer runs. It also asks Claude to lead an explaining reply with a figure that carries the core and keep the prose to what the figure does not show. About 870 tokens per prompt, about 80 more with LaTeX. Off when mermaid is off.",
+      "description": "Attach a short note, read by the model and never shown, to each prompt you type, saying tables, code, mermaid diagrams, charts and figures render here, and LaTeX formulas when the renderer runs. About 480 tokens per prompt, about 80 more with LaTeX. Off when mermaid is off.",
       "default": true
     },
     "latex": {

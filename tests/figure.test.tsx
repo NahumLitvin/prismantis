@@ -166,26 +166,13 @@ test('the figure hint names the opening line, every role, the width and one-colu
   expect(FIGURE_HINT).toContain('markup takes no columns')
 })
 
-test('the figure hint asks for a picture first that carries the core, showing what explains it', () => {
-  expect(FIGURE_HINT).toContain('lead your chat reply (not files or plans you write with tools) with a picture')
-  expect(FIGURE_HINT).toContain('carries the core')
-  expect(FIGURE_HINT).toContain('show what explains the core')
-  expect(FIGURE_HINT).toContain('flows, sequences and charts stay mermaid')
+test('the figure hint says when to draw one and when not', () => {
+  expect(FIGURE_HINT).toContain('position carries meaning')
+  expect(FIGURE_HINT).toContain('none for short answers, code changes or reports')
 })
 
-test('the figure hint sizes the pictures to the question and keeps prose to what they do not show', () => {
-  expect(FIGURE_HINT).toContain('only when it shows something new')
-  expect(FIGURE_HINT).toContain('None for short or yes/no answers, code changes')
-  expect(FIGURE_HINT).toContain('never retells them')
-  expect(FIGURE_HINT).toContain('give each a ## heading')
-})
-
-test('the figure hint keeps picture, prose and lists to the same steps, numbers and order', () => {
-  expect(FIGURE_HINT).toContain('Where picture, prose and a list cover the same thing, they use the same steps, states, numbers and order.')
-})
-
-test('the figure hint stays under 1850 characters, about the 590 tokens the README states', () => {
-  expect(FIGURE_HINT.length).toBeLessThanOrEqual(1850)
+test('the figure hint stays under 750 characters', () => {
+  expect(FIGURE_HINT.length).toBeLessThanOrEqual(750)
 })
 
 test('every glyph the figure hint offers passes the checker', () => {

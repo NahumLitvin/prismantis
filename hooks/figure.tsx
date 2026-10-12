@@ -21,26 +21,22 @@ const RAW_MAX_LINE = FIGURE_MAX_COLUMNS * 4
 
 const LISTED_GLYPHS = 8
 
-export const FIGURE_GLYPHS = '─│┌┐└┘├┤┬┴┼═║→←►◄▲▼✓✗●○■□·'
+export const FIGURE_GLYPHS = '─│┌┐└┘├┤┬┴┼═║→←►◄▲▼✓✗●○█▏■□·'
 
 const ROLE_USES: Record<FigureRole, string> = {
-  accent: 'frames, lines and arrows',
-  warn: 'the break or risk',
-  ok: 'healthy or done',
-  note: 'time and effort',
-  dim: 'side notes',
-  strong: 'the one thing that matters',
+  accent: 'lines',
+  warn: 'risk',
+  ok: 'healthy',
+  note: 'time',
+  dim: 'asides',
+  strong: 'emphasis',
 }
 
 export const FIGURE_HINT = [
-  'A fenced block whose opening line is exactly ```figure is drawn as a text picture.',
-  'When the user asks you to explain, compare or plan something with structure (a failure over time, a layout, a plan in phases, before and after), lead your chat reply (not files or plans you write with tools) with a picture that carries the core on its own, so the first screen gets it across; flows, sequences and charts stay mermaid.',
-  'In each picture, show what explains the core, not the steps a list would tell: time to scale against a limit, which cases cross a boundary, states side by side, the point of no return; mark numbers you do not know as examples.',
-  'Add a picture only when it shows something new, sized to the question: a sketch gets one overview, a migration its plan and its mixed phase. None for short or yes/no answers, code changes, tool results, or what a table shows better.',
-  'In a reply with pictures, the prose says only what they do not show (reasons, rules, limits) and never retells them; when it has more than one section, give each a ## heading.',
-  'Where picture, prose and a list cover the same thing, they use the same steps, states, numbers and order.',
-  `Every line is drawn as written. Color with {role:text}, not nested: ${FIGURE_ROLES.map(role => `${role} for ${ROLE_USES[role]}`).join('; ')}. Labels in place, no legend, one idea per picture.`,
-  `At most ${FIGURE_SAFE_COLUMNS} columns so it fits an 80-column window, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji, no tabs. Count columns so frames close and vertical lines stay in their column; markup takes no columns, count only the drawn text. A picture with a frame that does not close, a wide glyph, a tab or wrong markup shows as plain code.`,
+  'A fenced block whose opening line is exactly ```figure is drawn as a text picture, as written.',
+  'Prefer one over mermaid when position carries meaning: durations racing on a time axis, a screen layout, phases, before/after; mermaid stays for plain flows and charts; none for short answers, code changes or reports. The prose never retells the picture.',
+  `Color with {role:text}, not nested: ${FIGURE_ROLES.map(role => `${role} for ${ROLE_USES[role]}`).join(', ')}.`,
+  `At most ${FIGURE_SAFE_COLUMNS} columns, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji or tabs; markup takes no columns, so align on the drawn text. Draw a time axis with edge ticks like ▏───▏───▏, not ├┼┤: █ fills its cell, ├┼┤ sit mid-cell.`,
 ].join(' ')
 
 const MARKUP = new RegExp(`\\{(${FIGURE_ROLES.join('|')}):([^{}]*)\\}`, 'g')

@@ -324,38 +324,58 @@
     <Box>
       <Text>
         <Text>
-          "          0 s         10 s  12 s            later"
+          "timeout at 10 s, handler books at 12 s, retry books again"
+      <Text>
+        <Text>
+          "          "
+        <Text>
+          "0 s"
+        <Text>
+          "           "
+        <Text>
+          "10 s"
+        <Text>
+          "  "
+        <Text>
+          "12 s"
+        <Text>
+          "              "
+        <Text>
+          "later"
+      <Text>
+        <Text>
+          "          "
+        <Text>
+          "├─────────────┼─────┼─────────────────┤"
       <Text>
         <Text>
           "Provider  "
         <Text>
-          "●───────────"
+          "●─────────────"
         <Text bold>
-          "✗ timeout"
+          "✗"
         <Text>
-          "             "
+          " timeout               "
         <Text>
           "●"
         <Text>
-          " retry, same event"
+          " retry"
       <Text>
         <Text>
           "Handler   "
         <Text>
-          "■■■■■■■■■■■■■■■■■■"
+          "■■■■■■■■■■■■■■■■■■■■■"
         <Text>
-          " 200 into the void"
+          " 200, nobody waits"
       <Text>
         <Text>
-          "Booked    0                 "
+          "Bookings  0                   "
         <Text>
           "1"
         <Text>
-          "               "
+          "                 "
         <Text bold>
-          "2"
-        <Text>
-          " twice"
+          "2 twice"
 <Box>
   <Box row>
     <Text>

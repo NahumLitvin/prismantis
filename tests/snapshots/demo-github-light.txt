@@ -695,39 +695,59 @@
   <Box>
     <Box>
       <Text>
+        <Text color=#6e7781>
+          "timeout at 10 s, handler books at 12 s, retry books again"
+      <Text>
+        <Text color=#1f2328>
+          "          "
         <Text color=#953800>
-          "          0 s         10 s  12 s            later"
+          "0 s"
+        <Text color=#1f2328>
+          "           "
+        <Text color=#953800>
+          "10 s"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#953800>
+          "12 s"
+        <Text color=#1f2328>
+          "              "
+        <Text color=#953800>
+          "later"
+      <Text>
+        <Text color=#1f2328>
+          "          "
+        <Text color=#0969da>
+          "├─────────────┼─────┼─────────────────┤"
       <Text>
         <Text color=#1f2328>
           "Provider  "
         <Text color=#0969da>
-          "●───────────"
+          "●─────────────"
         <Text color=#cf222e>
-          "✗ timeout"
+          "✗"
         <Text color=#1f2328>
-          "             "
+          " timeout               "
         <Text color=#0969da>
           "●"
         <Text color=#1f2328>
-          " retry, same event"
+          " retry"
       <Text>
         <Text color=#1f2328>
           "Handler   "
         <Text color=#116329>
-          "■■■■■■■■■■■■■■■■■■"
+          "■■■■■■■■■■■■■■■■■■■■■"
         <Text color=#1f2328>
-          " 200 into the void"
+          " 200, nobody waits"
       <Text>
         <Text color=#1f2328>
-          "Booked    0                 "
+          "Bookings  0                   "
         <Text color=#116329>
           "1"
         <Text color=#1f2328>
-          "               "
+          "                 "
         <Text color=#cf222e>
-          "2"
-        <Text color=#1f2328>
-          " twice"
+          "2 twice"
 <Box>
   <Box row>
     <Text color=#6e7781>

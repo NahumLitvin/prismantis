@@ -131,10 +131,12 @@ Some things read better as a picture than as a diagram: a timeout racing a retry
 
 ````markdown
 ```figure
-{note:          0 s         10 s  12 s            later}
-Provider  {accent:●───────────}{warn:✗ timeout}             {accent:●} retry, same event
-Handler   {ok:■■■■■■■■■■■■■■■■■■} 200 into the void
-Booked    0                 {ok:1}               {warn:2} twice
+{dim:timeout at 10 s, handler books at 12 s, retry books again}
+          {note:0 s}           {note:10 s}  {note:12 s}              {note:later}
+          {accent:├─────────────┼─────┼─────────────────┤}
+Provider  {accent:●─────────────}{warn:✗} timeout               {accent:●} retry
+Handler   {ok:■■■■■■■■■■■■■■■■■■■■■} 200, nobody waits
+Bookings  0                   {ok:1}                 {warn:2 twice}
 ```
 ````
 
@@ -361,7 +363,7 @@ To change the code, read [AGENTS.md](AGENTS.md) instead.
 - **What it is:** a Claude Code mod (function hooks in TypeScript) that redraws assistant replies, slash-command output, tool rows, the turn footer and user prompts. It changes how things look, and with `diagramHints` on (the default) it also asks Claude to lead explaining replies with a figure. The one thing it sends the model is the optional diagram hint below.
 - **Install:** `/plugin marketplace add NahumLitvin/prismantis`, then `/plugin install prismantis@prismantis`. Needs Claude Code 2.1.287+. Changes apply after `/reload`.
 - **Configure:** `/prismantis theme <name>` is the only setter at runtime. Every other option is a key under `pluginConfigs["prismantis@prismantis"].options` in `~/.claude/settings.json` (or a row in `/config`), then `/reload`. Options and defaults are in the [Configure](#configure) table; the machine-readable source is `userConfig` in [.claude-plugin/plugin.json](.claude-plugin/plugin.json). Color values that don't parse are ignored.
-- **Side effects:** no network. Programs it runs: the `⧉ html` clipboard helper (`/usr/bin/osascript` on macOS, `copyq` on Linux, 5 second timeout, only on a click), and `ratex-render` while `latex` is on. With `diagramHints` on, it adds about 870 tokens of model-only context to each typed prompt, measured with Claude's tokenizer.
+- **Side effects:** no network. Programs it runs: the `⧉ html` clipboard helper (`/usr/bin/osascript` on macOS, `copyq` on Linux, 5 second timeout, only on a click), and `ratex-render` while `latex` is on. With `diagramHints` on, it adds about 480 tokens of model-only context to each typed prompt, measured with Claude's tokenizer.
 - **Turning it off:** `"enabled": false`, or disable the plugin in `/plugin`.
 - **For other mods:** `$.prismantis.markdown({ surface, text, columns })`, typed in [types/index.d.ts](types/index.d.ts). See [Other mods](#other-mods).
 

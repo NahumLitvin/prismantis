@@ -44,10 +44,12 @@ xychart-beta
 ```
 
 ```figure
-{note:          0 s         10 s  12 s            later}
-Provider  {accent:●───────────}{warn:✗ timeout}             {accent:●} retry, same event
-Handler   {ok:■■■■■■■■■■■■■■■■■■} 200 into the void
-Booked    0                 {ok:1}               {warn:2} twice
+{dim:timeout at 10 s, handler books at 12 s, retry books again}
+          {note:0 s}           {note:10 s}  {note:12 s}              {note:later}
+          {accent:├─────────────┼─────┼─────────────────┤}
+Provider  {accent:●─────────────}{warn:✗} timeout               {accent:●} retry
+Handler   {ok:■■■■■■■■■■■■■■■■■■■■■} 200, nobody waits
+Bookings  0                   {ok:1}                 {warn:2 twice}
 ```
 
 ```ts
