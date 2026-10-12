@@ -47,6 +47,12 @@ test('a four-backtick fence keeps triple-backtick examples inside one code block
   expect(code.lines).toEqual(['```bash', 'ls', '```'])
 })
 
+test('a one-dash delimiter row makes a table', async () => {
+  const table = tableOf('| a | b |\n|-|-|\n| x | y |')
+  expect(table.header.length).toBe(2)
+  expect(table.rows.length).toBe(1)
+})
+
 test('an escaped trailing pipe stays in the cell', async () => {
   const [table] = parse('| a | b |\n|---|---|\n| x | y\\|', hl)
   if (table?.kind !== 'table') throw new Error('not a table')

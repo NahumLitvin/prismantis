@@ -33,7 +33,7 @@ const ALERT = /^\[!(note|tip|important|warning|caution)\]\s*(.*)$/i
 export type Highlight = { numbers: boolean; paths: boolean }
 
 const MAX_INLINE = 4000
-const TABLE_SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/
+const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/
 const FENCE = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/
 const NOTE_DEF = /^\[\^([^\]\s]+)\]:\s*(.*)$/
