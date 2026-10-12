@@ -23,7 +23,7 @@ const renderer = (on: On, exitCode = 0, hold?: Promise<void>, invalid = false) =
   })
   on('fs.read', (_, e) => {
     const run = runs.at(-1)!
-    expect(e.path).toBe(run.argv[run.argv.indexOf('--output') + 1])
+    expect(e.path.replace(/\\/g, '/').replace(/^[a-z]:/i, '')).toBe(run.argv[run.argv.indexOf('--output') + 1])
     const size = / width="(\d+)" height="(\d+)"/.exec(run.svg)!
     return { value: { base64: invalid ? btoa('invalid PNG') : PNGS[`${size[1]}x${size[2]}`]! } }
   })
