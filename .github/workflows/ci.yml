@@ -25,8 +25,10 @@ jobs:
     name: test (${{ matrix.os }}, claude ${{ matrix.claude }})
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code@${{ matrix.claude }}
@@ -36,25 +38,29 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code@2.1.294
       - name: Lay the mod API types
         run: claude --plugin-dir . -p hi || test -d .claude-plugin/types/claude-code
-      - run: npx --yes -p typescript@5 tsc -p .
+      - run: npx --yes -p typescript@5.9.3 tsc -p .
 
   vendor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: scripts/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         working-directory: scripts
       - name: Bundle matches its source and holds only MIT packages
         run: npm --prefix scripts run build:vendor && git diff --exit-code hooks/vendor
@@ -76,11 +82,13 @@ jobs:
         os: [ubuntu-26.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         working-directory: scripts
       - run: npm --prefix scripts run clipboard:check
       - name: Install Linux clipboard tools and isolated displays
@@ -109,7 +117,9 @@ jobs:
   conventions:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Versions agree
         run: |
           v=$(jq -r .version .claude-plugin/plugin.json)
@@ -125,8 +135,10 @@ jobs:
   install:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code@latest

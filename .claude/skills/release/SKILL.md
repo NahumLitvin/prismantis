@@ -17,5 +17,7 @@ description: Cut a prismantis release - version bump, changelog, verify, tag and
    CLAUDE_CONFIG_DIR=<scratch>/fresh claude plugin list
    ```
    Run it after pushing; the marketplace clones from GitHub.
-7. **Commit, tag, push:** `git tag vX.Y.Z && git push --follow-tags`. The `release` workflow checks the tag against `plugin.json` and publishes the GitHub release from the CHANGELOG section.
-8. **Confirm** CI and the release workflow are green.
+7. **Release PR:** `main` only takes merges through a PR with green checks, so open the release commit as a PR and merge it.
+8. **Tag main:** `git tag vX.Y.Z <merge commit> && git push origin vX.Y.Z`. The `release` workflow checks the tag against `plugin.json`, checks the tag is on `main`, and publishes the GitHub release from the CHANGELOG section.
+9. **Pin the release:** a second PR sets `ref` to `vX.Y.Z` and `sha` to the tagged commit in the `source` of `.claude-plugin/marketplace.json`. Until it merges, installs keep getting the previous release.
+10. **Confirm** CI and the release workflow are green, then run the fresh install test and check `claude plugin list` shows the new version.

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+
+- Installs and updates come from the release they name, not whatever is on `main`: the marketplace entry pins each release to its tag and commit. A merged change reaches nobody until a release is cut and pinned.
+
+### Fixed
+
+- A reply holding a terminal control character, such as a stray escape sequence, draws with prismantis again instead of falling back to Claude Code's own text. Control characters are dropped from what is drawn and never reach the terminal.
+
 ## [0.17.0] - 2026-10-12
 
 ### Changed

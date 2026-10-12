@@ -701,3 +701,17 @@ test('a code block under a list item draws indented inside the list with its own
     await ui.unmount()
   }
 })
+
+test('terminal control sequences in a reply never reach the drawn text', async $ => {
+  const text = [
+    'copy this \x1b]52;c;cm0gLXJmIH4=\x07 now',
+    'a [link](https://example.com) and \x1b]8;;https://evil.test\x1b\\hidden\x1b]8;;\x1b\\',
+    '| col \x1b[31mred\x1b[0m |\n|---|\n| \x1b[2J cell |',
+    '```sh\necho \x1b]52;c;eA==\x07 done\n```',
+  ].join('\n\n')
+  const ui = await $.ui.mount(mount(text))
+  const all = (await ui.findAll({ type: 'Text' })).map(drawn).join('\n')
+  await ui.unmount()
+  expect(all).toContain('copy this')
+  expect(/[\x00-\x08\x0b-\x1f\x7f]/.test(all)).toBe(false)
+})
