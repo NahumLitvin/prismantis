@@ -46,9 +46,9 @@ xychart-beta
 ```figure
 {dim:timeout at 10 s, handler books at 12 s, retry books again}
           {note:0 s}           {note:10 s}  {note:12 s}              {note:later}
-          {accent:├─────────────┼─────┼─────────────────┤}
-Provider  {accent:●─────────────}{warn:✗} timeout               {accent:●} retry
-Handler   {ok:■■■■■■■■■■■■■■■■■■■■■} 200, nobody waits
+          {accent:▏─────────────▏─────▏─────────────────▏}
+Provider  {accent:██████████████}{warn:✗} timeout               {accent:█} retry
+Handler   {ok:████████████████████} 200, nobody waits
 Bookings  0                   {ok:1}                 {warn:2 twice}
 ```
 

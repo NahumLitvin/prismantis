@@ -23,19 +23,10 @@ const LISTED_GLYPHS = 8
 
 export const FIGURE_GLYPHS = '─│┌┐└┘├┤┬┴┼═║→←►◄▲▼✓✗●○█▏■□·'
 
-const ROLE_USES: Record<FigureRole, string> = {
-  accent: 'lines',
-  warn: 'risk',
-  ok: 'healthy',
-  note: 'time',
-  dim: 'asides',
-  strong: 'emphasis',
-}
-
 export const FIGURE_HINT = [
   'A fenced block whose opening line is exactly ```figure is drawn as a text picture, as written.',
   'Prefer one over mermaid when position carries meaning: durations racing on a time axis, a screen layout, phases, before/after; mermaid stays for plain flows and charts; none for short answers, code changes or reports. The prose never retells the picture.',
-  `Color with {role:text}, not nested: ${FIGURE_ROLES.map(role => `${role} for ${ROLE_USES[role]}`).join(', ')}.`,
+  'Color with {role:text}, not nested: accent for lines, warn for risk, ok for healthy, note for time, dim for asides, strong for emphasis.',
   `At most ${FIGURE_SAFE_COLUMNS} columns, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji or tabs; markup takes no columns, so align on the drawn text. Draw a time axis with edge ticks like ▏───▏───▏, not ├┼┤: █ fills its cell, ├┼┤ sit mid-cell.`,
 ].join(' ')
 

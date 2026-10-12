@@ -720,25 +720,25 @@
         <Text color=#cdd6f4>
           "          "
         <Text color=#89b4fa>
-          "├─────────────┼─────┼─────────────────┤"
+          "▏─────────────▏─────▏─────────────────▏"
       <Text>
         <Text color=#cdd6f4>
           "Provider  "
         <Text color=#89b4fa>
-          "●─────────────"
+          "██████████████"
         <Text color=#f38ba8>
           "✗"
         <Text color=#cdd6f4>
           " timeout               "
         <Text color=#89b4fa>
-          "●"
+          "█"
         <Text color=#cdd6f4>
           " retry"
       <Text>
         <Text color=#cdd6f4>
           "Handler   "
         <Text color=#a6e3a1>
-          "■■■■■■■■■■■■■■■■■■■■■"
+          "████████████████████"
         <Text color=#cdd6f4>
           " 200, nobody waits"
       <Text>

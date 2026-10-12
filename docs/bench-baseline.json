@@ -8,7 +8,7 @@
   "table, 300 rows": 0.20618,
   "Hebrew, 300 paragraphs (cold)": 2.58845,
   "code block, 1500 lines, highlighted": 0.17482,
-  "stream replay, 138 redraws of a 13806-char reply (per redraw)": 0.23456,
+  "stream replay, 138 redraws of a 13800-char reply (per redraw)": 0.23456,
   "nodes: 500 highlighted ts lines": 19505,
   "nodes: 300 table rows": 10533,
   "nodes: 300 paragraphs": 6600,

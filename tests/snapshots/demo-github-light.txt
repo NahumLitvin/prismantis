@@ -718,25 +718,25 @@
         <Text color=#1f2328>
           "          "
         <Text color=#0969da>
-          "├─────────────┼─────┼─────────────────┤"
+          "▏─────────────▏─────▏─────────────────▏"
       <Text>
         <Text color=#1f2328>
           "Provider  "
         <Text color=#0969da>
-          "●─────────────"
+          "██████████████"
         <Text color=#cf222e>
           "✗"
         <Text color=#1f2328>
           " timeout               "
         <Text color=#0969da>
-          "●"
+          "█"
         <Text color=#1f2328>
           " retry"
       <Text>
         <Text color=#1f2328>
           "Handler   "
         <Text color=#116329>
-          "■■■■■■■■■■■■■■■■■■■■■"
+          "████████████████████"
         <Text color=#1f2328>
           " 200, nobody waits"
       <Text>
