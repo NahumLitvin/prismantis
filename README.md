@@ -17,9 +17,9 @@
   <a href="docs/CHANGELOG.md">Changelog</a>
 </p>
 
-![The same six prompts in plain Claude Code on the left and with prismantis on the right: a table, a bar chart, a flowchart, LaTeX math, a diff and an incident summary with a warning callout and a checklist](docs/compare.gif)
+![Plain Claude Code replies wiping into prismantis: a table, a bar chart and a mermaid flowchart](docs/tour.gif)
 
-<sub>Same prompt, same model, left plain Claude Code, right with prismantis. LaTeX needs RaTeX installed and `latex` on.</sub>
+<sub>Same prompt, same model: plain Claude Code, then with prismantis. <a href="docs/video/prismantis-tour.mp4">▶ Watch the full 44-second tour</a> (tables, charts, diagrams, diffs, callouts, right-to-left text).</sub>
 
 ## TL;DR
 
