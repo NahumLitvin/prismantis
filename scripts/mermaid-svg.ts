@@ -13,6 +13,7 @@ import { renderSequenceSvg } from './node_modules/beautiful-mermaid/src/sequence
 import { parseXYChart } from './node_modules/beautiful-mermaid/src/xychart/parser'
 import { layoutXYChart, setLayout as setChartLayout } from './node_modules/beautiful-mermaid/src/xychart/layout'
 import { renderXYChartSvg } from './node_modules/beautiful-mermaid/src/xychart/renderer'
+import { estimateTextWidth } from './node_modules/beautiful-mermaid/src/styles'
 import type { MermaidGraph, MermaidNode, MermaidEdge, PositionedGraph, PositionedGroup, Point, RenderOptions } from './node_modules/beautiful-mermaid/src/types'
 import type { AsciiSubgraph } from './node_modules/beautiful-mermaid/src/ascii/types'
 import type { XYChart } from './node_modules/beautiful-mermaid/src/xychart/types'
@@ -87,9 +88,10 @@ const chartLayout = (chart: XYChart) => {
   const labels = chart.xAxis.categories ?? Array.from({ length: Math.max(0, ...chart.series.map(s => s.data.length)) }, () => '000')
   const across = clamp(labels.length * (Math.max(0, ...labels.map(l => l.length)) + 2), 24, 60)
   const along = clamp(Math.round(across * 0.3), 8, 20)
+  const title = Math.min(600, estimateTextWidth(chart.title ?? '', 18, 600))
   return chart.horizontal
-    ? { plotWidth: 40 * 8, plotHeight: clamp(labels.length * 2, 8, 20) * 16, padding: 8, titleHeight: 30, xLabelHeight: 24 }
-    : { plotWidth: across * 8, plotHeight: along * 16, padding: 8, titleHeight: 30, xLabelHeight: 24 }
+    ? { plotWidth: Math.max(40 * 8, title), plotHeight: clamp(labels.length * 2, 8, 20) * 16, padding: 22, titleHeight: 42, xLabelHeight: 24 }
+    : { plotWidth: Math.max(across * 8, title), plotHeight: along * 16, padding: 8, titleHeight: 42, xLabelHeight: 24 }
 }
 
 const graph = (nodes: MermaidNode[], edges: MermaidEdge[]): MermaidGraph => ({ direction: 'TD', nodes: new Map(nodes.map(n => [n.id, n])), edges, subgraphs: [], classDefs: new Map(), classAssignments: new Map(), nodeStyles: new Map(), linkStyles: new Map() })
