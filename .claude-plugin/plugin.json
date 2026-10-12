@@ -295,7 +295,7 @@
     "latex": {
       "type": "boolean",
       "title": "LaTeX math",
-      "description": "Draw $$ and ```math formulas as typeset images in kitty and Ghostty (not under tmux) with RaTeX's renderer, installed as ratex-render on your PATH. Off runs nothing. Formulas that can't be drawn stay as text.",
+      "description": "Draw $$ and ```math formulas as typeset images in kitty, Ghostty and iTerm2 (not under tmux) with RaTeX's renderer, installed as ratex-render on your PATH. Off runs nothing. Formulas that can't be drawn stay as text.",
       "default": false
     }
   }

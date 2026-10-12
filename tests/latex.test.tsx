@@ -87,21 +87,31 @@ test('an unclosed $$ stays paragraph text', async () => {
   expect(blocks.map(b => b.kind)).toEqual(['paragraph'])
 })
 
-test('display math draws as an image that keeps the formula aspect', async ($, on) => {
-  mock.env(on, KITTY)
-  const clock = mock.clock(on)
-  const runs = ratex(on)
+for (const [terminal, env] of [['kitty', KITTY], ['Ghostty', { TERM_PROGRAM: 'ghostty' }], ['iTerm2', { TERM_PROGRAM: 'iTerm.app', TERM: 'xterm-256color' }]] as const) {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    test(`display math in ${terminal} uses images only on the terminal surface (${surface})`, async ($, on) => {
+      mock.env(on, env)
+      const clock = mock.clock(on)
+      const runs = ratex(on)
 
-  const ui = await $.ui.mount(reply(REPLY))
-  await clock.settle()
+      const ui = await $.ui.mount({ ...reply(REPLY), surface })
+      await clock.settle()
 
-  const image = await ui.find({ type: 'Image' })
-  expect(image?.props.alt).toBe('\\int_0^1 x^2\\,dx')
-  const { columns, rows } = sizeOf(image)
-  expect(columns / rows).toBe(4)
-  expect(runs.at(-1)?.formulas).toEqual(['\\int_0^1 x^2\\,dx'])
-  await ui.unmount()
-})
+      const image = await ui.find({ type: 'Image' })
+      if (surface === 'terminal') {
+        expect(image?.props.alt).toBe('\\int_0^1 x^2\\,dx')
+        const { columns, rows } = sizeOf(image)
+        expect(columns / rows).toBe(4)
+        expect(runs.at(-1)?.formulas).toEqual(['\\int_0^1 x^2\\,dx'])
+      } else {
+        expect(image).toBeUndefined()
+        expect(runs).toHaveLength(0)
+        expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
+      }
+      await ui.unmount()
+    })
+  }
+}
 
 test('a math fence draws as an image too', async ($, on) => {
   mock.env(on, KITTY)
@@ -257,20 +267,22 @@ test('a reply draws its formula as text at once and as an image when the rendere
   await ui.unmount()
 })
 
-base('latex is off by default and never runs the renderer', async ($, on) => {
-  mock.env(on, KITTY)
-  const clock = mock.clock(on)
-  const runs = ratex(on)
+for (const [terminal, env] of [['kitty', KITTY], ['iTerm2', { TERM_PROGRAM: 'iTerm.app' }]] as const) {
+  base(`latex is off by default in ${terminal} and never runs the renderer`, async ($, on) => {
+    mock.env(on, env)
+    const clock = mock.clock(on)
+    const runs = ratex(on)
 
-  const ui = await $.ui.mount(reply(REPLY))
-  await clock.settle()
+    const ui = await $.ui.mount(reply(REPLY))
+    await clock.settle()
 
-  expect(runs.length).toBe(0)
-  expect(await ui.find({ type: 'Image' })).toBeUndefined()
-  await ui.unmount()
-})
+    expect(runs.length).toBe(0)
+    expect(await ui.find({ type: 'Image' })).toBeUndefined()
+    await ui.unmount()
+  })
+}
 
-for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM: 'Apple_Terminal' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0' }]] as const) {
+for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM: 'Apple_Terminal' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0' }], ['iTerm2 under tmux', { TERM_PROGRAM: 'iTerm.app', TMUX: '/tmp/tmux-501/default,1,0' }]] as const) {
   test(`latex skips the renderer in ${name}`, async ($, on) => {
     mock.env(on, env)
     const clock = mock.clock(on)

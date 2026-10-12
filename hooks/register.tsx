@@ -91,7 +91,7 @@ type Typeset = Exclude<Formula, { error: true }> & { tex: string }
 const showsImages = async ($: EngineInterface): Promise<boolean> => {
   if (await $.env.get('TMUX')) return false
   const terminal = await detectTerminal($)
-  return terminal === 'kitty' || terminal === 'ghostty'
+  return terminal === 'kitty' || terminal === 'ghostty' || terminal === 'iterm'
 }
 
 type Latex = { command: string; dir: string }
