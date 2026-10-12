@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Display math that cannot draw as an image (Warp, iTerm2, any terminal without kitty graphics, latex off, or a formula the renderer rejects) now reads as Unicode instead of TeX source: `\frac{T}{R}\left(1 + \ln\frac{R}{T}\right)` draws as `(T/R)·(1 + ln(R/T))`, with sub- and superscripts, Greek, `\mathbb`/`\mathcal` letters and common operators. A formula with a command it does not know keeps its TeX block. Inline math uses the same conversion.
+
 ## [0.16.0] - 2026-10-11
 
 ### Added

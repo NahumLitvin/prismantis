@@ -2,7 +2,7 @@ import type { On } from 'claude-code'
 import { expect, mock, test as base } from 'claude-code/testing'
 
 import { keepFormulas, padFor } from '../hooks/latex'
-import { parse } from '../hooks/markdown'
+import { parse, texText } from '../hooks/markdown'
 
 const PNG_160x80 = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABQAQAAAAC2JkOZAAAAFklEQVR42mNgGAWjYBSMglEwCgYeAAAGkAAB8Q2GVgAAAABJRU5ErkJggg=='
 const PNG_800x400 = 'iVBORw0KGgoAAAANSUhEUgAAAyAAAAGQAQAAAAB+XjmZAAAAPklEQVR42u3BMQEAAADCoPVPbQ0PoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4NndAAAYtfwy0AAAAASUVORK5CYII='
@@ -140,7 +140,7 @@ test('without the renderer installed, math stays text and no LaTeX hint is sent'
   await $.prompt.submit({ text: 'integrate x squared', wait: false, origin: { kind: 'composer' } })
 
   expect(await ui.find({ type: 'Image' })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
   expect(seen[0]?.some(c => c.includes('prismantis'))).toBe(true)
   expect(seen[0]?.some(c => c.includes('$$'))).toBe(false)
   await ui.unmount()
@@ -201,7 +201,7 @@ test('after the renderer fails once, later formulas stay text and it is not run 
 
   expect(afterFailure).toBe(2)
   expect(await first.find({ type: 'Image' })).toBeUndefined()
-  expect(await first.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  expect(await first.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
   expect(runs).toBe(afterFailure)
   expect(await second.find({ type: 'Image' })).toBeUndefined()
   await first.unmount()
@@ -249,11 +249,11 @@ test('a reply draws its formula as text at once and as an image when the rendere
   const ui = await $.ui.mount(reply(REPLY))
 
   expect(await ui.find({ type: 'Image' })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
   release()
   await clock.settle()
   expect(await ui.find({ type: 'Image' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeUndefined()
   await ui.unmount()
 })
 
@@ -468,7 +468,7 @@ test('a formula that cannot fit the terminal falls back to its text', async ($, 
   await clock.settle()
 
   expect(await ui.find({ type: 'Image' })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /^\\int_0\^1 x\^2\\,dx$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -582,4 +582,21 @@ test('replies drawn together, as on resume, typeset their formulas in one render
   expect(runs.map(r => r.formulas)).toEqual([['x^2'], ['a^2', 'b^2', 'c^2']])
   expect(await Promise.all(uis.map(async ui => (await ui.findAll({ type: 'Image' })).length))).toEqual([1, 1, 1])
   await Promise.all(uis.map(ui => ui.unmount()))
+})
+
+test('display math without an image reads as Unicode, and keeps TeX it cannot convert', () => {
+  expect(texText(String.raw`\frac{T}{R}\left(1 + \ln\frac{R}{T}\right) \approx \frac{1}{120{,}000}`)).toBe('(T/R)·(1 + ln(R/T)) ≈ 1/120,000')
+  expect(texText(String.raw`\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}`)).toBe('∫₀^∞ e⁻ˣ² dx = √π/2')
+  expect(texText(String.raw`g \sim \mathcal{U}[0, M), \mathbb{E}_M`)).toBe('g ∼ 𝒰[0, M), 𝔼_M')
+  expect(texText(String.raw`x_{i+1} = \frac{a+b}{c}`)).toBe('xᵢ₊₁ = (a+b)/c')
+  expect(texText(String.raw`\badcommand{x}`)).toContain('\\badcommand')
+})
+
+test('in Warp a formula draws as Unicode text, not as its TeX source', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'WarpTerminal' })
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  const ui = await $.ui.mount(reply(REPLY))
+  expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /\\int/ })).toBeUndefined()
+  await ui.unmount()
 })

@@ -108,18 +108,94 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
 }
 
 const TEX: Record<string, string> = {
-  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ', epsilon: 'ε', theta: 'θ', lambda: 'λ', mu: 'μ', pi: 'π', rho: 'ρ', sigma: 'σ', Sigma: 'Σ', tau: 'τ', phi: 'φ', omega: 'ω', Omega: 'Ω',
-  cdot: '·', times: '×', div: '÷', pm: '±', le: '≤', leq: '≤', ge: '≥', geq: '≥', neq: '≠', ne: '≠', approx: '≈', infty: '∞', to: '→', rightarrow: '→', Rightarrow: '⇒', sum: 'Σ', sqrt: '√', lceil: '⌈', rceil: '⌉', lfloor: '⌊', rfloor: '⌋',
+  alpha: 'α', beta: 'β', gamma: 'γ', Gamma: 'Γ', delta: 'δ', Delta: 'Δ', epsilon: 'ε', varepsilon: 'ε', zeta: 'ζ', eta: 'η', theta: 'θ', Theta: 'Θ', iota: 'ι', kappa: 'κ', lambda: 'λ', Lambda: 'Λ', mu: 'μ', nu: 'ν', xi: 'ξ', Xi: 'Ξ', pi: 'π', Pi: 'Π', rho: 'ρ', sigma: 'σ', Sigma: 'Σ', tau: 'τ', upsilon: 'υ', phi: 'φ', varphi: 'φ', Phi: 'Φ', chi: 'χ', psi: 'ψ', Psi: 'Ψ', omega: 'ω', Omega: 'Ω',
+  cdot: '·', times: '×', div: '÷', pm: '±', mp: '∓', le: '≤', leq: '≤', ge: '≥', geq: '≥', neq: '≠', ne: '≠', approx: '≈', sim: '∼', equiv: '≡', propto: '∝', infty: '∞', to: '→', rightarrow: '→', leftarrow: '←', Rightarrow: '⇒', iff: '⇔', mapsto: '↦',
+  sum: 'Σ', prod: '∏', int: '∫', iint: '∬', oint: '∮', partial: '∂', nabla: '∇', in: '∈', notin: '∉', subset: '⊂', subseteq: '⊆', cup: '∪', cap: '∩', forall: '∀', exists: '∃', neg: '¬', land: '∧', lor: '∨', emptyset: '∅',
+  ldots: '…', cdots: '⋯', dots: '…', ell: 'ℓ', hbar: 'ℏ', lceil: '⌈', rceil: '⌉', lfloor: '⌊', rfloor: '⌋', langle: '⟨', rangle: '⟩', mid: '∣', quad: ' ', qquad: '  ',
+}
+const FUNCTIONS = new Set(['ln', 'log', 'exp', 'min', 'max', 'sin', 'cos', 'tan', 'lim', 'det', 'sup', 'inf', 'arg', 'deg', 'gcd', 'Pr'])
+const PLAIN = new Set(['text', 'mathrm', 'mathit', 'mathbf', 'textbf', 'texttt', 'mathsf', 'operatorname', 'boldsymbol'])
+const SPACES: Record<string, string> = { ',': ' ', ';': ' ', ':': ' ', ' ': ' ', '!': '', '\\': ' ', '{': '{', '}': '}', '%': '%', '$': '$', '&': '&', '#': '#', '_': '_' }
+const scriptMap = (from: string, to: string) => new Map(Array.from(from).map((c, i) => [c, Array.from(to)[i]!]))
+const SUP = scriptMap('0123456789+-−=()niabcdefghjklmoprstuvwxyzABDEGHIJKLMNOPRTUVW', '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁿⁱᵃᵇᶜᵈᵉᶠᵍʰʲᵏˡᵐᵒᵖʳˢᵗᵘᵛʷˣʸᶻᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁⱽᵂ')
+const SUB = scriptMap('0123456789+-−=()aehijklmnoprstuvx', '₀₁₂₃₄₅₆₇₈₉₊₋₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ')
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const FONTS: Record<string, string> = { mathbb: '𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ', mathcal: '𝒜ℬ𝒞𝒟ℰℱ𝒢ℋℐ𝒥𝒦ℒℳ𝒩𝒪𝒫𝒬ℛ𝒮𝒯𝒰𝒱𝒲𝒳𝒴𝒵' }
+const FN = '\u0000'
+
+const script = (text: string, map: Map<string, string>, mark: string) => {
+  const chars = Array.from(text)
+  const values = new Set(map.values())
+  if (chars.length > 0 && chars.every(c => map.has(c) || values.has(c))) return chars.map(c => map.get(c) ?? c).join('')
+  return mark + (chars.length === 1 ? text : `(${text})`)
+}
+const atomic = (text: string) => /^√?[\p{L}\p{N}.,]+$/u.test(text) || Array.from(text).length === 1
+
+const texUnicode = (tex: string): string => {
+  let i = 0
+  const name = () => {
+    const m = /^[A-Za-z]+/.exec(tex.slice(i))
+    if (m) return (i += m[0].length, m[0])
+    return tex[i++] ?? ''
+  }
+  const arg = (): string => {
+    while (tex[i] === ' ') i++
+    if (tex[i] === '{') {
+      let depth = 0
+      const start = ++i
+      for (; i < tex.length; i++) {
+        if (tex[i] === '\\') i++
+        else if (tex[i] === '{') depth++
+        else if (tex[i] === '}' && depth-- === 0) break
+      }
+      return tex.slice(start, i++)
+    }
+    if (tex[i] === '\\') return (i++, `\\${name()}`)
+    return tex[i++] ?? ''
+  }
+  const out: string[] = []
+  const prev = () => out.join('').slice(-1)
+  while (i < tex.length) {
+    const c = tex[i++]!
+    if (c === '\\') {
+      const cmd = name()
+      if (cmd in SPACES) out.push(SPACES[cmd]!)
+      else if (cmd === 'frac' || cmd === 'dfrac' || cmd === 'tfrac') {
+        const top = texUnicode(arg())
+        const bottom = texUnicode(arg())
+        const frac = `${atomic(top) ? top : `(${top})`}/${atomic(bottom) ? bottom : `(${bottom})`}`
+        const loose = /^$|[\s(=,[]$/.test(prev()) && /^(\s|$|\\right|[)\],])/.test(tex.slice(i))
+        out.push(loose ? frac : `(${frac})`)
+      } else if (cmd === 'sqrt') {
+        const inner = texUnicode(arg())
+        out.push(`√${atomic(inner) ? inner : `(${inner})`}`)
+      } else if (PLAIN.has(cmd)) out.push(cmd === 'text' ? arg() : texUnicode(arg()))
+      else if (cmd in FONTS) out.push(Array.from(arg()).map(l => (LETTERS.includes(l) ? Array.from(FONTS[cmd]!)[LETTERS.indexOf(l)]! : l)).join(''))
+      else if (cmd === 'left' || cmd === 'right' || cmd === 'big' || cmd === 'Big' || cmd === 'bigg') {
+        const d = tex[i] === '\\' ? (i++, name()) : tex[i++] ?? ''
+        out.push(d === '.' ? '' : d === '{' || d === '}' ? d : TEX[d] ?? d)
+      } else if (FUNCTIONS.has(cmd)) out.push(cmd + FN)
+      else out.push(TEX[cmd] ?? `\\${cmd}`)
+    } else if (c === '^' || c === '_') out.push(script(texUnicode(arg()), c === '^' ? SUP : SUB, c))
+    else if (c === '{') {
+      i--
+      out.push(texUnicode(arg()))
+    } else if (c === '}' ) continue
+    else if (c === '~' || c === '&') out.push(' ')
+    else out.push(c)
+  }
+  return out.join('')
 }
 
 const isTex = (tex: string) => /[\\^_={}]/.test(tex) || /^[A-Za-z]$/.test(tex)
 
-const texText = (tex: string) =>
-  tex
-    .replace(/\\(?:text|mathrm|mathit|operatorname)\{([^{}]*)\}/g, '$1')
-    .replace(/\\([A-Za-z]+)/g, (all, name: string) => TEX[name] ?? all)
-    .replace(/\\[,;:! ]/g, ' ')
-    .replace(/[{}]/g, '')
+export const texText = (tex: string): string =>
+  texUnicode(tex)
+    .replace(new RegExp(`${FN}(?=[\\p{L}\\p{N}])`, 'gu'), ' ')
+    .replaceAll(FN, '')
+    .replace(/\)\(/g, ')·(')
+    .replace(/ {2,}/g, ' ')
+    .trim()
 
 export const inlineText = (inline: Inline[]): string =>
   inline.map(n => ('children' in n ? inlineText(n.children) : n.text)).join('')
