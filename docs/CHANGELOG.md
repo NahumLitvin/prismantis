@@ -11,7 +11,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
-- With `diagramHints` on (the default), the model-only note is now about 630 tokens per prompt you type: about 275 for the main part and about 360 for the new figure part, plus about 80 for the LaTeX part while it runs. All three are counted with Claude's tokenizer; 0.16.0 documented 190 and 60 from a rougher count. Turn `diagramHints` off to drop the whole note.
+- With `diagramHints` on (the default), the model-only note is now about 630 tokens per prompt you type or another plugin sends: about 275 for the main part and about 360 for the new figure part, plus about 80 for the LaTeX part while it runs. All three are counted with Claude's tokenizer; 0.16.0 documented 190 and 60 from a rougher count. Turn `diagramHints` off to drop the whole note.
+- The `diagramHints` note also goes with prompts another plugin sends (`$.prompt.submit`, framed or `asUser`), so replies in a session a plugin drives get the same tables, diagrams and figures as typed prompts. Notifications, scheduled tasks and the prompt a headless `claude -p` run starts with still get none; a plugin's prompt inside such a run gets it. A plugin whose prompts must not carry the note works with `diagramHints` off.
 
 ## [0.17.0] - 2026-10-12
 

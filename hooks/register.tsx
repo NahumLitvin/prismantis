@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, RenderElement, RenderSurface } from 'claude-code'
+import type { EngineInterface, PromptOrigin, Register, RenderElement, RenderSurface } from 'claude-code'
 
 import { clockText, endedAt, promptKey, sentAt, withRecord } from './clock'
 import type { Formula } from './latex'
@@ -27,6 +27,10 @@ const HINT = [
   'Skip diagrams and pictures for short or simple answers.',
   'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
 ].join(' ')
+
+const HINTED_ORIGINS = ['composer', 'bridge', 'plugin'] as const satisfies readonly PromptOrigin['kind'][]
+
+const takesHint = (origin: PromptOrigin): boolean => HINTED_ORIGINS.some(kind => kind === origin.kind)
 
 const LATEX_HINT = 'This terminal typesets LaTeX math: a formula in $$…$$ on lines of its own, or in a ```math block, renders as an image (KaTeX syntax). Inline $…$ does not render, so write inline math as plain text or Unicode.'
 
@@ -395,7 +399,7 @@ export const register: Register = (on, options) => {
       await update($, sent, list => withRecord(list, { text: promptKey(e.text), at }))
     }
     terminal = await probe($, style, probes)
-    if (!style.diagramHints || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
+    if (!style.diagramHints || !takesHint(e.origin)) return next(e)
     void latexEngine($, latex)
     const hints = [HINT, FIGURE_HINT, ...(latex.ready && !latex.stopped ? [LATEX_HINT] : [])]
     return next({ ...e, context: [...(e.context ?? []), ...hints] })
