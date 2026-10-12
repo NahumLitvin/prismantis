@@ -230,6 +230,30 @@ for (const source of ['flowchart LR\n A[checkout] --> B[install]\n B --> C[lint]
   })
 }
 
+const PALETTE = { link: '#111111', number: '#222222', heading: '#333333', emphasis: '#444444', quote: '#555555', diagram: '#999999', diagramText: '#eeeeee' }
+const group = (svg: string, label: string) => new RegExp(`<g class="(?:node|actor)"[^>]*data-label="${label}"[\\s\\S]*?</g>`).exec(svg)?.[0] ?? ''
+
+for (const source of ['flowchart LR\n A[one] --> B[two]\n B --> C[one]', 'sequenceDiagram\n participant A as one\n participant B as two\n A->>B: hi']) {
+  test(`${source.split('\n')[0]} images give each label its own theme color in reading order`, () => {
+    const svg = diagramSvg(source, PALETTE)!
+    for (const [label, hue] of [['one', '#111111'], ['two', '#222222']] as const) {
+      expect(group(svg, label)).toContain(`stroke="${hue}"`)
+      expect(group(svg, label)).toMatch(new RegExp(`<text[^>]*fill="${hue}"`))
+    }
+    expect(svg).toContain('stroke="#999999"')
+  })
+}
+
+test('a single bar series highlights its tallest bar and colors the axis numbers', () => {
+  const svg = diagramSvg('xychart-beta\n x-axis [a, b, c]\n bar [1, 3, 2]', PALETTE)!
+  expect(svg).toMatch(/data-value="3" style="fill:#444444;stroke:#444444"/)
+  expect(svg).toMatch(/data-value="1" style="fill:#555555;stroke:#555555"/)
+  expect(svg).toMatch(/style="fill:#222222">3<\/text>/)
+  const series = diagramSvg('xychart-beta\n x-axis [a, b]\n bar [1, 3]\n bar [2, 2]', PALETTE)!
+  expect(series).not.toContain('style="fill:#444444')
+  expect(series).toContain('.xychart-bar.xychart-color-1 { stroke: #222222')
+})
+
 test('SVG rejects external paint references and keys theme colors separately', () => {
   expect(diagramSvg('graph TD\nA --> B\nstyle A fill:url(file:///tmp/private.svg)', {})).toBeNull()
   const first = diagramSvg(SOURCE, { diagramText: '#112233' })

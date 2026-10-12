@@ -102,12 +102,14 @@ const draw = (source: string, ascii: boolean, columns: number): string | null =>
 const LINE = /[─-╿◇]/
 const ARROW = /[►◄▲▼]/
 
+export const boxPalette = (t: Theme) => [...new Set([t.link, t.number, t.heading, t.emphasis, t.path, t.codeFlag, t.accent])].filter((c): c is string => c !== undefined)
+
 const paint = (art: string, style: Style): (string | undefined)[][] => {
   const t = style.theme
   const grid = art.split('\n').map(cells)
   const cell = (r: number, c: number) => grid[r]?.[c] ?? ''
   const color: (string | undefined)[][] = grid.map(row => row.map(() => undefined))
-  const palette = [...new Set([t.link, t.number, t.heading, t.emphasis, t.path, t.codeFlag, t.accent])].filter((c): c is string => c !== undefined)
+  const palette = boxPalette(t)
   const next = (i: number) => palette[i % palette.length]
   const labels = new Map<string, string | undefined>()
 

@@ -115,6 +115,7 @@ Set `mermaidImages` to `false` in `/config` to keep colored text diagrams.
 The `mermaid` option still turns all diagram rendering off; `mermaidAscii` applies to text diagrams.
 
 Images use the current theme and fit the terminal width, up to 48 rows tall.
+They take their colors from the text diagram's palette: one color per box label and participant, the tallest bar highlighted in a single-series chart, and axis numbers in the number color.
 Flowcharts and state diagrams are laid out on the text diagram's grid, one grid cell per terminal cell, so an image takes about as many rows as its text version; decisions (`{...}`) draw as hexagons to fit that row height.
 While a diagram is streaming or its image is being prepared, it draws as text.
 Unsupported terminals, tmux, missing renderers and conversion failures keep the text fallback.
