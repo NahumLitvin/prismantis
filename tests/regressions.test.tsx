@@ -713,5 +713,7 @@ test('terminal control sequences in a reply never reach the drawn text', async $
   const all = (await ui.findAll({ type: 'Text' })).map(drawn).join('\n')
   await ui.unmount()
   expect(all).toContain('copy this')
+  expect(all).toContain('hidden')
+  expect(all).not.toMatch(/evil\.test|\]52;|\]8;;|\[2J|\[31m/)
   expect(/[\x00-\x08\x0b-\x1f\x7f]/.test(all)).toBe(false)
 })
