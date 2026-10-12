@@ -169,10 +169,11 @@ test('the figure hint names the opening line, every role, the width and one-colu
 test('the figure hint says when to draw one and when not', () => {
   expect(FIGURE_HINT).toContain('position carries meaning')
   expect(FIGURE_HINT).toContain('none for short answers, code changes or reports')
+  expect(FIGURE_HINT).toContain('build the reply around them')
 })
 
-test('the figure hint stays under 750 characters', () => {
-  expect(FIGURE_HINT.length).toBeLessThanOrEqual(750)
+test('the figure hint stays under 950 characters', () => {
+  expect(FIGURE_HINT.length).toBeLessThanOrEqual(950)
 })
 
 test('every glyph the figure hint offers passes the checker', () => {
