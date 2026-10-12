@@ -19,7 +19,7 @@
 
 ![Plain Claude Code replies wiping into prismantis: a table, a bar chart and a mermaid flowchart](docs/tour.gif)
 
-<sub>Same prompt, same model: plain Claude Code, then with prismantis. <a href="docs/video/prismantis-tour.mp4">▶ Watch the full 44-second tour</a> (tables, charts, diagrams, diffs, callouts, right-to-left text).</sub>
+<sub>Same prompt, same model: plain Claude Code, then with prismantis. <a href="https://github.com/user-attachments/assets/7f4744fc-ca52-4ea3-adb3-43467190dc62">▶ Watch the full 44-second tour</a> (tables, charts, diagrams, diffs, callouts, right-to-left text).</sub>
 
 ## TL;DR
 
