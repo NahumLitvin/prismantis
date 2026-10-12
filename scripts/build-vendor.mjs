@@ -27,6 +27,8 @@ const DRAW = /beautiful-mermaid\/src\/ascii\/draw\.ts$/
 const DRAW_ANCHOR = '  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...labelCanvases)'
 const DRAW_IMPORT = 'import { mkCanvas, copyCanvas,'
 
+const SIZED_LAYOUTS = [[/beautiful-mermaid\/src\/xychart\/layout\.ts$/, 'XY'], [/beautiful-mermaid\/src\/sequence\/layout\.ts$/, 'SEQ']]
+
 const PRISM_LANGUAGES = ['clike', 'markup', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'python', 'go', 'rust', 'java', 'kotlin', 'swift', 'c', 'cpp', 'csharp', 'ruby', 'json', 'yaml', 'toml', 'sql', 'diff', 'docker', 'hcl']
 
 track(await build({
@@ -117,6 +119,13 @@ track(await build({
   plugins: [{
     name: 'svg-class-constants',
     setup(api) {
+      for (const [filter, sizes] of SIZED_LAYOUTS) {
+        api.onLoad({ filter }, args => {
+          const src = readFileSync(args.path, 'utf8')
+          if (!src.includes(`const ${sizes} = {`)) throw new Error(`${args.path} no longer keeps its sizes in ${sizes}`)
+          return { contents: `${src}\nexport const setLayout = (values: Partial<Record<keyof typeof ${sizes}, number>>) => { Object.assign(${sizes}, values) }\n`, loader: 'ts' }
+        })
+      }
       api.onLoad({ filter: /beautiful-mermaid\/src\/class\/layout\.ts$/ }, args => {
         const source = readFileSync(args.path, 'utf8')
         const constants = source.match(/export const CLS = \{[\s\S]*?\} as const/)

@@ -138,7 +138,7 @@ Latency fell to 120ms[^lat] after the cache change[^cache].
 
 #### Diagrams
 
-\`mermaidImages\` draws diagrams as images in kitty, Ghostty and iTerm2 when \`rsvg-convert\` is installed. Set it to \`false\` for colored text diagrams.
+\`mermaidImages\` draws diagrams as images in kitty, Ghostty and iTerm2 3.7.3+ when \`rsvg-convert\` is installed. Set it to \`false\` for colored text diagrams.
 
 \`\`\`mermaid
 flowchart LR

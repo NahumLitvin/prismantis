@@ -23,7 +23,7 @@
 
 ## TL;DR
 
-- Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, typeset LaTeX math in kitty, Ghostty and iTerm2, colored tables and code, and quiet tool rows.
+- Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, typeset LaTeX math in kitty and Ghostty, colored tables and code, and quiet tool rows.
 - 15 palettes plus `mono`, and copy buttons on everything.
 - Two commands to install, `/plugin` to turn it off. Claude Code's own renderer comes back the moment you do.
 - No network calls. It runs a program only when you click `⧉ html` (the clipboard helper), turn on LaTeX (RaTeX's renderer), or draw Mermaid images (`rsvg-convert`).
@@ -65,7 +65,7 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 | [Code](#code) | a language header and copy button, Prism highlighting in two dozen languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
 | [Figures](#figures) | ` ```figure ` text pictures drawn as written in the theme's colors, for timelines, layouts and before and after; glyphs and markup checked before they are drawn |
-| [LaTeX math](#latex-math) | `$$` and ` ```math ` formulas typeset as images in kitty, Ghostty and iTerm2 by [RaTeX](https://github.com/erweixin/RaTeX), text everywhere else |
+| [LaTeX math](#latex-math) | `$$` and ` ```math ` formulas typeset as images in kitty and Ghostty by [RaTeX](https://github.com/erweixin/RaTeX), text everywhere else |
 | [Layout](#layout) | back-to-back tables and diagrams sit side by side and wrap on narrow terminals |
 | [Copy buttons](#copy-buttons) | `⧉ md`, `⧉ art` and `⧉ html` on tables, `[ ⧉ copy ]` on code, lists and quotes, `/prismantis copy` without a mouse |
 | [Tool rows](#tool-rows) | `Ran gh pr view 12`, `Read ~/src/app.ts`, groups summed up as `Ran 3 commands, read 2 files`, with status dots; `toolOutput: quiet` hides what Claude only read and says in plain words what each call did |
@@ -109,14 +109,20 @@ Each code block gets a header row: the language on the left, a copy button on th
 
 ### Diagrams and charts
 
-With `mermaidImages: true` (the default), diagrams draw as images in kitty, Ghostty and iTerm2, outside tmux, when `rsvg-convert` is on your `PATH`.
+With `mermaidImages: true` (the default), diagrams draw as images in kitty, Ghostty and iTerm2 3.7.3 or newer, outside tmux, when `rsvg-convert` is on your `PATH`.
 Install it with `brew install librsvg` on macOS or `sudo apt install librsvg2-bin` on Debian/Ubuntu, then `/reload`.
 Set `mermaidImages` to `false` in `/config` to keep colored text diagrams.
 The `mermaid` option still turns all diagram rendering off; `mermaidAscii` applies to text diagrams.
 
 Images use the current theme and fit the terminal width, up to 48 rows tall.
+Flowcharts and state diagrams are laid out on the text diagram's grid, one grid cell per terminal cell, so an image takes about as many rows as its text version; decisions (`{...}`) draw as hexagons to fit that row height.
 While a diagram is streaming or its image is being prepared, it draws as text.
 Unsupported terminals, tmux, missing renderers and conversion failures keep the text fallback.
+Claude Code decides which terminals show images, and version 2.1.296 turns them on for kitty 0.28 or newer and Ghostty.
+In iTerm2, start Claude Code with `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1` to turn them on.
+iTerm2 before 3.7.3 leaves those images blank, so prismantis draws text there.
+prismantis reads the version from `TERM_PROGRAM_VERSION`, which keeps the old value in a shell started before an iTerm2 update; open a new tab after updating.
+Where Claude Code shows an image's alt text, prismantis detects it on the first diagram or formula and draws text for the rest of the session; that first one shows its source until the switch.
 A missing or timed-out renderer disables further image attempts until `/reload`.
 The copy button copies the Mermaid source; selecting image cells does not copy its labels.
 
@@ -184,7 +190,9 @@ install ratex-cli-*/render ~/.local/bin/ratex-render
 
 Pick the archive for your platform (`x86_64-apple-darwin`, `x86_64-unknown-linux-musl`, ...). Any directory on your `PATH` works, but the file must be named `ratex-render`.
 
-LaTeX is off until you set `latex` to `true`. Then prismantis runs `ratex-render` once in kitty, Ghostty and iTerm2, outside tmux, and keeps LaTeX on only if that test formula comes back. If a later run fails, formulas already drawn stay and new ones stay text until you `/reload`. A reply shown before the test finishes draws its formulas as text, then redraws them as images. Anywhere else, without the renderer, or with `latex` off, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` draws as italic text without its dollar signs, with common commands such as `\rho`, `\cdot` and `\le` shown as symbols; amounts like `$5` stay as written.
+LaTeX is off until you set `latex` to `true`. Then prismantis runs `ratex-render` once in kitty, Ghostty and iTerm2 3.7.3 or newer, outside tmux, and keeps LaTeX on only if that test formula comes back. If a later run fails, formulas already drawn stay and new ones stay text until you `/reload`. A reply shown before the test finishes draws its formulas as text, then redraws them as images. Anywhere else, without the renderer, or with `latex` off, formulas draw as text in a `math` code block. So does a formula the renderer rejects, or one too wide for the terminal even at one row. While LaTeX is on, the [diagram hints](#diagram-hints) note also tells Claude that `$$` math renders. Inline `$…$` draws as italic text without its dollar signs, with common commands such as `\rho`, `\cdot` and `\le` shown as symbols; amounts like `$5` stay as written.
+
+iTerm2 draws formulas as images only when Claude Code runs with `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1`; [Diagrams and charts](#diagrams-and-charts) describes the version check and the text fallback.
 
 Formula text matches the reply text. A terminal image fills whole rows, so a formula that falls between two row counts is rendered again with more padding rather than stretched.
 

@@ -8,25 +8,29 @@ import { renderClassSvg } from './node_modules/beautiful-mermaid/src/class/rende
 import { parseErDiagram } from './node_modules/beautiful-mermaid/src/er/parser'
 import { renderErSvg } from './node_modules/beautiful-mermaid/src/er/renderer'
 import { parseSequenceDiagram } from './node_modules/beautiful-mermaid/src/sequence/parser'
-import { layoutSequenceDiagram } from './node_modules/beautiful-mermaid/src/sequence/layout'
+import { layoutSequenceDiagram, setLayout as setSequenceLayout } from './node_modules/beautiful-mermaid/src/sequence/layout'
 import { renderSequenceSvg } from './node_modules/beautiful-mermaid/src/sequence/renderer'
 import { parseXYChart } from './node_modules/beautiful-mermaid/src/xychart/parser'
-import { layoutXYChart } from './node_modules/beautiful-mermaid/src/xychart/layout'
+import { layoutXYChart, setLayout as setChartLayout } from './node_modules/beautiful-mermaid/src/xychart/layout'
 import { renderXYChartSvg } from './node_modules/beautiful-mermaid/src/xychart/renderer'
 import type { MermaidGraph, MermaidNode, MermaidEdge, PositionedGraph, PositionedGroup, Point, RenderOptions } from './node_modules/beautiful-mermaid/src/types'
 import type { AsciiSubgraph } from './node_modules/beautiful-mermaid/src/ascii/types'
+import type { XYChart } from './node_modules/beautiful-mermaid/src/xychart/types'
 
-const X = 10
-const PAD = 16
+type Cell = { X: number; Y: number; PAD: number; paddingX: number; paddingY: number; sidewaysPaddingY: number; boxBorderPadding: number }
 
-const layout = (source: MermaidGraph, Y = 20): PositionedGraph => {
-  const grid = convertToAsciiGraph(source, { useAscii: false, paddingX: 5, paddingY: Y === 10 ? 5 : 3, boxBorderPadding: 1, graphDirection: /LR|RL/.test(source.direction) ? 'LR' : 'TD' })
+const FLOW: Cell = { X: 8, Y: 16, PAD: 8, paddingX: 3, paddingY: 2, sidewaysPaddingY: 1, boxBorderPadding: 0 }
+const TABLES: Cell = { X: 10, Y: 10, PAD: 16, paddingX: 5, paddingY: 5, sidewaysPaddingY: 5, boxBorderPadding: 1 }
+
+const layout = (source: MermaidGraph, { X, Y, PAD, paddingX, paddingY, sidewaysPaddingY, boxBorderPadding }: Cell = FLOW): PositionedGraph => {
+  const sideways = /LR|RL/.test(source.direction)
+  const grid = convertToAsciiGraph(source, { useAscii: false, paddingX, paddingY: sideways ? sidewaysPaddingY : paddingY, boxBorderPadding, graphDirection: sideways ? 'LR' : 'TD' })
   createMapping(grid)
   const point = (p: Point): Point => ({ x: PAD + p.x * X, y: PAD + p.y * Y })
   const nodes = grid.nodes.map(n => {
     if (!n.drawingCoord || !n.drawing) throw new Error('Node has no layout')
     const cls = source.classAssignments.get(n.name)
-    return { id: n.name, label: source.nodes.get(n.name)!.label, shape: n.shape, ...point(n.drawingCoord), width: (n.drawing.length - 1) * X, height: (n.drawing[0]!.length - 1) * Y, inlineStyle: { ...(cls ? source.classDefs.get(cls) : {}), ...source.nodeStyles.get(n.name) } }
+    return { id: n.name, label: source.nodes.get(n.name)!.label, shape: n.shape === 'diamond' ? 'hexagon' : n.shape, ...point(n.drawingCoord), width: (n.drawing.length - 1) * X, height: (n.drawing[0]!.length - 1) * Y, inlineStyle: { ...(cls ? source.classDefs.get(cls) : {}), ...source.nodeStyles.get(n.name) } }
   })
   const byId = new Map(nodes.map(n => [n.id, n]))
   const edges = grid.edges.map((edge, i) => {
@@ -77,6 +81,17 @@ const layout = (source: MermaidGraph, Y = 20): PositionedGraph => {
   return { width, height, nodes, edges, groups }
 }
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+
+const chartLayout = (chart: XYChart) => {
+  const labels = chart.xAxis.categories ?? Array.from({ length: Math.max(0, ...chart.series.map(s => s.data.length)) }, () => '000')
+  const across = clamp(labels.length * (Math.max(0, ...labels.map(l => l.length)) + 2), 24, 60)
+  const along = clamp(Math.round(across * 0.3), 8, 20)
+  return chart.horizontal
+    ? { plotWidth: 40 * 8, plotHeight: clamp(labels.length * 2, 8, 20) * 16, padding: 8, titleHeight: 30, xLabelHeight: 24 }
+    : { plotWidth: across * 8, plotHeight: along * 16, padding: 8, titleHeight: 30, xLabelHeight: 24 }
+}
+
 const graph = (nodes: MermaidNode[], edges: MermaidEdge[]): MermaidGraph => ({ direction: 'TD', nodes: new Map(nodes.map(n => [n.id, n])), edges, subgraphs: [], classDefs: new Map(), classAssignments: new Map(), nodeStyles: new Map(), linkStyles: new Map() })
 
 export const renderMermaidSVG = (source: string, options: RenderOptions = {}): string => {
@@ -84,11 +99,18 @@ export const renderMermaidSVG = (source: string, options: RenderOptions = {}): s
   const kind = lines[0]?.toLowerCase() ?? ''
   const colors = { bg: options.bg ?? '#181825', fg: options.fg ?? '#cdd6f4', accent: options.accent }
   const font = options.font ?? 'sans-serif'
-  if (kind === 'sequencediagram') return renderSequenceSvg(layoutSequenceDiagram(parseSequenceDiagram(lines), options), colors, font, true)
-  if (/^xychart(-beta)?\b/.test(kind)) return renderXYChartSvg(layoutXYChart(parseXYChart(lines), options), colors, font, true)
+  if (kind === 'sequencediagram') {
+    setSequenceLayout({ padding: 8, actorHeight: 32, headerGap: 20, messageRowHeight: 32, selfMessageHeight: 24 })
+    return renderSequenceSvg(layoutSequenceDiagram(parseSequenceDiagram(lines), options), colors, font, true)
+  }
+  if (/^xychart(-beta)?\b/.test(kind)) {
+    const chart = parseXYChart(lines)
+    setChartLayout(chartLayout(chart))
+    return renderXYChartSvg(layoutXYChart(chart, options), colors, font, true)
+  }
   if (kind === 'classdiagram') {
     const parsed = parseClassDiagram(lines)
-    const positioned = layout(graph(parsed.classes.map(c => ({ id: c.id, shape: 'rectangle', label: [...(c.annotation ? [c.annotation, ''] : []), c.label, ...[...c.attributes, ...c.methods].flatMap(m => [`${m.visibility}${m.name}: ${m.type ?? ''}`, '']), '', ''].join('\n') })), parsed.relationships.map(r => ({ source: r.from, target: r.to, label: r.label, style: 'solid', hasArrowStart: false, hasArrowEnd: false }))), 10)
+    const positioned = layout(graph(parsed.classes.map(c => ({ id: c.id, shape: 'rectangle', label: [...(c.annotation ? [c.annotation, ''] : []), c.label, ...[...c.attributes, ...c.methods].flatMap(m => [`${m.visibility}${m.name}: ${m.type ?? ''}`, '']), '', ''].join('\n') })), parsed.relationships.map(r => ({ source: r.from, target: r.to, label: r.label, style: 'solid', hasArrowStart: false, hasArrowEnd: false }))), TABLES)
     return renderClassSvg({ ...positioned, classes: parsed.classes.map((c, i) => {
       const node = positioned.nodes[i]!
       const headerHeight = c.annotation ? 48 : 32
@@ -98,7 +120,7 @@ export const renderMermaidSVG = (source: string, options: RenderOptions = {}): s
   }
   if (kind === 'erdiagram') {
     const parsed = parseErDiagram(lines)
-    const positioned = layout(graph(parsed.entities.map(e => ({ id: e.id, shape: 'rectangle', label: [e.label, ...e.attributes.flatMap(a => [`${a.type} ${a.name} ${a.keys.join(',')}`, ''])].join('\n') })), parsed.relationships.map(r => ({ source: r.entity1, target: r.entity2, label: r.label, style: 'solid', hasArrowStart: false, hasArrowEnd: false }))), 10)
+    const positioned = layout(graph(parsed.entities.map(e => ({ id: e.id, shape: 'rectangle', label: [e.label, ...e.attributes.flatMap(a => [`${a.type} ${a.name} ${a.keys.join(',')}`, ''])].join('\n') })), parsed.relationships.map(r => ({ source: r.entity1, target: r.entity2, label: r.label, style: 'solid', hasArrowStart: false, hasArrowEnd: false }))), TABLES)
     return renderErSvg({ ...positioned, entities: parsed.entities.map((e, i) => ({ ...positioned.nodes[i]!, ...e, headerHeight: 32, rowHeight: 20 })), relationships: parsed.relationships.map((r, i) => ({ ...r, points: positioned.edges[i]!.points })) }, colors, font, true)
   }
   return renderSvg(layout(parseMermaid(source)), colors, font, true)

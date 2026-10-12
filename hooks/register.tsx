@@ -75,6 +75,7 @@ const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.c
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
 const diagrams = atom({ plugin: 'prismantis', key: 'diagrams' } as const, {})
+const altImages = atom({ plugin: 'prismantis', key: 'altImages' } as const, false)
 const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
 const unfolded = atom({ plugin: 'prismantis', key: 'unfolded' } as const, [] as string[])
 const sent = atom({ plugin: 'prismantis', key: 'sent' } as const, [])
@@ -91,10 +92,16 @@ const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
 
 type Typeset = Exclude<Formula, { error: true }> & { tex: string }
 
+const itermDrawsImages = async ($: EngineInterface): Promise<boolean> => {
+  const [major = 0, minor = 0, patch = 0] = /^(\d+)\.(\d+)\.(\d+)/.exec((await $.env.get('TERM_PROGRAM_VERSION')) ?? '')?.slice(1).map(Number) ?? []
+  return major !== 3 ? major > 3 : minor !== 7 ? minor > 7 : patch >= 3
+}
+
 const showsImages = async ($: EngineInterface): Promise<boolean> => {
   if (await $.env.get('TMUX')) return false
   const terminal = await detectTerminal($)
-  return terminal === 'kitty' || terminal === 'ghostty' || terminal === 'iterm'
+  if (terminal === 'iterm') return itermDrawsImages($)
+  return terminal === 'kitty' || terminal === 'ghostty'
 }
 
 type DiagramSession = { style: Style; pending: Set<string>; queue: Promise<void>; capable?: Promise<boolean>; path?: string; stopped?: boolean }
@@ -131,7 +138,7 @@ const imagesOfBlocks = async ($: EngineInterface, session: DiagramSession, surfa
     const source = diagramSource(block)
     return source === null ? [] : [{ i, source, key: diagramKey(source, session.style.theme, columns) }]
   })
-  if (!sources.length || !(await (session.capable ??= showsImages($).catch(() => false)))) return new Map()
+  if (!sources.length || (await read($, altImages)) || !(await (session.capable ??= showsImages($).catch(() => false)))) return new Map()
   const stored = (await read($, diagrams)) as Record<string, DiagramResult>
   for (const { key, source } of sources) {
     if (stored[key] || session.stopped || session.pending.has(key)) continue
@@ -145,6 +152,37 @@ const imagesOfBlocks = async ($: EngineInterface, session: DiagramSession, surfa
     const picture = stored[key]
     return picture && 'png' in picture ? [[i, picture] as const] : []
   }))
+}
+
+type ShownImage = { key: string; png: string }
+type ImageCheck = { verdict?: 'images' | 'alt'; running?: boolean; tries: number; onAlt: () => void }
+
+const IMAGE_ALT = 'the Image draws its alt here'
+
+const shownImage = (pictures: Map<number, DiagramImage>, math: Map<number, Typeset>, columns: number): ShownImage | undefined => {
+  for (const [i, picture] of pictures) return { key: `b${i}`, png: picture.png }
+  for (const [i, formula] of math) {
+    const picked = pickFormula(formula, columns)
+    if (picked) return { key: `b${i}`, png: picked.picture.png }
+  }
+  return undefined
+}
+
+const checkImages = ($: EngineInterface, check: ImageCheck, requestId: string, shown: ShownImage | undefined) => {
+  if (!shown || check.verdict || check.running || check.tries <= 0) return
+  check.running = true
+  const attempt = async (): Promise<void> => {
+    check.tries--
+    const { deny } = await $.ui.blit({ requestId, key: shown.key, source: { png: shown.png } }).catch(() => ({ deny: '' }))
+    if (deny === undefined) check.verdict = 'images'
+    else if (deny.startsWith(IMAGE_ALT) && !deny.includes('not asked yet')) {
+      check.verdict = 'alt'
+      check.onAlt()
+      await update($, altImages, () => true)
+    } else if (check.tries > 0) return void $.clock.after(100, () => void attempt())
+    check.running = false
+  }
+  $.clock.after(0, () => void attempt())
 }
 
 type Latex = { command: string; dir: string }
@@ -220,7 +258,7 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
     const tex = mathOf(block)
     return tex === null ? [] : [{ i, tex, key: formulaKey(latex, tex) }]
   })
-  if (surface !== 'terminal' || maths.length === 0) return new Map()
+  if (surface !== 'terminal' || maths.length === 0 || (await read($, altImages))) return new Map()
   void latexEngine($, latex)
   if (!latex.ready) return new Map()
   for (const { key } of maths) latex.wanted.add(key)
@@ -309,7 +347,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       const source = block.lines.join('\n')
       const picture = pictures.get(i)
       if (Image && picture) {
-        drawn.set(i, { element: <el.Box key={`b${i}`} paddingLeft={2}><Image source={{ png: picture.png }} columns={picture.columns} rows={picture.rows} alt={source} /></el.Box> })
+        drawn.set(i, { element: <el.Box key={`b${i}`} paddingLeft={2}><Image key={`b${i}`} source={{ png: picture.png }} columns={picture.columns} rows={picture.rows} alt={source} /></el.Box>, isFigure: true })
         continue
       }
       let narrowest = Infinity
@@ -360,6 +398,13 @@ export const register: Register = (on, options) => {
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
   const diagramSession: DiagramSession = { style, pending: new Set(), queue: Promise.resolve() }
+  const imageCheck: ImageCheck = {
+    tries: 20,
+    onAlt: () => {
+      diagramSession.stopped = true
+      stopLatex(latex)
+    },
+  }
   const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
   const probes: Probes = {}
@@ -473,6 +518,7 @@ export const register: Register = (on, options) => {
     const { Box } = el
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const pictures = await imagesOfBlocks($, diagramSession, e.surface, blocks, columnsOf(e.viewport))
+    checkImages($, imageCheck, e.requestId, shownImage(pictures, math, columnsOf(e.viewport)))
     const open = await read($, unfolded)
     return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport), math, undefined, open, pictures)}</Box>
   })
@@ -495,6 +541,7 @@ export const register: Register = (on, options) => {
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const pictures = await imagesOfBlocks($, diagramSession, e.surface, blocks, columnsOf(e.viewport))
+    checkImages($, imageCheck, e.requestId, shownImage(pictures, math, columnsOf(e.viewport)))
     const surfaceStyle = forSurface(fit(e.viewport), e.surface)
     const open = await read($, unfolded)
     return (

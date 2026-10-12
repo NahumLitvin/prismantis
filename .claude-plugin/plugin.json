@@ -295,13 +295,13 @@
     "mermaidImages": {
       "type": "boolean",
       "title": "Mermaid images",
-      "description": "Draw Mermaid diagrams as images in kitty, Ghostty and iTerm2 (outside tmux) when rsvg-convert is installed. True detects support automatically; false keeps colored text diagrams.",
+      "description": "Draw Mermaid diagrams as images in kitty, Ghostty and iTerm2 3.7.3+ (outside tmux) when rsvg-convert is installed. iTerm2 also needs Claude Code started with CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1. True detects support automatically; false keeps colored text diagrams.",
       "default": true
     },
     "latex": {
       "type": "boolean",
       "title": "LaTeX math",
-      "description": "Draw $$ and ```math formulas as typeset images in kitty, Ghostty and iTerm2 (not under tmux) with RaTeX's renderer, installed as ratex-render on your PATH. Off runs nothing. Formulas that can't be drawn stay as text.",
+      "description": "Draw $$ and ```math formulas as typeset images in kitty, Ghostty and iTerm2 3.7.3+ (not under tmux) with RaTeX's renderer, installed as ratex-render on your PATH. iTerm2 also needs Claude Code started with CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1. Off runs nothing. Formulas that can't be drawn stay as text.",
       "default": false
     }
   }

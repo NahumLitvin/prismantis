@@ -517,7 +517,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 }
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
-export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string }>
+export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string; isFigure?: boolean }>
 export type Fold = (id: string, hidden: number, key: string) => { folded: boolean; element: RenderElement } | null
 
 const NUMBER_AT = 10
@@ -617,7 +617,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       </Box>
     )
   })
-  const isFigure = (b: number) => blocks[b]?.kind === 'table' || drawn.get(b)?.art !== undefined
+  const isFigure = (b: number) => blocks[b]?.kind === 'table' || drawn.get(b)?.art !== undefined || drawn.get(b)?.isFigure === true
   const out: RenderElement[] = []
   for (let b = 0; b < rendered.length; b++) {
     if (!isFigure(b) || !isFigure(b + 1)) {

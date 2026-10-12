@@ -87,7 +87,7 @@ test('an unclosed $$ stays paragraph text', async () => {
   expect(blocks.map(b => b.kind)).toEqual(['paragraph'])
 })
 
-for (const [terminal, env] of [['kitty', KITTY], ['Ghostty', { TERM_PROGRAM: 'ghostty' }], ['iTerm2', { TERM_PROGRAM: 'iTerm.app', TERM: 'xterm-256color' }]] as const) {
+for (const [terminal, env] of [['kitty', KITTY], ['Ghostty', { TERM_PROGRAM: 'ghostty' }], ['iTerm2 3.7.3', { TERM_PROGRAM: 'iTerm.app', TERM_PROGRAM_VERSION: '3.7.3' }]] as const) {
   for (const surface of ['terminal', 'desktop'] as const) {
     test(`display math in ${terminal} uses images only on the terminal surface (${surface})`, async ($, on) => {
       mock.env(on, env)
@@ -154,6 +154,31 @@ test('without the renderer installed, math stays text and no LaTeX hint is sent'
   expect(seen[0]?.some(c => c.includes('prismantis'))).toBe(true)
   expect(seen[0]?.some(c => c.includes('$$'))).toBe(false)
   await ui.unmount()
+})
+
+test('display math falls back to text and drops the LaTeX hint when the terminal draws the alt', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+  on('ui.blit', () => ({ value: { deny: 'the Image draws its alt here: the terminal draws no placeholder images (probe: graphics reply OK, terminal kitty 0.27.1)' } }))
+  on('session.start', () => ({ cwd: '/tmp' }))
+  const seen = hints(on)
+
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  const typeset = runs.length
+  const next = await $.ui.mount(reply('$$\na^2 + b^2 = c^2\n$$'))
+  await clock.settle()
+  await $.prompt.submit({ text: 'integrate x squared', wait: false, origin: { kind: 'composer' } })
+
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
+  expect(await next.find({ type: 'Image' })).toBeUndefined()
+  expect(runs).toHaveLength(typeset)
+  expect(seen[0]?.some(c => c.includes('$$'))).toBe(false)
+  await ui.unmount()
+  await next.unmount()
 })
 
 test('the prompt hint says display math renders when the renderer works', async ($, on) => {
@@ -267,22 +292,20 @@ test('a reply draws its formula as text at once and as an image when the rendere
   await ui.unmount()
 })
 
-for (const [terminal, env] of [['kitty', KITTY], ['iTerm2', { TERM_PROGRAM: 'iTerm.app' }]] as const) {
-  base(`latex is off by default in ${terminal} and never runs the renderer`, async ($, on) => {
-    mock.env(on, env)
-    const clock = mock.clock(on)
-    const runs = ratex(on)
+base('latex is off by default and never runs the renderer', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = ratex(on)
 
-    const ui = await $.ui.mount(reply(REPLY))
-    await clock.settle()
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.settle()
 
-    expect(runs.length).toBe(0)
-    expect(await ui.find({ type: 'Image' })).toBeUndefined()
-    await ui.unmount()
-  })
-}
+  expect(runs.length).toBe(0)
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  await ui.unmount()
+})
 
-for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM: 'Apple_Terminal' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0' }], ['iTerm2 under tmux', { TERM_PROGRAM: 'iTerm.app', TMUX: '/tmp/tmux-501/default,1,0' }]] as const) {
+for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM: 'Apple_Terminal' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0' }], ['iTerm2 3.6.10', { TERM_PROGRAM: 'iTerm.app', TERM_PROGRAM_VERSION: '3.6.10' }]] as const) {
   test(`latex skips the renderer in ${name}`, async ($, on) => {
     mock.env(on, env)
     const clock = mock.clock(on)

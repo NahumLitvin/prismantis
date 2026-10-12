@@ -1,15 +1,17 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
+import { mermaidText } from '../hooks/mermaid'
 import { diagramSvg, fitDiagram } from '../hooks/mermaid-image'
 import { resolveStyle } from '../hooks/theme'
 
-const SOURCE = 'flowchart LR\n A[Start] --> B[Done]'
+const SOURCE = 'flowchart LR\n A[Start] --> B[Build] --> C[Done]'
 const reply = (source = SOURCE, columns = 100) => ({ plugin: 'prismantis', component: 'AssistantMessage' as const, props: { text: `\`\`\`mermaid\n${source}\n\`\`\``, isFirstOfReply: true }, viewport: { columns, rows: 40 }, surface: 'terminal' as const })
+const KITTY = { TERM: 'xterm-kitty', TMPDIR: '/tmp/' }
 const ITERM = { TERM_PROGRAM: 'iTerm.app', TERM: 'xterm-256color', TMPDIR: '/tmp/' }
 
 const PNGS: Record<string, string> = {
-  '496x224': 'iVBORw0KGgoAAAANSUhEUgAAAfAAAADgAQAAAADUdglkAAAAJUlEQVR4nO3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAAAAAAADgzwA3IAAB4tETBwAAAABJRU5ErkJggg==',
-  '288x160': 'iVBORw0KGgoAAAANSUhEUgAAASAAAACgAQAAAACEP4xBAAAAHElEQVR4nO3BAQEAAACCIP+vbkhAAQAAAADAnwEXIAABxaxvyQAAAABJRU5ErkJggg==',
+  '432x96': 'iVBORw0KGgoAAAANSUhEUgAAAbAAAABgAQAAAABUfBocAAAAHElEQVR42u3BMQEAAADCoPVPbQwfoAAAAAAAPgYUoAABNSSQwQAAAABJRU5ErkJggg==',
+  '288x64': 'iVBORw0KGgoAAAANSUhEUgAAASAAAABAAQAAAACSe5fDAAAAGUlEQVR42u3BMQEAAADCoPVPbQZ/oAAAeAwJQAABsSzkgQAAAABJRU5ErkJggg==',
 }
 
 const renderer = (on: On, exitCode = 0, hold?: Promise<void>, invalid = false) => {
@@ -28,7 +30,7 @@ const renderer = (on: On, exitCode = 0, hold?: Promise<void>, invalid = false) =
   return runs
 }
 
-for (const [terminal, env] of [['iTerm2', ITERM], ['kitty', { TERM: 'xterm-kitty' }], ['Ghostty', { TERM_PROGRAM: 'ghostty' }]] as const) {
+for (const [terminal, env] of [['kitty', KITTY], ['Ghostty', { TERM_PROGRAM: 'ghostty' }], ['iTerm2 3.7.3', { ...ITERM, TERM_PROGRAM_VERSION: '3.7.3' }], ['iTerm2 3.10.0', { ...ITERM, TERM_PROGRAM_VERSION: '3.10.0' }]] as const) {
   for (const surface of ['terminal', 'desktop'] as const) {
     test(`Mermaid images detect ${terminal} on ${surface}`, async ($, on) => {
       mock.env(on, env)
@@ -54,7 +56,7 @@ for (const [terminal, env] of [['iTerm2', ITERM], ['kitty', { TERM: 'xterm-kitty
 
 for (const key of ['mermaidImages', 'mermaid'] as const) {
   test(`Mermaid images respect ${key}`, { options: { [key]: false } }, async ($, on) => {
-    mock.env(on, ITERM)
+    mock.env(on, KITTY)
     const clock = mock.clock(on)
     const runs = renderer(on)
     const ui = await $.ui.mount(reply())
@@ -65,7 +67,7 @@ for (const key of ['mermaidImages', 'mermaid'] as const) {
   })
 }
 
-for (const [name, env] of [['unsupported terminal', { TERM_PROGRAM: 'Apple_Terminal' }], ['tmux', { ...ITERM, TMUX: '/tmp/tmux' }], ['unknown terminal', {}]] as const) {
+for (const [name, env] of [['unsupported terminal', { TERM_PROGRAM: 'Apple_Terminal' }], ['iTerm2 3.6.10', { ...ITERM, TERM_PROGRAM_VERSION: '3.6.10' }], ['iTerm2 3.7.2', { ...ITERM, TERM_PROGRAM_VERSION: '3.7.2' }], ['iTerm2 without a version', ITERM], ['tmux', { ...KITTY, TMUX: '/tmp/tmux' }], ['unknown terminal', {}]] as const) {
   test(`Mermaid images skip ${name}`, async ($, on) => {
     mock.env(on, env)
     const clock = mock.clock(on)
@@ -79,7 +81,7 @@ for (const [name, env] of [['unsupported terminal', { TERM_PROGRAM: 'Apple_Termi
 }
 
 test('Mermaid draws text while the PNG is pending, then redraws and copies its source', async ($, on) => {
-  mock.env(on, ITERM)
+  mock.env(on, KITTY)
   const clock = mock.clock(on)
   let release = () => {}
   const hold = new Promise<void>(resolve => (release = resolve))
@@ -98,8 +100,70 @@ test('Mermaid draws text while the PNG is pending, then redraws and copies its s
   await ui.unmount()
 })
 
+const DRAWS_ALT = 'the Image draws its alt here: the terminal draws no placeholder images (probe: graphics reply OK, terminal kitty 0.27.1)'
+
+test('Mermaid falls back to text and stops converting when the terminal draws the alt', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  const runs = renderer(on)
+  const blits: string[] = []
+  on('ui.blit', (_, e) => {
+    blits.push(e.key)
+    return { value: { deny: DRAWS_ALT } }
+  })
+  const ui = await $.ui.mount(reply())
+  await clock.settle()
+  expect(blits).toEqual(['b0'])
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Start/ })).toBeDefined()
+  const next = await $.ui.mount(reply('graph TD\nA --> B'))
+  await clock.settle()
+  expect(runs).toHaveLength(1)
+  expect(blits).toHaveLength(1)
+  expect(await next.find({ type: 'Image' })).toBeUndefined()
+  await ui.unmount()
+  await next.unmount()
+})
+
+test('Mermaid keeps images once one draws, retrying while it mounts and while the terminal is unasked', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  renderer(on)
+  const answers = ['nothing of this plugin is mounted there', 'the Image draws its alt here: the terminal draws no placeholder images (env: TERM=xterm-kitty, not asked yet)']
+  let blits = 0
+  on('ui.blit', () => {
+    blits++
+    const deny = answers.shift()
+    return { value: deny ? { deny } : {} }
+  })
+  const ui = await $.ui.mount(reply())
+  await clock.settle()
+  await clock.advance(200)
+  const next = await $.ui.mount(reply(SOURCE, 24))
+  await clock.settle()
+  expect(blits).toBe(3)
+  expect(await ui.find({ type: 'Image' })).toBeDefined()
+  expect(await next.find({ type: 'Image' })).toBeDefined()
+  await ui.unmount()
+  await next.unmount()
+})
+
+test('back-to-back diagram images share a wrapping row', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  renderer(on)
+  const text = `\`\`\`mermaid\n${SOURCE}\n\`\`\`\n\n\`\`\`mermaid\n${SOURCE}\n\`\`\`\n\nAfter.`
+  const ui = await $.ui.mount({ ...reply(), props: { text, isFirstOfReply: true } })
+  await clock.settle()
+  expect(await ui.findAll({ type: 'Image' })).toHaveLength(2)
+  const rows = (await ui.findAll({ type: 'Box' })).filter(b => b.props.flexWrap === 'wrap')
+  expect(rows).toHaveLength(1)
+  expect(rows[0]?.text).not.toContain('After.')
+  await ui.unmount()
+})
+
 test('identical diagrams share a conversion and a resize gets a fitted image', async ($, on) => {
-  mock.env(on, ITERM)
+  mock.env(on, KITTY)
   const clock = mock.clock(on)
   const runs = renderer(on)
   const first = await $.ui.mount(reply())
@@ -118,7 +182,7 @@ test('identical diagrams share a conversion and a resize gets a fitted image', a
 
 for (const [name, code, invalid] of [['missing renderer', 127, false], ['failed conversion', 1, false], ['invalid PNG', 0, true]] as const) {
   test(`Mermaid keeps text after ${name} without retrying on redraw`, async ($, on) => {
-    mock.env(on, ITERM)
+    mock.env(on, KITTY)
     const clock = mock.clock(on)
     const runs = renderer(on, code, undefined, invalid)
     const ui = await $.ui.mount(reply())
@@ -134,7 +198,7 @@ for (const [name, code, invalid] of [['missing renderer', 127, false], ['failed 
 }
 
 test('Mermaid skips incomplete, unsupported and oversized diagrams', async ($, on) => {
-  mock.env(on, ITERM)
+  mock.env(on, KITTY)
   const clock = mock.clock(on)
   const runs = renderer(on)
   for (const text of ['```mermaid\nflowchart LR\nA --> B', '```mermaid\npie\n"A" : 5\n```', `\`\`\`mermaid\ngraph TD\nA[${'x'.repeat(8000)}]\n\`\`\``]) {
@@ -155,6 +219,14 @@ for (const source of [SOURCE, 'stateDiagram-v2\n[*] --> Ready\nReady --> [*]', '
     expect(svg?.includes('@import')).toBe(false)
     expect(fitDiagram(svg!, 40)?.columns! <= 38).toBe(true)
     expect(fitDiagram(svg!, 40)?.rows! <= 48).toBe(true)
+  })
+}
+
+for (const source of ['flowchart LR\n A[checkout] --> B[install]\n B --> C[lint]\n B --> D[test]\n B --> E[build]\n C --> F[package]\n D --> F\n E --> F\n F --> G[deploy]', 'flowchart TD\n A[Request] --> B{Cached?}\n B -->|Yes| C[Reply]\n B -->|No| D[Fetch upstream]\n D --> C', 'sequenceDiagram\n P->>C: Image (PNG)\n C->>T: kitty graphics\n T-->>C: draws image\n P->>C: blit check\n C-->>P: ok or deny', 'xychart-beta\n title "Test count"\n x-axis [main, branch, gate]\n bar [345, 345, 349]']) {
+  test(`${source.split('\n')[0]} images take about as many rows as the text diagram`, () => {
+    const image = fitDiagram(diagramSvg(source, {})!, 160)!
+    const text = mermaidText(source, false, 160)!.split('\n').length
+    expect(image.rows <= text + 2).toBe(true)
   })
 }
 
@@ -183,7 +255,7 @@ test('chart SVG retains static series and label styles for librsvg', () => {
 })
 
 test('Mermaid keeps text after a thrown renderer timeout and stops retrying', async ($, on) => {
-  mock.env(on, ITERM)
+  mock.env(on, KITTY)
   const clock = mock.clock(on)
   let runs = 0
   on('process.run', () => { runs++; throw new Error('timeout') })

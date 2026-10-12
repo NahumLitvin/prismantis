@@ -16,6 +16,7 @@ declare module 'claude-code' {
     prismantis: {
       formulas: Record<string, unknown>
       diagrams: Record<string, unknown>
+      altImages: boolean
       dir: string
       unfolded: string[]
       sent: { text: string; at: number }[]
