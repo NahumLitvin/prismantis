@@ -129,6 +129,11 @@ Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii`
 
 Some things read better as a picture than as a diagram: a timeout racing a retry, the layout of a screen, a system before and after a change. Code blocks tagged `figure` draw line by line as written, in the theme's colors:
 
+![A figure drawn by prismantis: a time axis with ticks at 0, 10 and 12 s, the provider bar timing out at 10 s, the handler bar finishing at 12 s, and bookings going from 0 to 1 to 2](docs/figure.png)
+
+<details>
+<summary>The markdown Claude wrote for it</summary>
+
 ````markdown
 ```figure
 {dim:timeout at 10 s, handler books at 12 s, retry books again}
@@ -139,6 +144,8 @@ Handler   {ok:████████████████████} 200,
 Bookings  0                   {ok:1}                 {warn:2 twice}
 ```
 ````
+
+</details>
 
 - `{role:text}` colors a run: `accent` for frames, lines and arrows (diagram color), `warn` for the break or the risk, `ok` for what is healthy or done, `note` for time and effort, `dim` for side notes (comment color), `strong` for the one thing that matters (strong color); the rest takes the diagram text color. `warn`, `ok` and `note` take the theme's reddest, greenest and most amber accent color, each a different one and none the diagram color, so a risk never looks like a frame line in any theme; hex and `rgb()` colors you set take part in that pick, and a role whose own slot (flag, string or heading color) you set to a color name or `ansi256()` keeps that color
 - ▶ and ◀ draw as ► and ◄, as in diagrams, so no glyph turns into an emoji; in `mono`, `warn` draws bold
