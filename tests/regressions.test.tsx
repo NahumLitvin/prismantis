@@ -47,6 +47,22 @@ test('a four-backtick fence keeps triple-backtick examples inside one code block
   expect(code.lines).toEqual(['```bash', 'ls', '```'])
 })
 
+for (const [input, expected] of [
+  ['## Using C#', [{ kind: 'text', text: 'Using C#' }]],
+  ['## Title ##', [{ kind: 'text', text: 'Title' }]],
+  ['[Foo](https://e.org/wiki/Foo_(bar)) ok', [{ kind: 'link', text: 'Foo', href: 'https://e.org/wiki/Foo_(bar)' }, { kind: 'text', text: ' ok' }]],
+  ['see https://e.org/wiki/Foo_(bar) ok', [{ kind: 'text', text: 'see ' }, { kind: 'link', text: 'https://e.org/wiki/Foo_(bar)', href: 'https://e.org/wiki/Foo_(bar)' }, { kind: 'text', text: ' ok' }]],
+  ['see (https://e.org/x) ok', [{ kind: 'text', text: 'see (' }, { kind: 'link', text: 'https://e.org/x', href: 'https://e.org/x' }, { kind: 'text', text: ') ok' }]],
+  ['[`render.tsx`](hooks/render.tsx)', [{ kind: 'link', text: 'render.tsx', href: 'hooks/render.tsx' }]],
+  ['call f(*args, **kwargs) now', [{ kind: 'text', text: 'call f(*args, **kwargs) now' }]],
+  ['**a *b* c**', [{ kind: 'strong', children: [{ kind: 'text', text: 'a ' }, { kind: 'emphasis', children: [{ kind: 'text', text: 'b' }] }, { kind: 'text', text: ' c' }] }]],
+  ['f(_a, _)', [{ kind: 'text', text: 'f(_a, _)' }]],
+  ['f(*args, **kwargs) and **b**', [{ kind: 'text', text: 'f(*args, **kwargs) and ' }, { kind: 'strong', children: [{ kind: 'text', text: 'b' }] }]],
+] as const) test(`inline markdown: ${input}`, async () => {
+  const [block] = parse(input, hl)
+  expect(block && 'inline' in block ? block.inline : block).toEqual(expected)
+})
+
 test('a one-dash delimiter row makes a table', async () => {
   const table = tableOf('| a | b |\n|-|-|\n| x | y |')
   expect(table.header.length).toBe(2)
@@ -326,6 +342,8 @@ test('the help screen shows every element prismantis draws', async () => {
   for (const lang of ['bash', 'json', 'mermaid', 'math']) expect(langs.includes(lang)).toBe(true)
   const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
+  expect(links.some(l => l.kind === 'link' && l.href.endsWith('Foo_(bar)')) && links.some(l => l.kind === 'link' && l.text === 'render.tsx')).toBe(true)
+  expect(showcaseText([])).toContain('f(*args, **kwargs)')
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(kinds.has('notes')).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)

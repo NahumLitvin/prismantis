@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - A streaming reply redraws about 3.7x faster (1.0 ms instead of 3.9 ms per redraw in the stream replay bench), and Hebrew text about 4.8x faster. Diagrams no longer re-measure their art on every redraw, and single characters skip the grapheme segmenter. Nothing looks different.
 
+### Fixed
+
+- Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
+
 ## [0.18.2] - 2026-10-13
 
 ### Fixed
