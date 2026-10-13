@@ -412,7 +412,7 @@ export const register: Register = (on, options) => {
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const open = await read($, unfolded)
     const surfaceStyle = forSurface(fit(e.viewport), e.surface, await linkReach($, probes))
-    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, undefined, open)}</Box>
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, undefined, open, true)}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {

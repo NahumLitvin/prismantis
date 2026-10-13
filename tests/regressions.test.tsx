@@ -832,6 +832,16 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(toasts).toEqual(['¹ Measured twice.', '² First request.', '¹ Measured twice.', '² First request.'])
     await ui.unmount()
   })
+
+  test(`/prismantis demo footnote marks are clickable on ${surface}`, async ($, on) => {
+    const toasts = recordToasts(on)
+    const ui = await $.ui.mount({ plugin: 'prismantis', component: 'CommandOutput' as const, props: { command: 'prismantis', args: 'demo', text: showcaseText([]), isErrored: false }, viewport: { columns: 120, rows: 40 }, surface })
+    const marks = await ui.findAll({ type: 'Button', text: /^[¹²³]$/ })
+    expect(marks.map(m => m.text)).toEqual(['¹', '²', '³'])
+    await ui.press({ key: marks[0]!.key! })
+    expect(toasts).toEqual(['¹ Counted at close.'])
+    await ui.unmount()
+  })
 }
 
 const chartRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }) => {
