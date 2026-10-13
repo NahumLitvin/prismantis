@@ -63,12 +63,6 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 const expandedCalls = new Set<string>()
 const readOnlyCalls = new Set<string>()
 
-const markExpanded = (id: string) => {
-  expandedCalls.delete(id)
-  expandedCalls.add(id)
-  if (expandedCalls.size > 500) expandedCalls.delete(expandedCalls.values().next().value!)
-}
-
 const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.columns ?? 100) - 4)
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
@@ -288,7 +282,7 @@ export const register: Register = (on, options) => {
       await locate($, style)
       if (quiet) for (const call of e.props.calls) if (call.tool_use_id && isReadOnlyCall(call.tool, call.input)) rememberCall(readOnlyCalls, call.tool_use_id)
       if (e.props.isExpanded) {
-        for (const call of e.props.calls) if (call.tool_use_id) markExpanded(call.tool_use_id)
+        for (const call of e.props.calls) if (call.tool_use_id) rememberCall(expandedCalls, call.tool_use_id, 500)
         return next(e)
       }
       return renderToolGroup($.ui.resolve(e), fit(e.viewport), e.props.calls, e.props.isActive, e.viewport?.columns)

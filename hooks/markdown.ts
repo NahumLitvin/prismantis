@@ -273,6 +273,7 @@ const notesOf = (source: string): Map<string, string> => {
 }
 
 const indentOf = (line: string): number => (line.match(/^\s*/)?.[0] ?? '').replace(/\t/g, '  ').length
+const closerOf = (run: string) => new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
 
 const parseBlocks = (source: string, hl: Highlight): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
@@ -294,7 +295,7 @@ const parseBlocks = (source: string, hl: Highlight): Block[] => {
       flush(i)
       const start = i
       const run = fence[1] ?? '```'
-      const closer = new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
+      const closer = closerOf(run)
       const body: string[] = []
       i++
       while (i < lines.length && !closer.test(at(i))) body.push(at(i++))
@@ -366,9 +367,10 @@ const parseBlocks = (source: string, hl: Highlight): Block[] => {
       while (i < lines.length) {
         const it = LIST_ITEM.exec(at(i))
         if (it) {
-          contentIndent.push((it[1] ?? '').replace(/\t/g, '  ').length + (it[2] ?? '').length + 1)
+          const lead = indentOf(it[1] ?? '')
+          contentIndent.push(lead + (it[2] ?? '').length + 1)
           const task = /^\[([ xX])\]\s+(.*)$/.exec(it[3] ?? '')
-          items.push({ marker: it[2] ?? '-', depth: Math.floor((it[1] ?? '').replace(/\t/g, '  ').length / 2), ...(task ? { task: task[1] !== ' ' } : {}), inline: parseInline(task ? task[2]! : it[3] ?? '', hl) })
+          items.push({ marker: it[2] ?? '-', depth: Math.floor(lead / 2), ...(task ? { task: task[1] !== ' ' } : {}), inline: parseInline(task ? task[2]! : it[3] ?? '', hl) })
         } else if (/^\s{2,}\S/.test(at(i)) && items.length) {
           const indent = indentOf(at(i))
           let owner = items.length - 1
@@ -379,7 +381,7 @@ const parseBlocks = (source: string, hl: Highlight): Block[] => {
           if (fence) {
             const from = i
             const run = fence[1] ?? '```'
-            const closer = new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
+            const closer = closerOf(run)
             const strip = new RegExp(`^ {0,${indent}}`)
             const body: string[] = []
             i++

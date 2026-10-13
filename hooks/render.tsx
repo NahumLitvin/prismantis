@@ -9,9 +9,9 @@ import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
 
 const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{1F1E6}-\u{1F1FF}\u{20000}-\u{3FFFD}\u20E3]|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u
-const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter() : undefined
+const segmenter = new Intl.Segmenter()
 
-export const graphemes = (s: string): string[] => (segmenter ? [...segmenter.segment(s)].map(g => g.segment) : [...s])
+export const graphemes = (s: string): string[] => [...segmenter.segment(s)].map(g => g.segment)
 
 export const cells = (s: string): string[] => (/^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap(g => (WIDE.test(g) ? [g, ''] : [g])))
 
@@ -261,14 +261,16 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
 
 const ART_WIDTH = 100
 
+const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
+  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
+  const column = (measure: (s: string) => number) => block.header.map((_, c) => Math.max(...cells.map(r => measure(r[c]!))))
+  return { natural: column(width), words: column(longestWord) }
+}
+
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
-  const widths = columnWidths(
-    block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))),
-    ART_WIDTH - 4,
-    3,
-    block.header.map((_, c) => Math.max(...cells.map(r => longestWord(r[c]!)))),
-  )
+  const { natural, words } = tableSize(block)
+  const widths = columnWidths(natural, ART_WIDTH - 4, 3, words)
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
     const room = Math.max(0, widths[c]! - width(text))
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
@@ -289,12 +291,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const t = style.theme
   const box = style.tableStyle === 'box'
   const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
-  const natural = block.header.map((h, c) =>
-    Math.max(width(displayText(h)), ...block.rows.map(r => width(displayText(r[c] ?? [])))),
-  )
-  const words = block.header.map((h, c) =>
-    Math.max(longestWord(displayText(h)), ...block.rows.map(r => longestWord(displayText(r[c] ?? [])))),
-  )
+  const { natural, words } = tableSize(block)
   const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
   const order = natural.map((_, c) => c)
   if (rtl) order.reverse()
@@ -590,13 +587,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     }
   })
   const copied = rendered.map((element, b) => {
-    const block = blocks[b]
-    const text = block ? copySource(block) : undefined
-    const isPlainCode = block?.kind === 'code' && !drawn.get(b)?.element
-    const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
-    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block?.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
+    const block = blocks[b]!
+    const text = copySource(block)
+    const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
+    const art = drawn.get(b)?.art ?? (block.kind === 'table' ? () => tableArt(block) : undefined)
+    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
-    const html = first && block?.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
     const button = second ? (
       <el.Box key={`copies${b}`} flexDirection="row" columnGap={1}>
         {first}
@@ -607,13 +604,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     if (!button) return element
     const { Box } = el
     const rtl = style.reorder && block !== undefined && hasRtl(block.raw)
-    return block?.kind === 'quote' || block?.kind === 'alert' ? (
+    return block.kind === 'quote' || block.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
         {button}
       </Box>
     ) : (
-      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
         <Box justifyContent="flex-end">{button}</Box>
         {element}
       </Box>
@@ -735,10 +732,10 @@ type DiffLine = { mark: '+' | '-' | ' '; num: number; text: string }
 
 const HEX = /^#[0-9a-f]{6}$/i
 
-export const tint = (base: string | undefined, color: string | undefined, share = 0.2): string | undefined => {
+export const tint = (base: string | undefined, color: string | undefined): string | undefined => {
   if (!base || !color || !HEX.test(base) || !HEX.test(color)) return undefined
   const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16)
-  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * (1 - share) + channel(color, i) * share).toString(16).padStart(2, '0')).join('')}`
+  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * 0.8 + channel(color, i) * 0.2).toString(16).padStart(2, '0')).join('')}`
 }
 
 export const diffLines = (output: unknown): DiffLine[] | undefined => {
@@ -812,9 +809,7 @@ export const refusalReason = (output: unknown): string | undefined => {
   return output.replace(/\s+/g, ' ').trim()
 }
 
-export const CALLS_REMEMBERED = 2000
-
-export const rememberCall = (calls: Set<string>, id: string, limit = CALLS_REMEMBERED): void => {
+export const rememberCall = (calls: Set<string>, id: string, limit = 2000): void => {
   calls.delete(id)
   calls.add(id)
   if (calls.size > limit) calls.delete(calls.values().next().value!)
@@ -1046,13 +1041,13 @@ export const isReadOnlyCall = (tool: string, input: unknown): boolean => {
 
 const TRIVIAL_PROGRAMS = new Set(['cd', 'echo', 'export', 'printf', 'pwd', 'set', 'test', 'true'])
 
-export const programsOf = (command: string, limit = 3): string[] => {
+export const programsOf = (command: string): string[] => {
   const names: string[] = []
   for (const part of parseShell(command).segments) {
     const name = commandWords(part.words)[0]?.split('/').pop()
     if (name && !TRIVIAL_PROGRAMS.has(name) && !names.includes(name)) names.push(name)
   }
-  return names.length > limit ? [...names.slice(0, limit), '…'] : names
+  return names.length > 3 ? [...names.slice(0, 3), '…'] : names
 }
 
 export const shortenPaths = (text: string, places: Places): string => {
