@@ -264,7 +264,7 @@ const notesOf = (source: string): Map<string, string> => {
     const run = FENCE.exec(line)?.[1]
     const fenced = closer !== undefined || run !== undefined
     if (closer?.test(line)) closer = undefined
-    else if (!closer && run) closer = new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
+    else if (!closer && run) closer = closerOf(run)
     const def = fenced ? null : NOTE_DEF.exec(line)
     if (def) {
       last = def[1]!

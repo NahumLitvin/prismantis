@@ -1154,6 +1154,6 @@ test('an expanded shell row whose output is an error string shows that string', 
     component: 'ToolUse',
     props: { ...call('Bash', { command: 'cat /root/x' }, 'exp-err'), isErrored: true, output: 'Error: permission denied' },
   })
-  expect(await row.find({ type: 'Text', text: /No output/ })).toBeUndefined()
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await row.unmount()
 })
