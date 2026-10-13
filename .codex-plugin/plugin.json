@@ -3,5 +3,13 @@
   "version": "0.18.1",
   "description": "Colorful, themeable rendering for Claude Code replies: tables, headings, code, numbers, paths and links.",
   "hooks": "./codex/hooks.json",
-  "skills": "./codex/skills"
+  "skills": "./codex/skills",
+  "fenceRenderers": {
+    "mermaid": {
+      "command": "node \"$PLUGIN_ROOT/codex/fence.mjs\" mermaid"
+    },
+    "figure": {
+      "command": "node \"$PLUGIN_ROOT/codex/fence.mjs\" figure"
+    }
+  }
 }

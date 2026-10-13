@@ -424,5 +424,13 @@
         ]
       }
     }
-  ]
+  ],
+  "fenceRenderers": {
+    "mermaid": {
+      "command": "node \"${extensionPath}${/}codex${/}fence.mjs\" mermaid gemini"
+    },
+    "figure": {
+      "command": "node \"${extensionPath}${/}codex${/}fence.mjs\" figure gemini"
+    }
+  }
 }
