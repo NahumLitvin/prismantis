@@ -603,7 +603,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     ) : first
     if (!button) return element
     const { Box } = el
-    const rtl = style.reorder && block !== undefined && hasRtl(block.raw)
+    const rtl = style.reorder && hasRtl(block.raw)
     return block.kind === 'quote' || block.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
