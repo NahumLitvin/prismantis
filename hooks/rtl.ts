@@ -62,7 +62,7 @@ const flatten = (nodes: Inline[], wrap: Fmt['wrap'] = []): Unit[] =>
 
 const sameFmt = (a: Fmt, b: Fmt) => a.leaf === b.leaf && a.href === b.href && a.wrap.length === b.wrap.length && a.wrap.every((k, i) => k === b.wrap[i])
 
-const leafNode = ({ leaf, href }: Fmt, text: string): Inline => (leaf === 'link' ? { kind: 'link', text, href: href ?? text } : { kind: leaf, text })
+const leafNode = ({ leaf, href }: Fmt, text: string): Inline => (leaf === 'link' ? { kind: 'link', text, href: href! } : { kind: leaf, text })
 
 const rebuild = (all: Unit[]): Inline[] => {
   const out: Inline[] = []

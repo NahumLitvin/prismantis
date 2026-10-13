@@ -49,7 +49,7 @@ const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
 
 const SUPPORTED = /^(flowchart|graph|statediagram(-v2)?|xychart(-beta)?|sequencediagram|classdiagram|erdiagram)$/i
 
-export const unsupportedKind = (source: string): string | undefined => {
+const unsupportedKind = (source: string): string | undefined => {
   const kind = source.replace(/^(\s*%%[^\n]*\n)+/, '').trim().split(/\s/)[0] ?? ''
   return kind && !SUPPORTED.test(kind) ? kind : undefined
 }
@@ -64,14 +64,15 @@ export const inlineMarks = (source: string): [string[], Mark][] =>
     .map(m => [cells(m[2]!.trim()), { [TAG_MARK[m[1]!.toLowerCase()]!]: true }] as [string[], Mark])
 
 const fitted = new Map<string, string | null>()
+const artWidths = new Map<string, number>()
+const artWidth = (art: string) => remember(artWidths, art, () => Math.max(...art.split('\n').map(width)))
 
 export const mermaidText = (source: string, ascii: boolean, columns: number): string | null =>
   remember(fitted, `${ascii}:${columns}:${source}`, () => {
     source = source.replace(INLINE_TAG, '')
     if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
     const art = draw(source, ascii, columns)
-    const fits = (a: string) => a.split('\n').every(l => width(l) <= columns - 2)
-    if (art === null || fits(art) || !SIDEWAYS.test(source)) return art
+    if (art === null || artWidth(art) <= columns - 2 || !SIDEWAYS.test(source)) return art
     return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
   })
 
@@ -108,7 +109,9 @@ const draw = (source: string, ascii: boolean, columns: number): string | null =>
 const LINE = /[─-╿◇]/
 const ARROW = /[►◄▲▼]/
 
-const paint = (art: string, style: Style): (string | undefined)[][] => {
+type Painted = { grid: string[][]; colors: (string | undefined)[][] }
+
+const paint = (art: string, style: Style): Painted => {
   const t = style.theme
   const grid = art.split('\n').map(cells)
   const cell = (r: number, c: number) => grid[r]?.[c] ?? ''
@@ -158,16 +161,15 @@ const paint = (art: string, style: Style): (string | undefined)[][] => {
       else color[r]![c] = t.diagramText
     }),
   )
-  return color
+  return { grid, colors: color }
 }
 
-type Painted = { grid: string[][]; colors: (string | undefined)[][] }
 const painted = new WeakMap<Theme, Map<string, Painted>>()
 
 export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string, marks: [string[], Mark][] = []): RenderElement => {
   const cache = painted.get(style.theme) ?? new Map<string, Painted>()
   painted.set(style.theme, cache)
-  const { grid, colors } = remember(cache, art, () => ({ grid: art.split('\n').map(cells), colors: paint(art, style) }))
+  const { grid, colors } = remember(cache, art, () => paint(art, style))
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
       {grid.map((chars, i) => {
@@ -203,8 +205,6 @@ export const shortenEdgeLabels = (source: string, max: number): string =>
   source.replace(EDGE_LABEL, (m, open, quoted, close, piped) =>
     quoted !== undefined ? `${open}"${cap(quoted, max)}"${close}` : `|${cap(piped, max)}|`)
 
-const artWidths = new Map<string, number>()
-
 export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {
   const drawn: Drawn = new Map()
   if (style.mermaid) {
@@ -214,7 +214,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
       let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
         const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
-        const wide = art === null ? Infinity : remember(artWidths, art, () => Math.max(...art.split('\n').map(width)))
+        const wide = art === null ? Infinity : artWidth(art)
         narrowest = Math.min(narrowest, wide)
         if (art === null || wide > columns - 2) continue
         drawn.set(i, { element: boxArt(el, style, art, `b${i}`, inlineMarks(source)), art })

@@ -94,7 +94,7 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
   for (const m of text.matchAll(INLINE)) {
     if (m.index > at) out.push(...decorate(text.slice(at, m.index), hl))
     if (m[2] !== undefined) out.push({ kind: 'code', text: m[2] })
-    else if (m[3] !== undefined) out.push({ kind: 'link', text: m[3].replace(/^`([^`]+)`$/, '$1'), href: m[4] ?? "" })
+    else if (m[3] !== undefined) out.push({ kind: 'link', text: m[3].replace(/^`([^`]+)`$/, '$1'), href: m[4]! })
     else if (m[5] !== undefined || m[6] !== undefined) out.push({ kind: 'strong', children: parseInline(m[5] ?? m[6] ?? "", hl) })
     else if (m[7] !== undefined) out.push({ kind: 'strike', children: parseInline(m[7], hl) })
     else if (m[8] !== undefined || m[9] !== undefined) out.push({ kind: 'emphasis', children: parseInline(m[8] ?? m[9] ?? "", hl) })
