@@ -483,10 +483,10 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
   await ui.unmount()
 })
 
-test('only https and localhost links become terminal hyperlinks', async $ => {
+test('only http and https links become terminal hyperlinks', async $ => {
   const ui = await $.ui.mount(mount('[docs](https://example.com) [dev](http://localhost:3000) [plain](http://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [disk](file:///etc/passwd)'))
   const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
-  expect(links).toEqual(['https://example.com', 'http://localhost:3000'])
+  expect(links).toEqual(['https://example.com', 'http://localhost:3000', 'http://example.com'])
   expect(await ui.find({ type: 'Text', text: /^run \(javascript:alert\(1\)$/ })).toBeDefined()
   await ui.unmount()
 })
@@ -503,11 +503,34 @@ test('a named link drops its own underline so the terminal hyperlink style shows
   }
 })
 
+test('plain http links and bare URLs are hyperlinks drawn in the link color on the terminal', async $ => {
+  const ui = await $.ui.mount(mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://example.com', 'http://example.org/raw', 'https://example.com/raw'])
+  for (const text of [/^plain http$/, /^http:\/\/example\.org\/raw$/, /^https:\/\/example\.com\/raw$/]) {
+    const drawnText = await ui.find({ type: 'Text', text })
+    expect(drawnText?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    expect(drawnText?.props.underline).toBeFalsy()
+  }
+  await ui.unmount()
+})
+
+test('plain http links draw as plain text on desktop, which links only https', async $ => {
+  const ui = await $.ui.mount({ ...mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'), surface: 'desktop' })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['https://example.com/raw'])
+  for (const text of [/^plain http \(http:\/\/example\.com\)$/, /^http:\/\/example\.org\/raw$/]) {
+    const drawnText = await ui.find({ type: 'Text', text })
+    expect(drawnText).toBeDefined()
+    expect(drawnText?.props.color).toBeUndefined()
+  }
+  expect((await ui.find({ type: 'Text', text: /^https:\/\/example\.com\/raw$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+  await ui.unmount()
+})
+
 test('links that cannot be clicked draw as plain text with their target, as Claude Code draws them', async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ ...mount('[mail](mailto:someone@example.com) [plain http](http://example.com) [someone@example.com](mailto:someone@example.com) [example.com](http://example.com) http://example.org/raw'), surface })
+    const ui = await $.ui.mount({ ...mount('[mail](mailto:someone@example.com) [someone@example.com](mailto:someone@example.com) [disk](file:///etc/passwd)'), surface })
     expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
-    for (const text of ['mail (someone@example.com)', 'plain http (http://example.com)', 'someone@example.com', 'http://example.com', 'http://example.org/raw']) {
+    for (const text of ['mail (someone@example.com)', 'someone@example.com', 'disk (file:///etc/passwd)']) {
       const drawnText = await ui.find({ type: 'Text', text: new RegExp(`^${text.replace(/[.()]/g, '\\$&')}$`) })
       expect(drawnText).toBeDefined()
       expect(drawnText?.props.color).toBeUndefined()

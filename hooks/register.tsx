@@ -301,7 +301,7 @@ export const register: Register = (on, options) => {
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
-  const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
+  const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' ? { ...base, httpLinks: true } : base.htmlCopy ? { ...base, htmlCopy: null } : base)
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
   const probes: Probes = {}
 
@@ -453,6 +453,6 @@ export const register: Register = (on, options) => {
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
-    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
+    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...forSurface(style, e.surface), copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
   })
 }

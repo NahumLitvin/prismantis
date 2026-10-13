@@ -74,41 +74,43 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
 
 const hasLink = (nodes: Inline[]): boolean => nodes.some(n => n.kind === 'link' || ('children' in n && hasLink(n.children)))
 
-const isHyperlink = (href: string): boolean => /^(https:|http:\/\/localhost\b)/i.test(href)
+const isHyperlink = (href: string, http: boolean): boolean => (http ? /^https?:/i : /^(https:|http:\/\/localhost\b)/i).test(href)
 
 const plainLink = (text: string, href: string): string => {
   const target = href.replace(/^mailto:/i, '')
   return text === target || `http://${text}` === target ? target : `${text} (${target})`
 }
 
-const unlink = (nodes: Inline[]): Inline[] =>
-  nodes.map(n => (n.kind === 'link' && !isHyperlink(n.href) ? { kind: 'text', text: plainLink(n.text, n.href) } : 'children' in n ? { ...n, children: unlink(n.children) } : n))
+const unlink = (nodes: Inline[], http: boolean): Inline[] =>
+  nodes.map(n => (n.kind === 'link' && !isHyperlink(n.href, http) ? { kind: 'text', text: plainLink(n.text, n.href) } : 'children' in n ? { ...n, children: unlink(n.children, http) } : n))
 
-const unlinkBlock = (block: Block): Block => {
+const unlinkBlock = (block: Block, http: boolean): Block => {
+  const plain = (nodes: Inline[]) => unlink(nodes, http)
   switch (block.kind) {
     case 'heading':
     case 'paragraph':
     case 'quote':
     case 'alert':
-      return { ...block, inline: unlink(block.inline) }
+      return { ...block, inline: plain(block.inline) }
     case 'list':
-      return { ...block, items: block.items.map(item => ({ ...item, inline: unlink(item.inline) })) }
+      return { ...block, items: block.items.map(item => ({ ...item, inline: plain(item.inline) })) }
     case 'table':
-      return { ...block, header: block.header.map(unlink), rows: block.rows.map(r => r.map(unlink)) }
+      return { ...block, header: block.header.map(plain), rows: block.rows.map(r => r.map(plain)) }
     case 'notes':
-      return { ...block, notes: block.notes.map(note => ({ ...note, inline: unlink(note.inline) })) }
+      return { ...block, notes: block.notes.map(note => ({ ...note, inline: plain(note.inline) })) }
     default:
       return block
   }
 }
 
-const unlinked = new WeakMap<Block, Block>()
+const unlinked = { http: new WeakMap<Block, Block>(), https: new WeakMap<Block, Block>() }
 
-const drawable = (block: Block): Block => {
-  const hit = unlinked.get(block)
+const drawable = (block: Block, http: boolean): Block => {
+  const cache = unlinked[http ? 'http' : 'https']
+  const hit = cache.get(block)
   if (hit) return hit
-  const made = unlinkBlock(block)
-  unlinked.set(block, made)
+  const made = unlinkBlock(block, http)
+  cache.set(block, made)
   return made
 }
 
@@ -140,8 +142,8 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return isHyperlink(n.href)
-          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
+        return isHyperlink(n.href, style.httpLinks)
+          ? n.text === n.href ? <Text key={key} color={t.link}><el.Link href={n.href} /></Text> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
           : <Text key={key}>{plainLink(n.text, n.href)}</Text>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
@@ -575,7 +577,7 @@ const copySource = (block: Block): string | undefined =>
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
-  const shown = blocks.map(drawable)
+  const shown = blocks.map(block => drawable(block, style.httpLinks))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const rendered = shown.map((block, b) => {
     const key = `b${b}`
