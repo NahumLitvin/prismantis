@@ -3,6 +3,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { displayText, inlineText } from './markdown'
+import type { Flow } from './rtl'
 import { commentTail, commentVisual, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
@@ -29,20 +30,23 @@ const wrapRanges = (text: string, w: number): [number, number][] => {
     let start = word.index
     const end = start + word[0].length
     let size = width(word[0])
-    while (size > w) {
+    if (size > w) {
       if (line) out.push(line)
       line = undefined
       let cut = start
       let taken = 0
       for (const g of graphemes(text.slice(start, end))) {
         const step = width(g)
-        if (cut > start && taken + step > w) break
+        if (cut > start && taken + step > w) {
+          out.push([start, cut])
+          start = cut
+          size -= taken
+          taken = 0
+          if (size <= w) break
+        }
         cut += g.length
         taken += step
       }
-      out.push([start, cut])
-      start = cut
-      size -= taken
     }
     if (start === end) continue
     const joined = line ? used + width(text.slice(line[1], start)) + size : Infinity
@@ -83,7 +87,9 @@ const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   return width(text) <= w ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
 }
 
-const flowOf = (style: Style, nodes: Inline[], columns: number) => (style.reorder ? flow(nodes, columns, width, style.shape) : null)
+const flows = new Map<string, Flow | null>()
+const flowOf = (style: Style, nodes: Inline[], columns: number) =>
+  style.reorder ? remember(flows, `${style.shape}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape), 500) : null
 
 const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: string): RenderElement[] => {
   const { Text } = el
