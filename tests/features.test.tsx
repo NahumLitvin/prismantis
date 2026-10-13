@@ -1240,6 +1240,32 @@ test('failed shell edits, diffs the card cannot read and tool rows off go to the
   }
 })
 
+test('diff colors set the line backgrounds of edit and shell edit cards, and nothing else', { options: { diffAddedColor: ' #1f4d2b ', diffRemovedColor: 'rgb(92,31,42)' } }, async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    for (const [tool, output] of [['Edit', patch], ['Bash', bashEdit()]] as const) {
+      const ui = await $.ui.mount(editResult(surface, tool, output))
+      const row = (text: RegExp) => ui.find({ type: 'Box', text })
+      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe('#1f4d2b')
+      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe('rgb(92,31,42)')
+      expect((await row(/^4   const a = 1$/))?.props.backgroundColor).toBeUndefined()
+      expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe(t.number)
+      expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(t.codeFlag)
+      expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
+      await ui.unmount()
+    }
+  }
+})
+
+test('diff colors that do not parse keep the tint', { options: { diffAddedColor: 'very green', diffRemovedColor: '' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
+  const row = (text: RegExp) => ui.find({ type: 'Box', text })
+  expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
+  expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(tint(t.rule, t.codeFlag))
+  await ui.unmount()
+})
+
 test('shell edits keep the engine diff when tool rows are off', { options: { toolRows: false } }, async ($, on) => {
   engine(on)
   const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit()))

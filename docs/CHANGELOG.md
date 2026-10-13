@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- `diffAddedColor` and `diffRemovedColor` set the background of added and removed lines in diff cards, for bolder diffs than the faint tint the theme blends from its number and flag colors. They take any color the other color options take; empty or a value that doesn't parse keeps the tint. The `+` and `-` marks, the counts, ```` ```diff ```` blocks and everything else keep their theme colors.
+
 ### Fixed
 
 - Files a shell command changed (`sed -i`, a script) draw as the same diff card as Edit and Write results, in the theme's number and flag colors, instead of Claude Code's own red and green diff. Each changed file gets its own card headed by its path, with `… +K more files` when Claude Code listed more, and each card folds on its own. The command's output still draws above the cards. `toolOutput: quiet` keeps these diffs under the command's first lines, where it used to drop them. A failed command, a diff the card cannot read, and `toolRows: false` keep Claude Code's drawing.

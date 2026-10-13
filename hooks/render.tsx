@@ -772,7 +772,7 @@ const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, i
   const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
   const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
   const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
-  const tints = { '+': tint(t.rule, t.number), '-': tint(t.rule, t.codeFlag), ' ': undefined }
+  const tints = { '+': style.diffAdded ?? tint(t.rule, t.number), '-': style.diffRemoved ?? tint(t.rule, t.codeFlag), ' ': undefined }
   return (
     <Box key={`card${key}`} flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
       <Text>
