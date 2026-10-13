@@ -3,20 +3,23 @@ import type { ElementTable, RenderElement } from 'claude-code'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { displayText, inlineText } from './markdown'
-import { commentTail, commentVisual, flow, hasRtl, terminalLine } from './rtl'
+import type { Flow } from './rtl'
+import { commentTail, commentVisual, containsRtl, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
 
-const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]|\p{Extended_Pictographic}/u
-const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter() : undefined
+const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}\u20E3]|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u
+const segmenter = new Intl.Segmenter()
 
-export const graphemes = (s: string): string[] => (segmenter ? [...segmenter.segment(s)].map(g => g.segment) : [...s])
+export const graphemes = (s: string): string[] => [...segmenter.segment(s)].map(g => g.segment)
 
 export const cells = (s: string): string[] => (/^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap(g => (WIDE.test(g) ? [g, ''] : [g])))
 
 export const width = (s: string): number =>
-  /^[ -~]*$/.test(s) ? s.length : graphemes(s).reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
+  /^[ -~]*$/.test(s) ? s.length
+  : s.length === 1 ? (/\p{M}/u.test(s) ? 0 : WIDE.test(s) ? 2 : 1)
+  : graphemes(s).reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
 
 const wrapRanges = (text: string, w: number): [number, number][] => {
   if (width(text) <= w) return [[0, text.length]]
@@ -27,20 +30,23 @@ const wrapRanges = (text: string, w: number): [number, number][] => {
     let start = word.index
     const end = start + word[0].length
     let size = width(word[0])
-    while (size > w) {
+    if (size > w) {
       if (line) out.push(line)
       line = undefined
       let cut = start
       let taken = 0
       for (const g of graphemes(text.slice(start, end))) {
         const step = width(g)
-        if (cut > start && taken + step > w) break
+        if (cut > start && taken + step > w) {
+          out.push([start, cut])
+          start = cut
+          size -= taken
+          taken = 0
+          if (size <= w) break
+        }
         cut += g.length
         taken += step
       }
-      out.push([start, cut])
-      start = cut
-      size -= taken
     }
     if (start === end) continue
     const joined = line ? used + width(text.slice(line[1], start)) + size : Infinity
@@ -81,7 +87,9 @@ const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   return width(text) <= w ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
 }
 
-const flowOf = (style: Style, nodes: Inline[], columns: number) => (style.reorder ? flow(nodes, columns, width, style.shape) : null)
+const flows = new Map<string, Flow | null>()
+const flowOf = (style: Style, nodes: Inline[], columns: number) =>
+  style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape), 2000) : null
 
 const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: string): RenderElement[] => {
   const { Text } = el
@@ -102,7 +110,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return /^(https:|http:\/\/localhost\b)/i.test(n.href)
+        return /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i.test(n.href)
           ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
           : <Text key={key} color={t.link} underline>{n.text}</Text>
       case 'number':
@@ -259,16 +267,18 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
 
 const ART_WIDTH = 100
 
+const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
+  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
+  const column = (measure: (s: string) => number) => block.header.map((_, c) => Math.max(...cells.map(r => measure(r[c]!))))
+  return { natural: column(width), words: column(longestWord) }
+}
+
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
-  const widths = columnWidths(
-    block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))),
-    ART_WIDTH - 4,
-    3,
-    block.header.map((_, c) => Math.max(...cells.map(r => longestWord(r[c]!)))),
-  )
+  const { natural, words } = tableSize(block)
+  const widths = columnWidths(natural, ART_WIDTH - 4, 3, words)
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
-    const room = widths[c]! - width(text)
+    const room = Math.max(0, widths[c]! - width(text))
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
     return ' '.repeat(left) + text + ' '.repeat(room - left)
   }
@@ -287,12 +297,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const t = style.theme
   const box = style.tableStyle === 'box'
   const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
-  const natural = block.header.map((h, c) =>
-    Math.max(width(displayText(h)), ...block.rows.map(r => width(displayText(r[c] ?? [])))),
-  )
-  const words = block.header.map((h, c) =>
-    Math.max(longestWord(displayText(h)), ...block.rows.map(r => longestWord(displayText(r[c] ?? [])))),
-  )
+  const { natural, words } = tableSize(block)
   const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
   const order = natural.map((_, c) => c)
   if (rtl) order.reverse()
@@ -527,7 +532,10 @@ const FOLD_SHOW = 20
 
 const codeId = (lines: string[]): string => {
   let h = 5381
-  for (const line of lines) for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+  for (const line of lines) {
+    for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+    h = (h * 33 + 10) | 0
+  }
   return `${lines.length}:${(h >>> 0).toString(36)}`
 }
 
@@ -588,13 +596,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     }
   })
   const copied = rendered.map((element, b) => {
-    const block = blocks[b]
-    const text = block ? copySource(block) : undefined
-    const isPlainCode = block?.kind === 'code' && !drawn.get(b)?.element
-    const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
-    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block?.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
+    const block = blocks[b]!
+    const text = copySource(block)
+    const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
+    const art = drawn.get(b)?.art ?? (block.kind === 'table' ? () => tableArt(block) : undefined)
+    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
-    const html = first && block?.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
     const button = second ? (
       <el.Box key={`copies${b}`} flexDirection="row" columnGap={1}>
         {first}
@@ -604,14 +612,14 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     ) : first
     if (!button) return element
     const { Box } = el
-    const rtl = style.reorder && block !== undefined && hasRtl(block.raw)
-    return block?.kind === 'quote' || block?.kind === 'alert' ? (
+    const rtl = style.reorder && hasRtl(block.raw)
+    return block.kind === 'quote' || block.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
         {button}
       </Box>
     ) : (
-      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
         <Box justifyContent="flex-end">{button}</Box>
         {element}
       </Box>
@@ -733,10 +741,10 @@ type DiffLine = { mark: '+' | '-' | ' '; num: number; text: string }
 
 const HEX = /^#[0-9a-f]{6}$/i
 
-export const tint = (base: string | undefined, color: string | undefined, share = 0.2): string | undefined => {
+export const tint = (base: string | undefined, color: string | undefined): string | undefined => {
   if (!base || !color || !HEX.test(base) || !HEX.test(color)) return undefined
   const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16)
-  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * (1 - share) + channel(color, i) * share).toString(16).padStart(2, '0')).join('')}`
+  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * 0.8 + channel(color, i) * 0.2).toString(16).padStart(2, '0')).join('')}`
 }
 
 export const diffLines = (output: unknown): DiffLine[] | undefined => {
@@ -810,9 +818,7 @@ export const refusalReason = (output: unknown): string | undefined => {
   return output.replace(/\s+/g, ' ').trim()
 }
 
-export const CALLS_REMEMBERED = 2000
-
-export const rememberCall = (calls: Set<string>, id: string, limit = CALLS_REMEMBERED): void => {
+export const rememberCall = (calls: Set<string>, id: string, limit = 2000): void => {
   calls.delete(id)
   calls.add(id)
   if (calls.size > limit) calls.delete(calls.values().next().value!)
@@ -1016,14 +1022,14 @@ const readsOnly = ({ words }: ShellPart): boolean => {
   if (name === undefined) return true
   const args = rest.join(' ')
   if (name === 'gh' && rest[0] === 'api') return ghApiReadsOnly(rest.slice(1))
-  if (name in READ_SUBCOMMANDS) return READ_SUBCOMMANDS[name]!.test(args) && !(name === 'git' && rest.some(a => /^--output\b/.test(a)))
+  if (Object.hasOwn(READ_SUBCOMMANDS, name)) return READ_SUBCOMMANDS[name]!.test(args) && !(name === 'git' && rest.some(a => /^--output\b/.test(a)))
   if (!READ_COMMANDS.has(name)) return false
   if (name === 'sed') {
     const [script, ...files] = rest.filter(a => a !== '-n')
     return script !== undefined && /^\d+(,\d+)?p$/.test(script) && files.every(f => !f.startsWith('-'))
   }
   if (name === 'find') return !rest.some(a => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/.test(a))
-  if (name === 'awk') return !rest.some(a => /^(-f|--file)/.test(a)) && !/system\s*\(|getline|[|>]/.test(args)
+  if (name === 'awk') return !rest.some(a => /^(-f|--file|-i|--include|-E|--exec|-l|--load)/.test(a)) && !/system\s*\(|getline|@(include|load)|[|>]/.test(args)
   if (name === 'sort') return !rest.some(a => /^(-[A-Za-z]*o|--output)/.test(a))
   if (name === 'uniq') return operandsOf(name, rest).length < 2
   if (name === 'tree') return !rest.some(a => /^(-o|--output)/.test(a))
@@ -1044,13 +1050,13 @@ export const isReadOnlyCall = (tool: string, input: unknown): boolean => {
 
 const TRIVIAL_PROGRAMS = new Set(['cd', 'echo', 'export', 'printf', 'pwd', 'set', 'test', 'true'])
 
-export const programsOf = (command: string, limit = 3): string[] => {
+export const programsOf = (command: string): string[] => {
   const names: string[] = []
   for (const part of parseShell(command).segments) {
     const name = commandWords(part.words)[0]?.split('/').pop()
     if (name && !TRIVIAL_PROGRAMS.has(name) && !names.includes(name)) names.push(name)
   }
-  return names.length > limit ? [...names.slice(0, limit), '…'] : names
+  return names.length > 3 ? [...names.slice(0, 3), '…'] : names
 }
 
 export const shortenPaths = (text: string, places: Places): string => {

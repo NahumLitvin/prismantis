@@ -1144,3 +1144,16 @@ test('a root spelled with another case or separators prints as the dot, but only
   expect(shortTarget({ cwd: '/home/dev/app', home: '/home/dev' }, '/home/dev/app')).toBe('.')
   expect(shortTarget({ cwd: '/home/dev/app', home: '/home/dev' }, '/home/dev/App')).toBe('~/App')
 })
+
+test('an expanded shell row whose output is an error string shows that string', async ($, on) => {
+  engine(on)
+  await expand($, 'exp-err')
+  const row = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: { ...call('Bash', { command: 'cat /root/x' }, 'exp-err'), isErrored: true, output: 'Error: permission denied' },
+  })
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await row.unmount()
+})

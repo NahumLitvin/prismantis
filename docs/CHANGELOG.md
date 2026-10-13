@@ -11,6 +11,39 @@ All notable changes to this project are documented here. The format follows [Kee
 - Bar values sit at the end of their bar. A value was centered on its tick column, which is right of the middle of an even-width bar, so `1200` hung off its bar's edge. A negative bar's value sat above `0` on the positive side, and the bar at the top of an untitled chart, or any bar in an all-negative chart, lost its value. Values are now centered on their bar, half a cell to the right when they cannot center exactly (`1200` covers a four-wide bar, `800` sits over its last three cells), a negative bar's value sits under it, and a bar that reaches the top of the axis keeps its value on a row above the chart.
 - A line over a bar chart passes behind the bars instead of overwriting their tips, so a bar under the line no longer looks shorter than its value.
 
+## [0.18.3] - 2026-10-13
+
+### Changed
+
+- A table cell holding one very long word (a hash, a base64 blob, a minified line) wraps in linear time: a 10,000-character cell redraws in 3 ms instead of 355 ms. Right-to-left lines are laid out once per text and width instead of on every redraw (stream replay bench, 1.2 ms to 0.9 ms per redraw); the first draw of a long Hebrew reply costs about 15% more.
+- A streaming reply redraws about 3.7x faster (1.0 ms instead of 3.9 ms per redraw in the stream replay bench), and Hebrew text about 4.8x faster. Diagrams no longer re-measure their art on every redraw, and single characters skip the grapheme segmenter. Nothing looks different.
+- A reply with diagrams redraws faster again while it streams: their art width is measured once instead of on every redraw, up to three times per diagram that does not fit (stream replay bench, 3.2 ms to 1.2 ms per redraw).
+
+### Fixed
+
+- `/prismantis theme random` no longer turns off right-to-left reordering, the HTML table copy and path shortening for the rest of the session. It changes only the colors.
+- Switching theme while a formula is still being typeset no longer stores the old color as the new theme's image; the formula is typeset again in the new color.
+- In kitty, a link whose URL holds Hebrew keeps its URL as written instead of reversing it.
+- A TeX command or a shell program named like a built-in JavaScript property (`\toString`, `\constructor`, a `toString` command) no longer draws `function toString() { [native code] }` or breaks quiet tool rows.
+- `awk '@include "inplace"'`, `awk -E`, `awk --exec` and `awk -l` can edit files, so `toolOutput: quiet` no longer hides their output as a read.
+- `http://localhost:5173?debug=1` and `http://localhost#/home` are clickable again.
+- A footnote definition quoted inside a code block no longer becomes a real footnote.
+- Two long code blocks that differ only in where their lines break fold and unfold on their own.
+- An expanded shell command whose result is an error message shows that message instead of "(No output)".
+- Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
+- A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
+- `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.
+- `awk -i inplace` edits a file, so `toolOutput: quiet` no longer hides its output as a read.
+- Copying a table as art no longer fails when a column is narrower than a wide character such as `中`.
+- After `/prismantis theme random`, new LaTeX formulas draw in the new theme's color instead of the old one.
+- Text-style symbols such as `↔`, `™`, `©`, `▶` and `⚠` count as one column, as terminals draw them, so a diagram box around them closes. Emoji drawn as emoji (`✅`, `⚠️`), flags, keycaps like `1️⃣` and rare CJK characters such as `𠀀` count as two.
+
+## [0.18.2] - 2026-10-13
+
+### Fixed
+
+- LaTeX math draws as images wherever `CLAUDE_CODE_FORCE_TERMINAL_IMAGES` is set, the variable that makes Claude Code draw images, also inside tmux, as Claude Code does. Before, prismantis found the terminal only by `TERM_PROGRAM`, `TERM` and `KITTY_WINDOW_ID`, so a background session, whose process carries none of them, drew every formula as text even when viewed in kitty or Ghostty.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security
