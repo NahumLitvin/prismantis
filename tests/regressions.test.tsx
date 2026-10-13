@@ -5,7 +5,7 @@ import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
-import { tableArt, width } from '../hooks/render'
+import { isReadOnlyCall, tableArt, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 import { clipboardEnv, recordCopies } from './clipboard-env'
 
@@ -45,6 +45,22 @@ test('a four-backtick fence keeps triple-backtick examples inside one code block
   const [code] = blocks
   if (code?.kind !== 'code') throw new Error('not code')
   expect(code.lines).toEqual(['```bash', 'ls', '```'])
+})
+
+for (const [input, expected] of [
+  ['## Using C#', [{ kind: 'text', text: 'Using C#' }]],
+  ['## Title ##', [{ kind: 'text', text: 'Title' }]],
+  ['[Foo](https://e.org/wiki/Foo_(bar)) ok', [{ kind: 'link', text: 'Foo', href: 'https://e.org/wiki/Foo_(bar)' }, { kind: 'text', text: ' ok' }]],
+  ['see https://e.org/wiki/Foo_(bar) ok', [{ kind: 'text', text: 'see ' }, { kind: 'link', text: 'https://e.org/wiki/Foo_(bar)', href: 'https://e.org/wiki/Foo_(bar)' }, { kind: 'text', text: ' ok' }]],
+  ['see (https://e.org/x) ok', [{ kind: 'text', text: 'see (' }, { kind: 'link', text: 'https://e.org/x', href: 'https://e.org/x' }, { kind: 'text', text: ') ok' }]],
+  ['[`render.tsx`](hooks/render.tsx)', [{ kind: 'link', text: 'render.tsx', href: 'hooks/render.tsx' }]],
+  ['call f(*args, **kwargs) now', [{ kind: 'text', text: 'call f(*args, **kwargs) now' }]],
+  ['**a *b* c**', [{ kind: 'strong', children: [{ kind: 'text', text: 'a ' }, { kind: 'emphasis', children: [{ kind: 'text', text: 'b' }] }, { kind: 'text', text: ' c' }] }]],
+  ['f(_a, _)', [{ kind: 'text', text: 'f(_a, _)' }]],
+  ['f(*args, **kwargs) and **b**', [{ kind: 'text', text: 'f(*args, **kwargs) and ' }, { kind: 'strong', children: [{ kind: 'text', text: 'b' }] }]],
+] as const) test(`inline markdown: ${input}`, async () => {
+  const [block] = parse(input, hl)
+  expect(block && 'inline' in block ? block.inline : block).toEqual(expected)
 })
 
 test('a one-dash delimiter row makes a table', async () => {
@@ -326,6 +342,8 @@ test('the help screen shows every element prismantis draws', async () => {
   for (const lang of ['bash', 'json', 'mermaid', 'math']) expect(langs.includes(lang)).toBe(true)
   const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
+  expect(links.some(l => l.kind === 'link' && l.href.endsWith('Foo_(bar)')) && links.some(l => l.kind === 'link' && l.text === 'render.tsx')).toBe(true)
+  expect(showcaseText([])).toContain('f(*args, **kwargs)')
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(kinds.has('notes')).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
@@ -487,7 +505,7 @@ test('only http and https links become terminal hyperlinks', async $ => {
   const ui = await $.ui.mount(mount('[docs](https://example.com) [dev](http://localhost:3000) [plain](http://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [disk](file:///etc/passwd)'))
   const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
   expect(links).toEqual(['https://example.com', 'http://localhost:3000', 'http://example.com'])
-  expect(await ui.find({ type: 'Text', text: /^run \(javascript:alert\(1\)$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^run \(javascript:alert\(1\)\)$/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -811,4 +829,57 @@ test('terminal control sequences in a reply never reach the drawn text', async $
   expect(all).toContain('hidden')
   expect(all).not.toMatch(/evil\.test|\]52;|\]8;;|\[2J|\[31m/)
   expect(/[\x00-\x08\x0b-\x1f\x7f]/.test(all)).toBe(false)
+})
+
+test('a localhost lookalike host stays link text on desktop, which links plain http only for localhost', async $ => {
+  const ui = await $.ui.mount({ ...mount('[a](http://localhost@evil.example/) [b](http://localhost.evil.example/) [c](http://localhost:3000/x) [d](http://localhost)'), surface: 'desktop' })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:3000/x', 'http://localhost'])
+  await ui.unmount()
+})
+
+test('awk that edits a file in place is not read-only', async () => {
+  expect(isReadOnlyCall('Bash', { command: "awk -i inplace '{sub(/a/,\"b\")}1' f.txt" })).toBe(false)
+  expect(isReadOnlyCall('Bash', { command: "awk --include=inplace '{print}' f.txt" })).toBe(false)
+  expect(isReadOnlyCall('Bash', { command: "awk '{print $1}' f.txt" })).toBe(true)
+})
+
+test('table art fits wide characters into columns too narrow for them', async () => {
+  const cols = 26
+  const art = tableArt(tableOf(`|${' h |'.repeat(cols)}\n|${'---|'.repeat(cols)}\n|${' 中文中文 |'.repeat(cols)}`))
+  expect(art.split('\n').length > 3).toBe(true)
+})
+
+for (const [text, cols] of [['©', 1], ['™', 1], ['↔', 1], ['▶', 1], ['⚠', 1], ['⚠️', 2], ['✅', 2], ['🙂', 2], ['🇮🇱', 2], ['1️⃣', 2], ['𠀀', 2], ['中', 2], ['é', 1]] as const) test(`${text} takes ${cols} terminal column${cols > 1 ? 's' : ''}`, async () => {
+  expect(width(text)).toBe(cols)
+})
+
+test('a mermaid box around a text-style symbol closes', async () => {
+  const art = mermaidText('flowchart TD\n  A[sync ↔ async] --> B[done]', false, 80)!
+  const box = art.split("\n").slice(0, 3).map(l => [...l.trimEnd()].length)
+  expect(new Set(box).size).toBe(1)
+})
+
+test('a long unbroken table cell wraps in linear time', async () => {
+  const cost = (n: number) => best(() => tableArt(tableOf(`| h |\n|---|\n| ${'a'.repeat(n)} |`)), 3)
+  cost(1000)
+  expect(cost(40000) / Math.max(cost(10000), 0.05) < 8).toBe(true)
+})
+
+for (const command of ['toString', 'constructor', '__proto__', 'hasOwnProperty x']) test(`a command named ${command} is not read-only and does not throw`, async () => {
+  expect(isReadOnlyCall('Bash', { command })).toBe(false)
+})
+
+for (const command of [`awk '@include "inplace"; {sub(/a/,"b")} 1' f.txt`, `awk '@load "inplace"; 1' f.txt`, 'awk -E prog.awk f.txt', 'awk --exec=prog.awk f.txt', "awk -l inplace -e '1' f.txt"]) test(`${command} is not read-only`, async () => {
+  expect(isReadOnlyCall('Bash', { command })).toBe(false)
+})
+
+test('localhost links with a query or a hash stay clickable on desktop', async $ => {
+  const ui = await $.ui.mount({ ...mount('[a](http://localhost:5173?debug=1) [b](http://localhost#/home) [c](http://localhost.evil.example/)'), surface: 'desktop' })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:5173?debug=1', 'http://localhost#/home'])
+  await ui.unmount()
+})
+
+test('a footnote definition inside a four-backtick fence stays code', async () => {
+  const blocks = parse('````text\n```\n[^x]: inside code\n````\n\nSee[^x]', hl)
+  expect(blocks.some(b => b.kind === 'notes')).toBe(false)
 })

@@ -8,10 +8,10 @@ import type { Block } from './markdown'
 import { parse, texText } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { FIGURE_HINT, drawFigure, isFigureLang } from './figure'
-import { boxArt, inlineMarks, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
-import type { Drawn, Fold } from './render'
-import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
+import { FIGURE_HINT } from './figure'
+import { drawDiagrams } from './mermaid'
+import type { Fold } from './render'
+import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -63,12 +63,6 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 const expandedCalls = new Set<string>()
 const readOnlyCalls = new Set<string>()
 
-const markExpanded = (id: string) => {
-  expandedCalls.delete(id)
-  expandedCalls.add(id)
-  if (expandedCalls.size > 500) expandedCalls.delete(expandedCalls.values().next().value!)
-}
-
 const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.columns ?? 100) - 4)
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
@@ -89,6 +83,7 @@ const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
 type Typeset = Exclude<Formula, { error: true }> & { tex: string }
 
 const showsImages = async ($: EngineInterface): Promise<boolean> => {
+  if (await $.env.get('CLAUDE_CODE_FORCE_TERMINAL_IMAGES')) return true
   if (await $.env.get('TMUX')) return false
   const terminal = await detectTerminal($)
   return terminal === 'kitty' || terminal === 'ghostty'
@@ -97,11 +92,11 @@ const showsImages = async ($: EngineInterface): Promise<boolean> => {
 type Latex = { command: string; dir: string }
 type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; ready?: Latex | null; stopped?: boolean; queue: Promise<void> }
 
-const formulaKey = (latex: LatexSession, tex: string) => `${latex.color}\0${tex}`
+const formulaKey = (color: string, tex: string) => `${color}\0${tex}`
 
-const typeset = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], fontSize = LATEX_FONT_PX, dpr = LATEX_DPR): Promise<Formula[]> => {
+const typeset = async ($: EngineInterface, color: string, engine: Latex, texs: string[], fontSize = LATEX_FONT_PX, dpr = LATEX_DPR): Promise<Formula[]> => {
   const { stdout } = await $.process.run(
-    [engine.command, '--output-dir', engine.dir, '--color', latex.color, '--background-color', 'transparent', '--font-size', String(fontSize), '--dpr', String(dpr)],
+    [engine.command, '--output-dir', engine.dir, '--color', color, '--background-color', 'transparent', '--font-size', String(fontSize), '--dpr', String(dpr)],
     { stdin: `${texs.join('\n')}\n`, timeoutMs: 2000 },
   )
   const rendered = renderedOf(stdout)
@@ -113,11 +108,11 @@ const typeset = async ($: EngineInterface, latex: LatexSession, engine: Latex, t
   }))
 }
 
-const withPadding = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], results: Formula[]): Promise<Formula[]> => {
+const withPadding = async ($: EngineInterface, color: string, engine: Latex, texs: string[], results: Formula[]): Promise<Formula[]> => {
   const padded: Formula[] = []
   for (const [i, result] of results.entries()) {
     const pad = 'png' in result ? padFor(result) : null
-    const [again] = pad ? await typeset($, latex, engine, [texs[i]!], pad.fontSize, pad.dpr).catch((): Formula[] => []) : []
+    const [again] = pad ? await typeset($, color, engine, [texs[i]!], pad.fontSize, pad.dpr).catch((): Formula[] => []) : []
     padded.push(again && 'png' in again && 'png' in result ? { ...result, padded: again } : result)
   }
   return padded
@@ -129,7 +124,7 @@ const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Late
   const suffix = (await read($, latexDir)) || crypto.randomUUID()
   await update($, latexDir, () => suffix)
   const engine = { command: 'ratex-render', dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${await $.session.id()}-${suffix}` }
-  const [check] = await typeset($, latex, engine, ['x^2'])
+  const [check] = await typeset($, latex.color, engine, ['x^2'])
   return check && 'png' in check ? engine : null
 }
 
@@ -149,23 +144,24 @@ const stopLatex = (latex: LatexSession) => {
 }
 
 const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: string[]): Promise<void> => {
+  const color = latex.color
   const engine = await latexEngine($, latex)
   if (!engine || latex.stopped) return
-  const results = await typeset($, latex, engine, texs).then(
-    done => withPadding($, latex, engine, texs, done),
+  const results = await typeset($, color, engine, texs).then(
+    done => withPadding($, color, engine, texs, done),
     () => null,
   )
   if (!results) return stopLatex(latex)
-  const fresh = texs.map((tex, i) => [formulaKey(latex, tex), results[i]!] as const)
+  const fresh = texs.map((tex, i) => [formulaKey(color, tex), results[i]!] as const)
   await update($, formulas, store => keepFormulas(store, fresh, latex.wanted))
   latex.wanted.clear()
-  for (const tex of texs) latex.pending.delete(formulaKey(latex, tex))
+  for (const tex of texs) latex.pending.delete(formulaKey(color, tex))
 }
 
 const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: string, blocks: Block[]): Promise<Map<number, Typeset>> => {
   const maths = [...blocks.entries()].flatMap(([i, block]) => {
     const tex = mathOf(block)
-    return tex === null ? [] : [{ i, tex, key: formulaKey(latex, tex) }]
+    return tex === null ? [] : [{ i, tex, key: formulaKey(latex.color, tex) }]
   })
   if (surface !== 'terminal' || maths.length === 0) return new Map()
   void latexEngine($, latex)
@@ -248,31 +244,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       />
     ) : null
   }
-  const drawn: Drawn = new Map()
-  if (style.mermaid) {
-    for (const [i, block] of blocks.entries()) {
-      if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
-      const source = block.lines.join('\n')
-      let narrowest = Infinity
-      for (const max of [Infinity, 24, 12]) {
-        const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
-        const wide = art === null ? Infinity : Math.max(...art.split('\n').map(width))
-        narrowest = Math.min(narrowest, wide)
-        if (art === null || wide > columns - 2) continue
-        drawn.set(i, { element: boxArt(el, style, art, `b${i}`, inlineMarks(source)), art })
-        break
-      }
-      if (!drawn.has(i) && !block.isOpen) {
-        const kind = unsupportedKind(source)
-        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
-      }
-    }
-  }
-  for (const [i, block] of blocks.entries()) {
-    if (block.kind !== 'code' || !isFigureLang(block.lang)) continue
-    const figure = drawFigure(el, style, block, columns, `b${i}`)
-    if (figure) drawn.set(i, figure)
-  }
+  const drawn = drawDiagrams(el, style, blocks, columns)
   const Image = 'Image' in el ? el.Image : null
   if (Image) {
     for (const [i, formula] of math) {
@@ -311,7 +283,7 @@ export const register: Register = (on, options) => {
       await locate($, style)
       if (quiet) for (const call of e.props.calls) if (call.tool_use_id && isReadOnlyCall(call.tool, call.input)) rememberCall(readOnlyCalls, call.tool_use_id)
       if (e.props.isExpanded) {
-        for (const call of e.props.calls) if (call.tool_use_id) markExpanded(call.tool_use_id)
+        for (const call of e.props.calls) if (call.tool_use_id) rememberCall(expandedCalls, call.tool_use_id, 500)
         return next(e)
       }
       return renderToolGroup($.ui.resolve(e), fit(e.viewport), e.props.calls, e.props.isActive, e.viewport?.columns)
@@ -320,7 +292,8 @@ export const register: Register = (on, options) => {
       await locate($, style)
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns)
-      return e.props.tool === 'Bash' || e.props.tool === 'PowerShell' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
+      const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
+      return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
     })
     on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
       if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) {
@@ -374,7 +347,8 @@ export const register: Register = (on, options) => {
     if (name !== 'random' || options.theme !== 'random') return { text: `Theme set to ${name}.` }
     const others = RANDOM_THEMES.filter(t => t !== themeName)
     themeName = others[Math.floor(Math.random() * others.length)]!
-    Object.assign(style, resolveStyle({ ...options, theme: themeName }))
+    style.theme = resolveStyle({ ...options, theme: themeName }).theme
+    latex.color = ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080')
     $.ui.invalidate('ui.render')
     return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
   })
