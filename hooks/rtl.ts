@@ -20,7 +20,7 @@ export const TERMINALS = {
 
 export type Terminal = keyof typeof TERMINALS
 
-type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'math' | 'number' | 'path' | 'link' | 'dim' | 'footnote' }
+type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'math' | 'number' | 'path' | 'link' | 'dim' | 'footnote'; href?: string }
 type Unit = { ch: string; fmt: Fmt }
 
 const R = /[֐-׿؀-ٟ٪-ۯۺ-ݿࢠ-ࣿיִ-﷿ﹰ-﻿]/
@@ -53,16 +53,16 @@ const flatten = (nodes: Inline[], wrap: Fmt['wrap'] = []): Unit[] =>
         return flatten(n.children, [...wrap, n.kind])
       case 'link':
         return n.text === n.href
-          ? units(n.text, { wrap, leaf: 'link' })
-          : [...units(n.text, { wrap, leaf: 'link' }), ...units(` (${n.href})`, { wrap, leaf: 'dim' })]
+          ? units(n.text, { wrap, leaf: 'link', href: n.href })
+          : [...units(n.text, { wrap, leaf: 'link', href: n.href }), ...units(` (${n.href})`, { wrap, leaf: 'dim' })]
       default:
         return units(n.text, { wrap, leaf: n.kind })
     }
   })
 
-const sameFmt = (a: Fmt, b: Fmt) => a.leaf === b.leaf && a.wrap.length === b.wrap.length && a.wrap.every((k, i) => k === b.wrap[i])
+const sameFmt = (a: Fmt, b: Fmt) => a.leaf === b.leaf && a.href === b.href && a.wrap.length === b.wrap.length && a.wrap.every((k, i) => k === b.wrap[i])
 
-const leafNode = (leaf: Fmt['leaf'], text: string): Inline => (leaf === 'link' ? { kind: 'link', text, href: text } : { kind: leaf, text })
+const leafNode = ({ leaf, href }: Fmt, text: string): Inline => (leaf === 'link' ? { kind: 'link', text, href: href ?? text } : { kind: leaf, text })
 
 const rebuild = (all: Unit[]): Inline[] => {
   const out: Inline[] = []
@@ -72,7 +72,7 @@ const rebuild = (all: Unit[]): Inline[] => {
     let text = ''
     let j = i
     while (j < all.length && sameFmt(all[j]!.fmt, fmt)) text += all[j++]!.ch
-    out.push(fmt.wrap.reduceRight<Inline>((inner, kind) => ({ kind, children: [inner] }), leafNode(fmt.leaf, text)))
+    out.push(fmt.wrap.reduceRight<Inline>((inner, kind) => ({ kind, children: [inner] }), leafNode(fmt, text)))
     i = j
   }
   return out

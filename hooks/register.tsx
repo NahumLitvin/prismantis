@@ -376,6 +376,7 @@ export const register: Register = (on, options) => {
     const others = RANDOM_THEMES.filter(t => t !== themeName)
     themeName = others[Math.floor(Math.random() * others.length)]!
     Object.assign(style, resolveStyle({ ...options, theme: themeName }))
+    latex.color = ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080')
     $.ui.invalidate('ui.render')
     return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
   })

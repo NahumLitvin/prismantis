@@ -11,6 +11,11 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
+- A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
+- `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.
+- `awk -i inplace` edits a file, so `toolOutput: quiet` no longer hides its output as a read.
+- Copying a table as art no longer fails when a column is narrower than a wide character such as `中`.
+- After `/prismantis theme random`, new LaTeX formulas draw in the new theme's color instead of the old one.
 
 ## [0.18.2] - 2026-10-13
 

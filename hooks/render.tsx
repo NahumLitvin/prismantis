@@ -104,7 +104,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return /^(https:|http:\/\/localhost\b)/i.test(n.href)
+        return /^(https:|http:\/\/localhost(:\d+)?(\/|$))/i.test(n.href)
           ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
           : <Text key={key} color={t.link} underline>{n.text}</Text>
       case 'number':
@@ -270,7 +270,7 @@ export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
     block.header.map((_, c) => Math.max(...cells.map(r => longestWord(r[c]!)))),
   )
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
-    const room = widths[c]! - width(text)
+    const room = Math.max(0, widths[c]! - width(text))
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
     return ' '.repeat(left) + text + ' '.repeat(room - left)
   }
@@ -1025,7 +1025,7 @@ const readsOnly = ({ words }: ShellPart): boolean => {
     return script !== undefined && /^\d+(,\d+)?p$/.test(script) && files.every(f => !f.startsWith('-'))
   }
   if (name === 'find') return !rest.some(a => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/.test(a))
-  if (name === 'awk') return !rest.some(a => /^(-f|--file)/.test(a)) && !/system\s*\(|getline|[|>]/.test(args)
+  if (name === 'awk') return !rest.some(a => /^(-f|--file|-i|--include)/.test(a)) && !/system\s*\(|getline|[|>]/.test(args)
   if (name === 'sort') return !rest.some(a => /^(-[A-Za-z]*o|--output)/.test(a))
   if (name === 'uniq') return operandsOf(name, rest).length < 2
   if (name === 'tree') return !rest.some(a => /^(-o|--output)/.test(a))

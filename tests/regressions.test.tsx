@@ -5,7 +5,7 @@ import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
-import { tableArt, width } from '../hooks/render'
+import { isReadOnlyCall, tableArt, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 import { clipboardEnv, recordCopies } from './clipboard-env'
 
@@ -756,4 +756,22 @@ test('terminal control sequences in a reply never reach the drawn text', async $
   expect(all).toContain('hidden')
   expect(all).not.toMatch(/evil\.test|\]52;|\]8;;|\[2J|\[31m/)
   expect(/[\x00-\x08\x0b-\x1f\x7f]/.test(all)).toBe(false)
+})
+
+test('a localhost lookalike host stays link text', async $ => {
+  const ui = await $.ui.mount(mount('[a](http://localhost@evil.example/) [b](http://localhost.evil.example/) [c](http://localhost:3000/x) [d](http://localhost)'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:3000/x', 'http://localhost'])
+  await ui.unmount()
+})
+
+test('awk that edits a file in place is not read-only', async () => {
+  expect(isReadOnlyCall('Bash', { command: "awk -i inplace '{sub(/a/,\"b\")}1' f.txt" })).toBe(false)
+  expect(isReadOnlyCall('Bash', { command: "awk --include=inplace '{print}' f.txt" })).toBe(false)
+  expect(isReadOnlyCall('Bash', { command: "awk '{print $1}' f.txt" })).toBe(true)
+})
+
+test('table art fits wide characters into columns too narrow for them', async () => {
+  const cols = 26
+  const art = tableArt(tableOf(`|${' h |'.repeat(cols)}\n|${'---|'.repeat(cols)}\n|${' 中文中文 |'.repeat(cols)}`))
+  expect(art.split('\n').length > 3).toBe(true)
 })

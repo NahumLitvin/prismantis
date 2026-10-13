@@ -1,8 +1,9 @@
 import type { On } from 'claude-code'
 import { expect, mock, test as base } from 'claude-code/testing'
 
-import { keepFormulas, padFor } from '../hooks/latex'
+import { keepFormulas, padFor, ratexColor } from '../hooks/latex'
 import { parse, texText } from '../hooks/markdown'
+import { PRESETS } from '../hooks/presets'
 
 const PNG_160x80 = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABQAQAAAAC2JkOZAAAAFklEQVR42mNgGAWjYBSMglEwCgYeAAAGkAAB8Q2GVgAAAABJRU5ErkJggg=='
 const PNG_800x400 = 'iVBORw0KGgoAAAANSUhEUgAAAyAAAAGQAQAAAAB+XjmZAAAAPklEQVR42u3BMQEAAADCoPVPbQ0PoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4NndAAAYtfwy0AAAAASUVORK5CYII='
@@ -614,4 +615,20 @@ test('in Warp a formula draws as Unicode text, not as its TeX source', async ($,
   expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /\\int/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('after /prismantis random, new formulas take the new theme color', { options: { theme: 'random' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  on('config.set', (_, e) => ({ value: e.value }))
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+  const first = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  await first.unmount()
+  const run = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const picked = (PRESETS as Record<string, { diagramText?: string; codeText?: string }>)[/^Theme set to random: (\S+) for now/.exec(run.text ?? '')?.[1] ?? '']
+  const second = await $.ui.mount(reply('Next:\n\n$$\nx^3\n$$'))
+  await clock.settle()
+  expect(runs.at(-1)?.argv[runs.at(-1)!.argv.indexOf('--color') + 1]).toBe(ratexColor(picked?.diagramText ?? picked?.codeText ?? '#808080'))
+  await second.unmount()
 })

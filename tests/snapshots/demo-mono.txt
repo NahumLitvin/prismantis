@@ -544,8 +544,9 @@
       "━━━━━"
 <Box>
   <Text>
-    <Text underline>
-      "רושיק"
+    <Link>
+      <Text underline>
+        "רושיק"
     <Text>
       " םגו ,250ms-ו "
     <Text>

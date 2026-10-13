@@ -285,3 +285,9 @@ test('the demo-rtl screen has every element and draws right to left', { options:
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.width === '100%')).toBe(true)
   await ui.unmount()
 })
+
+test('a named link keeps its target when a Hebrew line reorders', async () => {
+  const lines = flow([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: 'המדריך', href: 'https://example.com/guide' }, { kind: 'text', text: ' עכשיו' }], 100, measure)?.lines ?? []
+  const links = lines.flat().filter(n => n.kind === 'link')
+  expect(links.map(l => l.kind === 'link' && l.href)).toEqual(['https://example.com/guide'])
+})
