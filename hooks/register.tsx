@@ -11,7 +11,7 @@ import { clipboardCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { Fold } from './render'
-import { bashEdits, drawMath, editNotes, hasShellOutput, isReadOnlyCall, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
+import { bashEdits, drawMath, editNotes, hasShellOutput, isReadOnlyCall, noteTip, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
 import { HINT, helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -222,7 +222,7 @@ const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolv
   return { folded, element: <el.Button key={key} variant="secondary" label={folded ? `+${hidden} more lines` : 'show less'} onPress={() => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))} /> }
 }
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string, open?: string[]): RenderElement[] => {
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string, open?: string[], notes = false): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
     const copied = async (surface: RenderSurface): Promise<string> => {
@@ -251,7 +251,8 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       if (picked) drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picked.picture.png }} columns={picked.fit.columns} rows={picked.fit.rows} alt={formula.tex} /> })
     }
   }
-  const elements = renderBlocks(el, style, blocks, columns, drawMath(el, style, blocks, drawn), copy, folder($, el, open))
+  const tip = notes ? noteTip(blocks, text => void $.ui.toast(text)) : undefined
+  const elements = renderBlocks(el, style, blocks, columns, drawMath(el, style, blocks, drawn), copy, folder($, el, open), tip)
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
   if (!button) return elements
   return style.copyButtonStyle === 'hover'
@@ -439,7 +440,7 @@ export const register: Register = (on, options) => {
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined, open)}
+          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined, open, true)}
         </Box>
       </Box>
     )

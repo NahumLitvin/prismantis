@@ -8,7 +8,7 @@ import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import { isReadOnlyCall, tableArt, takesEditorLinks, takesHttpLinks, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 import { claudeAt, linksHttp } from './claude-version'
-import { clipboardEnv, recordCopies } from './clipboard-env'
+import { clipboardEnv, recordCopies, recordToasts } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
 
@@ -352,6 +352,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(kinds.has('notes')).toBe(true)
   expect(blocks.some(b => b.kind === 'table' && b.header.some(h => h.some(n => n.kind === 'footnote')))).toBe(true)
+  expect(showcaseText([])).toContain('Click a mark to see its note')
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
   expect(showcaseText([])).toContain('copyButtonStyle')
@@ -805,7 +806,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   test(`footnote marks and the notes block draw on ${surface}`, async ($) => {
     const ui = await $.ui.mount({ ...mount('Fast[^a].\n\n[^a]: Measured twice.'), surface })
     expect(await ui.find({ type: 'Text', text: /^¹$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /¹ Measured twice\./ })).toBeDefined()
+    expect(await ui.find({ text: /^¹ Measured twice\.$/ })).toBeDefined()
     await ui.unmount()
   })
 
@@ -817,10 +818,20 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(new Set(marks.map(m => m.text))).toEqual(new Set(['¹', '²', '³']))
       expect(marks.filter(m => m.props.color !== accent).map(m => m.text)).toEqual([])
       expect(marks.length).toBe(6)
-      expect((await ui.find({ type: 'Text', text: /^Metric²$/ }))?.props).toMatchObject({ bold: true, color: PRESETS['catppuccin-mocha'].tableHeader })
+      expect((await ui.find({ type: 'Text', text: /^Metric$/ }))?.props).toMatchObject({ bold: true, color: PRESETS['catppuccin-mocha'].tableHeader })
       await ui.unmount()
     })
   }
+
+  test(`a click on a footnote mark in a sentence, list, quote or table shows its note on ${surface}`, async ($, on) => {
+    const toasts = recordToasts(on)
+    const ui = await $.ui.mount({ ...mount('Fast[^a] and steady.\n\n- Cold[^b] start\n\n> Quiet[^a] release.\n\n| M | V |\n|---|---|\n| p99 | 40ms[^b] |\n\n[^a]: Measured twice.\n[^b]: First request.'), surface })
+    const marks = await ui.findAll({ type: 'Button', text: /^[¹²]$/ })
+    expect(marks.map(m => m.text)).toEqual(['¹', '²', '¹', '²'])
+    for (const mark of marks) await ui.press({ key: mark.key! })
+    expect(toasts).toEqual(['¹ Measured twice.', '² First request.', '¹ Measured twice.', '² First request.'])
+    await ui.unmount()
+  })
 }
 
 const chartRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }) => {
