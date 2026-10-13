@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.18.1] - 2026-10-13
+
+### Security
+
+- Releases are immutable from 0.18.1 on: a release tag stays on its commit and cannot be moved, deleted or reused, and `gh release verify v0.18.1 -R NahumLitvin/prismantis` checks GitHub's signed attestation for it. Earlier releases stay as they were ([#101](https://github.com/NahumLitvin/prismantis/issues/101)).
+
 ## [0.18.0] - 2026-10-13
 
 ### Added
