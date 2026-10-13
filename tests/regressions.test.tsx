@@ -336,6 +336,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('diff card headed `+N −M`')
   expect(showcaseText([])).toContain('Files a shell command changes')
   expect(showcaseText([])).toContain('`diffAddedColor` and `diffRemovedColor`')
+  expect(showcaseText([])).toContain('`diffStyle` for the look: `card`, `full`, `marks` or `bar`')
 })
 
 test('mermaid boxes stay closed around wide labels', async () => {

@@ -204,7 +204,7 @@ Clicking works where the terminal passes clicks through, as fullscreen mode does
 
 ![Diff cards: plain Claude Code on the left, prismantis on the right](docs/compare/diff-cards.png)
 
-Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. A status dot shows done, running or failed, and output still draws below. Edits and new files draw as a diff card in the theme's colors, and so do files a shell command changed (`sed -i`, a script), one card per file headed by its path.
+Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. A status dot shows done, running or failed, and output still draws below. Edits and new files draw as a diff card in the theme's colors, and so do files a shell command changed (`sed -i`, a script), one card per file headed by its path. `diffStyle` picks the look: `card` (default) frames the lines in a rounded box, `full` drops the box and tints each changed line across the width, `marks` drops the tint and colors the changed lines themselves, and `bar` puts a colored `▌` before each changed line.
 
 Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm test`, with `· N failed` in the flag color when any call failed. Expand a group (ctrl+o or `--verbose`): shell calls keep their colored command with the output boxed below, and other calls use Claude Code's own rows. ctrl+o on a reply shows the original text.
 
@@ -320,7 +320,8 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `mermaidAscii` | `true`, `false` | `false` |
 | `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
-| `diffAddedColor`, `diffRemovedColor` | any color: the background of added and removed lines in diff cards, for bolder diffs (`#1f4d2b`, `#5c1f2a`) | a faint tint of the `number` and `codeFlag` colors over `rule` |
+| `diffStyle` | `card` (rounded box, tinted lines), `full` (no box, lines tinted across the width), `marks` (no tint, changed lines in the number and flag colors), `bar` (no tint, a colored `▌` before each changed line) | `card` |
+| `diffAddedColor`, `diffRemovedColor` | any color: the background of added and removed lines in the `card` and `full` diff styles, for bolder diffs (`#1f4d2b`, `#5c1f2a`) | a faint tint of the `number` and `codeFlag` colors over `rule` |
 
 A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name (`green`, `cyanBright`). Values that don't parse are ignored. Every token has a `<token>Color` option and a row in `/config`:
 

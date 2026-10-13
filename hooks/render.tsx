@@ -772,9 +772,12 @@ const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, i
   const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
   const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
   const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
-  const tints = { '+': style.diffAdded ?? tint(t.rule, t.number), '-': style.diffRemoved ?? tint(t.rule, t.codeFlag), ' ': undefined }
+  const look = style.diffStyle
+  const tinted = look === 'card' || look === 'full'
+  const tints = { '+': tinted ? style.diffAdded ?? tint(t.rule, t.number) : undefined, '-': tinted ? style.diffRemoved ?? tint(t.rule, t.codeFlag) : undefined, ' ': undefined }
+  const frame = look === 'card' ? { borderStyle: 'round', borderColor: t.rule, paddingX: 1 } : {}
   return (
-    <Box key={`card${key}`} flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
+    <Box key={`card${key}`} flexDirection="column" flexShrink={1} {...frame}>
       <Text>
         {title === undefined ? null : <Text color={t.path}>{`${title} `}</Text>}
         <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
@@ -785,9 +788,10 @@ const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, i
         const bg = tints[r.mark]
         return (
           <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
+            {look === 'bar' ? <Text color={color(r.mark)}>{r.mark === ' ' ? '  ' : '▌ '}</Text> : null}
             <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
             <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
-            <Text color={bg ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
+            <Text color={bg || look === 'bar' ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
           </Box>
         )
       })}
@@ -797,16 +801,16 @@ const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, i
   )
 }
 
-const diffRow = (el: ElementTable, cards: RenderElement[], below: boolean): RenderElement => (
+const diffRow = (el: ElementTable, style: Style, cards: RenderElement[], below: boolean): RenderElement => (
   <el.Box flexDirection="row">
     <el.Text dimColor>{below ? '     ' : '  ⎿  '}</el.Text>
-    <el.Box flexDirection="column" flexShrink={1}>{cards}</el.Box>
+    <el.Box flexDirection="column" flexShrink={1} {...(style.diffStyle === 'full' ? { flexGrow: 1 } : {})}>{cards}</el.Box>
   </el.Box>
 )
 
 export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
   const rows = diffLines(output)
-  return rows === undefined ? undefined : diffRow(el, [diffBox(el, style, rows, fold, id, '')], false)
+  return rows === undefined ? undefined : diffRow(el, style, [diffBox(el, style, rows, fold, id, '')], false)
 }
 
 type EditedFile = { path: string; rows: DiffLine[] }
@@ -842,7 +846,7 @@ export const hasShellOutput = (output: unknown): boolean => {
 export const renderBashEdits = (el: ElementTable, style: Style, edits: BashEdits, fold: Fold, id: string, below = false): RenderElement => {
   const cards = edits.files.map((file, i) => diffBox(el, style, file.rows, fold, `${id}:${i}`, String(i), shortPath(style, file.path)))
   const more = edits.more ? [<el.Text key="more" dimColor>{`… +${edits.more} more ${edits.more === 1 ? 'file' : 'files'}`}</el.Text>] : []
-  return diffRow(el, [...cards, ...more], below)
+  return diffRow(el, style, [...cards, ...more], below)
 }
 
 const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s+(\S+\s+\()?\S+:\d+(:\d+)?\)?|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i

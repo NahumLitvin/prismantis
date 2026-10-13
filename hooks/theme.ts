@@ -24,6 +24,7 @@ export type Style = {
   toolStyle: 'chat' | 'tree-dim' | 'tree-bold' | 'classic'
   toolOutput: 'full' | 'quiet'
   narration?: boolean
+  diffStyle: 'card' | 'full' | 'marks' | 'bar'
   diffAdded?: string
   diffRemoved?: string
   highlightNumbers: boolean
@@ -72,6 +73,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     clock: pick(options.clock, ['off', '24h', '12h'] as const, 'off'),
     toolStyle: pick(options.toolStyle, ['chat', 'tree-dim', 'tree-bold', 'classic'] as const, 'chat'),
     toolOutput: pick(options.toolOutput, ['full', 'quiet'] as const, 'full'),
+    diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),
     diffAdded: isColor(options.diffAddedColor) ? options.diffAddedColor.trim() : undefined,
     diffRemoved: isColor(options.diffRemovedColor) ? options.diffRemovedColor.trim() : undefined,
     highlightNumbers: options.highlightNumbers !== false,

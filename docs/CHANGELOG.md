@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `diffStyle` picks how Edit, Write and shell edit diffs draw: `card` (the default) frames the lines in a rounded box with tinted lines, `full` drops the box and tints each changed line across the width, `marks` drops the tint and draws the changed lines in the number and flag colors, which reads in 256-color terminals and `mono` too, and `bar` drops the tint and puts a `▌` in the line's color before each changed line. Every style keeps the `+N −M` header, line numbers, folding at 20 lines and one block per changed file. Tool output other than diffs is unchanged.
 - `diffAddedColor` and `diffRemovedColor` set the background of added and removed lines in diff cards, for bolder diffs than the faint tint the theme blends from its number and flag colors. They take any color the other color options take; empty or a value that doesn't parse keeps the tint. The `+` and `-` marks, the counts, ```` ```diff ```` blocks and everything else keep their theme colors.
 
 ### Fixed
