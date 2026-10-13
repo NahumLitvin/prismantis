@@ -918,7 +918,7 @@
       "━━━━━"
 <Box>
   <Text>
-    <Text color=#89b4fa underline>
+    <Text>
       "קישור"
     <Text>
       " וגם ,250ms-ו "

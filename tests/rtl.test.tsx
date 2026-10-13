@@ -3,6 +3,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
+import { PRESETS } from '../hooks/presets'
 import { commentTail, flow, terminalLine } from '../hooks/rtl'
 
 const measure = (s: string) => [...s].length
@@ -284,4 +285,16 @@ test('the demo-rtl screen has every element and draws right to left', { options:
   expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.alignItems === 'flex-end').length >= 3).toBe(true)
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.width === '100%')).toBe(true)
   await ui.unmount()
+})
+
+test('links in a Hebrew paragraph that cannot be clicked draw as plain text', { options: { rtl: 'warp' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('שלום [mail](mailto:someone@example.com) ו [תיעוד](https://x.dev) עולם'), surface })
+    const texts = await ui.findAll({ type: 'Text' })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    expect(texts.some(t => t.text.includes('someone@example.com'))).toBe(true)
+    expect(texts.some(t => t.text.includes('mailto:'))).toBe(false)
+    expect(texts.some(t => t.props.underline === true || t.props.color === PRESETS['catppuccin-mocha'].link)).toBe(false)
+    await ui.unmount()
+  }
 })

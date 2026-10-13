@@ -487,9 +487,59 @@ test('only https and localhost links become terminal hyperlinks', async $ => {
   const ui = await $.ui.mount(mount('[docs](https://example.com) [dev](http://localhost:3000) [plain](http://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [disk](file:///etc/passwd)'))
   const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
   expect(links).toEqual(['https://example.com', 'http://localhost:3000'])
-  expect(await ui.find({ type: 'Text', text: /^run$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^run \(javascript:alert\(1\)$/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a named link drops its own underline so the terminal hyperlink style shows', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('[prismantis on GitHub](https://github.com/NahumLitvin/prismantis)'), surface })
+    const [link] = await ui.findAll({ type: 'Link' })
+    const label = await ui.find({ type: 'Text', text: /^prismantis on GitHub$/ })
+    expect(link?.props.href).toBe('https://github.com/NahumLitvin/prismantis')
+    expect(label?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    expect(label?.props.underline).toBeFalsy()
+    await ui.unmount()
+  }
+})
+
+test('links that cannot be clicked draw as plain text with their target, as Claude Code draws them', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('[mail](mailto:someone@example.com) [plain http](http://example.com) [someone@example.com](mailto:someone@example.com) [example.com](http://example.com) http://example.org/raw'), surface })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    for (const text of ['mail (someone@example.com)', 'plain http (http://example.com)', 'someone@example.com', 'http://example.com', 'http://example.org/raw']) {
+      const drawnText = await ui.find({ type: 'Text', text: new RegExp(`^${text.replace(/[.()]/g, '\\$&')}$`) })
+      expect(drawnText).toBeDefined()
+      expect(drawnText?.props.color).toBeUndefined()
+      expect(drawnText?.props.underline).toBeFalsy()
+    }
+    await ui.unmount()
+  }
+})
+
+test('copying a table keeps its links as written', async ($, on) => {
+  const copied = stubClipboard(on)
+  const source = '| who | site |\n|---|---|\n| [mail](mailto:someone@example.com) | [docs](https://example.com) |'
+  const ui = await $.ui.mount(mount(source))
+  const button = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ md')
+  await ui.press({ key: button!.key! })
+  expect(copied).toEqual([source])
+  await ui.unmount()
+})
+
+for (const tableStyle of ['box', 'rules'] as const) {
+  test(`a ${tableStyle} table cell link that cannot be clicked draws as plain text and its column fits it`, { options: { tableStyle } }, async $ => {
+    const ui = await $.ui.mount(mount('| who | n |\n|---|---|\n| [mail](mailto:someone@example.com) | 1 |'))
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    const cell = await ui.find({ type: 'Text', text: /^mail \(someone@example\.com\)$/ })
+    expect(cell).toBeDefined()
+    expect(cell?.props.color).toBeUndefined()
+    expect(cell?.props.underline).toBeFalsy()
+    const widths = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).map(b => b.props.width as number)
+    expect(Math.max(...widths) >= 'mail (someone@example.com)'.length).toBe(true)
+    await ui.unmount()
+  })
+}
 
 test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)

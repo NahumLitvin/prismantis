@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Named links like `[docs](https://example.com)` keep the link color but no longer draw their own underline, so the terminal's hyperlink style shows (in Windows Terminal, a dashed underline that turns solid on hover), as it does for bare URLs. A terminal that styles hyperlinks only on hover shows colored text until then.
+- Links that cannot be clicked no longer look clickable. `mailto:`, plain `http:` and other links that do not become terminal hyperlinks draw as plain text, the label then the target in parentheses, as Claude Code draws them: `[mail](mailto:someone@example.com)` draws as `mail (someone@example.com)`, and a label that matches its target draws once. This holds in paragraphs, lists, quotes, headings, table cells, right-to-left text and `$.prismantis.markdown`. In reordered right-to-left text a named link is not a hyperlink, so its label now draws plain before its dim target. Copying keeps the markdown as written.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security

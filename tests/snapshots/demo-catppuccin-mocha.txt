@@ -918,7 +918,7 @@
       "━━━━━"
 <Box>
   <Text>
-    <Text color=#89b4fa underline>
+    <Text>
       "רושיק"
     <Text>
       " םגו ,250ms-ו "

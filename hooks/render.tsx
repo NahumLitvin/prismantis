@@ -74,6 +74,44 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
 
 const hasLink = (nodes: Inline[]): boolean => nodes.some(n => n.kind === 'link' || ('children' in n && hasLink(n.children)))
 
+const isHyperlink = (href: string): boolean => /^(https:|http:\/\/localhost\b)/i.test(href)
+
+const plainLink = (text: string, href: string): string => {
+  const target = href.replace(/^mailto:/i, '')
+  return text === target || `http://${text}` === target ? target : `${text} (${target})`
+}
+
+const unlink = (nodes: Inline[]): Inline[] =>
+  nodes.map(n => (n.kind === 'link' && !isHyperlink(n.href) ? { kind: 'text', text: plainLink(n.text, n.href) } : 'children' in n ? { ...n, children: unlink(n.children) } : n))
+
+const unlinkBlock = (block: Block): Block => {
+  switch (block.kind) {
+    case 'heading':
+    case 'paragraph':
+    case 'quote':
+    case 'alert':
+      return { ...block, inline: unlink(block.inline) }
+    case 'list':
+      return { ...block, items: block.items.map(item => ({ ...item, inline: unlink(item.inline) })) }
+    case 'table':
+      return { ...block, header: block.header.map(unlink), rows: block.rows.map(r => r.map(unlink)) }
+    case 'notes':
+      return { ...block, notes: block.notes.map(note => ({ ...note, inline: unlink(note.inline) })) }
+    default:
+      return block
+  }
+}
+
+const unlinked = new WeakMap<Block, Block>()
+
+const drawable = (block: Block): Block => {
+  const hit = unlinked.get(block)
+  if (hit) return hit
+  const made = unlinkBlock(block)
+  unlinked.set(block, made)
+  return made
+}
+
 const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
 
 const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
@@ -102,9 +140,9 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return /^(https:|http:\/\/localhost\b)/i.test(n.href)
-          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
-          : <Text key={key} color={t.link} underline>{n.text}</Text>
+        return isHyperlink(n.href)
+          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
+          : <Text key={key}>{plainLink(n.text, n.href)}</Text>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
       case 'path':
@@ -537,8 +575,9 @@ const copySource = (block: Block): string | undefined =>
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
-  const rtlTables = blocks.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
-  const rendered = blocks.map((block, b) => {
+  const shown = blocks.map(drawable)
+  const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
+  const rendered = shown.map((block, b) => {
     const key = `b${b}`
     switch (block.kind) {
       case 'heading':
