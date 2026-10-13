@@ -556,7 +556,7 @@ const barColumns = (axis: string) => [...axis.matchAll(/┬|▀+/g)].map(m => m.
 const block = (ch = '') => /[█▀▄]/.test(ch)
 
 for (const [values, axisRange] of [[[400, 1200, 1900, 2500, 800], '0 --> 2500'], [[12, 10, 8], '0 --> 14']] as const) {
-  test(`a bar stands on the axis line, reaches the gridlines at or below its value and stops on its own: ${values.join(', ')}`, () => {
+  test(`a bar stands on the axis line, reaches the gridlines at or below its value and stops on its own, with its value centered on top: ${values.join(', ')}`, () => {
     for (const title of ['\n  title "Sizes"', ''])
     for (const columns of [60, 120, 200]) {
       const chart = `xychart-beta${title}\n  x-axis [${values.map((_, i) => `b${i + 1}`).join(', ')}]\n  y-axis ${axisRange}\n  bar [${values.join(', ')}]`
@@ -573,12 +573,23 @@ for (const [values, axisRange] of [[[400, 1200, 1900, 2500, 800], '0 --> 2500'],
           if (Number(tick) === values[i]) expect(line[c]).toBe('▄')
         })
       }
+      bars.forEach((c, i) => {
+        const label = String(values[i])
+        const top = lines.findIndex(l => block(l[c]))
+        const bar = lines[top]!
+        let [left, right] = [c, c]
+        while (block(bar[left - 1])) left--
+        while (block(bar[right + 1])) right++
+        const from = lines[top - 1]!.indexOf(label, left - label.length)
+        expect(from).toBeGreaterThan(-1)
+        expect([0, 1]).toContain(from - left - (right - (from + label.length - 1)))
+      })
     }
   })
 }
 
 for (const values of [[-5, 3, 8, -2, 0], [-6, 6, -2, 2], [-5, -3, -8]]) {
-  test(`bars with negatives grow both ways from a solid 0 line and stop on their own gridline: ${values.join(', ')}`, () => {
+  test(`bars with negatives grow both ways from a solid 0 line, stop on their own gridline and keep their value at their end: ${values.join(', ')}`, () => {
     const chart = `xychart-beta\n  x-axis [${values.map((_, i) => `b${i + 1}`).join(', ')}]\n  bar [${values.join(', ')}]`
     for (const columns of [60, 120, 200]) {
       const lines = mermaidText(chart, false, columns)!.split('\n')
@@ -600,6 +611,12 @@ for (const values of [[-5, 3, 8, -2, 0], [-6, 6, -2, 2], [-5, -3, -8]]) {
           if (tick === values[i]) expect(lines[r]![c]).toBe(tick > base ? '▄' : '▀')
         })
       }
+      bars.forEach((c, i) => {
+        const label = String(values[i])
+        const filled = lines.flatMap((l, r) => (block(l[c]) ? [r] : []))
+        const row = values[i]! < 0 ? (filled.at(-1) ?? baseRow) + 1 : (filled[0] ?? baseRow) - 1
+        if (row < axis) expect(lines[row]!.slice(c - label.length, c + label.length)).toContain(label)
+      })
     }
   })
 }

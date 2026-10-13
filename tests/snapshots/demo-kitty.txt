@@ -441,11 +441,11 @@
         <Text color=#89b4fa>
           "┤"
         <Text color=#45475a>
-          "····························"
+          "···························"
         <Text color=#cdd6f4>
           "16"
         <Text color=#45475a>
-          "··"
+          "···"
       <Text>
         <Text color=#cdd6f4>
           " "

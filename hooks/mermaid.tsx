@@ -26,23 +26,30 @@ const labelBars = (art: string, source: string): string => {
   const series = source.match(/^\s*(bar|line)\b.*$/gm) ?? []
   const values = /^\s*bar\b[^[\n]*\[([^\]\n]*)\]/m.exec(source)?.[1]?.split(',').map(v => v.trim())
   if (series.length !== 1 || !values || /^\s*xychart(-beta)?\s+horizontal/m.test(source)) return art
-  const grid = art.split('\n').map(l => [...l])
+  const grid = ['', ...art.split('\n')].map(l => [...l])
   const gutter = (r: number) => /^\s*(-?[\d.]+)[┤┼]/.exec(grid[r]?.join('') ?? '')?.[1]
   const axis = grid.findLastIndex((_, r) => gutter(r) !== undefined)
   const ticks = [...(grid[axis]?.join('') ?? '').matchAll(/┬|▀+/g)].map(m => m.index + Math.floor(m[0].length / 2))
   if (ticks.length !== values.length) return art
+  const zero = grid.findIndex((_, r) => gutter(r) === '0')
+  const top = grid.findIndex((_, r) => gutter(r) !== undefined)
+  const base = zero !== -1 ? zero : gutter(top)?.startsWith('-') ? top : axis
   ticks.forEach((x, k) => {
-    const top = grid.findIndex(row => BLOCK.test(row[x] ?? ''))
-    const y = top === -1 ? axis - 1 : top - 1
+    const filled = grid.flatMap((row, r) => (BLOCK.test(row[x] ?? '') ? [r] : []))
+    const y = Number(values[k]) < 0 ? (filled.at(-1) ?? base) + 1 : (filled[0] ?? base) - 1
     const text = [...values[k]!]
-    const from = x - Math.floor((text.length - 1) / 2)
-    const row = grid[y]
-    if (!row || y < 0) return
+    const bar = grid[filled[0] ?? -1] ?? []
+    let [left, right] = [x, x]
+    while (BLOCK.test(bar[left - 1] ?? '')) left--
+    while (BLOCK.test(bar[right + 1] ?? '')) right++
+    const from = left + Math.ceil((right - left + 1 - text.length) / 2)
+    const row = y < axis ? grid[y] : undefined
+    if (!row) return
     while (row.length < from + text.length) row.push(' ')
     if (!text.every((_, i) => /[ ·]/.test(row[from + i] ?? ' '))) return
     text.forEach((ch, i) => (row[from + i] = ch))
   })
-  return grid.map(row => row.join('').trimEnd()).join('\n')
+  return grid.map(row => row.join('').trimEnd()).join('\n').replace(/^\n/, '')
 }
 
 const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
