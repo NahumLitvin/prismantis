@@ -789,5 +789,5 @@ test('a mermaid box around a text-style symbol closes', async () => {
 test('a long unbroken table cell wraps in linear time', async () => {
   const cost = (n: number) => best(() => tableArt(tableOf(`| h |\n|---|\n| ${'a'.repeat(n)} |`)), 3)
   cost(1000)
-  expect(cost(20000) / Math.max(cost(5000), 0.05) < 8).toBe(true)
+  expect(cost(40000) / Math.max(cost(10000), 0.05) < 8).toBe(true)
 })

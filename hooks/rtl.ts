@@ -200,7 +200,7 @@ const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
     return { ...n, text: shapeText(n.text, shape) }
   })
 
-const containsRtl = (nodes: Inline[]): boolean => nodes.some(n => ('children' in n ? containsRtl(n.children) : R.test(n.text)))
+export const containsRtl = (nodes: Inline[]): boolean => nodes.some(n => ('children' in n ? containsRtl(n.children) : R.test(n.text)))
 
 export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual'): Flow | null => {
   if (!containsRtl(nodes)) return null

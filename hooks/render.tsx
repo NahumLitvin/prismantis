@@ -4,7 +4,7 @@ import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { displayText, inlineText } from './markdown'
 import type { Flow } from './rtl'
-import { commentTail, commentVisual, flow, hasRtl, terminalLine } from './rtl'
+import { commentTail, commentVisual, containsRtl, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -89,7 +89,7 @@ const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
 
 const flows = new Map<string, Flow | null>()
 const flowOf = (style: Style, nodes: Inline[], columns: number) =>
-  style.reorder ? remember(flows, `${style.shape}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape), 500) : null
+  style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape), 2000) : null
 
 const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: string): RenderElement[] => {
   const { Text } = el

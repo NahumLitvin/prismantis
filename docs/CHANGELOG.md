@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
-- A table cell holding one very long word (a hash, a base64 blob, a minified line) wraps in linear time: a 10,000-character cell redraws in 3 ms instead of 355 ms. Right-to-left lines are laid out once per text and width instead of on every redraw (stream replay bench, 1.2 ms to 1.0 ms per redraw).
+- A table cell holding one very long word (a hash, a base64 blob, a minified line) wraps in linear time: a 10,000-character cell redraws in 3 ms instead of 355 ms. Right-to-left lines are laid out once per text and width instead of on every redraw (stream replay bench, 1.2 ms to 0.9 ms per redraw); the first draw of a long Hebrew reply costs about 15% more.
 - A streaming reply redraws about 3.7x faster (1.0 ms instead of 3.9 ms per redraw in the stream replay bench), and Hebrew text about 4.8x faster. Diagrams no longer re-measure their art on every redraw, and single characters skip the grapheme segmenter. Nothing looks different.
 - A reply with diagrams redraws faster again while it streams: their art width is measured once instead of on every redraw, up to three times per diagram that does not fit (stream replay bench, 3.2 ms to 1.2 ms per redraw).
 
