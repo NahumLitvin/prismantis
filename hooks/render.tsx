@@ -80,6 +80,16 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
 
 const hasLink = (nodes: Inline[]): boolean => nodes.some(n => n.kind === 'link' || ('children' in n && hasLink(n.children)))
 
+const HTTP_LINKS_FROM = [2, 1, 289]
+
+export const takesHttpLinks = (base?: string): boolean => {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(base ?? '')
+  if (!m) return false
+  const version = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const at = version.findIndex((n, i) => n !== HTTP_LINKS_FROM[i])
+  return at === -1 || version[at]! > HTTP_LINKS_FROM[at]!
+}
+
 const isHyperlink = (href: string, http: boolean): boolean => (http ? /^https?:/i : /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i).test(href)
 
 const plainLink = (text: string, href: string): string => {

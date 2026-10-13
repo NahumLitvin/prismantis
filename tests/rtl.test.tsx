@@ -5,6 +5,7 @@ import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
 import { PRESETS } from '../hooks/presets'
 import { commentTail, flow, terminalLine } from '../hooks/rtl'
+import { claudeAt, linksHttp } from './claude-version'
 
 const measure = (s: string) => [...s].length
 const plain = (text: string, columns = 100) => flow([{ kind: 'text', text }], columns, measure)
@@ -287,8 +288,10 @@ test('the demo-rtl screen has every element and draws right to left', { options:
   await ui.unmount()
 })
 
-test('links in a Hebrew paragraph are hyperlinks in the link color, or plain text where they cannot be clicked', { options: { rtl: 'warp' } }, async $ => {
-  for (const surface of ['terminal', 'desktop'] as const) {
+test('links in a Hebrew paragraph are hyperlinks in the link color, or plain text where they cannot be clicked', { options: { rtl: 'warp' } }, async ($, on) => {
+  claudeAt(on, '2.1.289')
+  const surfaces = (await linksHttp($.ui.mount(mount('[x](http://example.com)')))) ? (['terminal', 'desktop'] as const) : (['desktop'] as const)
+  for (const surface of surfaces) {
     const ui = await $.ui.mount({ ...mount('שלום [mail](mailto:someone@example.com) ו [תיעוד](https://x.dev) ו [דף](http://example.com) עולם'), surface })
     const texts = await ui.findAll({ type: 'Text' })
     const hrefs = (await ui.findAll({ type: 'Link' })).map(l => l.props.href).sort()

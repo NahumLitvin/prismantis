@@ -11,7 +11,7 @@ import { clipboardCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { Fold } from './render'
-import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt } from './render'
+import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesHttpLinks } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -200,7 +200,10 @@ const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null>
   return await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : null
 }
 
-type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null> }
+type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null>; httpLinks?: Promise<boolean> }
+
+const httpLinksOk = ($: EngineInterface, probes: Probes): Promise<boolean> =>
+  (probes.httpLinks ??= $.session.version().then(v => takesHttpLinks(v.base), () => false))
 
 const probe = async ($: EngineInterface, style: Style, probes: Probes): Promise<Terminal | null> => {
   probes.terminal ??= applyRtl($, style)
@@ -273,9 +276,10 @@ export const register: Register = (on, options) => {
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
-  const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' ? { ...base, httpLinks: true } : base.htmlCopy ? { ...base, htmlCopy: null } : base)
-  const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
   const probes: Probes = {}
+  const forSurface = (base: Style, surface: RenderSurface, http: boolean): Style =>
+    surface === 'terminal' ? (http ? { ...base, httpLinks: true } : base) : base.htmlCopy ? { ...base, htmlCopy: null } : base
+  const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
 
   const quiet = style.toolOutput === 'quiet'
   if (options.toolRows !== false) {
@@ -388,7 +392,8 @@ export const register: Register = (on, options) => {
     const { Box } = el
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const open = await read($, unfolded)
-    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport), math, undefined, open)}</Box>
+    const surfaceStyle = forSurface(fit(e.viewport), e.surface, await httpLinksOk($, probes))
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, undefined, open)}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
@@ -408,7 +413,7 @@ export const register: Register = (on, options) => {
     const { Box, Text } = el
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const math = await mathOfBlocks($, latex, e.surface, blocks)
-    const surfaceStyle = forSurface(fit(e.viewport), e.surface)
+    const surfaceStyle = forSurface(fit(e.viewport), e.surface, await httpLinksOk($, probes))
     const open = await read($, unfolded)
     return (
       <Box flexDirection="row">
@@ -422,11 +427,12 @@ export const register: Register = (on, options) => {
     )
   })
 
-  on('prismantis.markdown', ($, e, next) => {
+  on('prismantis.markdown', async ($, e, next) => {
     const blocks = parseCached(e.text, shared, 20)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
-    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...forSurface(style, e.surface), copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
+    const surfaceStyle = forSurface(style, e.surface, await httpLinksOk($, probes))
+    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...surfaceStyle, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
   })
 }

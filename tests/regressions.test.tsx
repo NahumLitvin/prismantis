@@ -5,8 +5,9 @@ import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
-import { isReadOnlyCall, tableArt, width } from '../hooks/render'
+import { isReadOnlyCall, tableArt, takesHttpLinks, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
+import { claudeAt, linksHttp } from './claude-version'
 import { clipboardEnv, recordCopies } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
@@ -501,7 +502,9 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
   await ui.unmount()
 })
 
-test('only http and https links become terminal hyperlinks', async $ => {
+test('only http and https links become terminal hyperlinks', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(mount('[x](http://example.com)'))))) return
   const ui = await $.ui.mount(mount('[docs](https://example.com) [dev](http://localhost:3000) [plain](http://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [disk](file:///etc/passwd)'))
   const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
   expect(links).toEqual(['https://example.com', 'http://localhost:3000', 'http://example.com'])
@@ -521,7 +524,9 @@ test('a named link drops its own underline so the terminal hyperlink style shows
   }
 })
 
-test('plain http links and bare URLs are hyperlinks drawn in the link color on the terminal', async $ => {
+test('plain http links and bare URLs are hyperlinks drawn in the link color on the terminal', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(mount('[x](http://example.com)'))))) return
   const ui = await $.ui.mount(mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'))
   expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://example.com', 'http://example.org/raw', 'https://example.com/raw'])
   for (const text of [/^plain http$/, /^http:\/\/example\.org\/raw$/, /^https:\/\/example\.com\/raw$/]) {
@@ -532,16 +537,28 @@ test('plain http links and bare URLs are hyperlinks drawn in the link color on t
   await ui.unmount()
 })
 
-test('plain http links draw as plain text on desktop, which links only https', async $ => {
-  const ui = await $.ui.mount({ ...mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'), surface: 'desktop' })
-  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['https://example.com/raw'])
-  for (const text of [/^plain http \(http:\/\/example\.com\)$/, /^http:\/\/example\.org\/raw$/]) {
-    const drawnText = await ui.find({ type: 'Text', text })
-    expect(drawnText).toBeDefined()
-    expect(drawnText?.props.color).toBeUndefined()
-  }
-  expect((await ui.find({ type: 'Text', text: /^https:\/\/example\.com\/raw$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
-  await ui.unmount()
+for (const [where, surface, base] of [
+  ['on desktop, which links only https', 'desktop', '2.1.289'],
+  ['on Claude Code 2.1.288, which refuses http hyperlinks', 'terminal', '2.1.288'],
+  ['when the Claude Code version is unknown', 'terminal', undefined],
+] as const) {
+  test(`plain http links draw as plain text ${where}`, async ($, on) => {
+    if (base) claudeAt(on, base)
+    const ui = await $.ui.mount({ ...mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'), surface })
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['https://example.com/raw'])
+    for (const text of [/^plain http \(http:\/\/example\.com\)$/, /^http:\/\/example\.org\/raw$/]) {
+      const drawnText = await ui.find({ type: 'Text', text })
+      expect(drawnText).toBeDefined()
+      expect(drawnText?.props.color).toBeUndefined()
+    }
+    expect((await ui.find({ type: 'Text', text: /^https:\/\/example\.com\/raw$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    await ui.unmount()
+  })
+}
+
+test('http hyperlinks start at Claude Code 2.1.289', () => {
+  for (const base of ['2.1.289', '2.1.289-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesHttpLinks(base)).toBe(true)
+  for (const base of ['2.1.288', '2.1.287', '2.0.999', '1.9.400', 'dev', '', undefined]) expect(takesHttpLinks(base)).toBe(false)
 })
 
 test('links that cannot be clicked draw as plain text with their target, as Claude Code draws them', async $ => {
