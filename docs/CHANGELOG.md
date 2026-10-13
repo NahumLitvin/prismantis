@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - A streaming reply redraws about 3.7x faster (1.0 ms instead of 3.9 ms per redraw in the stream replay bench), and Hebrew text about 4.8x faster. Diagrams no longer re-measure their art on every redraw, and single characters skip the grapheme segmenter. Nothing looks different.
+- A reply with diagrams redraws faster again while it streams: their art width is measured once instead of on every redraw, up to three times per diagram that does not fit (stream replay bench, 3.2 ms to 1.2 ms per redraw).
 
 ### Fixed
 

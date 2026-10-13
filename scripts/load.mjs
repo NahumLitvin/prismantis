@@ -14,7 +14,7 @@ export const load = async () => {
         "export { parse } from './hooks/markdown.ts'",
         "export { MAC_TABLE_COPY, LINUX_TABLE_COPY, clipboardCommand } from './hooks/clipboard.ts'",
         "export { renderBlocks } from './hooks/render.tsx'",
-        "export { mermaidText, boxArt } from './hooks/mermaid.tsx'",
+        "export { mermaidText, boxArt, drawDiagrams } from './hooks/mermaid.tsx'",
         "export { drawFigure, isFigureLang } from './hooks/figure.tsx'",
         "export { resolveStyle } from './hooks/theme.ts'",
       ].join('\n'),
@@ -36,18 +36,7 @@ export const load = async () => {
   const el = { Box: 'Box', Text: 'Text', Button: 'Button', Link: 'Link' }
   const reply = (text, style, columns = 200) => {
     const blocks = lib.parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths })
-    const drawn = new Map()
-    for (const [i, block] of blocks.entries()) {
-      if (block.kind !== 'code' || block.lang !== 'mermaid') continue
-      const art = lib.mermaidText(block.lines.join('\n'), style.mermaidAscii, columns)
-      if (art !== null) drawn.set(i, { element: lib.boxArt(el, style, art, `b${i}`), art })
-    }
-    for (const [i, block] of blocks.entries()) {
-      if (block.kind !== 'code' || !lib.isFigureLang(block.lang)) continue
-      const figure = lib.drawFigure(el, style, block, columns, `b${i}`)
-      if (figure) drawn.set(i, figure)
-    }
-    return lib.renderBlocks(el, style, blocks, columns, drawn, () => null)
+    return lib.renderBlocks(el, style, blocks, columns, lib.drawDiagrams(el, style, blocks, columns), () => null)
   }
   return { ...lib, el, reply }
 }

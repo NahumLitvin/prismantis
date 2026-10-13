@@ -1,5 +1,8 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
+import { drawFigure, isFigureLang } from './figure'
+import type { Block } from './markdown'
+import type { Drawn } from './render'
 import { cells, graphemes, remember, width } from './render'
 import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
@@ -199,3 +202,34 @@ const cap = (label: string, max: number) => {
 export const shortenEdgeLabels = (source: string, max: number): string =>
   source.replace(EDGE_LABEL, (m, open, quoted, close, piped) =>
     quoted !== undefined ? `${open}"${cap(quoted, max)}"${close}` : `|${cap(piped, max)}|`)
+
+const artWidths = new Map<string, number>()
+
+export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {
+  const drawn: Drawn = new Map()
+  if (style.mermaid) {
+    for (const [i, block] of blocks.entries()) {
+      if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
+      const source = block.lines.join('\n')
+      let narrowest = Infinity
+      for (const max of [Infinity, 24, 12]) {
+        const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
+        const wide = art === null ? Infinity : remember(artWidths, art, () => Math.max(...art.split('\n').map(width)))
+        narrowest = Math.min(narrowest, wide)
+        if (art === null || wide > columns - 2) continue
+        drawn.set(i, { element: boxArt(el, style, art, `b${i}`, inlineMarks(source)), art })
+        break
+      }
+      if (!drawn.has(i) && !block.isOpen) {
+        const kind = unsupportedKind(source)
+        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
+      }
+    }
+  }
+  for (const [i, block] of blocks.entries()) {
+    if (block.kind !== 'code' || !isFigureLang(block.lang)) continue
+    const figure = drawFigure(el, style, block, columns, `b${i}`)
+    if (figure) drawn.set(i, figure)
+  }
+  return drawn
+}

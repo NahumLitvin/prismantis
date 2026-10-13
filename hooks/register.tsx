@@ -8,9 +8,9 @@ import type { Block } from './markdown'
 import { parse, texText } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { FIGURE_HINT, drawFigure, isFigureLang } from './figure'
-import { boxArt, inlineMarks, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
-import type { Drawn, Fold } from './render'
+import { FIGURE_HINT } from './figure'
+import { drawDiagrams } from './mermaid'
+import type { Fold } from './render'
 import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -249,31 +249,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       />
     ) : null
   }
-  const drawn: Drawn = new Map()
-  if (style.mermaid) {
-    for (const [i, block] of blocks.entries()) {
-      if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
-      const source = block.lines.join('\n')
-      let narrowest = Infinity
-      for (const max of [Infinity, 24, 12]) {
-        const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
-        const wide = art === null ? Infinity : Math.max(...art.split('\n').map(width))
-        narrowest = Math.min(narrowest, wide)
-        if (art === null || wide > columns - 2) continue
-        drawn.set(i, { element: boxArt(el, style, art, `b${i}`, inlineMarks(source)), art })
-        break
-      }
-      if (!drawn.has(i) && !block.isOpen) {
-        const kind = unsupportedKind(source)
-        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
-      }
-    }
-  }
-  for (const [i, block] of blocks.entries()) {
-    if (block.kind !== 'code' || !isFigureLang(block.lang)) continue
-    const figure = drawFigure(el, style, block, columns, `b${i}`)
-    if (figure) drawn.set(i, figure)
-  }
+  const drawn = drawDiagrams(el, style, blocks, columns)
   const Image = 'Image' in el ? el.Image : null
   if (Image) {
     for (const [i, formula] of math) {

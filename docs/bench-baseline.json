@@ -1,17 +1,17 @@
 {
-  "parse, demo (cold)": 0.00522,
-  "mermaid layout, demo diagrams (cold)": 0.07584,
-  "mermaid paint, demo diagrams": 0.00226,
-  "full reply, demo (cold)": 0.0999,
-  "full reply, demo (warm)": 0.02425,
-  "full reply, 6x demo (cold)": 0.22234,
-  "table, 300 rows": 0.18644,
-  "Hebrew, 300 paragraphs (cold)": 0.49986,
-  "code block, 1500 lines, highlighted": 0.16038,
-  "stream replay, 138 redraws of a 13800-char reply (per redraw)": 0.10816,
+  "parse, demo (cold)": 0.00581,
+  "mermaid layout, demo diagrams (cold)": 0.22223,
+  "mermaid paint, demo diagrams": 0.00409,
+  "full reply, demo (cold)": 0.25816,
+  "full reply, demo (warm)": 0.02747,
+  "full reply, 6x demo (cold)": 0.3987,
+  "table, 300 rows": 0.19933,
+  "Hebrew, 300 paragraphs (cold)": 0.53366,
+  "code block, 1500 lines, highlighted": 0.16212,
+  "stream replay, 155 redraws of a 15540-char reply (per redraw)": 0.12518,
   "nodes: 500 highlighted ts lines": 19505,
   "nodes: 300 table rows": 10533,
   "nodes: 300 paragraphs": 6600,
   "nodes: 300 Hebrew paragraphs": 6300,
-  "nodes: demo reply": 1059
+  "nodes: demo reply": 1405
 }
