@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- LaTeX math draws as images wherever `CLAUDE_CODE_FORCE_TERMINAL_IMAGES` is set, the variable that makes Claude Code draw images, also inside tmux, as Claude Code does. Before, prismantis found the terminal only by `TERM_PROGRAM`, `TERM` and `KITTY_WINDOW_ID`, so a background session, whose process carries none of them, drew every formula as text even when viewed in kitty or Ghostty.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security

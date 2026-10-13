@@ -89,6 +89,7 @@ const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
 type Typeset = Exclude<Formula, { error: true }> & { tex: string }
 
 const showsImages = async ($: EngineInterface): Promise<boolean> => {
+  if (await $.env.get('CLAUDE_CODE_FORCE_TERMINAL_IMAGES')) return true
   if (await $.env.get('TMUX')) return false
   const terminal = await detectTerminal($)
   return terminal === 'kitty' || terminal === 'ghostty'

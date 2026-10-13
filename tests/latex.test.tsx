@@ -284,6 +284,21 @@ for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM:
   })
 }
 
+for (const [name, env] of [['a background session', { TMPDIR: '/tmp/', CLAUDE_CODE_FORCE_TERMINAL_IMAGES: '1' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0', CLAUDE_CODE_FORCE_TERMINAL_IMAGES: '1' }]] as const) {
+  test(`latex draws in ${name} when CLAUDE_CODE_FORCE_TERMINAL_IMAGES is set`, async ($, on) => {
+    mock.env(on, env)
+    const clock = mock.clock(on)
+    const runs = ratex(on)
+
+    const ui = await $.ui.mount(reply(REPLY))
+    await clock.settle()
+
+    expect(runs.length).toBeGreaterThan(0)
+    expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('\\int_0^1 x^2\\,dx')
+    await ui.unmount()
+  })
+}
+
 test('the renderer runs as ratex-render in one folder named for the session plus a random suffix', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
