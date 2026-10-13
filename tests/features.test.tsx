@@ -7,7 +7,7 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
-import { columnWidths, describeShell, diffLines, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
+import { bashEdits, columnWidths, describeShell, diffLines, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -1135,6 +1135,116 @@ test('edits keep the engine diff when tool rows are off', { options: { toolRows:
   engine(on)
   const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
   expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+const bashEdit = (stdout = '', more = 0) => ({
+  stdout,
+  stderr: '',
+  interrupted: false,
+  bashEditDiff: {
+    files: [
+      { filePath: '/home/demo/app/src/app.ts', hunks: patch.structuredPatch.map(h => ({ ...h, oldLines: 2, newLines: 3 })) },
+      { filePath: '/home/demo/app/NOTES.md', hunks: [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: 2, lines: ['+one', '+two'] }], created: true },
+    ],
+    moreFiles: more,
+  },
+})
+
+test('shell edits read one diff per file and a count of files not shown', () => {
+  expect(bashEdits(bashEdit('', 3))?.files.map(f => [f.path, f.rows.map(r => `${r.num}${r.mark}${r.text}`)])).toEqual([
+    ['/home/demo/app/src/app.ts', ['4 const a = 1', '5-const b = 2', '5+const b = 3', '6+const c = 4']],
+    ['/home/demo/app/NOTES.md', ['1+one', '2+two']],
+  ])
+  expect(bashEdits(bashEdit('', 3))?.more).toBe(3)
+  expect(bashEdits({ stdout: 'x' })).toBeUndefined()
+  expect(bashEdits({ bashEditDiff: { files: [], moreFiles: 0 } })).toBeUndefined()
+  expect(bashEdits({ bashEditDiff: { files: [{ filePath: '/tmp/a' }], moreFiles: 0 } })).toBeUndefined()
+  expect(bashEdits({ bashEditDiff: { files: [null], moreFiles: 0 } })).toBeUndefined()
+  expect(withoutBashEdits(bashEdit('hi'))).toEqual({ stdout: 'hi', stderr: '', interrupted: false })
+})
+
+for (const toolOutput of ['full', 'quiet'] as const) {
+  test(`shell edits draw the same diff card as the Edit tool, one per file (toolOutput ${toolOutput})`, { options: { toolOutput } }, async ($, on) => {
+    engine(on)
+    mock.env(on, { HOME: '/home/demo' })
+    on('session.root', () => ({ value: '/home/demo/app' }))
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount(editResult(surface, 'Bash', bashEdit('', 2)))
+      expect((await ui.find({ type: 'Text', text: /^src\/app\.ts $/ }))?.props.color).toBe(t.path)
+      expect((await ui.find({ type: 'Text', text: /^NOTES\.md $/ }))?.props.color).toBe(t.path)
+      expect((await ui.find({ type: 'Text', text: /^\+2$/ }))?.props.color).toBe(t.number)
+      expect((await ui.find({ type: 'Text', text: /^−1$/ }))?.props.color).toBe(t.codeFlag)
+      expect((await ui.find({ type: 'Text', text: /^−0$/ }))?.props.dimColor).toBe(true)
+      const row = (text: RegExp) => ui.find({ type: 'Box', text })
+      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
+      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(tint(t.rule, t.codeFlag))
+      expect((await row(/^2 \+ two$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
+      expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
+      expect((await ui.find({ type: 'Text', text: /^… \+2 more files$/ }))?.props.dimColor).toBe(true)
+      expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+      expect((await ui.findAll({ type: 'Text', text: /^  ⎿  $/ })).length).toBe(1)
+      await ui.unmount()
+    }
+  })
+}
+
+test('a shell edit with output keeps the engine output, without the engine diff, above the cards', async ($, on) => {
+  const seen: unknown[] = []
+  on('ui.render', ($, e) => {
+    seen.push(e.props && 'output' in e.props ? e.props.output : undefined)
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    seen.length = 0
+    const ui = await $.ui.mount(editResult(surface, 'Bash', bashEdit('patched 2 files')))
+    expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
+    expect(seen).toEqual([{ stdout: 'patched 2 files', stderr: '', interrupted: false }])
+    expect(await ui.find({ type: 'Text', text: /^ {5}$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('toolOutput quiet keeps a shell edit diff under the first lines of its output', { options: { toolOutput: 'quiet' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit('patched 2 files')))
+  expect(await ui.find({ type: 'Text', text: /^patched 2 files$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('each shell edit card folds on its own', async ($, on) => {
+  engine(on)
+  const long = Array.from({ length: 25 }, (_, i) => `+line ${i + 1}`)
+  const file = (name: string) => ({ filePath: `/tmp/${name}`, hunks: [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: 25, lines: long }] })
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', { stdout: '', stderr: '', interrupted: false, bashEditDiff: { files: [file('a.txt'), file('b.txt')], moreFiles: 0 } }))
+  expect((await ui.findAll({ type: 'Text', text: /^line 21$/ })).length).toBe(0)
+  await ui.press({ key: 'fold1' })
+  expect((await ui.findAll({ type: 'Text', text: /^line 21$/ })).length).toBe(1)
+  expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('+5 more lines')
+  expect((await ui.find({ key: 'fold1' }))?.props.label).toBe('show less')
+  await ui.unmount()
+})
+
+test('failed shell edits, diffs the card cannot read and tool rows off go to the engine', async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    for (const [output, isErrored] of [[bashEdit(), true], [{ stdout: '', stderr: '', bashEditDiff: { files: [], moreFiles: 0, unavailable: true } }, false], [{ stdout: '', stderr: '', bashEditDiff: { files: [{ filePath: '/tmp/a', hunks: 'x' }], moreFiles: 0 } }, false]] as const) {
+      const ui = await $.ui.mount(editResult(surface, 'Bash', output, isErrored))
+      expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+      await ui.unmount()
+    }
+  }
+})
+
+test('shell edits keep the engine diff when tool rows are off', { options: { toolRows: false } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit()))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeUndefined()
   await ui.unmount()
 })
 

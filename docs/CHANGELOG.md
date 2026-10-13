@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Files a shell command changed (`sed -i`, a script) draw as the same diff card as Edit and Write results, in the theme's number and flag colors, instead of Claude Code's own red and green diff. Each changed file gets its own card headed by its path, with `… +K more files` when Claude Code listed more, and each card folds on its own. The command's output still draws above the cards. `toolOutput: quiet` keeps these diffs under the command's first lines, where it used to drop them. A failed command, a diff the card cannot read, and `toolRows: false` keep Claude Code's drawing.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security

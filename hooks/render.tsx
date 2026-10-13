@@ -763,42 +763,86 @@ export const diffLines = (output: unknown): DiffLine[] | undefined => {
   return rows
 }
 
-export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
-  const rows = diffLines(output)
-  if (rows === undefined) return undefined
+const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, id: string, key: string, title?: string): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const added = rows.filter(r => r.mark === '+').length
   const removed = rows.filter(r => r.mark === '-').length
-  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, 'fold') : null
+  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, `fold${key}`) : null
   const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
   const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
   const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
   const tints = { '+': tint(t.rule, t.number), '-': tint(t.rule, t.codeFlag), ' ': undefined }
   return (
-    <Box flexDirection="row">
-      <Text dimColor>{'  ⎿  '}</Text>
-      <Box flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
-        <Text>
-          <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
-          <Text> </Text>
-          <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
-        </Text>
-        {shown.map((r, i) => {
-          const bg = tints[r.mark]
-          return (
-            <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
-              <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
-              <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
-              <Text color={bg ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
-            </Box>
-          )
-        })}
-        {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
-        {toggle?.element ?? null}
-      </Box>
+    <Box key={`card${key}`} flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
+      <Text>
+        {title === undefined ? null : <Text color={t.path}>{`${title} `}</Text>}
+        <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
+        <Text> </Text>
+        <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
+      </Text>
+      {shown.map((r, i) => {
+        const bg = tints[r.mark]
+        return (
+          <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
+            <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
+            <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
+            <Text color={bg ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
+          </Box>
+        )
+      })}
+      {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
+      {toggle?.element ?? null}
     </Box>
   )
+}
+
+const diffRow = (el: ElementTable, cards: RenderElement[], below: boolean): RenderElement => (
+  <el.Box flexDirection="row">
+    <el.Text dimColor>{below ? '     ' : '  ⎿  '}</el.Text>
+    <el.Box flexDirection="column" flexShrink={1}>{cards}</el.Box>
+  </el.Box>
+)
+
+export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
+  const rows = diffLines(output)
+  return rows === undefined ? undefined : diffRow(el, [diffBox(el, style, rows, fold, id, '')], false)
+}
+
+type EditedFile = { path: string; rows: DiffLine[] }
+
+export type BashEdits = { files: EditedFile[]; more: number }
+
+export const bashEdits = (output: unknown): BashEdits | undefined => {
+  if (output === null || typeof output !== 'object') return undefined
+  const diff = (output as { bashEditDiff?: unknown }).bashEditDiff
+  if (diff === null || typeof diff !== 'object') return undefined
+  const { files, moreFiles } = diff as { files?: unknown; moreFiles?: unknown }
+  if (!Array.isArray(files) || files.length === 0) return undefined
+  const edited: EditedFile[] = []
+  for (const file of files as ({ filePath?: unknown; hunks?: unknown } | null)[]) {
+    const rows = diffLines({ structuredPatch: file?.hunks })
+    if (typeof file?.filePath !== 'string' || rows === undefined) return undefined
+    edited.push({ path: file.filePath, rows })
+  }
+  return { files: edited, more: typeof moreFiles === 'number' && moreFiles > 0 ? moreFiles : 0 }
+}
+
+export const withoutBashEdits = (output: unknown): unknown => {
+  if (output === null || typeof output !== 'object') return output
+  const { bashEditDiff: _, ...rest } = output as Record<string, unknown>
+  return rest
+}
+
+export const hasShellOutput = (output: unknown): boolean => {
+  const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
+  return lines(out.stdout).length + lines(out.stderr).length > 0
+}
+
+export const renderBashEdits = (el: ElementTable, style: Style, edits: BashEdits, fold: Fold, id: string, below = false): RenderElement => {
+  const cards = edits.files.map((file, i) => diffBox(el, style, file.rows, fold, `${id}:${i}`, String(i), shortPath(style, file.path)))
+  const more = edits.more ? [<el.Text key="more" dimColor>{`… +${edits.more} more ${edits.more === 1 ? 'file' : 'files'}`}</el.Text>] : []
+  return diffRow(el, [...cards, ...more], below)
 }
 
 const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s+(\S+\s+\()?\S+:\d+(:\d+)?\)?|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i

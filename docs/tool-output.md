@@ -5,7 +5,7 @@
 - Read, Grep, Glob, web fetches and shell commands made only of read-only programs (`cat`, `grep`, `rg`, `ls`, `find`, `git log`, `gh pr view`, …) draw their row and nothing under it, and the row says it in plain words: `Read src/report.py lines 1–10`, `Searched src/ for "TODO"`, `Listed tests`.
 - A shell call with no such form shows the description Claude gave it and the programs it ran: `Run the unit tests · python3`.
 - Other shell commands show their first 3 lines and a count, without the approval line, also when Claude Code folded the call into a collapsed group.
-- Edits keep Claude Code's diff.
+- Edits keep their diff card, and a shell command that changed files keeps one card per file under its first lines.
 - A failed call shows the last real line of its error instead of `Exit code 1`; a refused call (a permission rule, the auto mode classifier) shows its full reason.
 
 ## What counts as read-only

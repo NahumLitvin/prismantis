@@ -11,7 +11,7 @@ import { clipboardCommand } from './clipboard'
 import { FIGURE_HINT, drawFigure, isFigureLang } from './figure'
 import { boxArt, inlineMarks, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
 import type { Drawn, Fold } from './render'
-import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
+import { bashEdits, hasShellOutput, isReadOnlyCall, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width, withoutBashEdits } from './render'
 import { helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -326,6 +326,15 @@ export const register: Register = (on, options) => {
       if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) {
         const el = $.ui.resolve(e)
         return renderDiffCard(el, fit(e.viewport), e.props.output, folder($, el, await read($, unfolded)), e.props.tool_use_id) ?? next(e)
+      }
+      const edits = e.props.tool === 'Bash' && !e.props.isErrored ? bashEdits(e.props.output) : undefined
+      if (edits) {
+        await locate($, style)
+        const el = $.ui.resolve(e)
+        const output = withoutBashEdits(e.props.output)
+        const above = !hasShellOutput(output) ? null : quiet ? renderShellResult(el, fit(e.viewport), output) : await next({ ...e, props: { ...e.props, output } })
+        const cards = renderBashEdits(el, fit(e.viewport), edits, folder($, el, await read($, unfolded)), e.props.tool_use_id, above !== null)
+        return above === null ? cards : <el.Box flexDirection="column">{above}{cards}</el.Box>
       }
       if (!quiet) return next(e)
       await locate($, style)
