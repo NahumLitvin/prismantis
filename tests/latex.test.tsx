@@ -657,3 +657,7 @@ test('a theme switch while a formula typesets redraws it in the new color', { op
   expect(cubes.at(-1)?.argv[cubes.at(-1)!.argv.indexOf('--color') + 1]).toBe(ratexColor(picked?.diagramText ?? picked?.codeText ?? '#808080'))
   await again.unmount()
 })
+
+for (const tex of ['\\toString x', '\\constructor x', '\\hasOwnProperty x', '\\left\\toString x \\right.']) test(`${tex} draws as text, not as JavaScript`, async () => {
+  expect(texText(tex)).not.toMatch(/function|native code|\[object/)
+})

@@ -15,6 +15,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - `/prismantis theme random` no longer turns off right-to-left reordering, the HTML table copy and path shortening for the rest of the session. It changes only the colors.
 - Switching theme while a formula is still being typeset no longer stores the old color as the new theme's image; the formula is typeset again in the new color.
 - In kitty, a link whose URL holds Hebrew keeps its URL as written instead of reversing it.
+- A TeX command or a shell program named like a built-in JavaScript property (`\toString`, `\constructor`, a `toString` command) no longer draws `function toString() { [native code] }` or breaks quiet tool rows.
+- `awk '@include "inplace"'`, `awk -E`, `awk --exec` and `awk -l` can edit files, so `toolOutput: quiet` no longer hides their output as a read.
+- `http://localhost:5173?debug=1` and `http://localhost#/home` are clickable again.
 - Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
 - A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
 - `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.

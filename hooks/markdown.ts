@@ -159,7 +159,7 @@ const texUnicode = (tex: string): string => {
     const c = tex[i++]!
     if (c === '\\') {
       const cmd = name()
-      if (cmd in SPACES) out.push(SPACES[cmd]!)
+      if (Object.hasOwn(SPACES, cmd)) out.push(SPACES[cmd]!)
       else if (cmd === 'frac' || cmd === 'dfrac' || cmd === 'tfrac') {
         const top = texUnicode(arg())
         const bottom = texUnicode(arg())
@@ -170,12 +170,12 @@ const texUnicode = (tex: string): string => {
         const inner = texUnicode(arg())
         out.push(`√${atomic(inner) ? inner : `(${inner})`}`)
       } else if (PLAIN.has(cmd)) out.push(cmd === 'text' ? arg() : texUnicode(arg()))
-      else if (cmd in FONTS) out.push(Array.from(arg()).map(l => (LETTERS.includes(l) ? Array.from(FONTS[cmd]!)[LETTERS.indexOf(l)]! : l)).join(''))
+      else if (Object.hasOwn(FONTS, cmd)) out.push(Array.from(arg()).map(l => (LETTERS.includes(l) ? Array.from(FONTS[cmd]!)[LETTERS.indexOf(l)]! : l)).join(''))
       else if (cmd === 'left' || cmd === 'right' || cmd === 'big' || cmd === 'Big' || cmd === 'bigg') {
         const d = tex[i] === '\\' ? (i++, name()) : tex[i++] ?? ''
-        out.push(d === '.' ? '' : d === '{' || d === '}' ? d : TEX[d] ?? d)
+        out.push(d === '.' ? '' : d === '{' || d === '}' ? d : Object.hasOwn(TEX, d) ? TEX[d]! : d)
       } else if (FUNCTIONS.has(cmd)) out.push(cmd + FN)
-      else out.push(TEX[cmd] ?? `\\${cmd}`)
+      else out.push(Object.hasOwn(TEX, cmd) ? TEX[cmd]! : `\\${cmd}`)
     } else if (c === '^' || c === '_') out.push(script(texUnicode(arg()), c === '^' ? SUP : SUB, c))
     else if (c === '{') {
       i--

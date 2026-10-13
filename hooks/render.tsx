@@ -110,7 +110,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return /^(https:|http:\/\/localhost(:\d+)?(\/|$))/i.test(n.href)
+        return /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i.test(n.href)
           ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
           : <Text key={key} color={t.link} underline>{n.text}</Text>
       case 'number':
@@ -1019,14 +1019,14 @@ const readsOnly = ({ words }: ShellPart): boolean => {
   if (name === undefined) return true
   const args = rest.join(' ')
   if (name === 'gh' && rest[0] === 'api') return ghApiReadsOnly(rest.slice(1))
-  if (name in READ_SUBCOMMANDS) return READ_SUBCOMMANDS[name]!.test(args) && !(name === 'git' && rest.some(a => /^--output\b/.test(a)))
+  if (Object.hasOwn(READ_SUBCOMMANDS, name)) return READ_SUBCOMMANDS[name]!.test(args) && !(name === 'git' && rest.some(a => /^--output\b/.test(a)))
   if (!READ_COMMANDS.has(name)) return false
   if (name === 'sed') {
     const [script, ...files] = rest.filter(a => a !== '-n')
     return script !== undefined && /^\d+(,\d+)?p$/.test(script) && files.every(f => !f.startsWith('-'))
   }
   if (name === 'find') return !rest.some(a => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/.test(a))
-  if (name === 'awk') return !rest.some(a => /^(-f|--file|-i|--include)/.test(a)) && !/system\s*\(|getline|[|>]/.test(args)
+  if (name === 'awk') return !rest.some(a => /^(-f|--file|-i|--include|-E|--exec|-l|--load)/.test(a)) && !/system\s*\(|getline|@(include|load)|[|>]/.test(args)
   if (name === 'sort') return !rest.some(a => /^(-[A-Za-z]*o|--output)/.test(a))
   if (name === 'uniq') return operandsOf(name, rest).length < 2
   if (name === 'tree') return !rest.some(a => /^(-o|--output)/.test(a))

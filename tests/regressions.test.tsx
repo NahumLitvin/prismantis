@@ -791,3 +791,17 @@ test('a long unbroken table cell wraps in linear time', async () => {
   cost(1000)
   expect(cost(40000) / Math.max(cost(10000), 0.05) < 8).toBe(true)
 })
+
+for (const command of ['toString', 'constructor', '__proto__', 'hasOwnProperty x']) test(`a command named ${command} is not read-only and does not throw`, async () => {
+  expect(isReadOnlyCall('Bash', { command })).toBe(false)
+})
+
+for (const command of [`awk '@include "inplace"; {sub(/a/,"b")} 1' f.txt`, `awk '@load "inplace"; 1' f.txt`, 'awk -E prog.awk f.txt', 'awk --exec=prog.awk f.txt', "awk -l inplace -e '1' f.txt"]) test(`${command} is not read-only`, async () => {
+  expect(isReadOnlyCall('Bash', { command })).toBe(false)
+})
+
+test('localhost links with a query or a hash stay clickable', async $ => {
+  const ui = await $.ui.mount(mount('[a](http://localhost:5173?debug=1) [b](http://localhost#/home) [c](http://localhost.evil.example/)'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:5173?debug=1', 'http://localhost#/home'])
+  await ui.unmount()
+})
