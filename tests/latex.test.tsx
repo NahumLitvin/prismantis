@@ -632,3 +632,28 @@ test('after /prismantis random, new formulas take the new theme color', { option
   expect(runs.at(-1)?.argv[runs.at(-1)!.argv.indexOf('--color') + 1]).toBe(ratexColor(picked?.diagramText ?? picked?.codeText ?? '#808080'))
   await second.unmount()
 })
+
+test('a theme switch while a formula typesets redraws it in the new color', { options: { theme: 'random' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  on('config.set', (_, e) => ({ value: e.value }))
+  const clock = mock.clock(on)
+  let gate: Promise<void> = Promise.resolve()
+  const runs = ratex(on, ok, PNG_160x80, { then: (done: () => void) => gate.then(done) } as Promise<void>)
+  const warm = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  await warm.unmount()
+  let release = () => {}
+  gate = new Promise(r => (release = r))
+  const late = await $.ui.mount(reply('Late:\n\n$$\nx^3\n$$'))
+  await clock.settle()
+  const run = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  release()
+  await clock.settle()
+  await late.unmount()
+  const picked = (PRESETS as Record<string, { diagramText?: string; codeText?: string }>)[/^Theme set to random: (\S+) for now/.exec(run.text ?? '')?.[1] ?? '']
+  const again = await $.ui.mount(reply('Late:\n\n$$\nx^3\n$$'))
+  await clock.settle()
+  const cubes = runs.filter(r => r.formulas.includes('x^3'))
+  expect(cubes.at(-1)?.argv[cubes.at(-1)!.argv.indexOf('--color') + 1]).toBe(ratexColor(picked?.diagramText ?? picked?.codeText ?? '#808080'))
+  await again.unmount()
+})

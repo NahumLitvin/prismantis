@@ -291,3 +291,25 @@ test('a named link keeps its target when a Hebrew line reorders', async () => {
   const links = lines.flat().filter(n => n.kind === 'link')
   expect(links.map(l => l.kind === 'link' && l.href)).toEqual(['https://example.com/guide'])
 })
+
+test('/prismantis random keeps Hebrew reordered', { options: { theme: 'random' } }, async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'WarpTerminal' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  on('config.set', (_, e) => ({ value: e.value }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const reordered = async () => {
+    const ui = await $.ui.mount(mount('שלום עולם'))
+    const found = await ui.find({ type: 'Text', text: /^םלוע םולש$/ })
+    await ui.unmount()
+    return found !== undefined
+  }
+  expect(await reordered()).toBe(true)
+  await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  expect(await reordered()).toBe(true)
+})
+
+test('kitty shaping keeps a Hebrew URL as written', async () => {
+  const href = 'https://he.wikipedia.org/wiki/שלום'
+  const lines = flow([{ kind: 'text', text: 'ראו ' }, { kind: 'link', text: 'מאמר', href }, { kind: 'text', text: ' עכשיו' }], 200, measure, 'words')?.lines ?? []
+  expect(lines.flat().filter(n => n.kind === 'link').map(l => l.kind === 'link' && l.href)).toEqual([href])
+})

@@ -196,8 +196,7 @@ const shapeText = (text: string, shape: Shape): string =>
 const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
   nodes.map(n => {
     if ('children' in n) return { ...n, children: shapeNodes(n.children, shape) }
-    if (n.kind === 'link') return { ...n, text: shapeText(n.text, shape), href: shapeText(n.href, shape) }
-    return { ...n, text: shapeText(n.text, shape) }
+        return { ...n, text: shapeText(n.text, shape) }
   })
 
 const containsRtl = (nodes: Inline[]): boolean => nodes.some(n => ('children' in n ? containsRtl(n.children) : R.test(n.text)))
