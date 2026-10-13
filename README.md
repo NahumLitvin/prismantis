@@ -340,7 +340,7 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 | `path` | file paths, regexes |
 | `number` | numbers, versions, durations, done dots |
 | `quote` | quote text |
-| `rule` | rules, chart gridlines |
+| `rule` | rules, diff card borders, chart gridlines |
 | `tableHeader` | table header cells |
 | `tableRule` | table rules |
 | `bullet` | list bullets and numbers |

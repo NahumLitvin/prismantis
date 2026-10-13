@@ -265,7 +265,7 @@
     "ruleColor": {
       "type": "string",
       "title": "Rules",
-      "description": "Color for horizontal rules and heading banners. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
+      "description": "Color for horizontal rules, diff card borders and chart gridlines, and the base diff line tints blend into. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
     "bulletColor": {
