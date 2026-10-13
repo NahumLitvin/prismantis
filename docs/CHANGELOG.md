@@ -14,6 +14,39 @@ All notable changes to this project are documented here. The format follows [Kee
 - Files a shell command changed (`sed -i`, a script) draw as the same diff card as Edit and Write results, in the theme's number and flag colors, instead of Claude Code's own red and green diff. Each changed file gets its own card headed by its path, with `… +K more files` when Claude Code listed more, and each card folds on its own. The command's output still draws above the cards. Dim notes under them say what Claude Code's own diff says: on the first one of a session, that it shows every file that changed while the command ran, by it or anything else; that another command ran in the repository at the same time, when Claude Code saw one; and that a git step in the command (`checkout`, `reset`, `stash`, `pull`, …) can move the working tree. `toolOutput: quiet` keeps these diffs under the command's first lines, where it used to drop them. A failed command, a diff the card cannot read, and `toolRows: false` keep Claude Code's drawing ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
 - The `ruleColor` description in `/config` no longer says it colors heading banners, which take the heading color. It names what the color draws: horizontal rules, diff card borders, chart gridlines and the base of the diff line tints ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
 
+## [0.18.3] - 2026-10-13
+
+### Changed
+
+- A table cell holding one very long word (a hash, a base64 blob, a minified line) wraps in linear time: a 10,000-character cell redraws in 3 ms instead of 355 ms. Right-to-left lines are laid out once per text and width instead of on every redraw (stream replay bench, 1.2 ms to 0.9 ms per redraw); the first draw of a long Hebrew reply costs about 15% more.
+- A streaming reply redraws about 3.7x faster (1.0 ms instead of 3.9 ms per redraw in the stream replay bench), and Hebrew text about 4.8x faster. Diagrams no longer re-measure their art on every redraw, and single characters skip the grapheme segmenter. Nothing looks different.
+- A reply with diagrams redraws faster again while it streams: their art width is measured once instead of on every redraw, up to three times per diagram that does not fit (stream replay bench, 3.2 ms to 1.2 ms per redraw).
+
+### Fixed
+
+- `/prismantis theme random` no longer turns off right-to-left reordering, the HTML table copy and path shortening for the rest of the session. It changes only the colors.
+- Switching theme while a formula is still being typeset no longer stores the old color as the new theme's image; the formula is typeset again in the new color.
+- In kitty, a link whose URL holds Hebrew keeps its URL as written instead of reversing it.
+- A TeX command or a shell program named like a built-in JavaScript property (`\toString`, `\constructor`, a `toString` command) no longer draws `function toString() { [native code] }` or breaks quiet tool rows.
+- `awk '@include "inplace"'`, `awk -E`, `awk --exec` and `awk -l` can edit files, so `toolOutput: quiet` no longer hides their output as a read.
+- `http://localhost:5173?debug=1` and `http://localhost#/home` are clickable again.
+- A footnote definition quoted inside a code block no longer becomes a real footnote.
+- Two long code blocks that differ only in where their lines break fold and unfold on their own.
+- An expanded shell command whose result is an error message shows that message instead of "(No output)".
+- Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
+- A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
+- `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.
+- `awk -i inplace` edits a file, so `toolOutput: quiet` no longer hides its output as a read.
+- Copying a table as art no longer fails when a column is narrower than a wide character such as `中`.
+- After `/prismantis theme random`, new LaTeX formulas draw in the new theme's color instead of the old one.
+- Text-style symbols such as `↔`, `™`, `©`, `▶` and `⚠` count as one column, as terminals draw them, so a diagram box around them closes. Emoji drawn as emoji (`✅`, `⚠️`), flags, keycaps like `1️⃣` and rare CJK characters such as `𠀀` count as two.
+
+## [0.18.2] - 2026-10-13
+
+### Fixed
+
+- LaTeX math draws as images wherever `CLAUDE_CODE_FORCE_TERMINAL_IMAGES` is set, the variable that makes Claude Code draw images, also inside tmux, as Claude Code does. Before, prismantis found the terminal only by `TERM_PROGRAM`, `TERM` and `KITTY_WINDOW_ID`, so a background session, whose process carries none of them, drew every formula as text even when viewed in kitty or Ghostty.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security
