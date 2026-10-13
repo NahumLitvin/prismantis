@@ -112,6 +112,16 @@ const BAR_SCALE = [
         }
 `,
   ],
+  [
+    `  const drawAt = (col: number, row: number, char: string) => {
+    const displayRow = plotTop + (plotH - 1 - row)
+    if (displayRow >= 0 && col >= plotLeft && col < plotLeft + plotTotalW) {
+`,
+    `  const drawAt = (col: number, row: number, char: string) => {
+    const displayRow = plotTop + (plotH - 1 - row)
+    if (displayRow >= 0 && col >= plotLeft && col < plotLeft + plotTotalW && ![ch.bar, '▀', '▄'].includes(get(canvas, displayRow, col))) {
+`,
+  ],
 ]
 const CANVAS = /beautiful-mermaid\/src\/ascii\/canvas\.ts$/
 const CANVAS_ANCHOR = 'export function isJunctionChar('

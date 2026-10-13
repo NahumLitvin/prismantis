@@ -630,6 +630,20 @@ test('a line at 0 runs along the axis line', () => {
   }
 })
 
+test('a line over a bar chart passes behind the bars and leaves their heights alone', () => {
+  const bars = 'xychart-beta\n  x-axis [a, b, c, d]\n  y-axis 0 --> 100\n  bar [20, 50, 80, 40]'
+  for (const ascii of [false, true])
+  for (const columns of [60, 120, 200]) {
+    const cells = (chart: string) => {
+      const lines = mermaidText(chart, ascii, columns)!.split('\n')
+      const top = lines.findIndex(l => /^\s*\d+[┤+]/.test(l))
+      const axis = lines.findIndex(l => /^\s*0[┼+]/.test(l))
+      return lines.slice(top, axis + 1).flatMap((l, r) => [...l].flatMap((ch, c) => (/[█▀▄#]/.test(ch) ? [`${axis - top - r}:${c}`] : [])))
+    }
+    for (const line of ['line [20, 50, 80, 40]', 'line [0, 50, 100, 25]']) expect(cells(`${bars}\n  ${line}`)).toEqual(cells(bars))
+  }
+})
+
 test('footnotes number by first reference, collect at the end, and undefined ones stay literal', () => {
   const blocks = parse('Two[^b] and one[^a] and ghost[^x].\n\n[^a]: first\n    more\n[^b]: second\n\n```\n[^c]: not a note\n```', hl)
   const [para, code, notes] = blocks
