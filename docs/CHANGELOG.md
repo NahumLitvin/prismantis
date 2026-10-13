@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Bar chart heights line up with the y-axis. A bar used to fill the `0` row as well as its own, and charts could settle on one row per tick, so 400 reached the 500 line and 1200 stopped at 1000. Bars are now drawn to the half cell: each one rises from the middle of the axis line, reaches every gridline at or below its value, stops exactly on a gridline it equals, and never passes its value. A terminal draws `─` and `·` through the middle of a cell, so the line under a bar and a tip that ends mid-cell are half blocks (`▀`, `▄`) in the bar's color. `0` sits on the axis line, a line chart at `0` runs along it, every tick gets the same number of rows, and an axis without a set range ends on a whole tick.
+- Bar charts with negative values. Every bar used to fill the `0` row, so `2` and `-2` drew to the same height, and an all-negative chart ran its bars up past the top of the chart. The `0` line is now drawn solid like the axis line, and bars grow up or down from its middle and stop exactly where their value is, to the half cell. An all-negative chart hangs its bars from a solid line at the top of the axis.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security

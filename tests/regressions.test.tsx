@@ -552,6 +552,67 @@ test('chart y-axis ticks sit an even number of rows apart', async () => {
   }
 })
 
+const barColumns = (axis: string) => [...axis.matchAll(/┬|▀+/g)].map(m => m.index + Math.floor(m[0].length / 2))
+const block = (ch = '') => /[█▀▄]/.test(ch)
+
+for (const [values, axisRange] of [[[400, 1200, 1900, 2500, 800], '0 --> 2500'], [[12, 10, 8], '0 --> 14']] as const) {
+  test(`a bar stands on the axis line, reaches the gridlines at or below its value and stops on its own: ${values.join(', ')}`, () => {
+    for (const title of ['\n  title "Sizes"', ''])
+    for (const columns of [60, 120, 200]) {
+      const chart = `xychart-beta${title}\n  x-axis [${values.map((_, i) => `b${i + 1}`).join(', ')}]\n  y-axis ${axisRange}\n  bar [${values.join(', ')}]`
+      const lines = mermaidText(chart, false, columns)!.split('\n')
+      const axis = lines.find(l => /^\s*0┼─/.test(l)) ?? ''
+      const bars = barColumns(axis)
+      expect(bars.length).toBe(values.length)
+      bars.forEach(c => expect(axis[c]).toBe('▀'))
+      for (const line of lines) {
+        const tick = line.match(/^\s*(\d+)┤/)?.[1]
+        if (tick === undefined) continue
+        bars.forEach((c, i) => {
+          expect(block(line[c])).toBe(Number(tick) <= values[i]!)
+          if (Number(tick) === values[i]) expect(line[c]).toBe('▄')
+        })
+      }
+    }
+  })
+}
+
+for (const values of [[-5, 3, 8, -2, 0], [-6, 6, -2, 2], [-5, -3, -8]]) {
+  test(`bars with negatives grow both ways from a solid 0 line and stop on their own gridline: ${values.join(', ')}`, () => {
+    const chart = `xychart-beta\n  x-axis [${values.map((_, i) => `b${i + 1}`).join(', ')}]\n  bar [${values.join(', ')}]`
+    for (const columns of [60, 120, 200]) {
+      const lines = mermaidText(chart, false, columns)!.split('\n')
+      const ticks = lines.flatMap((l, r) => {
+        const tick = l.match(/^\s*(-?[\d.]+)[┤┼]/)?.[1]
+        return tick === undefined ? [] : [{ r, tick: Number(tick) }]
+      })
+      const axis = ticks.at(-1)!.r
+      const bars = barColumns(lines[axis]!)
+      expect(bars.length).toBe(values.length)
+      const [hi, lo] = [ticks[0]!.tick, ticks.at(-1)!.tick]
+      const base = Math.min(Math.max(0, lo), hi)
+      const baseRow = ticks.find(t => t.tick === base)!.r
+      expect(lines[baseRow]).toMatch(/^\s*-?[\d.]+┼[─▀▄]+$/)
+      bars.forEach((c, i) => expect(lines[baseRow]![c]).toBe(values[i] === base ? '─' : values[i]! > base ? '▀' : '▄'))
+      for (const { r, tick } of ticks.filter(t => t.r !== axis && t.r !== baseRow)) {
+        bars.forEach((c, i) => {
+          expect(block(lines[r]![c])).toBe((base < tick && tick <= values[i]!) || (values[i]! <= tick && tick < base))
+          if (tick === values[i]) expect(lines[r]![c]).toBe(tick > base ? '▄' : '▀')
+        })
+      }
+    }
+  })
+}
+
+test('a line at 0 runs along the axis line', () => {
+  for (const columns of [60, 120, 200]) {
+    const lines = mermaidText('xychart-beta\n  x-axis [a, b, c]\n  y-axis 0 --> 100\n  line [0, 60, 100]', false, columns)!.split('\n')
+    const axis = lines.findIndex(l => /^\s*0┼/.test(l))
+    expect(lines[axis]).toMatch(/^\s*0┼─+╯/)
+    expect(lines[axis - 1]).not.toMatch(/─/)
+  }
+})
+
 test('footnotes number by first reference, collect at the end, and undefined ones stay literal', () => {
   const blocks = parse('Two[^b] and one[^a] and ghost[^x].\n\n[^a]: first\n    more\n[^b]: second\n\n```\n[^c]: not a note\n```', hl)
   const [para, code, notes] = blocks
@@ -571,35 +632,32 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-const heights = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }, kind: 'bar' | 'line') => {
-  const byTick = new Map<string, string>()
-  let axis = ''
-  for (const { text } of await ui.findAll({ type: 'Text' })) {
-    const at = text.search(/[┤┼]/)
-    const tick = text.match(/^\s*(\d+)[┤┼]/)?.[1]
-    if (at < 0) continue
-    const line = text.slice(at)
-    if (tick !== undefined) {
-      if (line.length > (byTick.get(tick)?.length ?? 0)) byTick.set(tick, line)
-    } else if (/^\s*┼─/.test(text) && line.length > axis.length) axis = line
-  }
-  const rows = [...byTick.values()]
-  const columns = kind === 'bar'
-    ? [...new Set(rows.flatMap(r => [...r].flatMap((ch, c) => (ch === '█' && r[c - 1] !== '█' ? [c] : []))))].sort((a, b) => a - b)
-    : [...axis].flatMap((ch, c) => (ch === '┬' ? [c] : []))
-  return columns.map(c => (kind === 'bar' ? rows.filter(r => r[c] === '█').length - 1 : rows.length - 1 - rows.findIndex(r => /[╭╮╯╰│─]/.test(r[c] ?? ''))))
+const chartRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }) => {
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  const axis = texts.find(t => /^\s*0┼─/.test(t)) ?? ''
+  const gutter = axis.indexOf('┼')
+  const rows = texts.filter(t => t.length > gutter + 1 && /[┤│┼]/.test(t[gutter] ?? '') && /^[\s\d.]*$/.test(t.slice(0, gutter)))
+  return { rows, columns: barColumns(axis) }
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
   for (const kind of ['bar', 'line'] as const) {
-    for (const values of [[3, 7, 5], [2, 3, 4, 16]]) {
+    for (const values of [[3, 7, 5], [2, 3, 4, 16], [400, 1200, 1900, 2500, 800]]) {
       test(`${kind} chart heights follow their values on ${surface}: ${values.join(', ')}`, async $ => {
         const labels = values.map((_, i) => `L${i + 1}`).join(', ')
         const ui = await $.ui.mount({ ...mount(`\`\`\`mermaid\nxychart-beta\n  x-axis [${labels}]\n  y-axis 0 --> ${Math.max(...values) + 2}\n  ${kind} [${values.join(', ')}]\n\`\`\``), surface })
-        const got = await heights(ui, kind)
-        const tallest = Math.max(...got)
-        expect(got.length).toBe(values.length)
-        values.forEach((v, i) => expect(Math.abs(got[i]! - (tallest * v) / Math.max(...values)) <= 1).toBe(true))
+        const { rows, columns } = await chartRows(ui)
+        expect(columns.length).toBe(values.length)
+        if (kind === 'bar') {
+          for (const row of rows) {
+            const tick = row.match(/^\s*(\d+)┤/)?.[1]
+            if (tick !== undefined) columns.forEach((c, i) => expect(block(row[c])).toBe(Number(tick) <= values[i]!))
+          }
+        } else {
+          const got = columns.map(c => rows.length - 1 - rows.findIndex(r => /[╭╮╯╰│─]/.test(r[c] ?? '')))
+          const tallest = Math.max(...got)
+          values.forEach((v, i) => expect(Math.abs(got[i]! - (tallest * v) / Math.max(...values)) <= 1).toBe(true))
+        }
         await ui.unmount()
       })
     }

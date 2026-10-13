@@ -433,11 +433,17 @@
         " "
       <Text>
         <Text color=#1f2328>
-          "   "
+          " "
+        <Text color=#0550ae>
+          "18"
         <Text color=#0969da>
-          "│"
+          "┤"
+        <Text color=#d0d7de>
+          "····························"
         <Text color=#1f2328>
-          "                            16"
+          "16"
+        <Text color=#d0d7de>
+          "··"
       <Text>
         <Text color=#1f2328>
           " "
@@ -448,7 +454,7 @@
         <Text color=#d0d7de>
           "·························"
         <Text color=#8250df>
-          "██████"
+          "▄▄▄▄▄▄"
         <Text color=#d0d7de>
           "·"
       <Text>
@@ -511,38 +517,34 @@
         <Text color=#0969da>
           "┤"
         <Text color=#d0d7de>
-          "············"
+          "····················"
         <Text color=#1f2328>
-          "3"
+          "4"
+        <Text color=#d0d7de>
+          "····"
+        <Text color=#8250df>
+          "██████"
+        <Text color=#d0d7de>
+          "·"
+      <Text>
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "4"
+        <Text color=#0969da>
+          "┤"
+        <Text color=#d0d7de>
+          "····"
+        <Text color=#1f2328>
+          "2"
         <Text color=#d0d7de>
           "·······"
         <Text color=#1f2328>
-          "4"
-        <Text color=#d0d7de>
-          "····"
-        <Text color=#8250df>
-          "██████"
-        <Text color=#d0d7de>
-          "·"
-      <Text>
-        <Text color=#1f2328>
-          "  "
-        <Text color=#0550ae>
-          "4"
-        <Text color=#0969da>
-          "┤"
-        <Text color=#d0d7de>
-          "····"
-        <Text color=#1f2328>
-          "2"
+          "3"
         <Text color=#d0d7de>
           "····"
         <Text color=#656d76>
-          "██████"
-        <Text color=#d0d7de>
-          "··"
-        <Text color=#656d76>
-          "██████"
+          "▄▄▄▄▄▄"
         <Text color=#d0d7de>
           "··"
         <Text color=#8250df>
@@ -559,7 +561,7 @@
         <Text color=#d0d7de>
           "·"
         <Text color=#656d76>
-          "██████"
+          "▄▄▄▄▄▄"
         <Text color=#d0d7de>
           "··"
         <Text color=#656d76>
@@ -580,30 +582,23 @@
         <Text color=#0550ae>
           "0"
         <Text color=#0969da>
-          "┼"
-        <Text color=#d0d7de>
-          "·"
+          "┼─"
         <Text color=#656d76>
-          "██████"
-        <Text color=#d0d7de>
-          "··"
-        <Text color=#656d76>
-          "██████"
-        <Text color=#d0d7de>
-          "··"
-        <Text color=#656d76>
-          "██████"
-        <Text color=#d0d7de>
-          "··"
-        <Text color=#8250df>
-          "██████"
-        <Text color=#d0d7de>
-          "·"
-      <Text>
-        <Text color=#1f2328>
-          "   "
+          "▀▀▀▀▀▀"
         <Text color=#0969da>
-          "┼────┬───────┬───────┬───────┬───"
+          "──"
+        <Text color=#656d76>
+          "▀▀▀▀▀▀"
+        <Text color=#0969da>
+          "──"
+        <Text color=#656d76>
+          "▀▀▀▀▀▀"
+        <Text color=#0969da>
+          "──"
+        <Text color=#8250df>
+          "▀▀▀▀▀▀"
+        <Text color=#0969da>
+          "─"
       <Text>
         <Text color=#1f2328>
           "       Dog    Human  Pigeon  Shrimp"
@@ -616,7 +611,16 @@
         " "
       <Text>
         <Text color=#1f2328>
-          "  "
+          " "
+        <Text color=#0550ae>
+          "10"
+        <Text color=#0969da>
+          "┤"
+        <Text color=#d0d7de>
+          "····························"
+      <Text>
+        <Text color=#1f2328>
+          "   "
         <Text color=#0969da>
           "│"
         <Text color=#1f2328>
@@ -625,7 +629,7 @@
           "╭────"
       <Text>
         <Text color=#1f2328>
-          " "
+          "  "
         <Text color=#0550ae>
           "8"
         <Text color=#0969da>
@@ -638,7 +642,16 @@
           "······"
       <Text>
         <Text color=#1f2328>
-          " "
+          "   "
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "                     "
+        <Text color=#0969da>
+          "│"
+      <Text>
+        <Text color=#1f2328>
+          "  "
         <Text color=#0550ae>
           "6"
         <Text color=#0969da>
@@ -651,7 +664,16 @@
           "······"
       <Text>
         <Text color=#1f2328>
-          " "
+          "   "
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "              "
+        <Text color=#0969da>
+          "│"
+      <Text>
+        <Text color=#1f2328>
+          "  "
         <Text color=#0550ae>
           "4"
         <Text color=#0969da>
@@ -664,7 +686,16 @@
           "·············"
       <Text>
         <Text color=#1f2328>
-          " "
+          "   "
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "       "
+        <Text color=#0969da>
+          "│"
+      <Text>
+        <Text color=#1f2328>
+          "  "
         <Text color=#0550ae>
           "2"
         <Text color=#0969da>
@@ -677,21 +708,19 @@
           "····················"
       <Text>
         <Text color=#1f2328>
-          " "
-        <Text color=#0550ae>
-          "0"
+          "   "
         <Text color=#0969da>
-          "┼"
-        <Text color=#d0d7de>
-          "····························"
+          "│"
       <Text>
         <Text color=#1f2328>
           "  "
+        <Text color=#0550ae>
+          "0"
         <Text color=#0969da>
           "┼───┬──────┬──────┬──────┬───"
       <Text>
         <Text color=#1f2328>
-          "    GotG2   IW     EG    GotG3"
+          "     GotG2   IW     EG    GotG3"
   <Box>
     <Box>
       <Text>

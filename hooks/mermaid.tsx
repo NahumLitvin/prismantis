@@ -20,16 +20,19 @@ const padWide = (source: string) => (/^[\x00-\x7F]*$/.test(source) ? source : gr
 const unquoteCategories = (source: string) =>
   source.replace(/^(\s*x-axis\b[^[\n]*\[)([^\]\n]*)\]/m, (_, head: string, items: string) => `${head}${items.replace(/"([^"]*)"/g, (_q, s: string) => s.replaceAll(',', ' '))}]`)
 
+const BLOCK = /[█▀▄]/
+
 const labelBars = (art: string, source: string): string => {
   const series = source.match(/^\s*(bar|line)\b.*$/gm) ?? []
   const values = /^\s*bar\b[^[\n]*\[([^\]\n]*)\]/m.exec(source)?.[1]?.split(',').map(v => v.trim())
   if (series.length !== 1 || !values || /^\s*xychart(-beta)?\s+horizontal/m.test(source)) return art
   const grid = art.split('\n').map(l => [...l])
-  const axis = grid.findLastIndex(row => row.includes('┬'))
-  const ticks = grid[axis]?.flatMap((ch, x) => (ch === '┬' ? [x] : [])) ?? []
+  const gutter = (r: number) => /^\s*(-?[\d.]+)[┤┼]/.exec(grid[r]?.join('') ?? '')?.[1]
+  const axis = grid.findLastIndex((_, r) => gutter(r) !== undefined)
+  const ticks = [...(grid[axis]?.join('') ?? '').matchAll(/┬|▀+/g)].map(m => m.index + Math.floor(m[0].length / 2))
   if (ticks.length !== values.length) return art
   ticks.forEach((x, k) => {
-    const top = grid.findIndex(row => row[x] === '█')
+    const top = grid.findIndex(row => BLOCK.test(row[x] ?? ''))
     const y = top === -1 ? axis - 1 : top - 1
     const text = [...values[k]!]
     const from = x - Math.floor((text.length - 1) / 2)
@@ -69,11 +72,6 @@ export const mermaidText = (source: string, ascii: boolean, columns: number): st
   return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
 }
 
-const evenTicks = (art: string) => {
-  const rows = art.split('\n').flatMap((line, i) => (/^\s*-?[\d.,]+[kMG%]?\s*[┤┼+|]/.test(line) ? [i] : []))
-  return rows.slice(2).every((row, i) => row - rows[i + 1]! === rows[1]! - rows[0]!)
-}
-
 const draw = (source: string, ascii: boolean, columns: number): string | null => {
   const isChart = /^\s*xychart/.test(source)
   const padded = padWide(source)
@@ -81,17 +79,8 @@ const draw = (source: string, ascii: boolean, columns: number): string | null =>
   const key = `${ascii}:${isChart ? size.width : 0}:${source}`
   return remember(textCache, key, () => {
     try {
-      const render = () => renderMermaidAscii(unquoteCategories(padded.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
-      let art = ''
-      for (const height of isChart ? [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8, -8].map(d => size.height + d).filter(h => h >= 6) : [0]) {
-        if (isChart) setChartSize(size.width, height)
-        art = render()
-        if (!isChart || evenTicks(art)) break
-      }
-      if (isChart && !evenTicks(art)) {
-        setChartSize(size.width, size.height)
-        art = render()
-      }
+      if (isChart) setChartSize(size.width, size.height)
+      const art = renderMermaidAscii(unquoteCategories(padded.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
       return (isChart ? labelBars(art, padded) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')).replaceAll(PAD, '')
     } catch {
       return null
@@ -133,17 +122,25 @@ const paint = (art: string, style: Style): (string | undefined)[][] => {
     for (let y = r; y <= r2; y++) for (let x = c; x <= c2; x++) if (cell(y, x).trim()) color[y]![x] = hue
   }
 
-  const bars = [...new Set(grid.flatMap(row => row.flatMap((ch, c) => (ch === '█' && row[c - 1] !== '█' ? [c] : []))))].sort((a, b) => a - b)
-  const ticks = grid.findLast(row => row.includes('┬'))?.filter(ch => ch === '┬').length ?? 0
-  const tops = bars.map(x => grid.findIndex(row => row[x] === '█'))
-  const single = bars.length > 1 && bars.length <= ticks
+  const bars = [...new Set(grid.flatMap(row => row.flatMap((ch, c) => (BLOCK.test(ch) && row[c - 1] !== ch ? [c] : []))))].sort((a, b) => a - b)
+  const ends = bars.map(x => {
+    const row = grid.find(row => BLOCK.test(row[x] ?? ''))!
+    let end = x
+    while (row[end + 1] === row[x]) end++
+    return end
+  })
+  const tops = bars.map(x => {
+    const r = grid.findIndex(row => BLOCK.test(row[x] ?? ''))
+    return r * 2 + (grid[r]![x] === '▄' ? 1 : 0)
+  })
+  const single = bars.length > 1 && bars.every((x, i) => i === 0 || x - ends[i - 1]! > 2)
   const barColor = (i: number) => (single ? (tops[i] === Math.min(...tops) ? t.emphasis ?? t.accent : t.quote) : next(i))
   grid.forEach((row, r) =>
     row.forEach((ch, c) => {
       if (color[r]![c] !== undefined) return
-      if (ch === '█') {
+      if (BLOCK.test(ch)) {
         let start = c
-        while (row[start - 1] === '█') start--
+        while (row[start - 1] === ch) start--
         color[r]![c] = barColor(bars.indexOf(start))
       } else if (ch === '·') color[r]![c] = t.rule
       else if (ARROW.test(ch)) color[r]![c] = t.accent
