@@ -532,7 +532,10 @@ const FOLD_SHOW = 20
 
 const codeId = (lines: string[]): string => {
   let h = 5381
-  for (const line of lines) for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+  for (const line of lines) {
+    for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+    h = (h * 33 + 10) | 0
+  }
   return `${lines.length}:${(h >>> 0).toString(36)}`
 }
 

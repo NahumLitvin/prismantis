@@ -258,10 +258,13 @@ export const parse = (raw: string, hl: Highlight): Block[] => {
 const notesOf = (source: string): Map<string, string> => {
   const defs = new Map<string, string>()
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
-  let fenced = false
+  let closer: RegExp | undefined
   let last: string | undefined
   for (const line of lines) {
-    if (FENCE.test(line)) fenced = !fenced
+    const run = FENCE.exec(line)?.[1]
+    const fenced = closer !== undefined || run !== undefined
+    if (closer?.test(line)) closer = undefined
+    else if (!closer && run) closer = new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
     const def = fenced ? null : NOTE_DEF.exec(line)
     if (def) {
       last = def[1]!

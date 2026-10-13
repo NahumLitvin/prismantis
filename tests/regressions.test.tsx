@@ -805,3 +805,8 @@ test('localhost links with a query or a hash stay clickable', async $ => {
   expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:5173?debug=1', 'http://localhost#/home'])
   await ui.unmount()
 })
+
+test('a footnote definition inside a four-backtick fence stays code', async () => {
+  const blocks = parse('````text\n```\n[^x]: inside code\n````\n\nSee[^x]', hl)
+  expect(blocks.some(b => b.kind === 'notes')).toBe(false)
+})

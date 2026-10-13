@@ -18,6 +18,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - A TeX command or a shell program named like a built-in JavaScript property (`\toString`, `\constructor`, a `toString` command) no longer draws `function toString() { [native code] }` or breaks quiet tool rows.
 - `awk '@include "inplace"'`, `awk -E`, `awk --exec` and `awk -l` can edit files, so `toolOutput: quiet` no longer hides their output as a read.
 - `http://localhost:5173?debug=1` and `http://localhost#/home` are clickable again.
+- A footnote definition quoted inside a code block no longer becomes a real footnote.
+- Two long code blocks that differ only in where their lines break fold and unfold on their own.
+- An expanded shell command whose result is an error message shows that message instead of "(No output)".
 - Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
 - A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
 - `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.
