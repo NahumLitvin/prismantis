@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Footnote marks in a table's header row draw in the footnote color, as they do in paragraphs and body cells. Before, they took the header color and looked like part of the column name.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security

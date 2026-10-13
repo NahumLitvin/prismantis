@@ -39,7 +39,7 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 
 Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS or Linux terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. If that fails, it copies the plain text alone.
 
-| Item | Quantity | Status |
+| Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
 | **Apples** | 3 | *Ready* |
 | Oranges | 5 | Pending |
@@ -133,6 +133,7 @@ $$
 
 Latency fell to 120ms[^lat] after the cache change[^cache].
 
+[^count]: Counted at close.
 [^lat]: Median of 50 runs.
 [^cache]: Entries expire after 10m.
 
