@@ -775,3 +775,13 @@ test('table art fits wide characters into columns too narrow for them', async ()
   const art = tableArt(tableOf(`|${' h |'.repeat(cols)}\n|${'---|'.repeat(cols)}\n|${' 中文中文 |'.repeat(cols)}`))
   expect(art.split('\n').length > 3).toBe(true)
 })
+
+for (const [text, cols] of [['©', 1], ['™', 1], ['↔', 1], ['▶', 1], ['⚠', 1], ['⚠️', 2], ['✅', 2], ['🙂', 2], ['🇮🇱', 2], ['1️⃣', 2], ['𠀀', 2], ['中', 2], ['é', 1]] as const) test(`${text} takes ${cols} terminal column${cols > 1 ? 's' : ''}`, async () => {
+  expect(width(text)).toBe(cols)
+})
+
+test('a mermaid box around a text-style symbol closes', async () => {
+  const art = mermaidText('flowchart TD\n  A[sync ↔ async] --> B[done]', false, 80)!
+  const box = art.split("\n").slice(0, 3).map(l => [...l.trimEnd()].length)
+  expect(new Set(box).size).toBe(1)
+})

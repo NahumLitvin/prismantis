@@ -16,6 +16,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `awk -i inplace` edits a file, so `toolOutput: quiet` no longer hides its output as a read.
 - Copying a table as art no longer fails when a column is narrower than a wide character such as `中`.
 - After `/prismantis theme random`, new LaTeX formulas draw in the new theme's color instead of the old one.
+- Text-style symbols such as `↔`, `™`, `©`, `▶` and `⚠` count as one column, as terminals draw them, so a diagram box around them closes. Emoji drawn as emoji (`✅`, `⚠️`), flags, keycaps like `1️⃣` and rare CJK characters such as `𠀀` count as two.
 
 ## [0.18.2] - 2026-10-13
 
