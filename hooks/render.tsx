@@ -815,13 +815,19 @@ export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, 
 
 type EditedFile = { path: string; rows: DiffLine[] }
 
-export type BashEdits = { files: EditedFile[]; more: number }
+export type BashEdits = { files: EditedFile[]; more: number; shared: boolean }
+
+export const EDIT_NOTES = {
+  first: 'every file that changed while this ran, by this command or anything else: a view of the changes, not an audit of the command',
+  shared: 'another command ran in this repository at the same time, so changes by either may show under either one',
+  tree: 'a git step in this command can move the working tree, so these may be its changes rather than edits',
+} as const
 
 export const bashEdits = (output: unknown): BashEdits | undefined => {
   if (output === null || typeof output !== 'object') return undefined
   const diff = (output as { bashEditDiff?: unknown }).bashEditDiff
   if (diff === null || typeof diff !== 'object') return undefined
-  const { files, moreFiles } = diff as { files?: unknown; moreFiles?: unknown }
+  const { files, moreFiles, shared } = diff as { files?: unknown; moreFiles?: unknown; shared?: unknown }
   if (!Array.isArray(files) || files.length === 0) return undefined
   const edited: EditedFile[] = []
   for (const file of files as ({ filePath?: unknown; hunks?: unknown } | null)[]) {
@@ -829,7 +835,7 @@ export const bashEdits = (output: unknown): BashEdits | undefined => {
     if (typeof file?.filePath !== 'string' || rows === undefined) return undefined
     edited.push({ path: file.filePath, rows })
   }
-  return { files: edited, more: typeof moreFiles === 'number' && moreFiles > 0 ? moreFiles : 0 }
+  return { files: edited, more: typeof moreFiles === 'number' && moreFiles > 0 ? moreFiles : 0, shared: shared === true }
 }
 
 export const withoutBashEdits = (output: unknown): unknown => {
@@ -843,11 +849,36 @@ export const hasShellOutput = (output: unknown): boolean => {
   return lines(out.stdout).length + lines(out.stderr).length > 0
 }
 
-export const renderBashEdits = (el: ElementTable, style: Style, edits: BashEdits, fold: Fold, id: string, below = false): RenderElement => {
+export const renderBashEdits = (el: ElementTable, style: Style, edits: BashEdits, fold: Fold, id: string, below = false, notes: readonly string[] = []): RenderElement => {
   const cards = edits.files.map((file, i) => diffBox(el, style, file.rows, fold, `${id}:${i}`, String(i), shortPath(style, file.path)))
   const more = edits.more ? [<el.Text key="more" dimColor>{`… +${edits.more} more ${edits.more === 1 ? 'file' : 'files'}`}</el.Text>] : []
-  return diffRow(el, style, [...cards, ...more], below)
+  const said = notes.map((note, i) => <el.Text key={`note${i}`} dimColor>{`(${note})`}</el.Text>)
+  return diffRow(el, style, [...cards, ...more, ...said], below)
 }
+
+const TREE_MOVERS = new Set(['checkout', 'switch', 'stash', 'pull', 'merge', 'rebase', 'reset', 'restore', 'clean', 'cherry-pick', 'revert'])
+
+const gitSubcommand = (args: string[]): string | undefined => {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!
+    if (!arg.startsWith('-')) return arg
+    if (arg === '-C' || arg === '-c') i++
+  }
+  return undefined
+}
+
+export const editNotes = (edits: BashEdits, first: boolean, command?: string): string[] => [
+  ...(first ? [EDIT_NOTES.first] : []),
+  ...(edits.shared ? [EDIT_NOTES.shared] : []),
+  ...(command !== undefined && movesTree(command) ? [EDIT_NOTES.tree] : []),
+]
+
+export const movesTree = (command: string): boolean =>
+  parseShell(command).segments.some(({ words }) => {
+    const argv = commandWords(words)
+    const [name, ...rest] = argv[0] === 'sudo' ? argv.slice(1) : argv
+    return name?.split('/').pop() === 'git' && TREE_MOVERS.has(gitSubcommand(rest) ?? '')
+  })
 
 const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s+(\S+\s+\()?\S+:\d+(:\d+)?\)?|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i
 

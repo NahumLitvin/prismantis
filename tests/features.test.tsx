@@ -7,7 +7,7 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
-import { bashEdits, columnWidths, describeShell, diffLines, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
+import { EDIT_NOTES, bashEdits, columnWidths, describeShell, diffLines, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -1295,6 +1295,38 @@ test('an unknown diffStyle draws the card', { options: { diffStyle: 'fancy' } },
   const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(true)
   await ui.unmount()
+})
+
+test('a git step that can move the working tree is told apart from other git calls', () => {
+  for (const command of ['git checkout main', 'git -C repo switch feature', 'sudo git reset --hard HEAD~1', 'make && git stash pop', 'git -c core.pager=cat pull --rebase', 'FOO=1 git cherry-pick abc123'])
+    expect(movesTree(command)).toBe(true)
+  for (const command of ['git commit -m "checkout later"', 'git log --oneline', "echo 'git checkout main'", 'sed -i s/a/b/ notes.md', 'git diff --stat'])
+    expect(movesTree(command)).toBe(false)
+})
+
+const shellEdit = (id: string, output: unknown) =>
+  ({ plugin: 'prismantis', surface: 'terminal' as const, component: 'ToolResult' as const, props: { tool_use_id: id, tool: 'Bash', output, isErrored: false } })
+const said = (text: string) => ({ type: 'Text' as const, text: `(${text})` })
+
+test('shell edit cards carry the notes Claude Code gives its own diff', async ($, on) => {
+  engine(on)
+  const first = await $.ui.mount(shellEdit('n-1', bashEdit()))
+  expect((await first.find(said(EDIT_NOTES.first)))?.props.dimColor).toBe(true)
+  expect(await first.find(said(EDIT_NOTES.shared))).toBeUndefined()
+  expect(await first.find(said(EDIT_NOTES.tree))).toBeUndefined()
+  await first.unmount()
+  const second = await $.ui.mount(shellEdit('n-2', { ...bashEdit(), bashEditDiff: { ...bashEdit().bashEditDiff, shared: true } }))
+  expect(await second.find(said(EDIT_NOTES.first))).toBeUndefined()
+  expect((await second.find(said(EDIT_NOTES.shared)))?.props.dimColor).toBe(true)
+  await second.unmount()
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: call('Bash', { command: 'git checkout main && sed -i s/b/c/ src/app.ts' }, 'n-3') })
+  const third = await $.ui.mount(shellEdit('n-3', bashEdit()))
+  expect((await third.find(said(EDIT_NOTES.tree)))?.props.dimColor).toBe(true)
+  await third.unmount()
+  await row.unmount()
+  const again = await $.ui.mount(shellEdit('n-1', bashEdit()))
+  expect(await again.find(said(EDIT_NOTES.first))).toBeDefined()
+  await again.unmount()
 })
 
 test('shell edits keep the engine diff when tool rows are off', { options: { toolRows: false } }, async ($, on) => {
