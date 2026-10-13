@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- `/prismantis theme random` no longer turns off right-to-left reordering, the HTML table copy and path shortening for the rest of the session. It changes only the colors.
+- Switching theme while a formula is still being typeset no longer stores the old color as the new theme's image; the formula is typeset again in the new color.
+- In kitty, a link whose URL holds Hebrew keeps its URL as written instead of reversing it.
 - Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
 - A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
 - `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.
