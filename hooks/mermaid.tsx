@@ -60,14 +60,17 @@ export const inlineMarks = (source: string): [string[], Mark][] =>
   [...source.matchAll(/<(i|em|b|strong|u|s|del)\b[^<>\n]*>([^<\n]+)<\/\1\s*>/gi)]
     .map(m => [cells(m[2]!.trim()), { [TAG_MARK[m[1]!.toLowerCase()]!]: true }] as [string[], Mark])
 
-export const mermaidText = (source: string, ascii: boolean, columns: number): string | null => {
-  source = source.replace(INLINE_TAG, '')
-  if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
-  const art = draw(source, ascii, columns)
-  const fits = (a: string) => a.split('\n').every(l => width(l) <= columns - 2)
-  if (art === null || fits(art) || !SIDEWAYS.test(source)) return art
-  return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
-}
+const fitted = new Map<string, string | null>()
+
+export const mermaidText = (source: string, ascii: boolean, columns: number): string | null =>
+  remember(fitted, `${ascii}:${columns}:${source}`, () => {
+    source = source.replace(INLINE_TAG, '')
+    if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
+    const art = draw(source, ascii, columns)
+    const fits = (a: string) => a.split('\n').every(l => width(l) <= columns - 2)
+    if (art === null || fits(art) || !SIDEWAYS.test(source)) return art
+    return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
+  })
 
 const evenTicks = (art: string) => {
   const rows = art.split('\n').flatMap((line, i) => (/^\s*-?[\d.,]+[kMG%]?\s*[┤┼+|]/.test(line) ? [i] : []))
@@ -155,16 +158,16 @@ const paint = (art: string, style: Style): (string | undefined)[][] => {
   return color
 }
 
-const painted = new WeakMap<Theme, Map<string, (string | undefined)[][]>>()
+type Painted = { grid: string[][]; colors: (string | undefined)[][] }
+const painted = new WeakMap<Theme, Map<string, Painted>>()
 
 export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string, marks: [string[], Mark][] = []): RenderElement => {
-  const cache = painted.get(style.theme) ?? new Map<string, (string | undefined)[][]>()
+  const cache = painted.get(style.theme) ?? new Map<string, Painted>()
   painted.set(style.theme, cache)
-  const colors = remember(cache, art, () => paint(art, style))
+  const { grid, colors } = remember(cache, art, () => ({ grid: art.split('\n').map(cells), colors: paint(art, style) }))
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
-      {art.split('\n').map((line, i) => {
-        const chars = cells(line)
+      {grid.map((chars, i) => {
         const marked: (Mark | undefined)[] = chars.map(() => undefined)
         for (const [phrase, mark] of marks)
           for (let c = 0; c + phrase.length <= chars.length; c++)
