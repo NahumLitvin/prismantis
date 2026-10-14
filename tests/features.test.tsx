@@ -774,9 +774,9 @@ test('markdown links and bare URLs draw as clickable links', async $ => {
     const ui = await $.ui.mount({ plugin: 'prismantis', component: 'AssistantMessage', props: { text: 'See [the docs](https://example.com/docs) or https://example.com/raw for more.', isFirstOfReply: true }, viewport: { columns: 100, rows: 20 }, surface })
     const links = await ui.findAll({ type: 'Link' })
     expect(links.map(l => l.props.href)).toEqual(['https://example.com/docs', 'https://example.com/raw'])
-    expect((await ui.find({ type: 'Text', text: /^the docs$/ }))?.props.underline).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^the docs$/ }))?.props.color).toBe(t.link)
     expect(await ui.find({ type: 'Text', text: /\(https:\/\/example\.com\/docs\)/ })).toBeUndefined()
-    expect(await ui.find({ type: 'Text', text: /^https:\/\/example\.com\/raw$/ })).toBeUndefined()
+    expect((await ui.find({ type: 'Text', text: /^https:\/\/example\.com\/raw$/ }))?.props.color).toBe(t.link)
     await ui.unmount()
   }
 })

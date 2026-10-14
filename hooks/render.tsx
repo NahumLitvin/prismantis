@@ -80,6 +80,59 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
 
 const hasLink = (nodes: Inline[]): boolean => nodes.some(n => n.kind === 'link' || ('children' in n && hasLink(n.children)))
 
+const HTTP_LINKS_FROM = [2, 1, 289]
+const EDITOR_LINKS_FROM = [2, 1, 294]
+
+const releaseFrom = (from: readonly number[]) => (base?: string): boolean => {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(base ?? '')
+  if (!m) return false
+  const version = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const at = version.findIndex((n, i) => n !== from[i])
+  return at === -1 || version[at]! > from[at]!
+}
+
+export const takesHttpLinks = releaseFrom(HTTP_LINKS_FROM)
+
+export const takesEditorLinks = releaseFrom(EDITOR_LINKS_FROM)
+
+const isHyperlink = (href: string, http: boolean, editor: boolean): boolean =>
+  (http ? /^https?:/i : /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i).test(href) || (editor && /^vscode(-insiders)?:\/\/file\//i.test(href))
+
+const plainLink = (text: string, href: string): string => {
+  const target = href.replace(/^mailto:/i, '')
+  return text === target || `http://${text}` === target ? target : `${text} (${target})`
+}
+
+const unlink = (nodes: Inline[], http: boolean, editor: boolean): Inline[] =>
+  nodes.map(n => (n.kind === 'link' && !isHyperlink(n.href, http, editor) ? { kind: 'text', text: plainLink(n.text, n.href) } : 'children' in n ? { ...n, children: unlink(n.children, http, editor) } : n))
+
+const unlinkBlock = (block: Block, http: boolean, editor: boolean): Block => {
+  const plain = (nodes: Inline[]) => unlink(nodes, http, editor)
+  switch (block.kind) {
+    case 'heading':
+    case 'paragraph':
+    case 'quote':
+    case 'alert':
+      return { ...block, inline: plain(block.inline) }
+    case 'list':
+      return { ...block, items: block.items.map(item => ({ ...item, inline: plain(item.inline) })) }
+    case 'table':
+      return { ...block, header: block.header.map(plain), rows: block.rows.map(r => r.map(plain)) }
+    case 'notes':
+      return { ...block, notes: block.notes.map(note => ({ ...note, inline: plain(note.inline) })) }
+    default:
+      return block
+  }
+}
+
+const unlinked = new WeakMap<Block, Block[]>()
+
+const drawable = (block: Block, http: boolean, editor: boolean): Block => {
+  const cached = unlinked.get(block) ?? []
+  unlinked.set(block, cached)
+  return (cached[+http + 2 * +editor] ??= unlinkBlock(block, http, editor))
+}
+
 const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
 
 const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
@@ -110,9 +163,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i.test(n.href)
-          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
-          : <Text key={key} color={t.link} underline>{n.text}</Text>
+        return n.text === n.href ? <Text key={key} color={t.link}><el.Link href={n.href} /></Text> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
       case 'path':
@@ -545,8 +596,9 @@ const copySource = (block: Block): string | undefined =>
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
-  const rtlTables = blocks.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
-  const rendered = blocks.map((block, b) => {
+  const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
+  const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
+  const rendered = shown.map((block, b) => {
     const key = `b${b}`
     switch (block.kind) {
       case 'heading':
