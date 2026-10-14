@@ -1111,7 +1111,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`a code block and a
   expect((await ui.find({ type: 'Text', text: /^npm$/ }))?.props.color).toBe(t.codeCommand)
   expect((await ui.find({ type: 'Text', text: /^Check$/ }))?.props.color).toBe(t.tableHeader)
   const edge = await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })
-  expect(width(edge!.text) <= 60 - 4 - 2).toBe(true)
+  expect(width('│ ') + width(edge!.text) + 2 + width('[ ⧉ copy ]') <= 60 - 4).toBe(true)
   const labels = (await ui.findAll({ type: 'Button' })).map(b => b.props.label)
   expect(labels.filter(l => l === '⧉ copy')).toHaveLength(2)
   expect(labels.filter(l => l === '⧉ md')).toHaveLength(1)
@@ -1135,6 +1135,53 @@ for (const surface of ['terminal', 'desktop'] as const) test(`footnotes number a
   expect(await ui.find({ type: 'Text', text: /^² Quoted note\.$/ })).toBeDefined()
   expect((await ui.find({ type: 'Box', key: 'b0' }))?.text).not.toContain('Quoted note')
   await ui.unmount()
+})
+
+for (const copyButtons of [true, false]) test(`a quote ${copyButtons ? 'beside its copy button' : 'without a copy button'} sizes its bar for the width left`, { options: { copyButtons } }, async $ => {
+  const ui = await $.ui.mount(mount(`> ${'word '.repeat(10)}end`, 60))
+  expect(Math.max(...(await barLines(ui))) > 1).toBe(copyButtons)
+  await ui.unmount()
+})
+
+test('a quote bar covers a wrapped banner heading and its rule', { options: { headingStyle: 'banner', copyButtons: false } }, async $ => {
+  const ui = await $.ui.mount(mount(`> ## ${'A'.repeat(300)}`, 60))
+  expect(Math.max(...(await barLines(ui))) >= 2 * Math.ceil(300 / (60 - 4 - 2))).toBe(true)
+  await ui.unmount()
+})
+
+test('a quote bar covers a task list progress line that wraps', { options: { taskStyle: 'progress', copyButtons: false } }, async $ => {
+  const ui = await $.ui.mount(mount('> - [ ] x', 24))
+  expect(Math.max(...(await barLines(ui))) >= 3).toBe(true)
+  await ui.unmount()
+})
+
+test('footnotes follow quotes and fences: a quoted fence marker inside code makes no note, and an unclosed quoted fence hides none', async () => {
+  const marks = (source: string) => parse(source, hl).flatMap(b => (b.kind === 'notes' ? b.notes.map(n => `${n.mark} ${inlineText(n.inline)}`) : []))
+  expect(marks('```md\n> ```\n[^fake]: Not a real note\n```\n\nReal[^real].\n\n[^real]: Real note')).toEqual(['¹ Real note'])
+  expect(marks('> ```\n> [^x]: in code\n\nTop[^top].\n\n[^top]: Top note')).toEqual(['¹ Top note'])
+  expect(marks('> a[^q]\n>\n> > [^q]: Nested note\n> >   continued')).toEqual(['¹ Nested note continued'])
+})
+
+for (const copyButtonStyle of ['inline', 'hover'] as const) test(`a quote that opens with code puts its own ${copyButtonStyle} copy button on its last row`, { options: { copyButtonStyle } }, async $ => {
+  const ui = await $.ui.mount(mount('> ```bash\n> npm test\n> ```\n>\n> Run that first.\n\n> One line.'))
+  const boxes = await ui.findAll({ type: 'Box' })
+  const low = boxes.filter(b => (copyButtonStyle === 'hover' ? b.props.display === 'none' && b.props.bottom === 0 && b.props.left === 0 : b.props.alignSelf === 'flex-end' && b.key !== 'reply'))
+  expect(low.map(b => b.text)).toEqual(['⧉ copy'])
+  expect(boxes.filter(b => b.props.position === 'absolute' && b.props.top === 0 && b.props.display === 'none').map(b => b.text)).toEqual(copyButtonStyle === 'hover' ? ['⧉ copy', '⧉ copy'] : [])
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`display math inside a quote or a list item draws as text on ${surface}`, async $ => {
+  const ui = await $.ui.mount({ ...mount('> $$\n> E = mc^2 \\cdot \\alpha\n> $$\n\n- energy:\n  ```math\n  \\pi r^2\n  ```'), surface })
+  expect((await ui.find({ type: 'Text', text: /^E = mc² · α$/ }))?.props).toMatchObject({ italic: true, color: PRESETS['catppuccin-mocha'].emphasis })
+  expect(await ui.find({ type: 'Text', text: /^πr²$|^π r²$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a quote with nothing to draw is left out', async () => {
+  expect(parse('> [^q]: A note.\n\nSee[^q].', hl).map(b => b.kind)).toEqual(['paragraph', 'notes'])
+  expect(parse('>\n> \n\ntext', hl).map(b => b.kind)).toEqual(['paragraph'])
+  expect(parse('> [!NOTE]', hl).map(b => b.kind)).toEqual(['alert'])
 })
 
 test('quotes nested past eight levels keep their text and parse in linear time', async () => {

@@ -258,13 +258,20 @@ export const parse = (raw: string, hl: Highlight): Block[] => {
   return source.includes('[^') ? numberNotes(blocks, notesOf(source), hl) : blocks
 }
 
-const notesOf = (source: string): Map<string, string> => {
-  const defs = new Map<string, string>()
+const notesOf = (source: string, defs = new Map<string, string>(), depth = 0): Map<string, string> => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   let closer: RegExp | undefined
   let last: string | undefined
-  for (const quoted of lines) {
-    const line = quoted.replace(/^(?:\s*>)+\s?/, '')
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!
+    if (!closer && depth < MAX_QUOTE_DEPTH && QUOTE.test(line)) {
+      const body: string[] = []
+      while (i < lines.length && QUOTE.test(lines[i]!)) body.push(lines[i++]!.replace(/^\s*>\s?/, ''))
+      i--
+      notesOf(body.join('\n'), defs, depth + 1)
+      last = undefined
+      continue
+    }
     const run = FENCE.exec(line)?.[1]
     const fenced = closer !== undefined || run !== undefined
     if (closer?.test(line)) closer = undefined
@@ -364,7 +371,10 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       const alert = ALERT.exec(body[0] ?? '')
       const inner = (rows: string[]) => parseBlocks(rows.join('\n'), hl, depth + 1)
       if (alert) add({ kind: 'alert', level: alert[1]!.toLowerCase() as AlertLevel, blocks: inner([alert[2]!, ...body.slice(1)]) }, start, i)
-      else add({ kind: 'quote', blocks: inner(body) }, start, i)
+      else {
+        const quoted = inner(body)
+        if (quoted.length) add({ kind: 'quote', blocks: quoted }, start, i)
+      }
       i--
       continue
     }

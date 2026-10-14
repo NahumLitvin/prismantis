@@ -2,7 +2,8 @@ import type { ElementTable, RenderElement } from 'claude-code'
 
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
-import { displayText, inlineText } from './markdown'
+import { mathOf } from './latex'
+import { displayText, inlineText, texText } from './markdown'
 import type { Flow } from './rtl'
 import { commentTail, commentVisual, containsRtl, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
@@ -140,27 +141,27 @@ const drawable = (block: Block, http: boolean, editor: boolean): Block => {
 
 const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
 
-const rowsOf = (text: string, w: number): number => (width(text) <= w ? 1 : mostLines(text, Math.max(1, w)))
+const textRows = (text: string, w: number): number => (width(text) <= w ? 1 : mostLines(text, Math.max(1, w)))
 
 const heightOf = (blocks: Block[], w: number): number => blocks.reduce((sum, block, b) => sum + (b ? 1 : 0) + blockHeight(block, w), 0)
 
 const blockHeight = (block: Block, w: number): number => {
   switch (block.kind) {
     case 'heading':
-      return rowsOf(displayText(block.inline), w - 4) + 2
+      return 2 * textRows(displayText(block.inline), w - 4) + 2
     case 'paragraph':
-      return rowsOf(displayText(block.inline), w)
+      return textRows(displayText(block.inline), w)
     case 'list':
       return block.items.reduce((sum, item) => {
         const pad = item.depth * 2 + item.marker.length + 4
-        return sum + rowsOf(displayText(item.inline), w - pad) + (item.blocks ? heightOf(item.blocks, w - pad) + 1 : 0)
-      }, 1)
+        return sum + textRows(displayText(item.inline), w - pad) + (item.blocks ? heightOf(item.blocks, w - pad) + 1 : 0)
+      }, textRows(`${'━'.repeat(20)} ${block.items.length}/${block.items.length} done`, w))
     case 'code':
-      return block.lines.reduce((sum, line) => sum + rowsOf(line, w - 8), 3)
+      return block.lines.reduce((sum, line) => sum + textRows(line, w - 8), 3)
     case 'table': {
       const { natural, words } = tableSize(block)
       const widths = columnWidths(natural, w - 4, 3, words)
-      const tallest = (cells: Inline[][]) => Math.max(1, ...widths.map((cw, c) => rowsOf(displayText(cells[c] ?? []), cw)))
+      const tallest = (cells: Inline[][]) => Math.max(1, ...widths.map((cw, c) => textRows(displayText(cells[c] ?? []), cw)))
       return block.rows.reduce((sum, row) => sum + 1 + tallest(row), 4 + tallest(block.header))
     }
     case 'quote':
@@ -170,7 +171,7 @@ const blockHeight = (block: Block, w: number): number => {
     case 'rule':
       return 1
     case 'notes':
-      return block.notes.reduce((sum, note) => sum + rowsOf(`${note.mark} ${displayText(note.inline)}`, w), 1)
+      return block.notes.reduce((sum, note) => sum + textRows(`${note.mark} ${displayText(note.inline)}`, w), 1)
   }
 }
 
@@ -382,6 +383,14 @@ export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   return ['```', ...art, '```'].join('\n')
 }
 
+const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: string) => (
+  <Box key={key} minWidth={w}>
+    <Box position="absolute" top={0} bottom={0} left={0} minWidth={w} overflow="hidden">
+      {drawn}
+    </Box>
+  </Box>
+)
+
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string, rtl: boolean) => {
   const { Box, Text } = el
   const t = style.theme
@@ -408,13 +417,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const bar = (k: string, text: string, lines = 1) => (
     <Text key={k} color={t.tableRule} dimColor={!t.tableRule}>{Array.from({ length: lines }, () => text).join('\n')}</Text>
   )
-  const clipped = (lines: number) => (k: string, text: string) => (
-    <Box key={k} minWidth={width(text)}>
-      <Box position="absolute" top={0} bottom={0} left={0} minWidth={width(text)} overflow="hidden">
-        {bar(`${k}.b`, text, lines)}
-      </Box>
-    </Box>
-  )
+  const clipped = (lines: number) => (k: string, text: string) => clip(el, width(text), bar(`${k}.b`, text, lines), k)
   const edge = (k: string, [left, fill, mid, right]: string) =>
     bar(k, left + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + right)
 
@@ -530,16 +533,10 @@ const leadInline = (blocks: Block[]): Inline[] => {
 }
 
 const renderNested = (el: ElementTable, style: Style, blocks: Block[], columns: number, key: string, copy?: CopyButton, fold?: Fold) =>
-  renderBlocks(el, style, blocks, columns, new Map(), copy && ((text, id, label, html) => copy(text, `${key}.${id}`, label, html)), fold && ((id, hidden, k) => fold(id, hidden, `${key}.${k}`)))
+  renderBlocks(el, style, blocks, columns, drawMath(el, style, blocks), copy && ((text, id, label, html) => copy(text, `${key}.${id}`, label, html)), fold && ((id, hidden, k) => fold(id, hidden, `${key}.${k}`)))
 
-const quoteBar = ({ Box, Text }: ElementTable, text: string, color: string | undefined, lines: number) =>
-  lines <= 1 ? <Text color={color}>{text}</Text> : (
-    <Box minWidth={width(text)}>
-      <Box position="absolute" top={0} bottom={0} left={0} minWidth={width(text)} overflow="hidden">
-        <Text color={color}>{Array.from({ length: lines }, () => text).join('\n')}</Text>
-      </Box>
-    </Box>
-  )
+const quoteBar = (el: ElementTable, text: string, color: string | undefined, lines: number) =>
+  lines <= 1 ? <el.Text color={color}>{text}</el.Text> : clip(el, width(text), <el.Text color={color}>{Array.from({ length: lines }, () => text).join('\n')}</el.Text>)
 
 const renderQuote = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'quote' }>, columns: number, key: string, copy?: CopyButton, fold?: Fold) => {
   const { Box } = el
@@ -642,18 +639,44 @@ const codeId = (lines: string[]): string => {
   return `${lines.length}:${(h >>> 0).toString(36)}`
 }
 
-const copySource = (block: Block): string | undefined =>
-  block.kind === 'code' ? block.lines.join('\n') : block.kind === 'table' || block.kind === 'list' ? block.raw : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n') : undefined
+const copySource = (style: Style, block: Block): string | undefined =>
+  block.kind === 'code' ? block.lines.join('\n')
+  : block.kind === 'table' ? block.raw
+  : style.inside ? undefined
+  : block.kind === 'list' ? block.raw
+  : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n')
+  : undefined
+
+export const drawMath = (el: ElementTable, style: Style, blocks: Block[], drawn: Drawn = new Map()): Drawn => {
+  for (const [i, block] of blocks.entries()) {
+    const tex = drawn.has(i) ? null : mathOf(block)
+    const text = tex === null ? null : texText(tex)
+    if (text && !text.includes('\\')) drawn.set(i, { element: <el.Box key={`b${i}`} paddingLeft={2}><el.Text italic color={style.theme.emphasis}>{text}</el.Text></el.Box> })
+  }
+  return drawn
+}
+
+const opensWithCopy = (block: Block) => block.kind === 'quote' && (block.blocks[0]?.kind === 'code' || block.blocks[0]?.kind === 'table')
 
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
   const hover = style.copyButtonStyle === 'hover'
-  const floating = (button: RenderElement | null) => (button ? <Box position="absolute" top={0} left={0} minWidth="100%" justifyContent="flex-end" display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
+  const floating = (button: RenderElement | null, low = false) => (button ? <Box position="absolute" {...(low ? { bottom: 0 } : { top: 0 })} left={0} minWidth="100%" justifyContent="flex-end" display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
   const reserved = (buttons: (RenderElement | null | undefined)[]): number =>
     buttons.reduce<number>((w, button) => (button?.type === 'Button' ? w + (w ? 1 : 0) + width(`[ ${button.props.label} ]`) : w), 0)
   const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
+  const buttons = blocks.map((block, b) => {
+    const text = copySource(style, block)
+    const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
+    const art = drawn.get(b)?.art ?? (block.kind === 'table' ? () => tableArt(block) : undefined)
+    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
+    const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
+    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    return { first, second, html }
+  })
+  const beside = (b: number) => (hover || !buttons[b]!.first ? columns : columns - reserved([buttons[b]!.first]) - 2)
   const rendered = shown.map((block, b) => {
     const key = `b${b}`
     switch (block.kind) {
@@ -662,9 +685,9 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       case 'paragraph':
         return renderParagraph(el, style, block, columns, key)
       case 'quote':
-        return renderQuote(el, style, block, columns, key, copy, fold)
+        return renderQuote(el, style, block, beside(b), key, copy, fold)
       case 'alert':
-        return renderAlert(el, style, block, columns, key, copy, fold)
+        return renderAlert(el, style, block, beside(b), key, copy, fold)
       case 'rule':
         return <Text key={key} color={t.rule} dimColor={!t.rule}>{'─'.repeat(Math.max(8, Math.min(columns, 80)))}</Text>
       case 'code': {
@@ -705,12 +728,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   })
   const copied = rendered.map((element, b) => {
     const block = blocks[b]!
-    const text = style.inside && (block.kind === 'list' || block.kind === 'quote' || block.kind === 'alert') ? undefined : copySource(block)
-    const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
-    const art = drawn.get(b)?.art ?? (block.kind === 'table' ? () => tableArt(block) : undefined)
-    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
-    const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
-    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    const { first, second, html } = buttons[b]!
     const button = second ? (
       <el.Box key={`copies${b}`} flexDirection="row" columnGap={1}>
         {first}
@@ -725,14 +743,14 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       return (
         <Box key={`c${b}`} flexDirection="column" minWidth={reserved(second ? [first, second, html] : [first])} {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
           {element}
-          {floating(button)}
+          {floating(button, opensWithCopy(block))}
         </Box>
       )
     }
     return block.kind === 'quote' || block.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
-        {button}
+        {opensWithCopy(block) ? <Box alignSelf="flex-end">{button}</Box> : button}
       </Box>
     ) : (
       <Box key={`c${b}`} flexDirection="column" {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
