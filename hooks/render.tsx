@@ -596,6 +596,8 @@ const copySource = (block: Block): string | undefined =>
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
+  const hover = style.copyButtonStyle === 'hover'
+  const floating = (button: RenderElement | null) => (button ? <Box position="absolute" top={0} right={0} display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
   const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const rendered = shown.map((block, b) => {
@@ -625,7 +627,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
             {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
-              {copy?.(lines.join('\n'), `copy${b}`) ?? null}
+              {hover ? floating(copy?.(lines.join('\n'), `copy${b}`) ?? null) : copy?.(lines.join('\n'), `copy${b}`) ?? null}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
               {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
@@ -665,6 +667,14 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     if (!button) return element
     const { Box } = el
     const rtl = style.reorder && hasRtl(block.raw)
+    if (hover) {
+      return (
+        <Box key={`c${b}`} flexDirection="column" {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+          {element}
+          {floating(button)}
+        </Box>
+      )
+    }
     return block.kind === 'quote' || block.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}

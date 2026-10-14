@@ -216,6 +216,38 @@ test('code blocks, tables and quotes get a copy button, tables an art button, th
   await ui.unmount()
 })
 
+const COPY_SAMPLE = `${TABLE}\n\n\`\`\`bash\nls -la\n\`\`\`\n\n> reply text\n\nplain paragraph`
+
+const floatingCopies = async (ui: { findAll: (query: { type: string }) => Promise<{ props: Record<string, unknown>; text?: string }[]> }) =>
+  (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.display === 'none').map(b => b.text)
+
+test('copyButtonStyle hover floats every copy button out of the flow, shown only while its block is hovered', { options: { copyButtonStyle: 'hover' } }, async ($, on) => {
+  const copied: string[] = []
+  on('ui.copy', (_, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
+  expect(await floatingCopies(ui)).toEqual(['⧉ md⧉ art', '⧉ copy', '⧉ copy', '⧉ copy reply'])
+  await ui.press({ key: 'copy1' })
+  expect(copied).toEqual(['ls -la'])
+  await ui.unmount()
+})
+
+test('copyButtonStyle inline, the default, keeps every copy button in the flow', async $ => {
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
+  expect(await floatingCopies(ui)).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('copyButtonStyle hover draws inline on mobile, which has no pointer', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'mobile' })
+  expect(await floatingCopies(ui)).toHaveLength(0)
+  await ui.unmount()
+})
+
 test('copyButtons off draws no buttons', { options: { copyButtons: false } }, async $ => {
   const ui = await $.ui.mount({ ...draw(`${TABLE}\n\n\`\`\`bash\nls\n\`\`\``), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)

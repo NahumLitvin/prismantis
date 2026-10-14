@@ -264,7 +264,10 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   }
   const elements = renderBlocks(el, style, blocks, columns, drawn, copy, folder($, el, open))
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
-  return button ? [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>] : elements
+  if (!button) return elements
+  return style.copyButtonStyle === 'hover'
+    ? [...elements, <el.Box position="absolute" bottom={0} right={0} display="none" hover={{ display: 'flex' }}>{button}</el.Box>]
+    : [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>]
 }
 
 export const register: Register = (on, options) => {
@@ -279,8 +282,10 @@ export const register: Register = (on, options) => {
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
   const probes: Probes = {}
-  const forSurface = (base: Style, surface: RenderSurface, links: LinkReach): Style =>
-    surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor } : base) : base.htmlCopy ? { ...base, htmlCopy: null } : base
+  const forSurface = (base: Style, surface: RenderSurface, links: LinkReach): Style => {
+    const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor } : base) : base.htmlCopy ? { ...base, htmlCopy: null } : base
+    return surface === 'mobile' && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
+  }
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
 
   const quiet = style.toolOutput === 'quiet'
@@ -418,7 +423,7 @@ export const register: Register = (on, options) => {
     const surfaceStyle = forSurface(fit(e.viewport), e.surface, await linkReach($, probes))
     const open = await read($, unfolded)
     return (
-      <Box flexDirection="row">
+      <Box key="msg" flexDirection="row">
         <Box width={2} flexShrink={0}>
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>

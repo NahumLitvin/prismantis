@@ -286,6 +286,13 @@
       "description": "Put a copy button on code blocks, tables, diagrams, lists and quotes. Reach them with ctrl+x tab then Enter, or click where the terminal passes clicks through.",
       "default": true
     },
+    "copyButtonStyle": {
+      "type": "string",
+      "title": "Copy button style",
+      "description": "inline: buttons beside or above each block, always shown. hover: a block's buttons float over its top-right corner only while the pointer is over it, and the reply's over its bottom-right corner, so they take no space; ctrl+x tab does not reach them, and the mobile app, which has no pointer, shows them inline. Needs copyButtons on.",
+      "default": "inline",
+      "options": ["inline", "hover"]
+    },
     "diagramHints": {
       "type": "boolean",
       "title": "Diagram hints",
