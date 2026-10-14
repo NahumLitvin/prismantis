@@ -833,13 +833,26 @@ export const contrast = (a: string, b: string): number => {
 
 const TEXT_CONTRAST = 4.5
 
+export const fullHue = (hex: string): string => {
+  const [r, g, b] = channels(hex).map(v => v / 255) as [number, number, number]
+  const max = Math.max(r, g, b)
+  const spread = max - Math.min(r, g, b)
+  const lightness = (max + max - spread) / 2
+  if (spread === 0 || spread / (1 - Math.abs(2 * lightness - 1)) < 0.1) return hex
+  const sector = max === r ? ((g - b) / spread + 6) % 6 : max === g ? (b - r) / spread + 2 : (r - g) / spread + 4
+  const x = 1 - Math.abs((sector % 2) - 1)
+  const pure = [[1, x, 0], [x, 1, 0], [0, 1, x], [0, x, 1], [x, 0, 1], [1, 0, x]][Math.floor(sector)]!
+  return `#${pure.map(v => Math.round(v! * 255).toString(16).padStart(2, '0')).join('')}`
+}
+
 export const diffTint = (text: string | undefined, color: string | undefined): string | undefined => {
   if (!text || !color || !HEX.test(text) || !HEX.test(color)) return undefined
   const dark = contrast(text, '#000000') >= contrast(text, '#ffffff')
   const base = dark ? '#000000' : '#ffffff'
+  const hue = fullHue(color)
   let share = dark ? 0.3 : 0.2
-  while (share > 0.05 && contrast(text, tint(base, color, share)!) < TEXT_CONTRAST) share -= 0.01
-  return tint(base, color, share)
+  while (share > 0.05 && contrast(text, tint(base, hue, share)!) < TEXT_CONTRAST) share -= 0.01
+  return tint(base, hue, share)
 }
 
 export const diffLines = (output: unknown): DiffLine[] | undefined => {

@@ -8,7 +8,7 @@ import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
 import type { Theme } from '../hooks/theme'
-import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
+import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -1269,12 +1269,15 @@ const deltaE = (p: string, q: string): number => {
   return Math.sqrt((dL / sl) ** 2 + (dC / sc) ** 2 + (dH / sh) ** 2 + rt * (dC / sc) * (dH / sh))
 }
 
-test('diff tints mix the line color into black on dark themes and white on light ones, keeping code text at 4.5:1', () => {
-  expect(diffTint(t.codeText, t.number)).toBe(tint('#000000', t.number, 0.3))
+test('diff tints mix the line color\'s full hue into black on dark themes and white on light ones, keeping code text at 4.5:1', () => {
+  expect(fullHue('#a6e3a1')).toBe('#13ff00')
+  expect(fullHue('#808080')).toBe('#808080')
+  expect(diffTint(t.codeText, t.number)).toBe('#064d00')
+  expect(diffTint(t.codeText, t.number)).toBe(tint('#000000', fullHue(t.number), 0.3))
   const latte = PRESETS['catppuccin-latte']
-  expect(diffTint(latte.codeText, latte.codeFlag)).toBe(tint('#ffffff', latte.codeFlag, 0.2))
+  expect(diffTint(latte.codeText, latte.codeFlag)).toBe('#ffccd7')
   const solarized = PRESETS['solarized-light']
-  expect([solarized.diffAdded, solarized.diffRemoved].some(c => diffTint(solarized.codeText, c) !== tint('#ffffff', c, 0.2))).toBe(true)
+  expect([solarized.diffAdded, solarized.diffRemoved].some(c => diffTint(solarized.codeText, c) !== tint('#ffffff', fullHue(c!), 0.2))).toBe(true)
   expect(diffTint(undefined, t.number)).toBeUndefined()
   expect(diffTint(t.codeText, 'green')).toBeUndefined()
 })
