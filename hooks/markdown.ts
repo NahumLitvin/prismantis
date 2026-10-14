@@ -16,8 +16,8 @@ export type Block = { raw: string } & (
   | { kind: 'paragraph'; inline: Inline[] }
   | { kind: 'list'; ordered: boolean; items: ListItem[] }
   | { kind: 'code'; lang: string; lines: string[]; isOpen?: true }
-  | { kind: 'quote'; inline: Inline[] }
-  | { kind: 'alert'; level: AlertLevel; inline: Inline[] }
+  | { kind: 'quote'; blocks: Block[] }
+  | { kind: 'alert'; level: AlertLevel; blocks: Block[] }
   | { kind: 'rule' }
   | { kind: 'table'; header: Inline[][]; align: ('left' | 'right' | 'center')[]; rows: Inline[][][] }
   | { kind: 'notes'; notes: { mark: string; inline: Inline[] }[] }
@@ -33,6 +33,8 @@ const ALERT = /^\[!(note|tip|important|warning|caution)\]\s*(.*)$/i
 export type Highlight = { numbers: boolean; paths: boolean }
 
 const MAX_INLINE = 4000
+const MAX_QUOTE_DEPTH = 8
+const QUOTE = /^\s*>/
 const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/
 const FENCE = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/
@@ -239,6 +241,7 @@ const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight):
     'inline' in b ? { ...b, inline: f(b.inline) }
     : b.kind === 'list' ? { ...b, items: b.items.map(it => ({ ...it, inline: f(it.inline), ...(it.blocks ? { blocks: it.blocks.map(c => mapInlines(c, f)) } : {}) })) }
     : b.kind === 'table' ? { ...b, header: b.header.map(f), rows: b.rows.map(r => r.map(f)) }
+    : b.kind === 'quote' || b.kind === 'alert' ? { ...b, blocks: b.blocks.map(c => mapInlines(c, f)) }
     : b
   blocks.forEach(b => mapInlines(b, nodes => (seen(nodes), nodes)))
   for (const label of defs.keys()) if (!order.has(label)) order.set(label, order.size + 1)
@@ -260,7 +263,8 @@ const notesOf = (source: string): Map<string, string> => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   let closer: RegExp | undefined
   let last: string | undefined
-  for (const line of lines) {
+  for (const quoted of lines) {
+    const line = quoted.replace(/^(?:\s*>)+\s?/, '')
     const run = FENCE.exec(line)?.[1]
     const fenced = closer !== undefined || run !== undefined
     if (closer?.test(line)) closer = undefined
@@ -278,7 +282,10 @@ const notesOf = (source: string): Map<string, string> => {
 const indentOf = (line: string): number => (line.match(/^\s*/)?.[0] ?? '').replace(/\t/g, '  ').length
 const closerOf = (run: string) => new RegExp(`^\\s*\\${run[0]}{${run.length},}\\s*$`)
 
-const parseBlocks = (source: string, hl: Highlight): Block[] => {
+export const nestedBlocks = (blocks: Block[]): Block[] =>
+  blocks.flatMap(b => [b, ...nestedBlocks(b.kind === 'list' ? b.items.flatMap(it => it.blocks ?? []) : b.kind === 'quote' || b.kind === 'alert' ? b.blocks : [])])
+
+const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   const at = (n: number) => lines[n] ?? ''
   const blocks: Block[] = []
@@ -349,14 +356,15 @@ const parseBlocks = (source: string, hl: Highlight): Block[] => {
       i--
       continue
     }
-    if (/^\s*>/.test(line)) {
+    if (depth < MAX_QUOTE_DEPTH && QUOTE.test(line)) {
       flush(i)
       const start = i
       const body: string[] = []
-      while (i < lines.length && /^\s*>/.test(at(i))) body.push(at(i++).replace(/^\s*>\s?/, ''))
+      while (i < lines.length && QUOTE.test(at(i))) body.push(at(i++).replace(/^\s*>\s?/, ''))
       const alert = ALERT.exec(body[0] ?? '')
-      if (alert) add({ kind: 'alert', level: alert[1]!.toLowerCase() as AlertLevel, inline: parseInline([alert[2]!, ...body.slice(1)].join(' ').trim(), hl) }, start, i)
-      else add({ kind: 'quote', inline: parseInline(body.join(' '), hl) }, start, i)
+      const inner = (rows: string[]) => parseBlocks(rows.join('\n'), hl, depth + 1)
+      if (alert) add({ kind: 'alert', level: alert[1]!.toLowerCase() as AlertLevel, blocks: inner([alert[2]!, ...body.slice(1)]) }, start, i)
+      else add({ kind: 'quote', blocks: inner(body) }, start, i)
       i--
       continue
     }

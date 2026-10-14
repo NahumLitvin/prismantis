@@ -967,27 +967,55 @@
 <Box border=round>
   <Text color=green bold>
     "Tip"
-  <Text>
+  <Box>
     <Text>
-      "If "
-    <Text color=#89dceb>
-      "inner peace"
-    <Text>
-      " returns "
-    <Text color=#a6e3a1>
-      "404"
-    <Text>
-      ", try "
-    <Text color=#89dceb>
-      "snacks"
-    <Text>
-      " first."
+      <Text>
+        "If "
+      <Text color=#89dceb>
+        "inner peace"
+      <Text>
+        " returns "
+      <Text color=#a6e3a1>
+        "404"
+      <Text>
+        ", try "
+      <Text color=#89dceb>
+        "snacks"
+      <Text>
+        " first."
 <Box row>
-  <Text color=#cba6f7>
-    "│ "
-  <Text color=#9399b2 italic>
-    <Text>
-      "Mantis wisdom: small bug, big kick."
+  <Box>
+    <Box>
+      <Text color=#cba6f7>
+        "│ 
+│ 
+│ 
+│ 
+│ "
+  <Box>
+    <Text color=#9399b2 italic>
+      <Text>
+        "Mantis wisdom: small bug, big kick."
+    <Box>
+      <Box row>
+        <Text color=#cba6f7>
+          "• "
+        <Text color=#9399b2 italic>
+          <Text>
+            "stretch all "
+          <Text color=#ffffff bold>
+            <Text color=#a6e3a1>
+              "6"
+          <Text>
+            " legs"
+      <Box row>
+        <Text color=#cba6f7>
+          "• "
+        <Text color=#9399b2 italic>
+          <Text>
+            "then "
+          <Text color=#89dceb>
+            "kick"
 <Box>
   <Box>
     <Text color=#f9e2af bold>
@@ -1056,9 +1084,10 @@
       " 2."
 <Box row>
   <Box>
-    <Text color=#9399b2 italic>
-      <Text>
-        "תוינוויכב הכימת ילב לנימרטב םג ,לאמשל ןימימ תארקנ תירבע"
+    <Box>
+      <Text color=#9399b2 italic>
+        <Text>
+          "תוינוויכב הכימת ילב לנימרטב םג ,לאמשל ןימימ תארקנ תירבע"
   <Text color=#cba6f7>
     " │"
 <Box>

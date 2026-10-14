@@ -170,6 +170,18 @@ test('quotes and alerts put their bar and box on the right', { options: { rtl: '
   await ui.unmount()
 })
 
+for (const surface of ['terminal', 'desktop'] as const) test(`a Hebrew quote keeps its paragraphs and list, its bar on the right of every line on ${surface}`, { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount({ ...mount('> שלום חברים\n>\n> - אחד\n> - שניים\n>\n> להתראות'), surface })
+  expect(await ui.find({ type: 'Text', text: /^םירבח םולש$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^תוארתהל$/ })).toBeDefined()
+  expect(await ui.findAll({ type: 'Text', text: /^ •$/ })).toHaveLength(2)
+  const bar = await ui.find({ type: 'Text', text: /^( │\n)+ │$/ })
+  expect(bar!.text.split('\n').length >= 6).toBe(true)
+  const row = (await ui.findAll({ type: 'Box' })).find(b => b.props.justifyContent === 'flex-end' && b.props.alignItems === 'stretch')
+  expect(row?.text.endsWith(' │')).toBe(true)
+  await ui.unmount()
+})
+
 test('headings are right aligned and reordered', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('## שלום'))
   expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()

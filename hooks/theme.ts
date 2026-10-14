@@ -24,6 +24,7 @@ export type Style = {
   toolStyle: 'chat' | 'tree-dim' | 'tree-bold' | 'classic'
   toolOutput: 'full' | 'quiet'
   narration?: boolean
+  inside?: 'quote' | 'alert'
   diffStyle: 'card' | 'full' | 'marks' | 'bar'
   highlightNumbers: boolean
   highlightPaths: boolean

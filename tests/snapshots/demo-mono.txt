@@ -553,27 +553,55 @@
 <Box border=round>
   <Text color=green bold>
     "Tip"
-  <Text>
+  <Box>
     <Text>
-      "If "
-    <Text>
-      "inner peace"
-    <Text>
-      " returns "
-    <Text>
-      "404"
-    <Text>
-      ", try "
-    <Text>
-      "snacks"
-    <Text>
-      " first."
+      <Text>
+        "If "
+      <Text>
+        "inner peace"
+      <Text>
+        " returns "
+      <Text>
+        "404"
+      <Text>
+        ", try "
+      <Text>
+        "snacks"
+      <Text>
+        " first."
 <Box row>
-  <Text>
-    "│ "
-  <Text italic>
-    <Text>
-      "Mantis wisdom: small bug, big kick."
+  <Box>
+    <Box>
+      <Text>
+        "│ 
+│ 
+│ 
+│ 
+│ "
+  <Box>
+    <Text italic>
+      <Text>
+        "Mantis wisdom: small bug, big kick."
+    <Box>
+      <Box row>
+        <Text>
+          "• "
+        <Text italic>
+          <Text>
+            "stretch all "
+          <Text bold>
+            <Text>
+              "6"
+          <Text>
+            " legs"
+      <Box row>
+        <Text>
+          "• "
+        <Text italic>
+          <Text>
+            "then "
+          <Text>
+            "kick"
 <Box>
   <Box>
     <Text bold>
@@ -642,9 +670,10 @@
       " 2."
 <Box row>
   <Box>
-    <Text italic>
-      <Text>
-        "תוינוויכב הכימת ילב לנימרטב םג ,לאמשל ןימימ תארקנ תירבע"
+    <Box>
+      <Text italic>
+        <Text>
+          "תוינוויכב הכימת ילב לנימרטב םג ,לאמשל ןימימ תארקנ תירבע"
   <Text>
     " │"
 <Box>

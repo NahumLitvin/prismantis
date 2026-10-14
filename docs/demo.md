@@ -77,6 +77,9 @@ kungfu train --student "Po" --master shifu --dumplings 3 && echo "skadoosh"
 > If `inner peace` returns 404, try `snacks` first.
 
 > Mantis wisdom: small bug, big kick.
+>
+> - stretch all **6** legs
+> - then `kick`
 
 ## עברית
 

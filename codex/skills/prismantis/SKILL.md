@@ -86,6 +86,12 @@ Each edit or new file draws as a diff card headed `+N −M`: added and removed l
 ### Quotes and rules
 
 > A quote keeps its text when you copy it, without the `> ` markers.
+>
+> It keeps its paragraphs and lists too:
+> - **bold** and `inline code` stay styled
+> - each item gets its own row
+>
+> > A nested quote draws inside the bar.
 
 ---
 
