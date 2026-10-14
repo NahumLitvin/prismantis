@@ -1277,6 +1277,7 @@ for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
         const row = (text: RegExp) => ui.find({ type: 'Box', text })
         expect(boxes.some(b => b.props.borderStyle === 'round')).toBe(diffStyle === 'card')
         expect(boxes.some(b => b.props.flexGrow === 1)).toBe(diffStyle === 'full')
+        expect(boxes.some(b => b.props.alignItems === 'flex-start')).toBe(diffStyle !== 'full')
         expect((await row(/^(▌ )?6 \+ const c = 4$/))?.props.backgroundColor).toBe(tinted ? '#1f4d2b' : undefined)
         expect((await row(/^(▌ )?5 - const b = 2$/))?.props.backgroundColor).toBe(tinted ? tint(t.rule, t.codeFlag) : undefined)
         expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(diffStyle === 'marks' ? t.number : t.codeText)

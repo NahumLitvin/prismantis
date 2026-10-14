@@ -864,7 +864,7 @@ const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, i
 const diffRow = (el: ElementTable, style: Style, cards: RenderElement[], below: boolean): RenderElement => (
   <el.Box flexDirection="row">
     <el.Text dimColor>{below ? '     ' : '  ⎿  '}</el.Text>
-    <el.Box flexDirection="column" flexShrink={1} {...(style.diffStyle === 'full' ? { flexGrow: 1 } : {})}>{cards}</el.Box>
+    <el.Box flexDirection="column" flexShrink={1} {...(style.diffStyle === 'full' ? { flexGrow: 1 } : { alignItems: 'flex-start' as const })}>{cards}</el.Box>
   </el.Box>
 )
 
