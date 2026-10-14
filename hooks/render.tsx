@@ -119,15 +119,12 @@ const unlinkBlock = (block: Block, http: boolean): Block => {
   }
 }
 
-const unlinked = { http: new WeakMap<Block, Block>(), https: new WeakMap<Block, Block>() }
+const unlinked = new WeakMap<Block, Block[]>()
 
 const drawable = (block: Block, http: boolean): Block => {
-  const cache = unlinked[http ? 'http' : 'https']
-  const hit = cache.get(block)
-  if (hit) return hit
-  const made = unlinkBlock(block, http)
-  cache.set(block, made)
-  return made
+  const cached = unlinked.get(block) ?? []
+  unlinked.set(block, cached)
+  return (cached[+http] ??= unlinkBlock(block, http))
 }
 
 const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
@@ -160,9 +157,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return isHyperlink(n.href, style.httpLinks)
-          ? n.text === n.href ? <Text key={key} color={t.link}><el.Link href={n.href} /></Text> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
-          : <Text key={key}>{plainLink(n.text, n.href)}</Text>
+        return n.text === n.href ? <Text key={key} color={t.link}><el.Link href={n.href} /></Text> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
       case 'path':
