@@ -597,7 +597,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const { Box, Text } = el
   const t = style.theme
   const hover = style.copyButtonStyle === 'hover'
-  const floating = (button: RenderElement | null) => (button ? <Box position="absolute" top={0} right={0} display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
+  const floating = (button: RenderElement | null) => (button ? <Box position="absolute" top={0} left={0} minWidth="100%" justifyContent="flex-end" display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
   const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const rendered = shown.map((block, b) => {

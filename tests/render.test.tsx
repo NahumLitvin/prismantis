@@ -235,6 +235,17 @@ test('copyButtonStyle hover floats every copy button out of the flow, shown only
   await ui.unmount()
 })
 
+test('copyButtonStyle hover starts buttons wider than their block at its left edge, so they never run off the left of the screen', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Region | p99 |\n|---|---:|\n| eu | 12 |\n\n```bash\nls\n```'), surface: 'terminal' })
+  const corners = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.top === 0)
+  expect(corners.map(b => b.text)).toEqual(['⧉ md⧉ art', '⧉ copy'])
+  for (const corner of corners) {
+    expect(corner.props).toMatchObject({ left: 0, minWidth: '100%', justifyContent: 'flex-end' })
+    expect(corner.props.right).toBeUndefined()
+  }
+  await ui.unmount()
+})
+
 test('copyButtonStyle inline, the default, keeps every copy button in the flow', async $ => {
   const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
