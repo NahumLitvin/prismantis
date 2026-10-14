@@ -7,7 +7,7 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
-import { EDIT_NOTES, bashEdits, columnWidths, describeShell, diffLines, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
+import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -1063,8 +1063,8 @@ for (const toolOutput of ['full', 'quiet'] as const) {
       expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(t.codeFlag)
       expect((await ui.find({ type: 'Text', text: /^const a = 1$/ }))?.props.dimColor).toBe(true)
       const row = (text: RegExp) => ui.find({ type: 'Box', text })
-      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
-      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(tint(t.rule, t.codeFlag))
+      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.number))
+      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.codeFlag))
       expect((await row(/^4   const a = 1$/))?.props.backgroundColor).toBeUndefined()
       expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
       expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
@@ -1177,9 +1177,9 @@ for (const toolOutput of ['full', 'quiet'] as const) {
       expect((await ui.find({ type: 'Text', text: /^−1$/ }))?.props.color).toBe(t.codeFlag)
       expect((await ui.find({ type: 'Text', text: /^−0$/ }))?.props.dimColor).toBe(true)
       const row = (text: RegExp) => ui.find({ type: 'Box', text })
-      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
-      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(tint(t.rule, t.codeFlag))
-      expect((await row(/^2 \+ two$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
+      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.number))
+      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.codeFlag))
+      expect((await row(/^2 \+ two$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.number))
       expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
       expect((await ui.find({ type: 'Text', text: /^… \+2 more files$/ }))?.props.dimColor).toBe(true)
       expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
@@ -1240,34 +1240,22 @@ test('failed shell edits, diffs the card cannot read and tool rows off go to the
   }
 })
 
-test('diff colors set the line backgrounds of edit and shell edit cards, and nothing else', { options: { diffAddedColor: ' #1f4d2b ', diffRemovedColor: 'rgb(92,31,42)' } }, async ($, on) => {
-  engine(on)
-  for (const surface of ['terminal', 'desktop'] as const) {
-    for (const [tool, output] of [['Edit', patch], ['Bash', bashEdit()]] as const) {
-      const ui = await $.ui.mount(editResult(surface, tool, output))
-      const row = (text: RegExp) => ui.find({ type: 'Box', text })
-      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe('#1f4d2b')
-      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe('rgb(92,31,42)')
-      expect((await row(/^4   const a = 1$/))?.props.backgroundColor).toBeUndefined()
-      expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe(t.number)
-      expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(t.codeFlag)
-      expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
-      await ui.unmount()
-    }
+test('diff tints mix the line color into black on dark themes and white on light ones, keeping code text at 4.5:1', () => {
+  expect(diffTint(t.codeText, t.number)).toBe(tint('#000000', t.number, 0.3))
+  const latte = PRESETS['catppuccin-latte']
+  expect(diffTint(latte.codeText, latte.codeFlag)).toBe(tint('#ffffff', latte.codeFlag, 0.2))
+  const solarized = PRESETS['solarized-light']
+  expect([solarized.number, solarized.codeFlag].some(c => diffTint(solarized.codeText, c) !== tint('#ffffff', c, 0.2))).toBe(true)
+  expect(diffTint(undefined, t.number)).toBeUndefined()
+  expect(diffTint(t.codeText, 'green')).toBeUndefined()
+  for (const [name, theme] of Object.entries(PRESETS) as [string, Record<string, string | undefined>][]) {
+    if (!theme.codeText) continue
+    for (const color of [theme.number, theme.codeFlag]) expect([name, contrast(theme.codeText, diffTint(theme.codeText, color)!) >= 4.5]).toEqual([name, true])
   }
 })
 
-test('diff colors that do not parse keep the tint', { options: { diffAddedColor: 'very green', diffRemovedColor: '' } }, async ($, on) => {
-  engine(on)
-  const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
-  const row = (text: RegExp) => ui.find({ type: 'Box', text })
-  expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
-  expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(tint(t.rule, t.codeFlag))
-  await ui.unmount()
-})
-
 for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
-  test(`diffStyle ${diffStyle} draws edit and shell edit diffs its way`, { options: { diffStyle, diffAddedColor: '#1f4d2b' } }, async ($, on) => {
+  test(`diffStyle ${diffStyle} draws edit and shell edit diffs its way`, { options: { diffStyle } }, async ($, on) => {
     engine(on)
     const tinted = diffStyle === 'card' || diffStyle === 'full'
     for (const surface of ['terminal', 'desktop'] as const) {
@@ -1278,8 +1266,8 @@ for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
         expect(boxes.some(b => b.props.borderStyle === 'round')).toBe(diffStyle === 'card')
         expect(boxes.some(b => b.props.flexGrow === 1)).toBe(diffStyle === 'full')
         expect(boxes.some(b => b.props.alignItems === 'flex-start')).toBe(diffStyle !== 'full')
-        expect((await row(/^(▌ )?6 \+ const c = 4$/))?.props.backgroundColor).toBe(tinted ? '#1f4d2b' : undefined)
-        expect((await row(/^(▌ )?5 - const b = 2$/))?.props.backgroundColor).toBe(tinted ? tint(t.rule, t.codeFlag) : undefined)
+        expect((await row(/^(▌ )?6 \+ const c = 4$/))?.props.backgroundColor).toBe(tinted ? diffTint(t.codeText, t.number) : undefined)
+        expect((await row(/^(▌ )?5 - const b = 2$/))?.props.backgroundColor).toBe(tinted ? diffTint(t.codeText, t.codeFlag) : undefined)
         expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(diffStyle === 'marks' ? t.number : t.codeText)
         expect((await ui.find({ type: 'Text', text: /^const b = 2$/ }))?.props.color).toBe(diffStyle === 'marks' ? t.codeFlag : t.codeText)
         expect((await ui.findAll({ type: 'Text', text: /^▌ $/ })).length).toBe(diffStyle === 'bar' ? changed : 0)

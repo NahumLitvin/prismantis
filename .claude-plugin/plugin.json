@@ -265,7 +265,7 @@
     "ruleColor": {
       "type": "string",
       "title": "Rules",
-      "description": "Color for horizontal rules, diff card borders and chart gridlines, and the base diff line tints blend into. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
+      "description": "Color for horizontal rules, diff card borders and chart gridlines. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
     "bulletColor": {
@@ -280,18 +280,6 @@
       "description": "How edit and shell edit diffs draw. card: a rounded box with tinted lines. full: no box, each changed line tinted across the width. marks: no box and no tint, changed lines in the number and flag colors. bar: no box and no tint, a colored ▌ before each changed line.",
       "default": "card",
       "options": ["card", "full", "marks", "bar"]
-    },
-    "diffAddedColor": {
-      "type": "string",
-      "title": "Diff added lines",
-      "description": "Background of added lines in the card and full diff styles, for bolder diffs than the faint tint: #1f4d2b, rgb(31,77,43), ansi256(22) or a name. Empty blends the number color into the rule color.",
-      "default": ""
-    },
-    "diffRemovedColor": {
-      "type": "string",
-      "title": "Diff removed lines",
-      "description": "Background of removed lines in the card and full diff styles, for bolder diffs than the faint tint: #5c1f2a, rgb(92,31,42), ansi256(52) or a name. Empty blends the code flag color into the rule color.",
-      "default": ""
     },
     "mermaid": {
       "type": "boolean",

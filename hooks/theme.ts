@@ -25,8 +25,6 @@ export type Style = {
   toolOutput: 'full' | 'quiet'
   narration?: boolean
   diffStyle: 'card' | 'full' | 'marks' | 'bar'
-  diffAdded?: string
-  diffRemoved?: string
   highlightNumbers: boolean
   highlightPaths: boolean
   mermaid: boolean
@@ -76,8 +74,6 @@ export const resolveStyle = (options: PluginOptions): Style => {
     toolStyle: pick(options.toolStyle, ['chat', 'tree-dim', 'tree-bold', 'classic'] as const, 'chat'),
     toolOutput: pick(options.toolOutput, ['full', 'quiet'] as const, 'full'),
     diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),
-    diffAdded: isColor(options.diffAddedColor) ? options.diffAddedColor.trim() : undefined,
-    diffRemoved: isColor(options.diffRemovedColor) ? options.diffRemovedColor.trim() : undefined,
     highlightNumbers: options.highlightNumbers !== false,
     highlightPaths: options.highlightPaths !== false,
     mermaid: options.mermaid !== false,
