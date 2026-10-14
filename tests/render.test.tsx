@@ -221,6 +221,12 @@ const COPY_SAMPLE = `${TABLE}\n\n\`\`\`bash\nls -la\n\`\`\`\n\n> reply text\n\np
 const floatingCopies = async (ui: { findAll: (query: { type: string }) => Promise<{ props: Record<string, unknown>; text?: string }[]> }) =>
   (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.display === 'none').map(b => b.text)
 
+type DrawnNode = { props?: Record<string, unknown>; hover?: unknown; children?: unknown[] }
+const floatingReveals = (node: DrawnNode): unknown[] => [
+  ...(node.props?.position === 'absolute' ? [node.hover] : []),
+  ...(node.children ?? []).flatMap(child => (child && typeof child === 'object' ? floatingReveals(child as DrawnNode) : [])),
+]
+
 test('copyButtonStyle hover floats every copy button out of the flow, shown only while its block is hovered', { options: { copyButtonStyle: 'hover' } }, async ($, on) => {
   const copied: string[] = []
   on('ui.copy', (_, e) => {
@@ -230,6 +236,7 @@ test('copyButtonStyle hover floats every copy button out of the flow, shown only
   const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
   expect(await floatingCopies(ui)).toEqual(['⧉ md⧉ art', '⧉ copy', '⧉ copy', '⧉ copy reply'])
+  expect(floatingReveals((await ui.drawn()) as DrawnNode)).toEqual(Array(4).fill({ display: 'flex' }))
   await ui.press({ key: 'copy1' })
   expect(copied).toEqual(['ls -la'])
   await ui.unmount()
