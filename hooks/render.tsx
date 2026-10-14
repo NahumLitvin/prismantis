@@ -90,6 +90,7 @@ const headerRuns = (nodes: Inline[]): Inline[] =>
 
 const HTTP_LINKS_FROM = [2, 1, 289]
 const EDITOR_LINKS_FROM = [2, 1, 294]
+const CLICKABLE_MARKS_FROM = [2, 1, 295]
 
 const releaseFrom = (from: readonly number[]) => (base?: string): boolean => {
   const m = /^(\d+)\.(\d+)\.(\d+)/.exec(base ?? '')
@@ -102,6 +103,8 @@ const releaseFrom = (from: readonly number[]) => (base?: string): boolean => {
 export const takesHttpLinks = releaseFrom(HTTP_LINKS_FROM)
 
 export const takesEditorLinks = releaseFrom(EDITOR_LINKS_FROM)
+
+export const takesClickableMarks = releaseFrom(CLICKABLE_MARKS_FROM)
 
 const isHyperlink = (href: string, http: boolean, editor: boolean): boolean =>
   (http ? /^https?:/i : /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i).test(href) || (editor && /^vscode(-insiders)?:\/\/file\//i.test(href))

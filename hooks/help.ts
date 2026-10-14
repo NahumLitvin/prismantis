@@ -150,7 +150,7 @@ $$
 
 Latency fell to 120ms[^lat] after the cache change[^cache].
 
-Click a mark to see its note. Point at a note to light the marks that cite it.
+Click a mark to see its note. Point at a note to light the marks that cite it. Both need Claude Code 2.1.295 or later.
 
 [^count]: Counted at close.
 [^lat]: Median of 50 runs.
