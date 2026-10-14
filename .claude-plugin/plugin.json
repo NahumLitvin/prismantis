@@ -287,6 +287,13 @@
       "description": "Draw ```mermaid blocks as colored box art sized to the terminal. Off leaves the code as written.",
       "default": true
     },
+    "desktopArt": {
+      "type": "string",
+      "title": "Desktop art",
+      "description": "How diagrams, charts, figures and tables draw in the desktop app, VS Code and mobile, which set text in a proportional font. svg: a monospace drawing, every glyph on its column and box lines joined. text: character rows, as in the terminal; they can drift out of line there.",
+      "default": "svg",
+      "options": ["svg", "text"]
+    },
     "copyButtons": {
       "type": "boolean",
       "title": "Copy buttons",

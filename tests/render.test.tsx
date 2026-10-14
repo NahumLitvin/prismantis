@@ -45,7 +45,7 @@ test('user colors override the theme, bad colors are ignored', async () => {
   expect(s.theme.link).toBe(PRESETS['catppuccin-mocha'].link)
 })
 
-test('draws a colored table on terminal and desktop', async $ => {
+test('draws a colored table on terminal and desktop', { options: { desktopArt: 'text' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...draw(TABLE), surface })
     const header = await ui.find({ type: 'Text', text: /^Service$/ })
@@ -90,7 +90,7 @@ test('box art from a mermaid mod above is not shell-colored', async $ => {
 
 const FLOW = 'Flow:\n\n```mermaid\ngraph LR\nA[User] --> B[Gateway]\n```'
 
-test('mermaid draws as colored box art', async $ => {
+test('mermaid draws as colored box art', { options: { desktopArt: 'text' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...draw(FLOW), surface })
     const label = await ui.find({ type: 'Text', text: /Gateway/ })
@@ -333,7 +333,7 @@ test('fence languages that name Prism internals fall back to plain code', async 
   }
 })
 
-test('tables draw boxed by default, with a double line under the header', async $ => {
+test('tables draw boxed by default, with a double line under the header', { options: { desktopArt: 'text' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...draw(TABLE), surface })
     const top = (await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ }))?.text ?? ''

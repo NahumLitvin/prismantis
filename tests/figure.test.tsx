@@ -204,7 +204,7 @@ const EXPECTED_ROLES = {
 } as const
 
 for (const theme of ['catppuccin-mocha', 'github-light'] as const) {
-  test(`a figure draws each role in its ${theme} color on terminal and desktop`, { options: { theme } }, async ($, on) => {
+  test(`a figure draws each role in its ${theme} color on terminal and desktop`, { options: { theme, desktopArt: 'text' } }, async ($, on) => {
     engine(on)
     const colors = PRESETS[theme]
     for (const surface of ['terminal', 'desktop'] as const) {
@@ -251,7 +251,7 @@ test('no role takes the diagram color, even when it is the reddest in the theme'
   expect(figureRoleColors(theme)).toEqual({ warn: '#d19a66', ok: '#98c379', note: '#e5c07b' })
 })
 
-test('a role whose own color you set by name keeps that color', { options: { codeFlagColor: 'red' } }, async ($, on) => {
+test('a role whose own color you set by name keeps that color', { options: { codeFlagColor: 'red', desktopArt: 'text' } }, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(reply(ROLES, surface))
@@ -295,7 +295,7 @@ test('a figure with a wide glyph or a markup error stays a code block', async ($
   }
 })
 
-test('a figure whose frame slips or does not close is drawn as written, without a note', async ($, on) => {
+test('a figure whose frame slips or does not close is drawn as written, without a note', { options: { desktopArt: 'text' } }, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(reply(['```figure', '┌────────┐', '│ v1.4.2 │', '│ old    │', '```'].join('\n'), surface))
@@ -359,7 +359,7 @@ test(`a figure over ${FIGURE_MAX_LINES} lines stays a code block`, async ($, on)
 const figureBox = async (ui: { findAll: (query: { type: string }) => Promise<{ props: Record<string, unknown>; text?: string; children?: unknown[] }[]> }) =>
   (await ui.findAll({ type: 'Box' })).find(box => box.props.paddingLeft === 2)
 
-test('figures draw with mermaid off', { options: { mermaid: false } }, async ($, on) => {
+test('figures draw with mermaid off', { options: { mermaid: false, desktopArt: 'text' } }, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(reply(ROLES, surface))
@@ -369,7 +369,7 @@ test('figures draw with mermaid off', { options: { mermaid: false } }, async ($,
   }
 })
 
-test('in a theme without colors, warn draws bold and dim draws dimmed', { options: { theme: 'mono' } }, async ($, on) => {
+test('in a theme without colors, warn draws bold and dim draws dimmed', { options: { theme: 'mono', desktopArt: 'text' } }, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(reply(ROLES, surface))
@@ -379,7 +379,7 @@ test('in a theme without colors, warn draws bold and dim draws dimmed', { option
   }
 })
 
-test('blank lines around a figure are not drawn, blank lines inside are', async ($, on) => {
+test('blank lines around a figure are not drawn, blank lines inside are', { options: { desktopArt: 'text' } }, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(reply(['```figure', '', '{ok:a}', '', 'b', '', '```'].join('\n'), surface))
@@ -448,7 +448,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`a figure whose box side is three columns off is drawn as written on ${surface}`, async ($, on) => {
+  test(`a figure whose box side is three columns off is drawn as written on ${surface}`, { options: { desktopArt: 'text' } }, async ($, on) => {
     engine(on)
     const ui = await $.ui.mount(reply(['```figure', '┌────────┐', '│ v1.4.2    │', '└────────┘', '```'].join('\n'), surface))
     expect(await ui.find({ type: 'Text', text: /^── figure$/ })).toBeUndefined()

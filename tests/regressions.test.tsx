@@ -390,7 +390,7 @@ test('flowchart edges written without spaces draw the same as with spaces', asyn
   }
 })
 
-test('a mounted diagram with wide labels draws its box borders on the same column', async $ => {
+test('a mounted diagram with wide labels draws its box borders on the same column', { options: { desktopArt: 'text' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...mount('```mermaid\ngraph LR\n  A[한글 라벨] --> B[終了]\n```', 160), surface })
     const label = drawn(await ui.find({ type: 'Text', text: /한글 라벨/ }))
@@ -806,7 +806,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 
   for (const tableStyle of ['box', 'rules'] as const) {
-    test(`footnote marks in table cells draw in the paragraph mark color on ${surface}, ${tableStyle}`, { options: { tableStyle } }, async ($) => {
+    test(`footnote marks in table cells draw in the paragraph mark color on ${surface}, ${tableStyle}`, { options: { tableStyle, desktopArt: 'text' } }, async ($) => {
       const accent = PRESETS['catppuccin-mocha'].accent
       const ui = await $.ui.mount({ ...mount('Fast[^a].\n\n| Metric[^b] | **Value**[^c] | A long header that has to wrap[^a] |\n|---|---|---|\n| p99[^a] | 40ms[^b] | x |\n\n[^a]: A.\n[^b]: B.\n[^c]: C.', 40), surface })
       const marks = await ui.findAll({ type: 'Text', text: /^[¹²³]$/ })
@@ -830,7 +830,7 @@ const chartRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text:
 for (const surface of ['terminal', 'desktop'] as const) {
   for (const kind of ['bar', 'line'] as const) {
     for (const values of [[3, 7, 5], [2, 3, 4, 16], [400, 1200, 1900, 2500, 800]]) {
-      test(`${kind} chart heights follow their values on ${surface}: ${values.join(', ')}`, async $ => {
+      test(`${kind} chart heights follow their values on ${surface}: ${values.join(', ')}`, { options: { desktopArt: 'text' } }, async $ => {
         const labels = values.map((_, i) => `L${i + 1}`).join(', ')
         const ui = await $.ui.mount({ ...mount(`\`\`\`mermaid\nxychart-beta\n  x-axis [${labels}]\n  y-axis 0 --> ${Math.max(...values) + 2}\n  ${kind} [${values.join(', ')}]\n\`\`\``), surface })
         const { rows, columns } = await chartRows(ui)

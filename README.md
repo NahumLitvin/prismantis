@@ -180,6 +180,10 @@ Formula text matches the reply text. A terminal image fills whole rows, so a for
 
 When tables, diagrams and figures follow each other, they share a row and wrap once the terminal runs out of width. A wide terminal shows a table, a flowchart and two charts side by side.
 
+### Desktop app, VS Code and mobile
+
+The desktop app, VS Code and mobile set text in a proportional font, so art laid out in character columns drifts out of line there: table borders miss their cells, diagram boxes do not close, bars do not reach their gridlines. On those surfaces tables, diagrams, charts and figures draw as one monospace SVG instead, in the theme's colors: box-drawing lines become joined strokes, block glyphs (`█`, `▀`, `▄`) become filled cells, and every word sits on its own column. A table with a link, a right-to-left table, and a drawing too large for one SVG keep the character rows, so links stay clickable. `desktopArt: text` draws character rows everywhere, as before. The terminal always draws character rows.
+
 ### Copy buttons
 
 ![Copy buttons: plain Claude Code on the left, prismantis on the right](docs/compare/copy.png)
@@ -323,6 +327,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
+| `desktopArt` | `svg` (a monospace drawing), `text` (character rows, as in the terminal) | `svg` |
 | `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
 | `diffStyle` | `card` (rounded box, tinted lines), `full` (no box, lines tinted across the width), `marks` (no tint, changed lines in the number and flag colors), `bar` (no tint, a colored `▌` before each changed line) | `card` |
