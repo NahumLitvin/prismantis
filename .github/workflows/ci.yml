@@ -120,6 +120,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Released CHANGELOG sections match their tags
+        run: |
+          fail=0
+          for v in $(grep -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' docs/CHANGELOG.md | tr -d '#[] '); do
+            old=$(git show "v$v:docs/CHANGELOG.md" 2>/dev/null) || continue
+            sec() { awk -v h="## [$v]" 'index($0, h) == 1 { p = 1; print; next } p && /^## \[/ { exit } p'; }
+            if ! diff <(printf '%s\n' "$old" | sec) <(sec < docs/CHANGELOG.md); then
+              echo "::error file=docs/CHANGELOG.md::## [$v] differs from tag v$v. New entries go under ## [Unreleased]."
+              fail=1
+            fi
+          done
+          exit $fail
       - name: Versions agree
         run: |
           v=$(jq -r .version .claude-plugin/plugin.json)
