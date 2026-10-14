@@ -347,8 +347,10 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('f(*args, **kwargs)')
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(kinds.has('notes')).toBe(true)
+  expect(blocks.some(b => b.kind === 'table' && b.header.some(h => h.some(n => n.kind === 'footnote')))).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
+  expect(showcaseText([])).toContain('copyButtonStyle')
   expect(showcaseText([])).toContain('+M more lines')
   expect(showcaseText([])).toContain('```figure')
   expect(blocks.some(b => b.kind === 'code' && b.lines.length > 30)).toBe(true)
@@ -802,6 +804,19 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ type: 'Text', text: /¹ Measured twice\./ })).toBeDefined()
     await ui.unmount()
   })
+
+  for (const tableStyle of ['box', 'rules'] as const) {
+    test(`footnote marks in table cells draw in the paragraph mark color on ${surface}, ${tableStyle}`, { options: { tableStyle } }, async ($) => {
+      const accent = PRESETS['catppuccin-mocha'].accent
+      const ui = await $.ui.mount({ ...mount('Fast[^a].\n\n| Metric[^b] | **Value**[^c] | A long header that has to wrap[^a] |\n|---|---|---|\n| p99[^a] | 40ms[^b] | x |\n\n[^a]: A.\n[^b]: B.\n[^c]: C.', 40), surface })
+      const marks = await ui.findAll({ type: 'Text', text: /^[¹²³]$/ })
+      expect(new Set(marks.map(m => m.text))).toEqual(new Set(['¹', '²', '³']))
+      expect(marks.filter(m => m.props.color !== accent).map(m => m.text)).toEqual([])
+      expect(marks.length).toBe(6)
+      expect((await ui.find({ type: 'Text', text: /^Metric²$/ }))?.props).toMatchObject({ bold: true, color: PRESETS['catppuccin-mocha'].tableHeader })
+      await ui.unmount()
+    })
+  }
 }
 
 const chartRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }) => {

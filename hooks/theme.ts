@@ -30,6 +30,7 @@ export type Style = {
   mermaid: boolean
   mermaidAscii: boolean
   copyButtons: boolean
+  copyButtonStyle: 'inline' | 'hover'
   htmlCopy: ClipboardBackend | null
   httpLinks: boolean
   editorLinks: boolean
@@ -79,6 +80,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     mermaid: options.mermaid !== false,
     mermaidAscii: options.mermaidAscii === true,
     copyButtons: options.copyButtons !== false,
+    copyButtonStyle: pick(options.copyButtonStyle, ['inline', 'hover'] as const, 'inline'),
     htmlCopy: null,
     httpLinks: false,
     editorLinks: false,

@@ -39,9 +39,9 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 
 ### Copy tables
 
-Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS or Linux terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. If that fails, it copies the plain text alone.
+Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS or Linux terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. If that fails, it copies the plain text alone. Set \`copyButtonStyle\` to \`hover\` in \`/config\` and every copy button hides until the pointer is on its block.
 
-| Item | Quantity | Status |
+| Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
 | **Apples** | 3 | *Ready* |
 | Oranges | 5 | Pending |
@@ -135,6 +135,7 @@ $$
 
 Latency fell to 120ms[^lat] after the cache change[^cache].
 
+[^count]: Counted at close.
 [^lat]: Median of 50 runs.
 [^cache]: Entries expire after 10m.
 

@@ -216,6 +216,62 @@ test('code blocks, tables and quotes get a copy button, tables an art button, th
   await ui.unmount()
 })
 
+const COPY_SAMPLE = `${TABLE}\n\n\`\`\`bash\nls -la\n\`\`\`\n\n> reply text\n\nplain paragraph`
+
+const floatingCopies = async (ui: { findAll: (query: { type: string }) => Promise<{ props: Record<string, unknown>; text?: string }[]> }) =>
+  (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.display === 'none').map(b => b.text)
+
+type DrawnNode = { props?: Record<string, unknown>; hover?: unknown; children?: unknown[] }
+const floatingReveals = (node: DrawnNode): unknown[] => [
+  ...(node.props?.position === 'absolute' ? [node.hover] : []),
+  ...(node.children ?? []).flatMap(child => (child && typeof child === 'object' ? floatingReveals(child as DrawnNode) : [])),
+]
+
+test('copyButtonStyle hover floats every copy button out of the flow, shown only while its block is hovered', { options: { copyButtonStyle: 'hover' } }, async ($, on) => {
+  const copied: string[] = []
+  on('ui.copy', (_, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
+  expect(await floatingCopies(ui)).toEqual(['⧉ md⧉ art', '⧉ copy', '⧉ copy', '⧉ copy reply'])
+  expect(floatingReveals((await ui.drawn()) as DrawnNode)).toEqual(Array(4).fill({ display: 'flex' }))
+  await ui.press({ key: 'copy1' })
+  expect(copied).toEqual(['ls -la'])
+  await ui.unmount()
+})
+
+test('copyButtonStyle hover starts buttons wider than their block at its left edge, so they never run off the left of the screen', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Region | p99 |\n|---|---:|\n| eu | 12 |\n\n```bash\nls\n```'), surface: 'terminal' })
+  const corners = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.top === 0)
+  expect(corners.map(b => b.text)).toEqual(['⧉ md⧉ art', '⧉ copy'])
+  for (const corner of corners) {
+    expect(corner.props).toMatchObject({ left: 0, minWidth: '100%', justifyContent: 'flex-end' })
+    expect(corner.props.right).toBeUndefined()
+  }
+  await ui.unmount()
+})
+
+test('copyButtonStyle hover reserves its buttons\' width beside a narrow block, so a table drawn next to it never covers them', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| a | b |\n|---|---|\n| 1 | 2 |\n\n| c | d |\n|---|---|\n| 3 | 4 |'), surface: 'terminal' })
+  for (const key of ['c0', 'c1']) expect((await ui.find({ key }))?.props.minWidth).toBe('[ ⧉ md ] [ ⧉ art ]'.length)
+  await ui.unmount()
+})
+
+test('copyButtonStyle inline, the default, keeps every copy button in the flow', async $ => {
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
+  expect(await floatingCopies(ui)).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('copyButtonStyle hover draws inline on mobile, which has no pointer', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'mobile' })
+  expect(await floatingCopies(ui)).toHaveLength(0)
+  await ui.unmount()
+})
+
 test('copyButtons off draws no buttons', { options: { copyButtons: false } }, async $ => {
   const ui = await $.ui.mount({ ...draw(`${TABLE}\n\n\`\`\`bash\nls\n\`\`\``), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)
