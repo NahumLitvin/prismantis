@@ -274,10 +274,22 @@
       "description": "Color for list bullets and numbers. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
+    "diffAddedColor": {
+      "type": "string",
+      "title": "Diff added",
+      "description": "Color for added diff lines: their + marks and count, and in hex the tint behind them, mixed into black or white so code text stays at 4.5:1. Hex, rgb(), ansi256() or a name. Empty uses the theme's green.",
+      "default": ""
+    },
+    "diffRemovedColor": {
+      "type": "string",
+      "title": "Diff removed",
+      "description": "Color for removed diff lines: their - marks and count, and in hex the tint behind them, mixed into black or white so code text stays at 4.5:1. Hex, rgb(), ansi256() or a name. Empty uses the theme's red.",
+      "default": ""
+    },
     "diffStyle": {
       "type": "string",
       "title": "Diff style",
-      "description": "How edit and shell edit diffs draw. card: a rounded box with tinted lines. full: no box, each changed line tinted across the width. marks: no box and no tint, changed lines in the number and flag colors. bar: no box and no tint, a colored ▌ before each changed line.",
+      "description": "How edit and shell edit diffs draw. card: a rounded box with tinted lines. full: no box, each changed line tinted across the width. marks: no box and no tint, changed lines in the theme's diff colors. bar: no box and no tint, a colored ▌ before each changed line.",
       "default": "card",
       "options": ["card", "full", "marks", "bar"]
     },

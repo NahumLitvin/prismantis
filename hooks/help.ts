@@ -74,7 +74,7 @@ Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`
 
 Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1–40\`, \`Searched src/ for "TODO"\`.
 
-Each edit or new file draws as a diff card headed \`+N −M\`: added and removed lines on a tint of the number and flag colors kept readable in every theme, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest. Files a shell command changes (\`sed -i\`, a script) get the same card, one per file, headed by its path. Set \`diffStyle\` in \`/config\` for the look: \`card\`, \`full\`, \`marks\` or \`bar\`.
+Each edit or new file draws as a diff card headed \`+N −M\`: added and removed lines on a tint of the theme's own green and red, kept readable in every theme, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest. Files a shell command changes (\`sed -i\`, a script) get the same card, one per file, headed by its path. Set \`diffStyle\` in \`/config\` for the look: \`card\`, \`full\`, \`marks\` or \`bar\`.
 
 ### Quotes and rules
 

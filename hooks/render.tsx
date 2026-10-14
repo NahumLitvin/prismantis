@@ -874,18 +874,19 @@ const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, i
   const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, `fold${key}`) : null
   const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
   const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
-  const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
+  const [addColor, removeColor] = [t.diffAdded ?? t.number, t.diffRemoved ?? t.codeFlag]
+  const color = (mark: DiffLine['mark']) => (mark === '+' ? addColor : mark === '-' ? removeColor : undefined)
   const look = style.diffStyle
   const tinted = look === 'card' || look === 'full'
-  const tints = { '+': tinted ? diffTint(t.codeText, t.number) : undefined, '-': tinted ? diffTint(t.codeText, t.codeFlag) : undefined, ' ': undefined }
+  const tints = { '+': tinted ? diffTint(t.codeText, addColor) : undefined, '-': tinted ? diffTint(t.codeText, removeColor) : undefined, ' ': undefined }
   const frame = look === 'card' ? { borderStyle: 'round', borderColor: t.rule, paddingX: 1 } : {}
   return (
     <Box key={`card${key}`} flexDirection="column" flexShrink={1} {...frame}>
       <Text>
         {title === undefined ? null : <Text color={t.path}>{`${title} `}</Text>}
-        <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
+        <Text color={addColor} dimColor={added === 0}>{`+${added}`}</Text>
         <Text> </Text>
-        <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
+        <Text color={removeColor} dimColor={removed === 0}>{`−${removed}`}</Text>
       </Text>
       {shown.map((r, i) => {
         const bg = tints[r.mark]

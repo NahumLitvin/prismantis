@@ -7,6 +7,7 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
+import type { Theme } from '../hooks/theme'
 import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
@@ -1240,18 +1241,80 @@ test('failed shell edits, diffs the card cannot read and tool rows off go to the
   }
 })
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
+const lab = (hex: string): [number, number, number] => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)) as [number, number, number]
+  const f = (v: number) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116)
+  const [x, y, z] = [(0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, 0.2126 * r + 0.7152 * g + 0.0722 * b, (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883].map(f) as [number, number, number]
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)]
+}
+
+const deltaE = (p: string, q: string): number => {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const [[l1, a1, b1], [l2, a2, b2]] = [lab(p), lab(q)]
+  const cMean = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2
+  const g = 0.5 * (1 - Math.sqrt(cMean ** 7 / (cMean ** 7 + 25 ** 7)))
+  const [a1p, a2p] = [a1 * (1 + g), a2 * (1 + g)]
+  const [c1, c2] = [Math.hypot(a1p, b1), Math.hypot(a2p, b2)]
+  const [h1, h2] = [((Math.atan2(b1, a1p) * 180) / Math.PI + 360) % 360, ((Math.atan2(b2, a2p) * 180) / Math.PI + 360) % 360]
+  const dh = c1 * c2 === 0 ? 0 : Math.abs(h2 - h1) <= 180 ? h2 - h1 : h2 > h1 ? h2 - h1 - 360 : h2 - h1 + 360
+  const [dL, dC, dH] = [l2 - l1, c2 - c1, 2 * Math.sqrt(c1 * c2) * Math.sin(rad(dh / 2))]
+  const [lMean, cpMean] = [(l1 + l2) / 2, (c1 + c2) / 2]
+  const hMean = c1 * c2 === 0 ? h1 + h2 : Math.abs(h1 - h2) <= 180 ? (h1 + h2) / 2 : h1 + h2 < 360 ? (h1 + h2 + 360) / 2 : (h1 + h2 - 360) / 2
+  const tt = 1 - 0.17 * Math.cos(rad(hMean - 30)) + 0.24 * Math.cos(rad(2 * hMean)) + 0.32 * Math.cos(rad(3 * hMean + 6)) - 0.2 * Math.cos(rad(4 * hMean - 63))
+  const sl = 1 + (0.015 * (lMean - 50) ** 2) / Math.sqrt(20 + (lMean - 50) ** 2)
+  const [sc, sh] = [1 + 0.045 * cpMean, 1 + 0.015 * cpMean * tt]
+  const rt = -2 * Math.sqrt(cpMean ** 7 / (cpMean ** 7 + 25 ** 7)) * Math.sin(rad(60 * Math.exp(-(((hMean - 275) / 25) ** 2))))
+  return Math.sqrt((dL / sl) ** 2 + (dC / sc) ** 2 + (dH / sh) ** 2 + rt * (dC / sc) * (dH / sh))
+}
+
 test('diff tints mix the line color into black on dark themes and white on light ones, keeping code text at 4.5:1', () => {
   expect(diffTint(t.codeText, t.number)).toBe(tint('#000000', t.number, 0.3))
   const latte = PRESETS['catppuccin-latte']
   expect(diffTint(latte.codeText, latte.codeFlag)).toBe(tint('#ffffff', latte.codeFlag, 0.2))
   const solarized = PRESETS['solarized-light']
-  expect([solarized.number, solarized.codeFlag].some(c => diffTint(solarized.codeText, c) !== tint('#ffffff', c, 0.2))).toBe(true)
+  expect([solarized.diffAdded, solarized.diffRemoved].some(c => diffTint(solarized.codeText, c) !== tint('#ffffff', c, 0.2))).toBe(true)
   expect(diffTint(undefined, t.number)).toBeUndefined()
   expect(diffTint(t.codeText, 'green')).toBeUndefined()
-  for (const [name, theme] of Object.entries(PRESETS) as [string, Record<string, string | undefined>][]) {
+})
+
+test('every color preset has its own diff green and red, readable on their tints and told apart by at least ΔE 13', () => {
+  expect(deltaE('#000000', '#000000')).toBe(0)
+  expect(Math.abs(deltaE('#ff0000', '#00ff00') - 86.6)).toBeLessThan(0.1)
+  for (const [name, theme] of Object.entries(PRESETS) as [string, Theme][]) {
     if (!theme.codeText) continue
-    for (const color of [theme.number, theme.codeFlag]) expect([name, contrast(theme.codeText, diffTint(theme.codeText, color)!) >= 4.5]).toEqual([name, true])
+    const [added, removed] = [theme.diffAdded!, theme.diffRemoved!]
+    const [addTint, removeTint] = [diffTint(theme.codeText, added)!, diffTint(theme.codeText, removed)!]
+    expect([name, HEX_COLOR.test(added), HEX_COLOR.test(removed)]).toEqual([name, true, true])
+    expect([name, contrast(theme.codeText, addTint) >= 4.5, contrast(theme.codeText, removeTint) >= 4.5, deltaE(addTint, removeTint) >= 13, deltaE(added, removed) >= 13])
+      .toEqual([name, true, true, true, true])
   }
+})
+
+test('a diff card draws its counts, marks and tints in the theme\'s diff colors', { options: { theme: 'dracula' } }, async ($, on) => {
+  engine(on)
+  const dracula = PRESETS.dracula
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(editResult(surface, 'Edit', patch))
+    expect((await ui.find({ type: 'Text', text: /^\+2$/ }))?.props.color).toBe(dracula.diffAdded)
+    expect((await ui.find({ type: 'Text', text: /^−1$/ }))?.props.color).toBe(dracula.diffRemoved)
+    expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe(dracula.diffAdded)
+    expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(dracula.diffRemoved)
+    expect((await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor).toBe(diffTint(dracula.codeText, dracula.diffAdded))
+    expect((await ui.find({ type: 'Box', text: /^5 - const b = 2$/ }))?.props.backgroundColor).toBe(diffTint(dracula.codeText, dracula.diffRemoved))
+    await ui.unmount()
+  }
+})
+
+test('diffAddedColor and diffRemovedColor set the diff colors like any other token', { options: { diffAddedColor: '#22c55e', diffRemovedColor: 'red' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
+  expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe('#22c55e')
+  expect((await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor).toBe(diffTint(t.codeText, '#22c55e'))
+  expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe('red')
+  expect((await ui.find({ type: 'Box', text: /^5 - const b = 2$/ }))?.props.backgroundColor).toBeUndefined()
+  await ui.unmount()
 })
 
 for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
