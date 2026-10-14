@@ -32,6 +32,8 @@ export type Style = {
   copyButtons: boolean
   copyButtonStyle: 'inline' | 'hover'
   htmlCopy: ClipboardBackend | null
+  svgArt: boolean
+  desktopArt: 'svg' | 'text'
   httpLinks: boolean
   editorLinks: boolean
   diagramHints: boolean
@@ -82,6 +84,8 @@ export const resolveStyle = (options: PluginOptions): Style => {
     copyButtons: options.copyButtons !== false,
     copyButtonStyle: pick(options.copyButtonStyle, ['inline', 'hover'] as const, 'inline'),
     htmlCopy: null,
+    svgArt: false,
+    desktopArt: pick(options.desktopArt, ['svg', 'text'] as const, 'svg'),
     httpLinks: false,
     editorLinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `desktopArt` picks how tables, diagrams, charts and figures draw in the desktop app, VS Code and mobile: `svg` (the default) draws each as one monospace SVG, `text` keeps the character rows the terminal draws. The terminal is unchanged.
+
+### Fixed
+
+- Tables, mermaid diagrams, bar charts and figures line up in the desktop app, VS Code and mobile. Those surfaces set text in a proportional font, so art laid out in character columns drifted apart: table borders missed their cells, boxes did not close and bars missed their gridlines. They now draw as one monospace SVG with every word on its own column, box-drawing lines as joined strokes and block glyphs as filled cells, in the theme's colors, bold, italic, underline and strikethrough included. A table with a link or right-to-left text, and a drawing over the SVG size limit, keep the character rows, so links stay clickable.
+
 ## [0.20.0] - 2026-10-14
 
 ### Added

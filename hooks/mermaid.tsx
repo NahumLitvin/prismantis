@@ -4,6 +4,8 @@ import { drawFigure, isFigureLang } from './figure'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
 import { cells, graphemes, remember, width } from './render'
+import type { GridRun } from './svg'
+import { artSvg } from './svg'
 import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
@@ -170,29 +172,37 @@ const paint = (art: string, style: Style): Painted => {
 
 const painted = new WeakMap<Theme, Map<string, Painted>>()
 
-export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string, marks: [string[], Mark][] = []): RenderElement => {
+export const boxArt = (el: ElementTable, style: Style, art: string, key: string, marks: [string[], Mark][] = []): RenderElement => {
+  const { Box, Text } = el
   const cache = painted.get(style.theme) ?? new Map<string, Painted>()
   painted.set(style.theme, cache)
   const { grid, colors } = remember(cache, art, () => paint(art, style))
+  const lines: GridRun[][] = grid.map((chars, i) => {
+    const marked: (Mark | undefined)[] = chars.map(() => undefined)
+    for (const [phrase, mark] of marks)
+      for (let c = 0; c + phrase.length <= chars.length; c++)
+        if (phrase.every((ch, k) => chars[c + k] === ch)) for (let k = 0; k < phrase.length; k++) marked[c + k] = mark
+    const runs: GridRun[] = []
+    let at = 0
+    while (at < chars.length) {
+      const hue = colors[i]?.[at]
+      const mark = marked[at]
+      let end = at + 1
+      while (end < chars.length && colors[i]?.[end] === hue && marked[end] === mark) end++
+      runs.push({ text: chars.slice(at, end).join(''), color: hue, ...mark })
+      at = end
+    }
+    return runs
+  })
+  const svg = artSvg(el, style, lines, art, key)
+  if (svg) return svg
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
-      {grid.map((chars, i) => {
-        const marked: (Mark | undefined)[] = chars.map(() => undefined)
-        for (const [phrase, mark] of marks)
-          for (let c = 0; c + phrase.length <= chars.length; c++)
-            if (phrase.every((ch, k) => chars[c + k] === ch)) for (let k = 0; k < phrase.length; k++) marked[c + k] = mark
-        const parts: RenderElement[] = []
-        let at = 0
-        while (at < chars.length) {
-          const hue = colors[i]?.[at]
-          const mark = marked[at]
-          let end = at + 1
-          while (end < chars.length && colors[i]?.[end] === hue && marked[end] === mark) end++
-          parts.push(<Text key={`t${parts.length}`} color={hue} {...mark}>{chars.slice(at, end).join('')}</Text>)
-          at = end
-        }
-        return <Text key={`${key}.${i}`}>{parts.length ? parts : ' '}</Text>
-      })}
+      {lines.map((runs, i) => (
+        <Text key={`${key}.${i}`}>
+          {runs.length ? runs.map(({ text, ...look }, r) => <Text key={`t${r}`} {...look}>{text}</Text>) : ' '}
+        </Text>
+      ))}
     </Box>
   )
 }

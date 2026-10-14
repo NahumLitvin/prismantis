@@ -1,6 +1,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { graphemes, remember, width } from './render'
+import { artSvg } from './svg'
 import type { Style, Theme } from './theme'
 
 export const FIGURE_ROLES = ['accent', 'warn', 'ok', 'note', 'dim', 'strong'] as const
@@ -192,7 +193,17 @@ const runColor = (style: Style, role: FigureRole | undefined): string | undefine
 
 const isBold = (style: Style, role: FigureRole | undefined): boolean => role === 'strong' || (role === 'warn' && !runColor(style, 'warn'))
 
-const figureElement = ({ Box, Text }: ElementTable, style: Style, lines: readonly string[], key: string): RenderElement => (
+const figureElement = (el: ElementTable, style: Style, lines: readonly string[], key: string): RenderElement => {
+  const svg = artSvg(el, style, lines.map(line => figureRuns(line).map(run => ({
+    text: run.text,
+    color: runColor(style, run.role),
+    bold: isBold(style, run.role),
+    dim: run.role === 'dim' && !style.theme.codeComment,
+  }))), lines.map(figureText).join('\n'), key)
+  return svg ?? figureTextRows(el, style, lines, key)
+}
+
+const figureTextRows = ({ Box, Text }: ElementTable, style: Style, lines: readonly string[], key: string): RenderElement => (
   <Box key={key} flexDirection="column" paddingLeft={2}>
     {lines.map((line, i) => {
       const runs = figureRuns(line)

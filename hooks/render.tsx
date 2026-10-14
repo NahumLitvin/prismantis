@@ -4,6 +4,8 @@ import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { displayText, inlineText } from './markdown'
 import type { Flow } from './rtl'
+import type { GridRun } from './svg'
+import { artSvg } from './svg'
 import { commentTail, commentVisual, containsRtl, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
@@ -350,7 +352,94 @@ export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   return ['```', ...art, '```'].join('\n')
 }
 
+const inlineRuns = (style: Style, nodes: Inline[], look: Omit<GridRun, 'text'> = {}): GridRun[] => {
+  const t = style.theme
+  return nodes.flatMap((n): GridRun[] => {
+    switch (n.kind) {
+      case 'strong': return inlineRuns(style, n.children, { ...look, bold: true, color: look.color ?? t.strong })
+      case 'emphasis': return inlineRuns(style, n.children, { ...look, italic: true, color: look.color ?? t.emphasis })
+      case 'strike': return inlineRuns(style, n.children, { ...look, strikethrough: true, dim: true })
+      case 'code': return [{ ...look, text: n.text, color: t.inlineCode ?? look.color }]
+      case 'link': return [{ ...look, text: n.text, color: t.link ?? look.color, underline: true }]
+      case 'number': return [{ ...look, text: n.text, color: style.highlightNumbers ? t.number ?? look.color : look.color }]
+      case 'path': return [{ ...look, text: n.text, color: style.highlightPaths ? t.path ?? look.color : look.color }]
+      case 'dim': return [{ ...look, text: n.text, dim: true }]
+      default: return [{ ...look, text: n.text }]
+    }
+  })
+}
+
+const sliceRuns = (runs: GridRun[], from: number, to: number): GridRun[] => {
+  const out: GridRun[] = []
+  let at = 0
+  for (const run of runs) {
+    const a = Math.max(from - at, 0)
+    const b = Math.min(to - at, run.text.length)
+    at += run.text.length
+    if (a < b) out.push({ ...run, text: run.text.slice(a, b) })
+  }
+  return out
+}
+
+const tableSvg = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string): RenderElement | null => {
+  if (!style.svgArt || [block.header, ...block.rows].some(r => r.some(hasLink))) return null
+  const t = style.theme
+  const box = style.tableStyle === 'box'
+  const gap = box ? 3 : style.tableStyle === 'grid' ? 3 : 2
+  const { natural, words } = tableSize(block)
+  const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
+  const rule: Omit<GridRun, 'text'> = { color: t.tableRule, dim: !t.tableRule }
+  const lines: GridRun[][] = []
+  const edge = ([left, fill, mid, right]: string) =>
+    lines.push([{ ...rule, text: left + widths.map(w => fill!.repeat(w + 2)).join(mid) + right }])
+  const plainRule = (heavy: boolean) =>
+    lines.push([{ ...rule, dim: !heavy && !t.tableRule, text: widths.map(w => (heavy && style.tableStyle === 'grid' ? '━' : '─').repeat(w)).join(' '.repeat(gap)) }])
+  const row = (cells: Inline[][], isHeader: boolean) => {
+    const wrapped = widths.map((w, c) => {
+      const runs = inlineRuns(style, isHeader ? headerRuns(cells[c] ?? []) : cells[c] ?? [], isHeader ? { bold: true, color: t.tableHeader } : {})
+      const text = runs.map(r => r.text).join('')
+      return wrapRanges(text, w).map(([a, b]) => sliceRuns(runs, a, b))
+    })
+    const height = Math.max(...wrapped.map(l => l.length))
+    for (let i = 0; i < height; i++) {
+      const line: GridRun[] = box ? [{ ...rule, text: '│ ' }] : []
+      widths.forEach((w, c) => {
+        if (c > 0) line.push(box ? { ...rule, text: ' │ ' } : { text: ' '.repeat(gap) })
+        const content = wrapped[c]![i] ?? []
+        const room = Math.max(0, w - width(content.map(r => r.text).join('')))
+        const align = isHeader ? 'center' : block.align[c] ?? 'left'
+        const before = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
+        line.push({ text: ' '.repeat(before) }, ...content, { text: ' '.repeat(room - before) })
+      })
+      if (box) line.push({ ...rule, text: ' │' })
+      lines.push(line)
+    }
+  }
+  if (box) {
+    edge('┌─┬┐')
+    row(block.header, true)
+    edge('╞═╪╡')
+    block.rows.forEach((r, i) => {
+      if (i > 0) edge('├─┼┤')
+      row(r, false)
+    })
+    edge('└─┴┘')
+  } else {
+    row(block.header, true)
+    plainRule(true)
+    block.rows.forEach((r, i) => {
+      row(r, false)
+      if (style.tableStyle !== 'minimal' && i < block.rows.length - 1) plainRule(false)
+    })
+  }
+  return artSvg(el, style, lines, tableText(block), key, 0)
+}
+
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string, rtl: boolean) => {
+  if (!rtl) {
+    const svg = tableSvg(el, style, block, columns, key)
+    if (svg) return svg
+  }
   const { Box, Text } = el
   const t = style.theme
   const box = style.tableStyle === 'box'
