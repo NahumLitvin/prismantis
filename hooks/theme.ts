@@ -31,6 +31,7 @@ export type Style = {
   copyButtons: boolean
   htmlCopy: ClipboardBackend | null
   httpLinks: boolean
+  editorLinks: boolean
   diagramHints: boolean
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
@@ -78,6 +79,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     copyButtons: options.copyButtons !== false,
     htmlCopy: null,
     httpLinks: false,
+    editorLinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',

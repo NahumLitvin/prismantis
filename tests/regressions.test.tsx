@@ -5,7 +5,7 @@ import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
-import { isReadOnlyCall, tableArt, takesHttpLinks, width } from '../hooks/render'
+import { isReadOnlyCall, tableArt, takesEditorLinks, takesHttpLinks, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
 import { claudeAt, linksHttp } from './claude-version'
 import { clipboardEnv, recordCopies } from './clipboard-env'
@@ -559,6 +559,36 @@ for (const [where, surface, base] of [
 test('http hyperlinks start at Claude Code 2.1.289', () => {
   for (const base of ['2.1.289', '2.1.289-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesHttpLinks(base)).toBe(true)
   for (const base of ['2.1.288', '2.1.287', '2.0.999', '1.9.400', 'dev', '', undefined]) expect(takesHttpLinks(base)).toBe(false)
+})
+
+const EDITOR_LINKS = '[note](vscode://file/C:/src/notes.md:12) [insiders](vscode-insiders://file/home/me/app.ts) [clone](vscode://vscode.git/clone?url=https://example.com/x.git)'
+
+test('VS Code file links become terminal hyperlinks from Claude Code 2.1.294', async ($, on) => {
+  claudeAt(on, '2.1.294')
+  if (!(await linksHttp($.ui.mount(mount('[x](vscode://file/C:/x.md)'))))) return
+  const ui = await $.ui.mount(mount(EDITOR_LINKS))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['vscode://file/C:/src/notes.md:12', 'vscode-insiders://file/home/me/app.ts'])
+  expect(await ui.find({ type: 'Text', text: /^clone \(vscode:\/\/vscode\.git\/clone\?url=https:\/\/example\.com\/x\.git\)$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+for (const [where, surface, base] of [
+  ['on desktop, which links only https', 'desktop', '2.1.294'],
+  ['on Claude Code 2.1.293', 'terminal', '2.1.293'],
+  ['when the Claude Code version is unknown', 'terminal', undefined],
+] as const) {
+  test(`VS Code file links draw as plain text ${where}`, async ($, on) => {
+    if (base) claudeAt(on, base)
+    const ui = await $.ui.mount({ ...mount(EDITOR_LINKS), surface })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    expect(await ui.find({ type: 'Text', text: /^note \(vscode:\/\/file\/C:\/src\/notes\.md:12\)$/ })).toBeDefined()
+    await ui.unmount()
+  })
+}
+
+test('VS Code file hyperlinks start at Claude Code 2.1.294', () => {
+  for (const base of ['2.1.294', '2.1.294-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesEditorLinks(base)).toBe(true)
+  for (const base of ['2.1.293', '2.1.289', '2.1.287', '2.0.999', 'dev', '', undefined]) expect(takesEditorLinks(base)).toBe(false)
 })
 
 test('links that cannot be clicked draw as plain text with their target, as Claude Code draws them', async $ => {
