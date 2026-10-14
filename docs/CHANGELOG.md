@@ -2,11 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [0.19.0] - 2026-10-14
+## [Unreleased]
 
 ### Added
 
 - `copyButtonStyle: hover` shows copy buttons only while the pointer is on their block: a block's buttons float over its top-right corner, or from its left edge on a block narrower than they are, and `⧉ copy reply` over the reply's bottom-right corner, out of the flow, so they reserve no line and nothing moves when they show. `inline`, the default, keeps today's look. ctrl+x tab does not reach a hidden button; `/prismantis copy` still copies without a mouse. The mobile app, which has no pointer, draws them inline.
+
+## [0.19.0] - 2026-10-14
 
 ### Changed
 
