@@ -192,7 +192,7 @@ When tables, diagrams and figures follow each other, they share a row and wrap o
 
 `copyButtonStyle` picks where the buttons sit. `inline`, the default, is the look above. `hover` hides them until the pointer is on their block: a block's buttons float over its top-right corner and the reply's over its bottom-right corner, so they take no space and nothing moves when they show. ctrl+x tab does not reach a hidden button, and the mobile app, which has no pointer, draws them inline.
 
-![copyButtonStyle hover: a table's copy buttons floating over its top-right corner under the pointer, the code block below it without its button](docs/copy/hover.png)
+![copyButtonStyle hover: a table's ⧉ md and ⧉ art buttons floating over the top-right of its border while the pointer is on it](docs/copy/hover.png)
 
 `⧉ html` shows in a local macOS terminal or a Linux graphical session. macOS needs nothing extra. Linux needs [CopyQ](https://copyq.readthedocs.io/en/stable/installation.html) running (see its [Wayland caveats](https://copyq.readthedocs.io/en/stable/known-issues.html#on-linux-some-features-do-not-work-under-wayland)). On Ubuntu:
 
