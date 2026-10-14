@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { LINUX_TABLE_COPY, MAC_TABLE_COPY } from '../hooks/clipboard'
+import { LINUX_TABLE_COPY, MAC_TABLE_COPY, WIN_TABLE_COPY } from '../hooks/clipboard'
 import { clipboardEnv, recordCopies, recordToasts, runResult, startSession } from './clipboard-env'
 
 const source = '| Name | Value |\n|--|--:|\n| **שלום** | `$(ignored)` |'
@@ -44,6 +44,35 @@ for (const [backend, setup] of Object.entries(backends)) test(`${backend} copies
   await ui.unmount()
 })
 
+test('windows copies Excel-style HTML and CRLF plain text through PowerShell', async ($, on) => {
+  clipboardEnv(on, 'other', { OS: 'Windows_NT' })
+  const calls: { argv: readonly string[]; input: string }[] = []
+  on('process.run', (_, e) => {
+    calls.push({ argv: e.argv, input: e.init?.stdin ?? '' })
+    return runResult(0)
+  })
+  const copies = recordCopies(on)
+  const toasts = recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount({ ...mount, props: { text: '| Name | Value |\n|--|--|\n| ✅ done | ❌ failed |', isFirstOfReply: true } })
+  expect((await ui.findAll({ type: 'Button' })).map(button => button.props.label).filter(label => label !== '⧉ copy reply')).toEqual(['⧉ md', '⧉ art', '⧉ html'])
+  expect(calls).toHaveLength(0)
+  await ui.press({ key: 'html0' })
+  expect(calls).toHaveLength(1)
+  expect(calls[0]!.argv[0]).toBe('powershell.exe')
+  expect(calls[0]!.argv).toContain('-STA')
+  expect(calls[0]!.argv.at(-1)).toBe(WIN_TABLE_COPY)
+  expect(calls[0]!.input).toMatch(/^[\x00-\x7e]*$/)
+  const payload = JSON.parse(calls[0]!.input)
+  expect(payload.html).toContain('ProgId content=Excel.Sheet')
+  expect(payload.html).toContain('<!--StartFragment-->')
+  expect(payload.html).toContain('✅ done')
+  expect(payload.text).toBe('Name\tValue\r\n✅ done\t❌ failed')
+  expect(copies).toHaveLength(0)
+  expect(toasts).toEqual(['Copied formatted table'])
+  await ui.unmount()
+})
+
 for (const failure of ['exit', 'refused'] as const) test(`native clipboard ${failure} falls back to plain text`, async ($, on) => {
   clipboardEnv(on, 'macos')
   on('process.run', () => failure === 'refused' ? { deny: 'Cannot start helper' } : runResult(1, 'Clipboard unavailable'))
@@ -74,6 +103,7 @@ const hidden = {
   'over SSH_CONNECTION': { platform: 'macos', env: { SSH_CONNECTION: 'remote connection' }, surface: 'terminal' },
   'over SSH_TTY': { platform: 'macos', env: { SSH_TTY: '/dev/ttys001' }, surface: 'terminal' },
   'over SSH with a forwarded display': { platform: 'other', env: { SSH_CONNECTION: 'remote connection', DISPLAY: 'localhost:10.0' }, surface: 'terminal' },
+  'over SSH on Windows': { platform: 'other', env: { OS: 'Windows_NT', SSH_CONNECTION: 'remote connection' }, surface: 'terminal' },
   'without a graphical session': { platform: 'other', env: {}, surface: 'terminal' },
   'on desktop': { platform: 'macos', env: {}, surface: 'desktop' },
   'on desktop in Linux': { platform: 'other', env: { WAYLAND_DISPLAY: 'wayland-0' }, surface: 'desktop' },

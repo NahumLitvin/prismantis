@@ -46,7 +46,7 @@ Dependencies and licenses:
 
 - Bundled code and copied palettes must be MIT. Check the license at the source repo, not a port or fork: GitHub's `license.spdx_id` misses licenses declared only in a README (Gruvbox), and ports can relicense (Tokyo Night's Neovim port is Apache-2.0, the original VS Code theme is MIT).
 - Add a dependency only when writing it ourselves is unreasonable. Use its latest release, prefer well-starred maintained projects, and record it in docs/THIRD_PARTY_NOTICES.md. The bundled runtime dependencies today are beautiful-mermaid and Prism. esbuild is build-time only.
-- Two external programs can run: the HTML table copy action runs macOS's built-in `osascript`, or an installed and running CopyQ on Linux, and LaTeX math runs RaTeX's `ratex-render`, installed by the person and off until they set `latex`. Nothing else runs.
+- Two external programs can run: the HTML table copy action runs macOS's built-in `osascript`, Windows' built-in `powershell.exe`, or an installed and running CopyQ on Linux, and LaTeX math runs RaTeX's `ratex-render`, installed by the person and off until they set `latex`. Nothing else runs.
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).
 - Feature and fix PRs add their CHANGELOG entry under `## [Unreleased]` and leave the version alone. Only the release commit sets the version, so parallel PRs never fight over it.
 

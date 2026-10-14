@@ -1,6 +1,6 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { tableHtml, tableText } from './html'
+import { tableExcelHtml, tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { displayText, inlineText } from './markdown'
 import type { Flow } from './rtl'
@@ -654,7 +654,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const art = drawn.get(b)?.art ?? (block.kind === 'table' ? () => tableArt(block) : undefined)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
-    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => style.htmlCopy === 'windows' ? tableExcelHtml(block) : tableHtml(block)) : null
     const button = second ? (
       <el.Box key={`copies${b}`} flexDirection="row" columnGap={1}>
         {first}

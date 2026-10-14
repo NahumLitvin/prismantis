@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- `⧉ html` on tables now shows in a local Windows terminal too. It writes Excel-style HTML and tab-separated plain text to the clipboard through Windows' built-in `powershell.exe`, so pasting into Slack makes a native table. Slack keeps the cell text but drops bold, links and alignment.
+
 ### Changed
 
 - Links that open a file in VS Code, `vscode://file/…` and `vscode-insiders://file/…`, are clickable terminal hyperlinks on Claude Code 2.1.294 and later, so a reply can point at `src/app.ts:42` and a click opens that line. Claude Code 2.1.287 throws out the whole reply for such a link and 2.1.294 is the first release known to accept it, so below 2.1.294, when the version cannot be read, and on the desktop app and other remote surfaces, they draw as plain text, as other unclickable links do. Other `vscode://` links, which reach extensions' URI handlers (`vscode://vscode.git/clone?url=…`), always draw as plain text.
