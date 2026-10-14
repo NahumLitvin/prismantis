@@ -598,6 +598,8 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const t = style.theme
   const hover = style.copyButtonStyle === 'hover'
   const floating = (button: RenderElement | null) => (button ? <Box position="absolute" top={0} left={0} minWidth="100%" justifyContent="flex-end" display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
+  const reserved = (buttons: (RenderElement | null | undefined)[]): number =>
+    buttons.reduce<number>((w, button) => (button?.type === 'Button' ? w + (w ? 1 : 0) + width(`[ ${button.props.label} ]`) : w), 0)
   const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const rendered = shown.map((block, b) => {
@@ -669,7 +671,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const rtl = style.reorder && hasRtl(block.raw)
     if (hover) {
       return (
-        <Box key={`c${b}`} flexDirection="column" {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+        <Box key={`c${b}`} flexDirection="column" minWidth={reserved(second ? [first, second, html] : [first])} {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
           {element}
           {floating(button)}
         </Box>

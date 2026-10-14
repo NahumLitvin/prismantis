@@ -253,6 +253,12 @@ test('copyButtonStyle hover starts buttons wider than their block at its left ed
   await ui.unmount()
 })
 
+test('copyButtonStyle hover reserves its buttons\' width beside a narrow block, so a table drawn next to it never covers them', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| a | b |\n|---|---|\n| 1 | 2 |\n\n| c | d |\n|---|---|\n| 3 | 4 |'), surface: 'terminal' })
+  for (const key of ['c0', 'c1']) expect((await ui.find({ key }))?.props.minWidth).toBe('[ ⧉ md ] [ ⧉ art ]'.length)
+  await ui.unmount()
+})
+
 test('copyButtonStyle inline, the default, keeps every copy button in the flow', async $ => {
   const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
