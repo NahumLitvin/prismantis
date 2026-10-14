@@ -30,6 +30,8 @@ export type Style = {
   mermaidAscii: boolean
   copyButtons: boolean
   htmlCopy: ClipboardBackend | null
+  httpLinks: boolean
+  editorLinks: boolean
   diagramHints: boolean
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
@@ -76,6 +78,8 @@ export const resolveStyle = (options: PluginOptions): Style => {
     mermaidAscii: options.mermaidAscii === true,
     copyButtons: options.copyButtons !== false,
     htmlCopy: null,
+    httpLinks: false,
+    editorLinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',

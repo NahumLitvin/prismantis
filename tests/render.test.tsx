@@ -343,3 +343,12 @@ test('long code blocks fold to 20 lines, open and fold back on press, and copy e
     await ui.unmount()
   }
 })
+
+test('two code blocks that differ only in where lines break fold on their own', async $ => {
+  const body = Array.from({ length: 29 }, () => 'x').join('\n')
+  const ui = await $.ui.mount({ ...draw(`\`\`\`text\nab\nc\n${body}\n\`\`\`\n\nand\n\n\`\`\`text\na\nbc\n${body}\n\`\`\``), surface: 'terminal' as const })
+  await ui.press({ key: 'fold0' })
+  expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
+  expect((await ui.find({ key: 'fold2' }))?.props.label).toBe('+11 more lines')
+  await ui.unmount()
+})

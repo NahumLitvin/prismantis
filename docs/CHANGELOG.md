@@ -4,9 +4,55 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Links that open a file in VS Code, `vscode://file/…` and `vscode-insiders://file/…`, are clickable terminal hyperlinks on Claude Code 2.1.294 and later, so a reply can point at `src/app.ts:42` and a click opens that line. Claude Code 2.1.287 throws out the whole reply for such a link and 2.1.294 is the first release known to accept it, so below 2.1.294, when the version cannot be read, and on the desktop app and other remote surfaces, they draw as plain text, as other unclickable links do. Other `vscode://` links, which reach extensions' URI handlers (`vscode://vscode.git/clone?url=…`), always draw as plain text.
+
 ### Fixed
 
 - Footnote marks in a table's header row draw in the footnote color, as they do in paragraphs and body cells. Before, they took the header color and looked like part of the column name.
+
+## [0.18.4] - 2026-10-14
+
+### Fixed
+
+- Named links like `[docs](https://example.com)` keep the link color but no longer draw their own underline, so the terminal's hyperlink style shows (in Windows Terminal, a dashed underline that turns solid on hover). A terminal that styles hyperlinks only on hover shows colored text until then.
+- Bare URLs draw in the link color again, as they did before they became hyperlinks in 0.9.0. Terminals without hyperlinks still show the URL once.
+- Plain `http:` links and bare `http://` URLs are clickable terminal hyperlinks on Claude Code 2.1.289 and later, as in Claude Code without prismantis. They drew in the link color but could not be clicked since 0.13.0, because such a link makes Claude Code 2.1.288 and earlier throw out the whole reply; there, and when the version cannot be read, they draw as plain text, as below. The desktop app and other remote surfaces link only `https:` and `http://localhost`, so there they draw as plain text too.
+- Links that cannot be clicked no longer look clickable. `mailto:` and other links that do not become hyperlinks draw as plain text, the label then the target in parentheses, as Claude Code draws them: `[mail](mailto:someone@example.com)` draws as `mail (someone@example.com)`, and a label that matches its target draws once. This holds in paragraphs, lists, quotes, headings, table cells, right-to-left text and `$.prismantis.markdown`. Copying keeps the markdown as written.
+
+## [0.18.3] - 2026-10-13
+
+### Changed
+
+- A table cell holding one very long word (a hash, a base64 blob, a minified line) wraps in linear time: a 10,000-character cell redraws in 3 ms instead of 355 ms. Right-to-left lines are laid out once per text and width instead of on every redraw (stream replay bench, 1.2 ms to 0.9 ms per redraw); the first draw of a long Hebrew reply costs about 15% more.
+- A streaming reply redraws about 3.7x faster (1.0 ms instead of 3.9 ms per redraw in the stream replay bench), and Hebrew text about 4.8x faster. Diagrams no longer re-measure their art on every redraw, and single characters skip the grapheme segmenter. Nothing looks different.
+- A reply with diagrams redraws faster again while it streams: their art width is measured once instead of on every redraw, up to three times per diagram that does not fit (stream replay bench, 3.2 ms to 1.2 ms per redraw).
+
+### Fixed
+
+- `/prismantis theme random` no longer turns off right-to-left reordering, the HTML table copy and path shortening for the rest of the session. It changes only the colors.
+- Switching theme while a formula is still being typeset no longer stores the old color as the new theme's image; the formula is typeset again in the new color.
+- In kitty, a link whose URL holds Hebrew keeps its URL as written instead of reversing it.
+- A TeX command or a shell program named like a built-in JavaScript property (`\toString`, `\constructor`, a `toString` command) no longer draws `function toString() { [native code] }` or breaks quiet tool rows.
+- `awk '@include "inplace"'`, `awk -E`, `awk --exec` and `awk -l` can edit files, so `toolOutput: quiet` no longer hides their output as a read.
+- `http://localhost:5173?debug=1` and `http://localhost#/home` are clickable again.
+- A footnote definition quoted inside a code block no longer becomes a real footnote.
+- Two long code blocks that differ only in where their lines break fold and unfold on their own.
+- An expanded shell command whose result is an error message shows that message instead of "(No output)".
+- Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
+- A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
+- `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.
+- `awk -i inplace` edits a file, so `toolOutput: quiet` no longer hides its output as a read.
+- Copying a table as art no longer fails when a column is narrower than a wide character such as `中`.
+- After `/prismantis theme random`, new LaTeX formulas draw in the new theme's color instead of the old one.
+- Text-style symbols such as `↔`, `™`, `©`, `▶` and `⚠` count as one column, as terminals draw them, so a diagram box around them closes. Emoji drawn as emoji (`✅`, `⚠️`), flags, keycaps like `1️⃣` and rare CJK characters such as `𠀀` count as two.
+
+## [0.18.2] - 2026-10-13
+
+### Fixed
+
+- LaTeX math draws as images wherever `CLAUDE_CODE_FORCE_TERMINAL_IMAGES` is set, the variable that makes Claude Code draw images, also inside tmux, as Claude Code does. Before, prismantis found the terminal only by `TERM_PROGRAM`, `TERM` and `KITTY_WINDOW_ID`, so a background session, whose process carries none of them, drew every formula as text even when viewed in kitty or Ghostty.
 
 ## [0.18.1] - 2026-10-13
 
