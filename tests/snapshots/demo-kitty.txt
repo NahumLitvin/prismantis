@@ -32,7 +32,8 @@
     "~/jade-palace/training.md"
   <Text>
     ", scroll at "
-  <Link>
+  <Text color=#89b4fa>
+    <Link>
 <Box>
   <Text color=#f9e2af bold>
     <Text>
@@ -968,7 +969,7 @@
 <Box>
   <Text>
     <Link>
-      <Text color=#89b4fa underline>
+      <Text color=#89b4fa>
         "קישור"
     <Text>
       " וגם ,250ms-ו "

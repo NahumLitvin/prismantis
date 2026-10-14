@@ -32,7 +32,8 @@
     "~/jade-palace/training.md"
   <Text>
     ", scroll at "
-  <Link>
+  <Text>
+    <Link>
 <Box>
   <Text bold>
     <Text>
@@ -574,7 +575,7 @@
 <Box>
   <Text>
     <Link>
-      <Text underline>
+      <Text>
         "רושיק"
     <Text>
       " םגו ,250ms-ו "

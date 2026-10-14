@@ -9,10 +9,23 @@ All notable changes to this project are documented here. The format follows [Kee
 - `diffStyle` picks how Edit, Write and shell edit diffs draw: `card` (the default) frames the lines in a rounded box with tinted lines, `full` drops the box and tints each changed line across the width, `marks` drops the tint and draws the changed lines in the number and flag colors, which reads in 256-color terminals and `mono` too, and `bar` drops the tint and puts a `▌` in the line's color before each changed line. Every style keeps the `+N −M` header, line numbers, folding at 20 lines and one block per changed file. Tool output other than diffs is unchanged ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
 - `diffAddedColor` and `diffRemovedColor` set the background of added and removed lines in diff cards, for bolder diffs than the faint tint the theme blends from its number and flag colors. They take any color the other color options take; empty or a value that doesn't parse keeps the tint. The `+` and `-` marks, the counts, ```` ```diff ```` blocks and everything else keep their theme colors ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
 
+### Changed
+
+- Links that open a file in VS Code, `vscode://file/…` and `vscode-insiders://file/…`, are clickable terminal hyperlinks on Claude Code 2.1.294 and later, so a reply can point at `src/app.ts:42` and a click opens that line. Claude Code 2.1.287 throws out the whole reply for such a link and 2.1.294 is the first release known to accept it, so below 2.1.294, when the version cannot be read, and on the desktop app and other remote surfaces, they draw as plain text, as other unclickable links do. Other `vscode://` links, which reach extensions' URI handlers (`vscode://vscode.git/clone?url=…`), always draw as plain text.
+
 ### Fixed
 
 - Files a shell command changed (`sed -i`, a script) draw as the same diff card as Edit and Write results, in the theme's number and flag colors, instead of Claude Code's own red and green diff. Each changed file gets its own card headed by its path, with `… +K more files` when Claude Code listed more, and each card folds on its own. The command's output still draws above the cards. Dim notes under them say what Claude Code's own diff says: on the first one of a session, that it shows every file that changed while the command ran, by it or anything else; that another command ran in the repository at the same time, when Claude Code saw one; and that a git step in the command (`checkout`, `reset`, `stash`, `pull`, …) can move the working tree. `toolOutput: quiet` keeps these diffs under the command's first lines, where it used to drop them. A failed command, a diff the card cannot read, and `toolRows: false` keep Claude Code's drawing ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
 - The `ruleColor` description in `/config` no longer says it colors heading banners, which take the heading color. It names what the color draws: horizontal rules, diff card borders, chart gridlines and the base of the diff line tints ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
+
+## [0.18.4] - 2026-10-14
+
+### Fixed
+
+- Named links like `[docs](https://example.com)` keep the link color but no longer draw their own underline, so the terminal's hyperlink style shows (in Windows Terminal, a dashed underline that turns solid on hover). A terminal that styles hyperlinks only on hover shows colored text until then.
+- Bare URLs draw in the link color again, as they did before they became hyperlinks in 0.9.0. Terminals without hyperlinks still show the URL once.
+- Plain `http:` links and bare `http://` URLs are clickable terminal hyperlinks on Claude Code 2.1.289 and later, as in Claude Code without prismantis. They drew in the link color but could not be clicked since 0.13.0, because such a link makes Claude Code 2.1.288 and earlier throw out the whole reply; there, and when the version cannot be read, they draw as plain text, as below. The desktop app and other remote surfaces link only `https:` and `http://localhost`, so there they draw as plain text too.
+- Links that cannot be clicked no longer look clickable. `mailto:` and other links that do not become hyperlinks draw as plain text, the label then the target in parentheses, as Claude Code draws them: `[mail](mailto:someone@example.com)` draws as `mail (someone@example.com)`, and a label that matches its target draws once. This holds in paragraphs, lists, quotes, headings, table cells, right-to-left text and `$.prismantis.markdown`. Copying keeps the markdown as written.
 
 ## [0.18.3] - 2026-10-13
 

@@ -5,8 +5,9 @@ import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
-import { isReadOnlyCall, tableArt, width } from '../hooks/render'
+import { isReadOnlyCall, tableArt, takesEditorLinks, takesHttpLinks, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
+import { claudeAt, linksHttp } from './claude-version'
 import { clipboardEnv, recordCopies } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
@@ -504,13 +505,132 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
   await ui.unmount()
 })
 
-test('only https and localhost links become terminal hyperlinks', async $ => {
+test('only http and https links become terminal hyperlinks', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(mount('[x](http://example.com)'))))) return
   const ui = await $.ui.mount(mount('[docs](https://example.com) [dev](http://localhost:3000) [plain](http://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [disk](file:///etc/passwd)'))
   const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
-  expect(links).toEqual(['https://example.com', 'http://localhost:3000'])
-  expect(await ui.find({ type: 'Text', text: /^run$/ })).toBeDefined()
+  expect(links).toEqual(['https://example.com', 'http://localhost:3000', 'http://example.com'])
+  expect(await ui.find({ type: 'Text', text: /^run \(javascript:alert\(1\)\)$/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a named link drops its own underline so the terminal hyperlink style shows', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('[prismantis on GitHub](https://github.com/NahumLitvin/prismantis)'), surface })
+    const [link] = await ui.findAll({ type: 'Link' })
+    const label = await ui.find({ type: 'Text', text: /^prismantis on GitHub$/ })
+    expect(link?.props.href).toBe('https://github.com/NahumLitvin/prismantis')
+    expect(label?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    expect(label?.props.underline).toBeFalsy()
+    await ui.unmount()
+  }
+})
+
+test('plain http links and bare URLs are hyperlinks drawn in the link color on the terminal', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(mount('[x](http://example.com)'))))) return
+  const ui = await $.ui.mount(mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://example.com', 'http://example.org/raw', 'https://example.com/raw'])
+  for (const text of [/^plain http$/, /^http:\/\/example\.org\/raw$/, /^https:\/\/example\.com\/raw$/]) {
+    const drawnText = await ui.find({ type: 'Text', text })
+    expect(drawnText?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    expect(drawnText?.props.underline).toBeFalsy()
+  }
+  await ui.unmount()
+})
+
+for (const [where, surface, base] of [
+  ['on desktop, which links only https', 'desktop', '2.1.289'],
+  ['on Claude Code 2.1.288, which refuses http hyperlinks', 'terminal', '2.1.288'],
+  ['when the Claude Code version is unknown', 'terminal', undefined],
+] as const) {
+  test(`plain http links draw as plain text ${where}`, async ($, on) => {
+    if (base) claudeAt(on, base)
+    const ui = await $.ui.mount({ ...mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'), surface })
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['https://example.com/raw'])
+    for (const text of [/^plain http \(http:\/\/example\.com\)$/, /^http:\/\/example\.org\/raw$/]) {
+      const drawnText = await ui.find({ type: 'Text', text })
+      expect(drawnText).toBeDefined()
+      expect(drawnText?.props.color).toBeUndefined()
+    }
+    expect((await ui.find({ type: 'Text', text: /^https:\/\/example\.com\/raw$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    await ui.unmount()
+  })
+}
+
+test('http hyperlinks start at Claude Code 2.1.289', () => {
+  for (const base of ['2.1.289', '2.1.289-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesHttpLinks(base)).toBe(true)
+  for (const base of ['2.1.288', '2.1.287', '2.0.999', '1.9.400', 'dev', '', undefined]) expect(takesHttpLinks(base)).toBe(false)
+})
+
+const EDITOR_LINKS = '[note](vscode://file/C:/src/notes.md:12) [insiders](vscode-insiders://file/home/me/app.ts) [clone](vscode://vscode.git/clone?url=https://example.com/x.git)'
+
+test('VS Code file links become terminal hyperlinks from Claude Code 2.1.294', async ($, on) => {
+  claudeAt(on, '2.1.294')
+  if (!(await linksHttp($.ui.mount(mount('[x](vscode://file/C:/x.md)'))))) return
+  const ui = await $.ui.mount(mount(EDITOR_LINKS))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['vscode://file/C:/src/notes.md:12', 'vscode-insiders://file/home/me/app.ts'])
+  expect(await ui.find({ type: 'Text', text: /^clone \(vscode:\/\/vscode\.git\/clone\?url=https:\/\/example\.com\/x\.git\)$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+for (const [where, surface, base] of [
+  ['on desktop, which links only https', 'desktop', '2.1.294'],
+  ['on Claude Code 2.1.293', 'terminal', '2.1.293'],
+  ['when the Claude Code version is unknown', 'terminal', undefined],
+] as const) {
+  test(`VS Code file links draw as plain text ${where}`, async ($, on) => {
+    if (base) claudeAt(on, base)
+    const ui = await $.ui.mount({ ...mount(EDITOR_LINKS), surface })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    expect(await ui.find({ type: 'Text', text: /^note \(vscode:\/\/file\/C:\/src\/notes\.md:12\)$/ })).toBeDefined()
+    await ui.unmount()
+  })
+}
+
+test('VS Code file hyperlinks start at Claude Code 2.1.294', () => {
+  for (const base of ['2.1.294', '2.1.294-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesEditorLinks(base)).toBe(true)
+  for (const base of ['2.1.293', '2.1.289', '2.1.287', '2.0.999', 'dev', '', undefined]) expect(takesEditorLinks(base)).toBe(false)
+})
+
+test('links that cannot be clicked draw as plain text with their target, as Claude Code draws them', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('[mail](mailto:someone@example.com) [someone@example.com](mailto:someone@example.com) [disk](file:///etc/passwd)'), surface })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    for (const text of ['mail (someone@example.com)', 'someone@example.com', 'disk (file:///etc/passwd)']) {
+      const drawnText = await ui.find({ type: 'Text', text: new RegExp(`^${text.replace(/[.()]/g, '\\$&')}$`) })
+      expect(drawnText).toBeDefined()
+      expect(drawnText?.props.color).toBeUndefined()
+      expect(drawnText?.props.underline).toBeFalsy()
+    }
+    await ui.unmount()
+  }
+})
+
+test('copying a table keeps its links as written', async ($, on) => {
+  const copied = stubClipboard(on)
+  const source = '| who | site |\n|---|---|\n| [mail](mailto:someone@example.com) | [docs](https://example.com) |'
+  const ui = await $.ui.mount(mount(source))
+  const button = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ md')
+  await ui.press({ key: button!.key! })
+  expect(copied).toEqual([source])
+  await ui.unmount()
+})
+
+for (const tableStyle of ['box', 'rules'] as const) {
+  test(`a ${tableStyle} table cell link that cannot be clicked draws as plain text and its column fits it`, { options: { tableStyle } }, async $ => {
+    const ui = await $.ui.mount(mount('| who | n |\n|---|---|\n| [mail](mailto:someone@example.com) | 1 |'))
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    const cell = await ui.find({ type: 'Text', text: /^mail \(someone@example\.com\)$/ })
+    expect(cell).toBeDefined()
+    expect(cell?.props.color).toBeUndefined()
+    expect(cell?.props.underline).toBeFalsy()
+    const widths = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).map(b => b.props.width as number)
+    expect(Math.max(...widths) >= 'mail (someone@example.com)'.length).toBe(true)
+    await ui.unmount()
+  })
+}
 
 test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
@@ -761,8 +881,8 @@ test('terminal control sequences in a reply never reach the drawn text', async $
   expect(/[\x00-\x08\x0b-\x1f\x7f]/.test(all)).toBe(false)
 })
 
-test('a localhost lookalike host stays link text', async $ => {
-  const ui = await $.ui.mount(mount('[a](http://localhost@evil.example/) [b](http://localhost.evil.example/) [c](http://localhost:3000/x) [d](http://localhost)'))
+test('a localhost lookalike host stays link text on desktop, which links plain http only for localhost', async $ => {
+  const ui = await $.ui.mount({ ...mount('[a](http://localhost@evil.example/) [b](http://localhost.evil.example/) [c](http://localhost:3000/x) [d](http://localhost)'), surface: 'desktop' })
   expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:3000/x', 'http://localhost'])
   await ui.unmount()
 })
@@ -803,8 +923,8 @@ for (const command of [`awk '@include "inplace"; {sub(/a/,"b")} 1' f.txt`, `awk 
   expect(isReadOnlyCall('Bash', { command })).toBe(false)
 })
 
-test('localhost links with a query or a hash stay clickable', async $ => {
-  const ui = await $.ui.mount(mount('[a](http://localhost:5173?debug=1) [b](http://localhost#/home) [c](http://localhost.evil.example/)'))
+test('localhost links with a query or a hash stay clickable on desktop', async $ => {
+  const ui = await $.ui.mount({ ...mount('[a](http://localhost:5173?debug=1) [b](http://localhost#/home) [c](http://localhost.evil.example/)'), surface: 'desktop' })
   expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:5173?debug=1', 'http://localhost#/home'])
   await ui.unmount()
 })
