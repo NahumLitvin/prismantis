@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.24.0] - 2026-10-15
+
+### Added
+
+- Footnote marks are clickable. Click a mark in a sentence, list item, quote, alert or table cell to see its note in a toast, point at a note to light every mark that cites it, or at a mark to light its note. This works in the desktop app and where the terminal passes the mouse through, as fullscreen mode does, on Claude Code 2.1.295 or later; earlier versions draw the marks as before ([#138](https://github.com/NahumLitvin/prismantis/pull/138)).
+
+### Changed
+
+- Blockquotes and GitHub alerts keep their markdown structure. Paragraphs, lists, code blocks, tables and nested quotes inside a quote draw as they do anywhere else, inside the bar or under the alert title. Code blocks and tables inside a quote keep their own copy buttons, `/prismantis copy code` finds a code block inside a quote, and footnotes inside a quote are numbered with the others ([#155](https://github.com/NahumLitvin/prismantis/pull/155)).
+
+### Fixed
+
+- In fullscreen, a boxed table row with a link no longer draws its borders down through the lines after the table once the table scrolls past the top of the screen ([#155](https://github.com/NahumLitvin/prismantis/pull/155)).
+
 ## [0.23.0] - 2026-10-15
 
 ### Added
