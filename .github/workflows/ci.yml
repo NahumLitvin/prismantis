@@ -130,7 +130,7 @@ jobs:
             old=$(git show "v$v:docs/CHANGELOG.md" 2>/dev/null) || continue
             sec() { awk -v h="## [$v]" 'index($0, h) == 1 { p = 1; print; next } p && /^## \[/ { exit } p'; }
             if ! diff <(printf '%s\n' "$old" | sec) <(sec < docs/CHANGELOG.md); then
-              echo "::error file=docs/CHANGELOG.md::## [$v] differs from tag v$v. New entries go under ## [Unreleased]."
+              echo "::error file=docs/CHANGELOG.md::## [$v] differs from tag v$v. Released sections never change; the release commit writes new ones."
               fail=1
             fi
           done
