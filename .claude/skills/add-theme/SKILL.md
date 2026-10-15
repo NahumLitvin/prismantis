@@ -7,7 +7,7 @@ description: Add, rename or update a prismantis color preset from an existing th
 
 1. **License first.** Open the theme's original repo (not a port) and confirm MIT in its LICENSE file or README. Not MIT, or no license at all: stop and say so.
 2. **Take colors from the official palette file** (the theme's palette repo or JSON/YAML spec), not from screenshots or a port.
-3. **Map the palette onto all 20 tokens** in `PRESETS` in `hooks/theme.ts`. Every preset defines every token:
+3. **Map the palette onto all 22 tokens** in `PRESETS` in `hooks/presets.ts`. Every preset defines every token:
 
    | Token | Pick |
    | --- | --- |
@@ -22,6 +22,7 @@ description: Add, rename or update a prismantis color preset from an existing th
    | `codeText`, `diagramText` | normal foreground |
    | `codeComment`, `quote` | a muted foreground |
    | `rule`, `tableRule` | a subtle border/surface color |
+   | `diffAdded`, `diffRemoved` | the theme's own green and red, its git or diff colors when it names them; the test wants code text at 4.5:1 on their tints and the two at least ΔE 13 apart |
 
 4. **Name it after the source**, lowercase-hyphenated with the variant (`catppuccin-mocha`, `github-light`). Add it to `options` on the `theme` field in `.claude-plugin/plugin.json`.
 5. **Credit it** in `docs/THIRD_PARTY_NOTICES.md` with the repo URL, the copyright line and the license name.

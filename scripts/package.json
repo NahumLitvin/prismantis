@@ -9,7 +9,8 @@
     "bench": "node bench.mjs",
     "bench:check": "node bench.mjs --check",
     "snapshot": "node snapshot.mjs",
-    "snapshot:update": "node snapshot.mjs --update"
+    "snapshot:update": "node snapshot.mjs --update",
+    "build:codex": "node build-codex.mjs"
   },
   "devDependencies": {
     "beautiful-mermaid": "1.1.3",

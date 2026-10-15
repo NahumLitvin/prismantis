@@ -1,5 +1,14 @@
 import { RANDOM_THEMES } from './theme'
 
+export const HINT = [
+  'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
+  'Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:',
+  'flowcharts, sequence diagrams and xychart-beta bar or line charts.',
+  'When a reply carries a numeric series or a flow that is easier to see than read, add a small diagram or chart with short labels, not a second picture of what a figure already shows.',
+  'Skip diagrams and pictures for short or simple answers.',
+  'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
+].join(' ')
+
 export const showcaseText = (themes: readonly string[]): string => `
 # prismantis
 
@@ -39,9 +48,9 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 
 ### Copy tables
 
-Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone.
+Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. Set \`copyButtonStyle\` to \`hover\` in \`/config\` and every copy button hides until the pointer is on its block.
 
-| Item | Quantity | Status |
+| Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
 | **Apples** | 3 | *Ready* |
 | Oranges | 5 | Pending |
@@ -74,7 +83,7 @@ Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`
 
 Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1–40\`, \`Searched src/ for "TODO"\`.
 
-Each edit or new file draws as a diff card headed \`+N −M\`: added and removed lines on a faint tint of the number and flag colors, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest.
+Each edit or new file draws as a diff card headed \`+N −M\`: added and removed lines on a tint of the theme's own green and red, kept readable in every theme, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest. Files a shell command changes (\`sed -i\`, a script) get the same card, one per file, headed by its path. Set \`diffStyle\` in \`/config\` for the look: \`card\`, \`full\`, \`marks\` or \`bar\`.
 
 ### Quotes and rules
 
@@ -135,6 +144,7 @@ $$
 
 Latency fell to 120ms[^lat] after the cache change[^cache].
 
+[^count]: Counted at close.
 [^lat]: Median of 50 runs.
 [^cache]: Entries expire after 10m.
 

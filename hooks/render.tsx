@@ -80,6 +80,13 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
 
 const hasLink = (nodes: Inline[]): boolean => nodes.some(n => n.kind === 'link' || ('children' in n && hasLink(n.children)))
 
+const headerRuns = (nodes: Inline[]): Inline[] =>
+  nodes.flatMap(n => (n.kind === 'footnote' ? [n] : 'children' in n ? headerRuns(n.children) : [{ kind: 'text' as const, text: n.text }]))
+    .reduce<Inline[]>((out, n) => {
+      const last = out[out.length - 1]
+      return n.kind === 'text' && last?.kind === 'text' ? [...out.slice(0, -1), { kind: 'text', text: last.text + n.text }] : [...out, n]
+    }, [])
+
 const HTTP_LINKS_FROM = [2, 1, 289]
 const EDITOR_LINKS_FROM = [2, 1, 294]
 
@@ -181,7 +188,7 @@ const renderFlow = (el: ElementTable, style: Style, lines: Inline[][], key: stri
   return lines.map((line, i) => <Text key={`${key}.${i}`} {...props}>{renderInline(el, style, line, `${key}.${i}`)}</Text>)
 }
 
-const PRISM_COLORS: Record<string, keyof Theme> = {
+export const PRISM_COLORS: Record<string, keyof Theme> = {
   comment: 'codeComment', prolog: 'codeComment', doctype: 'codeComment', cdata: 'codeComment',
   string: 'codeString', char: 'codeString', 'template-string': 'codeString', 'attr-value': 'codeString', url: 'codeString',
   number: 'number', boolean: 'number', constant: 'number', symbol: 'number', inserted: 'number',
@@ -402,10 +409,11 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
         const cell = flowOf(style, cells[c] ?? [], Infinity)
         const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
+        const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
           <Box key={`${k}.${c}`} width={w} flexShrink={0} justifyContent={side}>
             {isHeader
-              ? <Text bold color={t.tableHeader}>{inlineText(content)}</Text>
+              ? <Text bold color={t.tableHeader}>{runs.some(n => n.kind === 'footnote') ? renderInline(el, style, runs, `${k}.${c}`) : inlineText(runs)}</Text>
               : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>}
           </Box>
         )
@@ -420,7 +428,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     const wrapped = widths.map((w, c) => {
       const content = cells[c] ?? []
       if (natural[c]! <= w) return [content]
-      return wrapInline(isHeader ? [{ kind: 'text', text: inlineText(content) }] : content, w)
+      return wrapInline(isHeader ? headerRuns(content) : content, w)
     })
     return Array.from({ length: Math.max(...wrapped.map(l => l.length)) }, (_, i) =>
       row(wrapped.map(l => l[i] ?? []), `${k}.${i}`, isHeader))
@@ -596,6 +604,10 @@ const copySource = (block: Block): string | undefined =>
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
+  const hover = style.copyButtonStyle === 'hover'
+  const floating = (button: RenderElement | null) => (button ? <Box position="absolute" top={0} left={0} minWidth="100%" justifyContent="flex-end" display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
+  const reserved = (buttons: (RenderElement | null | undefined)[]): number =>
+    buttons.reduce<number>((w, button) => (button?.type === 'Button' ? w + (w ? 1 : 0) + width(`[ ${button.props.label} ]`) : w), 0)
   const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const rendered = shown.map((block, b) => {
@@ -625,7 +637,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
             {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
-              {copy?.(lines.join('\n'), `copy${b}`) ?? null}
+              {hover ? floating(copy?.(lines.join('\n'), `copy${b}`) ?? null) : copy?.(lines.join('\n'), `copy${b}`) ?? null}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
               {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
@@ -665,6 +677,14 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     if (!button) return element
     const { Box } = el
     const rtl = style.reorder && hasRtl(block.raw)
+    if (hover) {
+      return (
+        <Box key={`c${b}`} flexDirection="column" minWidth={reserved(second ? [first, second, html] : [first])} {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+          {element}
+          {floating(button)}
+        </Box>
+      )
+    }
     return block.kind === 'quote' || block.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
@@ -793,10 +813,46 @@ type DiffLine = { mark: '+' | '-' | ' '; num: number; text: string }
 
 const HEX = /^#[0-9a-f]{6}$/i
 
-export const tint = (base: string | undefined, color: string | undefined): string | undefined => {
+const channels = (hex: string): number[] => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+
+export const tint = (base: string | undefined, color: string | undefined, share: number): string | undefined => {
   if (!base || !color || !HEX.test(base) || !HEX.test(color)) return undefined
-  const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16)
-  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * 0.8 + channel(color, i) * 0.2).toString(16).padStart(2, '0')).join('')}`
+  const [b, c] = [channels(base), channels(color)]
+  return `#${b.map((v, i) => Math.round(v * (1 - share) + c[i]! * share).toString(16).padStart(2, '0')).join('')}`
+}
+
+const luminance = (hex: string): number => {
+  const [r, g, b] = channels(hex).map(v => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
+}
+
+export const contrast = (a: string, b: string): number => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi! + 0.05) / (lo! + 0.05)
+}
+
+const TEXT_CONTRAST = 4.5
+
+export const fullHue = (hex: string): string => {
+  const [r, g, b] = channels(hex).map(v => v / 255) as [number, number, number]
+  const max = Math.max(r, g, b)
+  const spread = max - Math.min(r, g, b)
+  const lightness = (max + max - spread) / 2
+  if (spread === 0 || spread / (1 - Math.abs(2 * lightness - 1)) < 0.1) return hex
+  const sector = max === r ? ((g - b) / spread + 6) % 6 : max === g ? (b - r) / spread + 2 : (r - g) / spread + 4
+  const x = 1 - Math.abs((sector % 2) - 1)
+  const pure = [[1, x, 0], [x, 1, 0], [0, 1, x], [0, x, 1], [x, 0, 1], [1, 0, x]][Math.floor(sector)]!
+  return `#${pure.map(v => Math.round(v! * 255).toString(16).padStart(2, '0')).join('')}`
+}
+
+export const diffTint = (text: string | undefined, color: string | undefined): string | undefined => {
+  if (!text || !color || !HEX.test(text) || !HEX.test(color)) return undefined
+  const dark = contrast(text, '#000000') >= contrast(text, '#ffffff')
+  const base = dark ? '#000000' : '#ffffff'
+  const hue = fullHue(color)
+  let share = dark ? 0.3 : 0.2
+  while (share > 0.05 && contrast(text, tint(base, hue, share)!) < TEXT_CONTRAST) share -= 0.01
+  return tint(base, hue, share)
 }
 
 export const diffLines = (output: unknown): DiffLine[] | undefined => {
@@ -823,43 +879,123 @@ export const diffLines = (output: unknown): DiffLine[] | undefined => {
   return rows
 }
 
-export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
-  const rows = diffLines(output)
-  if (rows === undefined) return undefined
+const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, id: string, key: string, title?: string): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const added = rows.filter(r => r.mark === '+').length
   const removed = rows.filter(r => r.mark === '-').length
-  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, 'fold') : null
+  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, `fold${key}`) : null
   const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
   const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
-  const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
-  const tints = { '+': tint(t.rule, t.number), '-': tint(t.rule, t.codeFlag), ' ': undefined }
+  const [addColor, removeColor] = [t.diffAdded ?? t.number, t.diffRemoved ?? t.codeFlag]
+  const color = (mark: DiffLine['mark']) => (mark === '+' ? addColor : mark === '-' ? removeColor : undefined)
+  const look = style.diffStyle
+  const tinted = look === 'card' || look === 'full'
+  const tints = { '+': tinted ? diffTint(t.codeText, addColor) : undefined, '-': tinted ? diffTint(t.codeText, removeColor) : undefined, ' ': undefined }
+  const frame = look === 'card' ? { borderStyle: 'round', borderColor: t.rule, paddingX: 1 } : {}
   return (
-    <Box flexDirection="row">
-      <Text dimColor>{'  ⎿  '}</Text>
-      <Box flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
-        <Text>
-          <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
-          <Text> </Text>
-          <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
-        </Text>
-        {shown.map((r, i) => {
-          const bg = tints[r.mark]
-          return (
-            <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
-              <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
-              <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
-              <Text color={bg ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
-            </Box>
-          )
-        })}
-        {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
-        {toggle?.element ?? null}
-      </Box>
+    <Box key={`card${key}`} flexDirection="column" flexShrink={1} {...frame}>
+      <Text>
+        {title === undefined ? null : <Text color={t.path}>{`${title} `}</Text>}
+        <Text color={addColor} dimColor={added === 0}>{`+${added}`}</Text>
+        <Text> </Text>
+        <Text color={removeColor} dimColor={removed === 0}>{`−${removed}`}</Text>
+      </Text>
+      {shown.map((r, i) => {
+        const bg = tints[r.mark]
+        return (
+          <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
+            {look === 'bar' ? <Text color={color(r.mark)}>{r.mark === ' ' ? '  ' : '▌ '}</Text> : null}
+            <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
+            <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
+            <Text color={bg || look === 'bar' ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
+          </Box>
+        )
+      })}
+      {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
+      {toggle?.element ?? null}
     </Box>
   )
 }
+
+const diffRow = (el: ElementTable, style: Style, cards: RenderElement[], below: boolean): RenderElement => (
+  <el.Box flexDirection="row">
+    <el.Text dimColor>{below ? '     ' : '  ⎿  '}</el.Text>
+    <el.Box flexDirection="column" flexShrink={1} {...(style.diffStyle === 'full' ? { flexGrow: 1 } : { alignItems: 'flex-start' as const })}>{cards}</el.Box>
+  </el.Box>
+)
+
+export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
+  const rows = diffLines(output)
+  return rows === undefined ? undefined : diffRow(el, style, [diffBox(el, style, rows, fold, id, '')], false)
+}
+
+type EditedFile = { path: string; rows: DiffLine[] }
+
+export type BashEdits = { files: EditedFile[]; more: number; shared: boolean }
+
+export const EDIT_NOTES = {
+  first: 'every file that changed while this ran, by this command or anything else: a view of the changes, not an audit of the command',
+  shared: 'another command ran in this repository at the same time, so changes by either may show under either one',
+  tree: 'a git step in this command can move the working tree, so these may be its changes rather than edits',
+} as const
+
+export const bashEdits = (output: unknown): BashEdits | undefined => {
+  if (output === null || typeof output !== 'object') return undefined
+  const diff = (output as { bashEditDiff?: unknown }).bashEditDiff
+  if (diff === null || typeof diff !== 'object') return undefined
+  const { files, moreFiles, shared } = diff as { files?: unknown; moreFiles?: unknown; shared?: unknown }
+  if (!Array.isArray(files) || files.length === 0) return undefined
+  const edited: EditedFile[] = []
+  for (const file of files as ({ filePath?: unknown; hunks?: unknown } | null)[]) {
+    const rows = diffLines({ structuredPatch: file?.hunks })
+    if (typeof file?.filePath !== 'string' || rows === undefined) return undefined
+    edited.push({ path: file.filePath, rows })
+  }
+  return { files: edited, more: typeof moreFiles === 'number' && moreFiles > 0 ? moreFiles : 0, shared: shared === true }
+}
+
+export const withoutBashEdits = (output: unknown): unknown => {
+  if (output === null || typeof output !== 'object') return output
+  const { bashEditDiff: _, ...rest } = output as Record<string, unknown>
+  return rest
+}
+
+export const hasShellOutput = (output: unknown): boolean => {
+  const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
+  return lines(out.stdout).length + lines(out.stderr).length > 0
+}
+
+export const renderBashEdits = (el: ElementTable, style: Style, edits: BashEdits, fold: Fold, id: string, below = false, notes: readonly string[] = []): RenderElement => {
+  const cards = edits.files.map((file, i) => diffBox(el, style, file.rows, fold, `${id}:${i}`, String(i), shortPath(style, file.path)))
+  const more = edits.more ? [<el.Text key="more" dimColor>{`… +${edits.more} more ${edits.more === 1 ? 'file' : 'files'}`}</el.Text>] : []
+  const said = notes.map((note, i) => <el.Text key={`note${i}`} dimColor>{`(${note})`}</el.Text>)
+  return diffRow(el, style, [...cards, ...more, ...said], below)
+}
+
+const TREE_MOVERS = new Set(['checkout', 'switch', 'stash', 'pull', 'merge', 'rebase', 'reset', 'restore', 'clean', 'cherry-pick', 'revert'])
+
+const gitSubcommand = (args: string[]): string | undefined => {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!
+    if (!arg.startsWith('-')) return arg
+    if (arg === '-C' || arg === '-c') i++
+  }
+  return undefined
+}
+
+export const editNotes = (edits: BashEdits, first: boolean, command?: string): string[] => [
+  ...(first ? [EDIT_NOTES.first] : []),
+  ...(edits.shared ? [EDIT_NOTES.shared] : []),
+  ...(command !== undefined && movesTree(command) ? [EDIT_NOTES.tree] : []),
+]
+
+export const movesTree = (command: string): boolean =>
+  parseShell(command).segments.some(({ words }) => {
+    const argv = commandWords(words)
+    const [name, ...rest] = argv[0] === 'sudo' ? argv.slice(1) : argv
+    return name?.split('/').pop() === 'git' && TREE_MOVERS.has(gitSubcommand(rest) ?? '')
+  })
 
 const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s+(\S+\s+\()?\S+:\d+(:\d+)?\)?|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i
 

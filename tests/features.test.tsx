@@ -7,7 +7,8 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
-import { columnWidths, describeShell, diffLines, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths } from '../hooks/render'
+import type { Theme } from '../hooks/theme'
+import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
 const t = PRESETS['catppuccin-mocha']
 const engine = (on: On) =>
@@ -1063,8 +1064,8 @@ for (const toolOutput of ['full', 'quiet'] as const) {
       expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(t.codeFlag)
       expect((await ui.find({ type: 'Text', text: /^const a = 1$/ }))?.props.dimColor).toBe(true)
       const row = (text: RegExp) => ui.find({ type: 'Box', text })
-      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(tint(t.rule, t.number))
-      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(tint(t.rule, t.codeFlag))
+      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.number))
+      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.codeFlag))
       expect((await row(/^4   const a = 1$/))?.props.backgroundColor).toBeUndefined()
       expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
       expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
@@ -1135,6 +1136,259 @@ test('edits keep the engine diff when tool rows are off', { options: { toolRows:
   engine(on)
   const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
   expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+const bashEdit = (stdout = '', more = 0) => ({
+  stdout,
+  stderr: '',
+  interrupted: false,
+  bashEditDiff: {
+    files: [
+      { filePath: '/home/demo/app/src/app.ts', hunks: patch.structuredPatch.map(h => ({ ...h, oldLines: 2, newLines: 3 })) },
+      { filePath: '/home/demo/app/NOTES.md', hunks: [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: 2, lines: ['+one', '+two'] }], created: true },
+    ],
+    moreFiles: more,
+  },
+})
+
+test('shell edits read one diff per file and a count of files not shown', () => {
+  expect(bashEdits(bashEdit('', 3))?.files.map(f => [f.path, f.rows.map(r => `${r.num}${r.mark}${r.text}`)])).toEqual([
+    ['/home/demo/app/src/app.ts', ['4 const a = 1', '5-const b = 2', '5+const b = 3', '6+const c = 4']],
+    ['/home/demo/app/NOTES.md', ['1+one', '2+two']],
+  ])
+  expect(bashEdits(bashEdit('', 3))?.more).toBe(3)
+  expect(bashEdits({ stdout: 'x' })).toBeUndefined()
+  expect(bashEdits({ bashEditDiff: { files: [], moreFiles: 0 } })).toBeUndefined()
+  expect(bashEdits({ bashEditDiff: { files: [{ filePath: '/tmp/a' }], moreFiles: 0 } })).toBeUndefined()
+  expect(bashEdits({ bashEditDiff: { files: [null], moreFiles: 0 } })).toBeUndefined()
+  expect(withoutBashEdits(bashEdit('hi'))).toEqual({ stdout: 'hi', stderr: '', interrupted: false })
+})
+
+for (const toolOutput of ['full', 'quiet'] as const) {
+  test(`shell edits draw the same diff card as the Edit tool, one per file (toolOutput ${toolOutput})`, { options: { toolOutput } }, async ($, on) => {
+    engine(on)
+    mock.env(on, { HOME: '/home/demo' })
+    on('session.root', () => ({ value: '/home/demo/app' }))
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount(editResult(surface, 'Bash', bashEdit('', 2)))
+      expect((await ui.find({ type: 'Text', text: /^src\/app\.ts $/ }))?.props.color).toBe(t.path)
+      expect((await ui.find({ type: 'Text', text: /^NOTES\.md $/ }))?.props.color).toBe(t.path)
+      expect((await ui.find({ type: 'Text', text: /^\+2$/ }))?.props.color).toBe(t.number)
+      expect((await ui.find({ type: 'Text', text: /^−1$/ }))?.props.color).toBe(t.codeFlag)
+      expect((await ui.find({ type: 'Text', text: /^−0$/ }))?.props.dimColor).toBe(true)
+      const row = (text: RegExp) => ui.find({ type: 'Box', text })
+      expect((await row(/^6 \+ const c = 4$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.number))
+      expect((await row(/^5 - const b = 2$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.codeFlag))
+      expect((await row(/^2 \+ two$/))?.props.backgroundColor).toBe(diffTint(t.codeText, t.number))
+      expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(t.codeText)
+      expect((await ui.find({ type: 'Text', text: /^… \+2 more files$/ }))?.props.dimColor).toBe(true)
+      expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+      expect((await ui.findAll({ type: 'Text', text: /^  ⎿  $/ })).length).toBe(1)
+      await ui.unmount()
+    }
+  })
+}
+
+test('a shell edit with output keeps the engine output, without the engine diff, above the cards', async ($, on) => {
+  const seen: unknown[] = []
+  on('ui.render', ($, e) => {
+    seen.push(e.props && 'output' in e.props ? e.props.output : undefined)
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    seen.length = 0
+    const ui = await $.ui.mount(editResult(surface, 'Bash', bashEdit('patched 2 files')))
+    expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
+    expect(seen).toEqual([{ stdout: 'patched 2 files', stderr: '', interrupted: false }])
+    expect(await ui.find({ type: 'Text', text: /^ {5}$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('toolOutput quiet keeps a shell edit diff under the first lines of its output', { options: { toolOutput: 'quiet' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit('patched 2 files')))
+  expect(await ui.find({ type: 'Text', text: /^patched 2 files$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('each shell edit card folds on its own', async ($, on) => {
+  engine(on)
+  const long = Array.from({ length: 25 }, (_, i) => `+line ${i + 1}`)
+  const file = (name: string) => ({ filePath: `/tmp/${name}`, hunks: [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: 25, lines: long }] })
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', { stdout: '', stderr: '', interrupted: false, bashEditDiff: { files: [file('a.txt'), file('b.txt')], moreFiles: 0 } }))
+  expect((await ui.findAll({ type: 'Text', text: /^line 21$/ })).length).toBe(0)
+  await ui.press({ key: 'fold1' })
+  expect((await ui.findAll({ type: 'Text', text: /^line 21$/ })).length).toBe(1)
+  expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('+5 more lines')
+  expect((await ui.find({ key: 'fold1' }))?.props.label).toBe('show less')
+  await ui.unmount()
+})
+
+test('failed shell edits, diffs the card cannot read and tool rows off go to the engine', async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    for (const [output, isErrored] of [[bashEdit(), true], [{ stdout: '', stderr: '', bashEditDiff: { files: [], moreFiles: 0, unavailable: true } }, false], [{ stdout: '', stderr: '', bashEditDiff: { files: [{ filePath: '/tmp/a', hunks: 'x' }], moreFiles: 0 } }, false]] as const) {
+      const ui = await $.ui.mount(editResult(surface, 'Bash', output, isErrored))
+      expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+      await ui.unmount()
+    }
+  }
+})
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
+const lab = (hex: string): [number, number, number] => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)) as [number, number, number]
+  const f = (v: number) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116)
+  const [x, y, z] = [(0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, 0.2126 * r + 0.7152 * g + 0.0722 * b, (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883].map(f) as [number, number, number]
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)]
+}
+
+const deltaE = (p: string, q: string): number => {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const [[l1, a1, b1], [l2, a2, b2]] = [lab(p), lab(q)]
+  const cMean = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2
+  const g = 0.5 * (1 - Math.sqrt(cMean ** 7 / (cMean ** 7 + 25 ** 7)))
+  const [a1p, a2p] = [a1 * (1 + g), a2 * (1 + g)]
+  const [c1, c2] = [Math.hypot(a1p, b1), Math.hypot(a2p, b2)]
+  const [h1, h2] = [((Math.atan2(b1, a1p) * 180) / Math.PI + 360) % 360, ((Math.atan2(b2, a2p) * 180) / Math.PI + 360) % 360]
+  const dh = c1 * c2 === 0 ? 0 : Math.abs(h2 - h1) <= 180 ? h2 - h1 : h2 > h1 ? h2 - h1 - 360 : h2 - h1 + 360
+  const [dL, dC, dH] = [l2 - l1, c2 - c1, 2 * Math.sqrt(c1 * c2) * Math.sin(rad(dh / 2))]
+  const [lMean, cpMean] = [(l1 + l2) / 2, (c1 + c2) / 2]
+  const hMean = c1 * c2 === 0 ? h1 + h2 : Math.abs(h1 - h2) <= 180 ? (h1 + h2) / 2 : h1 + h2 < 360 ? (h1 + h2 + 360) / 2 : (h1 + h2 - 360) / 2
+  const tt = 1 - 0.17 * Math.cos(rad(hMean - 30)) + 0.24 * Math.cos(rad(2 * hMean)) + 0.32 * Math.cos(rad(3 * hMean + 6)) - 0.2 * Math.cos(rad(4 * hMean - 63))
+  const sl = 1 + (0.015 * (lMean - 50) ** 2) / Math.sqrt(20 + (lMean - 50) ** 2)
+  const [sc, sh] = [1 + 0.045 * cpMean, 1 + 0.015 * cpMean * tt]
+  const rt = -2 * Math.sqrt(cpMean ** 7 / (cpMean ** 7 + 25 ** 7)) * Math.sin(rad(60 * Math.exp(-(((hMean - 275) / 25) ** 2))))
+  return Math.sqrt((dL / sl) ** 2 + (dC / sc) ** 2 + (dH / sh) ** 2 + rt * (dC / sc) * (dH / sh))
+}
+
+test('diff tints mix the line color\'s full hue into black on dark themes and white on light ones, keeping code text at 4.5:1', () => {
+  expect(fullHue('#a6e3a1')).toBe('#13ff00')
+  expect(fullHue('#808080')).toBe('#808080')
+  expect(diffTint(t.codeText, t.number)).toBe('#064d00')
+  expect(diffTint(t.codeText, t.number)).toBe(tint('#000000', fullHue(t.number), 0.3))
+  const latte = PRESETS['catppuccin-latte']
+  expect(diffTint(latte.codeText, latte.codeFlag)).toBe('#ffccd7')
+  const solarized = PRESETS['solarized-light']
+  expect([solarized.diffAdded, solarized.diffRemoved].some(c => diffTint(solarized.codeText, c) !== tint('#ffffff', fullHue(c!), 0.2))).toBe(true)
+  expect(diffTint(undefined, t.number)).toBeUndefined()
+  expect(diffTint(t.codeText, 'green')).toBeUndefined()
+})
+
+test('every color preset has its own diff green and red, readable on their tints and told apart by at least ΔE 13', () => {
+  expect(deltaE('#000000', '#000000')).toBe(0)
+  expect(Math.abs(deltaE('#ff0000', '#00ff00') - 86.6)).toBeLessThan(0.1)
+  for (const [name, theme] of Object.entries(PRESETS) as [string, Theme][]) {
+    if (!theme.codeText) continue
+    const [added, removed] = [theme.diffAdded!, theme.diffRemoved!]
+    const [addTint, removeTint] = [diffTint(theme.codeText, added)!, diffTint(theme.codeText, removed)!]
+    expect([name, HEX_COLOR.test(added), HEX_COLOR.test(removed)]).toEqual([name, true, true])
+    expect([name, contrast(theme.codeText, addTint) >= 4.5, contrast(theme.codeText, removeTint) >= 4.5, deltaE(addTint, removeTint) >= 13, deltaE(added, removed) >= 13])
+      .toEqual([name, true, true, true, true])
+  }
+})
+
+test('a diff card draws its counts, marks and tints in the theme\'s diff colors', { options: { theme: 'dracula' } }, async ($, on) => {
+  engine(on)
+  const dracula = PRESETS.dracula
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(editResult(surface, 'Edit', patch))
+    expect((await ui.find({ type: 'Text', text: /^\+2$/ }))?.props.color).toBe(dracula.diffAdded)
+    expect((await ui.find({ type: 'Text', text: /^−1$/ }))?.props.color).toBe(dracula.diffRemoved)
+    expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe(dracula.diffAdded)
+    expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(dracula.diffRemoved)
+    expect((await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor).toBe(diffTint(dracula.codeText, dracula.diffAdded))
+    expect((await ui.find({ type: 'Box', text: /^5 - const b = 2$/ }))?.props.backgroundColor).toBe(diffTint(dracula.codeText, dracula.diffRemoved))
+    await ui.unmount()
+  }
+})
+
+test('diffAddedColor and diffRemovedColor set the diff colors like any other token', { options: { diffAddedColor: '#22c55e', diffRemovedColor: 'red' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
+  expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe('#22c55e')
+  expect((await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor).toBe(diffTint(t.codeText, '#22c55e'))
+  expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe('red')
+  expect((await ui.find({ type: 'Box', text: /^5 - const b = 2$/ }))?.props.backgroundColor).toBeUndefined()
+  await ui.unmount()
+})
+
+for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
+  test(`diffStyle ${diffStyle} draws edit and shell edit diffs its way`, { options: { diffStyle } }, async ($, on) => {
+    engine(on)
+    const tinted = diffStyle === 'card' || diffStyle === 'full'
+    for (const surface of ['terminal', 'desktop'] as const) {
+      for (const [tool, output, changed] of [['Edit', patch, 3], ['Bash', bashEdit(), 5]] as const) {
+        const ui = await $.ui.mount(editResult(surface, tool, output))
+        const boxes = await ui.findAll({ type: 'Box' })
+        const row = (text: RegExp) => ui.find({ type: 'Box', text })
+        expect(boxes.some(b => b.props.borderStyle === 'round')).toBe(diffStyle === 'card')
+        expect(boxes.some(b => b.props.flexGrow === 1)).toBe(diffStyle === 'full')
+        expect(boxes.some(b => b.props.alignItems === 'flex-start')).toBe(diffStyle !== 'full')
+        expect((await row(/^(▌ )?6 \+ const c = 4$/))?.props.backgroundColor).toBe(tinted ? diffTint(t.codeText, t.number) : undefined)
+        expect((await row(/^(▌ )?5 - const b = 2$/))?.props.backgroundColor).toBe(tinted ? diffTint(t.codeText, t.codeFlag) : undefined)
+        expect((await ui.find({ type: 'Text', text: /^const c = 4$/ }))?.props.color).toBe(diffStyle === 'marks' ? t.number : t.codeText)
+        expect((await ui.find({ type: 'Text', text: /^const b = 2$/ }))?.props.color).toBe(diffStyle === 'marks' ? t.codeFlag : t.codeText)
+        expect((await ui.findAll({ type: 'Text', text: /^▌ $/ })).length).toBe(diffStyle === 'bar' ? changed : 0)
+        expect((await ui.find({ type: 'Text', text: /^\+2$/ }))?.props.color).toBe(t.number)
+        expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe(t.codeFlag)
+        await ui.unmount()
+      }
+    }
+  })
+}
+
+test('an unknown diffStyle draws the card', { options: { diffStyle: 'fancy' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(true)
+  await ui.unmount()
+})
+
+test('a git step that can move the working tree is told apart from other git calls', () => {
+  for (const command of ['git checkout main', 'git -C repo switch feature', 'sudo git reset --hard HEAD~1', 'make && git stash pop', 'git -c core.pager=cat pull --rebase', 'FOO=1 git cherry-pick abc123'])
+    expect(movesTree(command)).toBe(true)
+  for (const command of ['git commit -m "checkout later"', 'git log --oneline', "echo 'git checkout main'", 'sed -i s/a/b/ notes.md', 'git diff --stat'])
+    expect(movesTree(command)).toBe(false)
+})
+
+const shellEdit = (id: string, output: unknown) =>
+  ({ plugin: 'prismantis', surface: 'terminal' as const, component: 'ToolResult' as const, props: { tool_use_id: id, tool: 'Bash', output, isErrored: false } })
+const said = (text: string) => ({ type: 'Text' as const, text: `(${text})` })
+
+test('shell edit cards carry the notes Claude Code gives its own diff', async ($, on) => {
+  engine(on)
+  const first = await $.ui.mount(shellEdit('n-1', bashEdit()))
+  expect((await first.find(said(EDIT_NOTES.first)))?.props.dimColor).toBe(true)
+  expect(await first.find(said(EDIT_NOTES.shared))).toBeUndefined()
+  expect(await first.find(said(EDIT_NOTES.tree))).toBeUndefined()
+  await first.unmount()
+  const second = await $.ui.mount(shellEdit('n-2', { ...bashEdit(), bashEditDiff: { ...bashEdit().bashEditDiff, shared: true } }))
+  expect(await second.find(said(EDIT_NOTES.first))).toBeUndefined()
+  expect((await second.find(said(EDIT_NOTES.shared)))?.props.dimColor).toBe(true)
+  await second.unmount()
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: call('Bash', { command: 'git checkout main && sed -i s/b/c/ src/app.ts' }, 'n-3') })
+  const third = await $.ui.mount(shellEdit('n-3', bashEdit()))
+  expect((await third.find(said(EDIT_NOTES.tree)))?.props.dimColor).toBe(true)
+  await third.unmount()
+  await row.unmount()
+  const again = await $.ui.mount(shellEdit('n-1', bashEdit()))
+  expect(await again.find(said(EDIT_NOTES.first))).toBeDefined()
+  await again.unmount()
+})
+
+test('shell edits keep the engine diff when tool rows are off', { options: { toolRows: false } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit()))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeUndefined()
   await ui.unmount()
 })
 

@@ -56,6 +56,10 @@ claude plugin uninstall prismantis@prismantis
 
 For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX math](#latex-math). Until then formulas draw as text.
 
+### Codex
+
+prismantis also runs in Codex, with themes for code, tables and diagrams and the same session note. Install, what works today, and the two Codex issues it waits on for parity: [codex/README.md](codex/README.md).
+
 ## Features
 
 | Feature | What you get |
@@ -190,6 +194,10 @@ When tables, diagrams and figures follow each other, they share a row and wrap o
 - **Whole replies:** replies with more than one block, or any Hebrew or Arabic, end with `⧉ copy reply`, which copies the reply as Claude wrote it. Selecting right-to-left text on screen copies letters in drawn order, not reading order.
 - **No mouse:** `/prismantis copy` copies the last reply, `/prismantis copy code` its last code block.
 
+`copyButtonStyle` picks where the buttons sit. `inline`, the default, is the look above. `hover` hides them until the pointer is on their block: a block's buttons float over its top-right corner, or from its left edge on a block narrower than they are, and the reply's over its bottom-right corner, so they take no line and nothing moves when they show. ctrl+x tab does not reach a hidden button, and the mobile app, which has no pointer, draws them inline.
+
+![copyButtonStyle hover: a table's ⧉ md and ⧉ art buttons floating over the top-right of its border while the pointer is on it](docs/copy/hover.png)
+
 `⧉ html` shows in a local macOS terminal or a Linux graphical session. macOS needs nothing extra. Linux needs [CopyQ](https://copyq.readthedocs.io/en/stable/installation.html) running (see its [Wayland caveats](https://copyq.readthedocs.io/en/stable/known-issues.html#on-linux-some-features-do-not-work-under-wayland)). On Ubuntu:
 
 ```bash
@@ -204,7 +212,7 @@ Clicking works where the terminal passes clicks through, as fullscreen mode does
 
 ![Diff cards: plain Claude Code on the left, prismantis on the right](docs/compare/diff-cards.png)
 
-Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. A status dot shows done, running or failed, and output still draws below.
+Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path. A status dot shows done, running or failed, and output still draws below. Edits and new files draw as a diff card in the theme's colors, and so do files a shell command changed (`sed -i`, a script), one card per file headed by its path. `diffStyle` picks the look: `card` (default) frames the lines in a rounded box, `full` drops the box and tints each changed line across the width, `marks` drops the tint and colors the changed lines themselves, and `bar` puts a colored `▌` before each changed line.
 
 Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm test`, with `· N failed` in the flag color when any call failed. Expand a group (ctrl+o or `--verbose`): shell calls keep their colored command with the output boxed below, and other calls use Claude Code's own rows. ctrl+o on a reply shows the original text.
 
@@ -314,13 +322,14 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `toolStyle` | `chat`, `tree-dim`, `tree-bold`, `classic` | `chat` |
 | `toolOutput` | `full`, `quiet` | `full` |
 | `copyButtons` | `true`, `false` | `true` |
+| `copyButtonStyle` | `inline`, `hover` | `inline` |
 | `diagramHints` | `true`, `false` | `true` |
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
 | `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
-
+| `diffStyle` | `card` (rounded box, tinted lines), `full` (no box, lines tinted across the width), `marks` (no tint, changed lines in the theme's diff colors), `bar` (no tint, a colored `▌` before each changed line) | `card` |
 A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name (`green`, `cyanBright`). Values that don't parse are ignored. Every token has a `<token>Color` option and a row in `/config`:
 
 | Token | Colors |
@@ -339,12 +348,14 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 | `path` | file paths, regexes |
 | `number` | numbers, versions, durations, done dots |
 | `quote` | quote text |
-| `rule` | rules, chart gridlines |
+| `rule` | rules, diff card borders, chart gridlines |
 | `tableHeader` | table header cells |
 | `tableRule` | table rules |
 | `bullet` | list bullets and numbers |
 | `diagram` | diagram lines, `accent` in figures |
 | `diagramText` | diagram labels, LaTeX formulas and figure text |
+| `diffAdded` | added diff lines: their tint, `+` marks and count (the theme's own green) |
+| `diffRemoved` | removed diff lines: their tint, `−` marks and count (the theme's own red) |
 
 ## Troubleshooting
 
