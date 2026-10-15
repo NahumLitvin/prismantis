@@ -804,6 +804,12 @@ test('footnotes number by first reference, collect at the end, and undefined one
 
 const CLICKABLE = '2.1.295'
 const NOTED = 'Fast[^a].\n\n[^a]: Measured twice.'
+const DEMO = { plugin: 'prismantis', component: 'CommandOutput' as const, props: { command: 'prismantis', args: 'demo', text: showcaseText([]), isErrored: false }, viewport: { columns: 120, rows: 40 } }
+type DrawnNode = { hover?: { scope?: string }; children?: unknown[] }
+const hoverScopes = (node: DrawnNode): string[] => [
+  ...(node.hover?.scope ? [node.hover.scope] : []),
+  ...(node.children ?? []).flatMap(child => (child && typeof child === 'object' ? hoverScopes(child as DrawnNode) : [])),
+]
 
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`footnote marks and the notes block draw on ${surface}`, async ($) => {
@@ -811,6 +817,30 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ type: 'Text', text: /^¹$/ })).toBeDefined()
     expect(await ui.find({ text: /^¹ Measured twice\.$/ })).toBeDefined()
     await ui.unmount()
+  })
+
+  test(`two identical replies light only their own footnote marks on ${surface}`, async ($) => {
+    const scopes: string[][] = []
+    for (const requestId of ['m1', 'm2']) {
+      const ui = await $.ui.mount({ ...mount(NOTED), surface, requestId })
+      scopes.push(hoverScopes((await ui.drawn()) as DrawnNode))
+      await ui.unmount()
+    }
+    expect(scopes.map(s => s.length)).toEqual([2, 2])
+    expect(scopes.map(s => new Set(s).size)).toEqual([1, 1])
+    expect(scopes[1]!.some(s => scopes[0]!.includes(s))).toBe(false)
+  })
+
+  test(`/prismantis demo run twice lights only its own footnote marks on ${surface}`, async ($) => {
+    const scopes: string[][] = []
+    for (const requestId of ['c1', 'c2']) {
+      const ui = await $.ui.mount({ ...DEMO, surface, requestId })
+      scopes.push(hoverScopes((await ui.drawn()) as DrawnNode))
+      await ui.unmount()
+    }
+    expect(scopes.map(s => s.length)).toEqual([6, 6])
+    expect(scopes.map(s => new Set(s).size)).toEqual([3, 3])
+    expect(scopes[1]!.some(s => scopes[0]!.includes(s))).toBe(false)
   })
 
   for (const tableStyle of ['box', 'rules'] as const) {
@@ -855,7 +885,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     claudeAt(on, CLICKABLE)
     const toasts = recordToasts(on)
     if (!(await marksClickable($.ui.mount({ ...mount(NOTED), surface })))) return
-    const ui = await $.ui.mount({ plugin: 'prismantis', component: 'CommandOutput' as const, props: { command: 'prismantis', args: 'demo', text: showcaseText([]), isErrored: false }, viewport: { columns: 120, rows: 40 }, surface })
+    const ui = await $.ui.mount({ ...DEMO, surface })
     const marks = await ui.findAll({ type: 'Button', text: /^[¹²³]$/ })
     expect(marks.map(m => m.text)).toEqual(['¹', '²', '³'])
     await ui.press({ key: marks[0]!.key! })

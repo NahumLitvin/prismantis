@@ -187,6 +187,9 @@ const flows = new Map<string, Flow | null>()
 const flowOf = (style: Style, nodes: Inline[], columns: number) =>
   style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape), 2000) : null
 
+const noteHover = (style: Style, note: number | undefined) =>
+  note === undefined || style.noteKey === undefined ? {} : { hover: { scope: `fn:${style.noteKey}:${note}`, inverse: true } }
+
 const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: string): RenderElement[] => {
   const { Text } = el
   const t = style.theme
@@ -214,7 +217,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'dim':
         return <Text key={key} dimColor>{n.text}</Text>
       case 'footnote':
-        return <Text key={key} color={t.accent} {...(n.scope ? { hover: { scope: n.scope, inverse: true } } : {})}>{n.text}</Text>
+        return <Text key={key} color={t.accent} {...noteHover(style, n.note)}>{n.text}</Text>
     }
   })
 }
@@ -224,14 +227,14 @@ const renderFlow = (el: ElementTable, style: Style, lines: Inline[][], key: stri
   return lines.map((line, i) => <Text key={`${key}.${i}`} {...props}>{renderInline(el, style, line, `${key}.${i}`)}</Text>)
 }
 
-type Mark = { start: number; end: number; text: string; scope: string }
+type Mark = { start: number; end: number; text: string; note: number }
 type TextLook = { italic?: boolean; color?: string; bold?: boolean; dimColor?: boolean; strikethrough?: boolean }
 
 const marksIn = (nodes: Inline[], at = 0): Mark[] => {
   const out: Mark[] = []
   for (const n of nodes) {
     const length = inlineText([n]).length
-    if (n.kind === 'footnote' && n.scope) out.push({ start: at, end: at + length, text: n.text, scope: n.scope })
+    if (n.kind === 'footnote' && n.note !== undefined) out.push({ start: at, end: at + length, text: n.text, note: n.note })
     else if ('children' in n) out.push(...marksIn(n.children, at))
     at += length
   }
@@ -240,7 +243,7 @@ const marksIn = (nodes: Inline[], at = 0): Mark[] => {
 
 const pressInline = (el: ElementTable, style: Style, nodes: Inline[], key: string, tip: Tip | undefined, look: TextLook = {}, box: { justifyContent?: 'flex-start' | 'flex-end' | 'center' } = {}): RenderElement | null => {
   const marks = tip ? marksIn(nodes).flatMap(m => {
-    const press = tip(m.scope)
+    const press = tip(m.note)
     return press ? [{ ...m, press }] : []
   }) : []
   if (!marks.length) return null
@@ -257,7 +260,7 @@ const pressInline = (el: ElementTable, style: Style, nodes: Inline[], key: strin
         for (const m of inside) {
           if (m.start > at) parts.push(run(at, m.start))
           parts.push(
-            <Button key={`${key}.n${m.start}`} plain hover={{ scope: m.scope, inverse: true }} onPress={m.press}>
+            <Button key={`${key}.n${m.start}`} plain {...noteHover(style, m.note)} onPress={m.press}>
               <Text color={style.theme.accent} bold={look.bold}>{m.text}</Text>
             </Button>,
           )
@@ -675,14 +678,20 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
 export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string }>
 export type Fold = (id: string, hidden: number, key: string) => { folded: boolean; element: RenderElement } | null
-export type Tip = (scope: string) => (() => void) | undefined
+export type Tip = (note: number) => (() => void) | undefined
+
+export const instanceKey = (id: string): string => {
+  let h = 5381
+  for (let i = 0; i < id.length; i++) h = (h * 33 + id.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
 
 export const noteTip = (blocks: Block[], toast: (text: string) => void): Tip | undefined => {
   const notes = blocks.find(block => block.kind === 'notes')
   if (notes?.kind !== 'notes') return undefined
-  const text = new Map(notes.notes.map(note => [note.scope, `${note.mark} ${inlineText(note.inline)}`]))
-  return scope => {
-    const line = text.get(scope)
+  const text = new Map(notes.notes.map(note => [note.note, `${note.mark} ${inlineText(note.inline)}`]))
+  return note => {
+    const line = text.get(note)
     return line === undefined ? undefined : () => toast(line)
   }
 }
@@ -783,7 +792,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         return (
           <Box key={key} flexDirection="column">
             <Text dimColor>{'─'.repeat(Math.min(columns, 12))}</Text>
-            {block.notes.map((note, i) => <Text key={`${key}.${i}`} dimColor hover={{ scope: note.scope, inverse: true }}>{note.mark} {renderInline(el, style, note.inline, `${key}.${i}`)}</Text>)}
+            {block.notes.map((note, i) => <Text key={`${key}.${i}`} dimColor {...noteHover(style, note.note)}>{note.mark} {renderInline(el, style, note.inline, `${key}.${i}`)}</Text>)}
           </Box>
         )
     }

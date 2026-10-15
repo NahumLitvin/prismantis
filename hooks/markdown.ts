@@ -9,9 +9,9 @@ export type Inline =
   | { kind: 'number'; text: string }
   | { kind: 'path'; text: string }
   | { kind: 'dim'; text: string }
-  | { kind: 'footnote'; text: string; scope?: string }
+  | { kind: 'footnote'; text: string; note?: number }
 
-export type Note = { mark: string; inline: Inline[]; scope: string }
+export type Note = { mark: string; inline: Inline[]; note: number }
 
 export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }
@@ -230,21 +230,14 @@ export const isWebLink = (href: string): boolean => /^(https?:|mailto:)/i.test(h
 
 const markOf = (n: number) => [...String(n)].map(d => SUPERSCRIPT[Number(d)]).join('')
 
-const idOf = (source: string): string => {
-  let h = 5381
-  for (let i = 0; i < source.length; i++) h = (h * 33 + source.charCodeAt(i)) | 0
-  return (h >>> 0).toString(36)
-}
-
-const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight, id: string): Block[] => {
+const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight): Block[] => {
   const order = new Map<string, number>()
   const seen = (nodes: Inline[]): void => nodes.forEach(n => {
     if (n.kind === 'footnote' && defs.has(n.text) && !order.has(n.text)) order.set(n.text, order.size + 1)
     else if ('children' in n) seen(n.children)
   })
-  const scopeOf = (label: string) => `fn:${id}:${order.get(label)}`
   const fix = (nodes: Inline[]): Inline[] => nodes.map(n =>
-    n.kind === 'footnote' ? (order.has(n.text) ? { kind: 'footnote', text: markOf(order.get(n.text)!), scope: scopeOf(n.text) } : { kind: 'text', text: `[^${n.text}]` })
+    n.kind === 'footnote' ? (order.has(n.text) ? { kind: 'footnote', text: markOf(order.get(n.text)!), note: order.get(n.text)! } : { kind: 'text', text: `[^${n.text}]` })
     : 'children' in n ? { ...n, children: fix(n.children) } : n)
   const mapInlines = (b: Block, f: (nodes: Inline[]) => Inline[]): Block =>
     'inline' in b ? { ...b, inline: f(b.inline) }
@@ -255,7 +248,7 @@ const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight, 
   blocks.forEach(b => mapInlines(b, nodes => (seen(nodes), nodes)))
   for (const label of defs.keys()) if (!order.has(label)) order.set(label, order.size + 1)
   const out = blocks.map(b => mapInlines(b, fix))
-  const notes = [...defs].sort(([a], [b]) => order.get(a)! - order.get(b)!).map(([label, text]) => ({ mark: markOf(order.get(label)!), inline: fix(parseInline(text, hl)), scope: scopeOf(label) }))
+  const notes = [...defs].sort(([a], [b]) => order.get(a)! - order.get(b)!).map(([label, text]) => ({ mark: markOf(order.get(label)!), inline: fix(parseInline(text, hl)), note: order.get(label)! }))
   return defs.size ? [...out, { kind: 'notes', notes, raw: '' }] : out
 }
 
@@ -264,7 +257,7 @@ const CONTROL = /\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)?|\u001b\[[0-?]*[ -/
 export const parse = (raw: string, hl: Highlight): Block[] => {
   const source = raw.replace(CONTROL, '')
   const blocks = parseBlocks(source, hl)
-  return source.includes('[^') ? numberNotes(blocks, notesOf(source), hl, idOf(source)) : blocks
+  return source.includes('[^') ? numberNotes(blocks, notesOf(source), hl) : blocks
 }
 
 const notesOf = (source: string, defs = new Map<string, string>(), depth = 0): Map<string, string> => {
