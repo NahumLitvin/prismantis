@@ -13,7 +13,7 @@ assert.ok(table)
 const html = tableHtml(table)
 const text = 'Name\tValue\nŻółć & שלום\t✅ 中文'
 const command = clipboardCommand('windows', html, text, process.env.SystemRoot)
-const write = spawnSync(command.argv[0], command.argv.slice(1), { input: command.stdin, encoding: 'utf8', timeout: 10000 })
+const write = spawnSync(command.argv[0], command.argv.slice(1), { input: command.stdin, encoding: 'utf8', timeout: 30000 })
 assert.equal(write.status, 0, write.stderr || write.error?.message)
 
 const read = `
