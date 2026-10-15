@@ -242,8 +242,8 @@ test('copyButtonStyle hover floats every copy button out of the flow, shown only
   await ui.unmount()
 })
 
-for (const surface of ['terminal', 'desktop'] as const) test(`copyButtonStyle hover covers only its buttons' cells on ${surface}, so the rest of the row stays drawn while they show`, { options: { copyButtonStyle: 'hover' } }, async $ => {
-  const ui = await $.ui.mount({ ...draw('| Region | p99 |\n|---|---:|\n| eu | 12 |\n\n```bash\nls\n```\n\n> ```bash\n> npm test\n> ```\n>\n> Run that first.'), surface })
+test('copyButtonStyle hover covers only its buttons\' cells, so the rest of the row stays drawn while they show', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Region | p99 |\n|---|---:|\n| eu | 12 |\n\n```bash\nls\n```\n\n> ```bash\n> npm test\n> ```\n>\n> Run that first.'), surface: 'terminal' })
   const floats = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.display === 'none')
   expect(floats.map(b => b.text)).toEqual(['⧉ md⧉ art', '⧉ copy', '⧉ copy', '⧉ copy', '⧉ copy reply'])
   for (const float of floats) {

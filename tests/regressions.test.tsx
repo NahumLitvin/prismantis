@@ -1270,6 +1270,67 @@ for (const copyButtonStyle of ['inline', 'hover'] as const) test(`a quote that o
   await ui.unmount()
 })
 
+type FloatNode = { type?: string; props?: Record<string, unknown>; children?: unknown[] }
+const floatKids = (node: FloatNode) => (node.children ?? []).filter((child): child is FloatNode => !!child && typeof child === 'object')
+const floatLabels = (node: FloatNode): string[] => (node.type === 'Button' ? [String(node.props?.label)] : floatKids(node).flatMap(floatLabels))
+const floatRoom = (node: FloatNode, room = 0): { labels: string[]; needs: number; room: number }[] => {
+  if (node.props?.position === 'absolute' && node.props.display === 'none') {
+    const labels = floatLabels(node)
+    return [{ labels, needs: labels.reduce((w, label) => w + (w ? 1 : 0) + width(`[ ${label} ]`), 0), room }]
+  }
+  const here = typeof node.props?.minWidth === 'number' ? node.props.minWidth : room
+  return floatKids(node).flatMap(child => floatRoom(child, here))
+}
+const hoverFloats = async (ui: { findAll: (query: { type: string }) => Promise<{ props: Record<string, unknown>; text?: string }[]> }) =>
+  (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.display === 'none' && b.text !== '⧉ copy reply')
+
+test('copyButtonStyle hover reserves every floating button\'s width on the block it floats over', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount(mount('| a |\n|---|\n| 1 |\n\n```\nx\n```\n\n- y\n\n> z\n\n> [!NOTE]\n> w\n\n> ```\n> q\n> ```\n\n- item\n  ```\n  v\n  ```\n\n```mermaid\nflowchart LR\n  A --> B\n```'))
+  const floats = floatRoom((await ui.drawn()) as FloatNode).filter(f => !f.labels.includes('⧉ copy reply'))
+  expect(floats.length).toBeGreaterThanOrEqual(9)
+  for (const float of floats) expect({ ...float, fits: float.room >= float.needs }).toMatchObject({ fits: true })
+  await ui.unmount()
+})
+
+test('copyButtonStyle hover puts the button of a quote whose nested quote opens with code on its last row, clear of the code\'s own', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount(mount('> > ```bash\n> > ls\n> > ```\n>\n> text'))
+  const floats = await hoverFloats(ui)
+  expect(floats.filter(b => b.props.top === 0).map(b => b.text)).toEqual(['⧉ copy'])
+  expect(floats.filter(b => b.props.bottom === 0).map(b => b.text)).toEqual(['⧉ copy'])
+  await ui.unmount()
+})
+
+test('copyButtonStyle hover gives a quote holding only an empty code block one button, so two never share its single row', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  for (const text of ['> ```\n> ```', '> > ```\n> > ```']) {
+    const ui = await $.ui.mount(mount(text))
+    expect((await hoverFloats(ui)).map(b => b.text)).toEqual(['⧉ copy'])
+    await ui.unmount()
+  }
+})
+
+test('copyButtonStyle hover keeps Hebrew quotes and alerts on the right, as inline does', { options: { copyButtonStyle: 'hover', rtl: 'warp' } }, async $ => {
+  for (const text of ['> שלום עולם', '> [!NOTE]\n> שלום עולם']) {
+    const ui = await $.ui.mount(mount(text))
+    expect((await ui.find({ key: 'c0' }))?.props.alignSelf).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('copyButtonStyle hover anchors the buttons of a right-to-left block at its left, where its lines end', { options: { copyButtonStyle: 'hover', rtl: 'warp' } }, async $ => {
+  const anchors = async (text: string) => {
+    const ui = await $.ui.mount(mount(text))
+    const sides = (await hoverFloats(ui)).map(b => (b.props.left === 0 && b.props.right === undefined ? 'left' : b.props.right === 0 && b.props.left === undefined ? 'right' : 'both'))
+    await ui.unmount()
+    return sides
+  }
+  expect(await anchors('- שלום עולם\n- עוד פריט')).toEqual(['left'])
+  expect(await anchors('> שלום עולם')).toEqual(['left'])
+  expect(await anchors('> [!NOTE]\n> שלום עולם')).toEqual(['left'])
+  expect(await anchors('| שם | ערך |\n|---|---|\n| אחד | שתיים |')).toEqual(['left'])
+  expect(await anchors('- hello שלום\n- world')).toEqual(['right'])
+  expect(await anchors('- hello\n- world')).toEqual(['right'])
+})
+
 for (const surface of ['terminal', 'desktop'] as const) test(`display math inside a quote or a list item draws as text on ${surface}`, async $ => {
   const ui = await $.ui.mount({ ...mount('> $$\n> E = mc^2 \\cdot \\alpha\n> $$\n\n- energy:\n  ```math\n  \\pi r^2\n  ```'), surface })
   expect((await ui.find({ type: 'Text', text: /^E = mc² · α$/ }))?.props).toMatchObject({ italic: true, color: PRESETS['catppuccin-mocha'].emphasis })

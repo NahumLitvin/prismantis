@@ -751,19 +751,26 @@ export const drawMath = (el: ElementTable, style: Style, blocks: Block[], drawn:
   return drawn
 }
 
-const opensWithCopy = (block: Block) => block.kind === 'quote' && (block.blocks[0]?.kind === 'code' || block.blocks[0]?.kind === 'table')
+const opensWithCopy = (block: Block): boolean =>
+  block.kind === 'quote' && (block.blocks[0]?.kind === 'code' || block.blocks[0]?.kind === 'table' || (block.blocks[0] !== undefined && opensWithCopy(block.blocks[0])))
+
+const holdsOnlyEmptyCode = (block: Block): boolean =>
+  block.kind === 'quote' && block.blocks.length === 1 && ((block.blocks[0]!.kind === 'code' && block.blocks[0]!.lines.length === 0) || holdsOnlyEmptyCode(block.blocks[0]!))
 
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold, tip?: Tip): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
   const hover = style.copyButtonStyle === 'hover'
-  const floating = (button: RenderElement | null, low = false) => (button ? <Box position="absolute" {...(low ? { bottom: 0 } : { top: 0 })} right={0} display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
   const reserved = (buttons: (RenderElement | null | undefined)[]): number =>
     buttons.reduce<number>((w, button) => (button?.type === 'Button' ? w + (w ? 1 : 0) + width(`[ ${button.props.label} ]`) : w), 0)
+  const floating = (button: RenderElement | null | undefined, parts: (RenderElement | null | undefined)[], low = false, start = false) => (button ? {
+    minWidth: reserved(parts),
+    element: <Box position="absolute" {...(low ? { bottom: 0 } : { top: 0 })} {...(start ? { left: 0 } : { right: 0 })} display="none" hover={{ display: 'flex' }}>{button}</Box>,
+  } : null)
   const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const buttons = blocks.map((block, b) => {
-    const text = copySource(style, block)
+    const text = hover && holdsOnlyEmptyCode(block) ? undefined : copySource(style, block)
     const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
     const art = drawn.get(b)?.art ?? (block.kind === 'table' ? () => tableArt(block) : undefined)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
@@ -795,12 +802,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const rows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
         const gutter = String(lines.length).length
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
+        const float = hover ? floating(button, [button]) : null
         return (
-          <Box key={key} flexDirection="column" alignSelf="flex-start" {...(hover ? { minWidth: reserved([button]) } : {})}>
+          <Box key={key} flexDirection="column" alignSelf="flex-start" minWidth={float?.minWidth}>
             {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
-              {hover ? floating(button) : button}
+              {float ? float.element : button}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
               {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
@@ -836,10 +844,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const { Box } = el
     const rtl = style.reorder && hasRtl(block.raw)
     if (hover) {
+      const wide = rtl && (block.kind === 'list' || block.kind === 'quote' || block.kind === 'alert' || rtlTables[b])
+      const start = wide && (rtlTables[b] || flowOf(style, leadInline([block]), columns)?.base === 'R')
+      const float = floating(button, second ? [first, second, html] : [first], opensWithCopy(block), start)!
       return (
-        <Box key={`c${b}`} flexDirection="column" minWidth={reserved(second ? [first, second, html] : [first])} {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+        <Box key={`c${b}`} flexDirection="column" minWidth={float.minWidth} {...(wide ? {} : { alignSelf: 'flex-start' as const })}>
           {element}
-          {floating(button, opensWithCopy(block))}
+          {float.element}
         </Box>
       )
     }
