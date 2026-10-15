@@ -3,20 +3,23 @@ import type { ElementTable, RenderElement } from 'claude-code'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { displayText, inlineText } from './markdown'
-import { commentTail, commentVisual, flow, hasRtl, terminalLine } from './rtl'
+import type { Flow } from './rtl'
+import { commentTail, commentVisual, containsRtl, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
 
-const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]|\p{Extended_Pictographic}/u
-const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter() : undefined
+const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}\u20E3]|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u
+const segmenter = new Intl.Segmenter()
 
-export const graphemes = (s: string): string[] => (segmenter ? [...segmenter.segment(s)].map(g => g.segment) : [...s])
+export const graphemes = (s: string): string[] => [...segmenter.segment(s)].map(g => g.segment)
 
 export const cells = (s: string): string[] => (/^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap(g => (WIDE.test(g) ? [g, ''] : [g])))
 
 export const width = (s: string): number =>
-  /^[ -~]*$/.test(s) ? s.length : graphemes(s).reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
+  /^[ -~]*$/.test(s) ? s.length
+  : s.length === 1 ? (/\p{M}/u.test(s) ? 0 : WIDE.test(s) ? 2 : 1)
+  : graphemes(s).reduce((w, g) => (/^\p{M}+$/u.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
 
 const wrapRanges = (text: string, w: number): [number, number][] => {
   if (width(text) <= w) return [[0, text.length]]
@@ -27,20 +30,23 @@ const wrapRanges = (text: string, w: number): [number, number][] => {
     let start = word.index
     const end = start + word[0].length
     let size = width(word[0])
-    while (size > w) {
+    if (size > w) {
       if (line) out.push(line)
       line = undefined
       let cut = start
       let taken = 0
       for (const g of graphemes(text.slice(start, end))) {
         const step = width(g)
-        if (cut > start && taken + step > w) break
+        if (cut > start && taken + step > w) {
+          out.push([start, cut])
+          start = cut
+          size -= taken
+          taken = 0
+          if (size <= w) break
+        }
         cut += g.length
         taken += step
       }
-      out.push([start, cut])
-      start = cut
-      size -= taken
     }
     if (start === end) continue
     const joined = line ? used + width(text.slice(line[1], start)) + size : Infinity
@@ -74,6 +80,66 @@ const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
 
 const hasLink = (nodes: Inline[]): boolean => nodes.some(n => n.kind === 'link' || ('children' in n && hasLink(n.children)))
 
+const headerRuns = (nodes: Inline[]): Inline[] =>
+  nodes.flatMap(n => (n.kind === 'footnote' ? [n] : 'children' in n ? headerRuns(n.children) : [{ kind: 'text' as const, text: n.text }]))
+    .reduce<Inline[]>((out, n) => {
+      const last = out[out.length - 1]
+      return n.kind === 'text' && last?.kind === 'text' ? [...out.slice(0, -1), { kind: 'text', text: last.text + n.text }] : [...out, n]
+    }, [])
+
+const HTTP_LINKS_FROM = [2, 1, 289]
+const EDITOR_LINKS_FROM = [2, 1, 294]
+
+const releaseFrom = (from: readonly number[]) => (base?: string): boolean => {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(base ?? '')
+  if (!m) return false
+  const version = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const at = version.findIndex((n, i) => n !== from[i])
+  return at === -1 || version[at]! > from[at]!
+}
+
+export const takesHttpLinks = releaseFrom(HTTP_LINKS_FROM)
+
+export const takesEditorLinks = releaseFrom(EDITOR_LINKS_FROM)
+
+const isHyperlink = (href: string, http: boolean, editor: boolean): boolean =>
+  (http ? /^https?:/i : /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i).test(href) || (editor && /^vscode(-insiders)?:\/\/file\//i.test(href))
+
+const plainLink = (text: string, href: string): string => {
+  const target = href.replace(/^mailto:/i, '')
+  return text === target || `http://${text}` === target ? target : `${text} (${target})`
+}
+
+const unlink = (nodes: Inline[], http: boolean, editor: boolean): Inline[] =>
+  nodes.map(n => (n.kind === 'link' && !isHyperlink(n.href, http, editor) ? { kind: 'text', text: plainLink(n.text, n.href) } : 'children' in n ? { ...n, children: unlink(n.children, http, editor) } : n))
+
+const unlinkBlock = (block: Block, http: boolean, editor: boolean): Block => {
+  const plain = (nodes: Inline[]) => unlink(nodes, http, editor)
+  switch (block.kind) {
+    case 'heading':
+    case 'paragraph':
+    case 'quote':
+    case 'alert':
+      return { ...block, inline: plain(block.inline) }
+    case 'list':
+      return { ...block, items: block.items.map(item => ({ ...item, inline: plain(item.inline) })) }
+    case 'table':
+      return { ...block, header: block.header.map(plain), rows: block.rows.map(r => r.map(plain)) }
+    case 'notes':
+      return { ...block, notes: block.notes.map(note => ({ ...note, inline: plain(note.inline) })) }
+    default:
+      return block
+  }
+}
+
+const unlinked = new WeakMap<Block, Block[]>()
+
+const drawable = (block: Block, http: boolean, editor: boolean): Block => {
+  const cached = unlinked.get(block) ?? []
+  unlinked.set(block, cached)
+  return (cached[+http + 2 * +editor] ??= unlinkBlock(block, http, editor))
+}
+
 const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
 
 const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
@@ -81,7 +147,9 @@ const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   return width(text) <= w ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
 }
 
-const flowOf = (style: Style, nodes: Inline[], columns: number) => (style.reorder ? flow(nodes, columns, width, style.shape) : null)
+const flows = new Map<string, Flow | null>()
+const flowOf = (style: Style, nodes: Inline[], columns: number) =>
+  style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape), 2000) : null
 
 const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: string): RenderElement[] => {
   const { Text } = el
@@ -102,9 +170,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
-        return /^(https:|http:\/\/localhost\b)/i.test(n.href)
-          ? n.text === n.href ? <el.Link key={key} href={n.href} /> : <el.Link key={key} href={n.href}><Text color={t.link} underline>{n.text}</Text></el.Link>
-          : <Text key={key} color={t.link} underline>{n.text}</Text>
+        return n.text === n.href ? <Text key={key} color={t.link}><el.Link href={n.href} /></Text> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
       case 'path':
@@ -259,16 +325,18 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
 
 const ART_WIDTH = 100
 
+const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
+  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
+  const column = (measure: (s: string) => number) => block.header.map((_, c) => Math.max(...cells.map(r => measure(r[c]!))))
+  return { natural: column(width), words: column(longestWord) }
+}
+
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
-  const widths = columnWidths(
-    block.header.map((_, c) => Math.max(...cells.map(r => width(r[c]!)))),
-    ART_WIDTH - 4,
-    3,
-    block.header.map((_, c) => Math.max(...cells.map(r => longestWord(r[c]!)))),
-  )
+  const { natural, words } = tableSize(block)
+  const widths = columnWidths(natural, ART_WIDTH - 4, 3, words)
   const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
-    const room = widths[c]! - width(text)
+    const room = Math.max(0, widths[c]! - width(text))
     const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
     return ' '.repeat(left) + text + ' '.repeat(room - left)
   }
@@ -287,12 +355,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const t = style.theme
   const box = style.tableStyle === 'box'
   const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
-  const natural = block.header.map((h, c) =>
-    Math.max(width(displayText(h)), ...block.rows.map(r => width(displayText(r[c] ?? [])))),
-  )
-  const words = block.header.map((h, c) =>
-    Math.max(longestWord(displayText(h)), ...block.rows.map(r => longestWord(displayText(r[c] ?? [])))),
-  )
+  const { natural, words } = tableSize(block)
   const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
   const order = natural.map((_, c) => c)
   if (rtl) order.reverse()
@@ -346,10 +409,11 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
         const cell = flowOf(style, cells[c] ?? [], Infinity)
         const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
+        const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
           <Box key={`${k}.${c}`} width={w} flexShrink={0} justifyContent={side}>
             {isHeader
-              ? <Text bold color={t.tableHeader}>{inlineText(content)}</Text>
+              ? <Text bold color={t.tableHeader}>{runs.some(n => n.kind === 'footnote') ? renderInline(el, style, runs, `${k}.${c}`) : inlineText(runs)}</Text>
               : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>}
           </Box>
         )
@@ -364,7 +428,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     const wrapped = widths.map((w, c) => {
       const content = cells[c] ?? []
       if (natural[c]! <= w) return [content]
-      return wrapInline(isHeader ? [{ kind: 'text', text: inlineText(content) }] : content, w)
+      return wrapInline(isHeader ? headerRuns(content) : content, w)
     })
     return Array.from({ length: Math.max(...wrapped.map(l => l.length)) }, (_, i) =>
       row(wrapped.map(l => l[i] ?? []), `${k}.${i}`, isHeader))
@@ -527,7 +591,10 @@ const FOLD_SHOW = 20
 
 const codeId = (lines: string[]): string => {
   let h = 5381
-  for (const line of lines) for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+  for (const line of lines) {
+    for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
+    h = (h * 33 + 10) | 0
+  }
   return `${lines.length}:${(h >>> 0).toString(36)}`
 }
 
@@ -537,8 +604,13 @@ const copySource = (block: Block): string | undefined =>
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
-  const rtlTables = blocks.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
-  const rendered = blocks.map((block, b) => {
+  const hover = style.copyButtonStyle === 'hover'
+  const floating = (button: RenderElement | null) => (button ? <Box position="absolute" top={0} left={0} minWidth="100%" justifyContent="flex-end" display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
+  const reserved = (buttons: (RenderElement | null | undefined)[]): number =>
+    buttons.reduce<number>((w, button) => (button?.type === 'Button' ? w + (w ? 1 : 0) + width(`[ ${button.props.label} ]`) : w), 0)
+  const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
+  const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
+  const rendered = shown.map((block, b) => {
     const key = `b${b}`
     switch (block.kind) {
       case 'heading':
@@ -565,7 +637,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
             {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
-              {copy?.(lines.join('\n'), `copy${b}`) ?? null}
+              {hover ? floating(copy?.(lines.join('\n'), `copy${b}`) ?? null) : copy?.(lines.join('\n'), `copy${b}`) ?? null}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
               {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
@@ -588,13 +660,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     }
   })
   const copied = rendered.map((element, b) => {
-    const block = blocks[b]
-    const text = block ? copySource(block) : undefined
-    const isPlainCode = block?.kind === 'code' && !drawn.get(b)?.element
-    const art = drawn.get(b)?.art ?? (block?.kind === 'table' ? () => tableArt(block) : undefined)
-    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block?.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
+    const block = blocks[b]!
+    const text = copySource(block)
+    const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
+    const art = drawn.get(b)?.art ?? (block.kind === 'table' ? () => tableArt(block) : undefined)
+    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
-    const html = first && block?.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
     const button = second ? (
       <el.Box key={`copies${b}`} flexDirection="row" columnGap={1}>
         {first}
@@ -604,14 +676,22 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     ) : first
     if (!button) return element
     const { Box } = el
-    const rtl = style.reorder && block !== undefined && hasRtl(block.raw)
-    return block?.kind === 'quote' || block?.kind === 'alert' ? (
+    const rtl = style.reorder && hasRtl(block.raw)
+    if (hover) {
+      return (
+        <Box key={`c${b}`} flexDirection="column" minWidth={reserved(second ? [first, second, html] : [first])} {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+          {element}
+          {floating(button)}
+        </Box>
+      )
+    }
+    return block.kind === 'quote' || block.kind === 'alert' ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
         {button}
       </Box>
     ) : (
-      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block?.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
+      <Box key={`c${b}`} flexDirection="column" {...(rtl && (block.kind === 'list' || rtlTables[b]) ? {} : { alignSelf: 'flex-start' as const })}>
         <Box justifyContent="flex-end">{button}</Box>
         {element}
       </Box>
@@ -733,10 +813,33 @@ type DiffLine = { mark: '+' | '-' | ' '; num: number; text: string }
 
 const HEX = /^#[0-9a-f]{6}$/i
 
-export const tint = (base: string | undefined, color: string | undefined, share = 0.2): string | undefined => {
+const channels = (hex: string): number[] => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+
+export const tint = (base: string | undefined, color: string | undefined, share: number): string | undefined => {
   if (!base || !color || !HEX.test(base) || !HEX.test(color)) return undefined
-  const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16)
-  return `#${[1, 3, 5].map(i => Math.round(channel(base, i) * (1 - share) + channel(color, i) * share).toString(16).padStart(2, '0')).join('')}`
+  const [b, c] = [channels(base), channels(color)]
+  return `#${b.map((v, i) => Math.round(v * (1 - share) + c[i]! * share).toString(16).padStart(2, '0')).join('')}`
+}
+
+const luminance = (hex: string): number => {
+  const [r, g, b] = channels(hex).map(v => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
+}
+
+export const contrast = (a: string, b: string): number => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi! + 0.05) / (lo! + 0.05)
+}
+
+const TEXT_CONTRAST = 4.5
+
+export const diffTint = (text: string | undefined, color: string | undefined): string | undefined => {
+  if (!text || !color || !HEX.test(text) || !HEX.test(color)) return undefined
+  const dark = contrast(text, '#000000') >= contrast(text, '#ffffff')
+  const base = dark ? '#000000' : '#ffffff'
+  let share = dark ? 0.3 : 0.2
+  while (share > 0.05 && contrast(text, tint(base, color, share)!) < TEXT_CONTRAST) share -= 0.01
+  return tint(base, color, share)
 }
 
 export const diffLines = (output: unknown): DiffLine[] | undefined => {
@@ -763,43 +866,122 @@ export const diffLines = (output: unknown): DiffLine[] | undefined => {
   return rows
 }
 
-export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
-  const rows = diffLines(output)
-  if (rows === undefined) return undefined
+const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, id: string, key: string, title?: string): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
   const added = rows.filter(r => r.mark === '+').length
   const removed = rows.filter(r => r.mark === '-').length
-  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, 'fold') : null
+  const toggle = rows.length > DIFF_LINES ? fold?.(id, rows.length - DIFF_LINES, `fold${key}`) : null
   const shown = rows.slice(0, toggle?.folded === false ? DIFF_MAX : DIFF_LINES)
   const gutter = String(Math.max(0, ...shown.map(r => r.num))).length
   const color = (mark: DiffLine['mark']) => (mark === '+' ? t.number : mark === '-' ? t.codeFlag : undefined)
-  const tints = { '+': tint(t.rule, t.number), '-': tint(t.rule, t.codeFlag), ' ': undefined }
+  const look = style.diffStyle
+  const tinted = look === 'card' || look === 'full'
+  const tints = { '+': tinted ? diffTint(t.codeText, t.number) : undefined, '-': tinted ? diffTint(t.codeText, t.codeFlag) : undefined, ' ': undefined }
+  const frame = look === 'card' ? { borderStyle: 'round', borderColor: t.rule, paddingX: 1 } : {}
   return (
-    <Box flexDirection="row">
-      <Text dimColor>{'  ⎿  '}</Text>
-      <Box flexDirection="column" borderStyle="round" borderColor={t.rule} paddingX={1} flexShrink={1}>
-        <Text>
-          <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
-          <Text> </Text>
-          <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
-        </Text>
-        {shown.map((r, i) => {
-          const bg = tints[r.mark]
-          return (
-            <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
-              <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
-              <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
-              <Text color={bg ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
-            </Box>
-          )
-        })}
-        {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
-        {toggle?.element ?? null}
-      </Box>
+    <Box key={`card${key}`} flexDirection="column" flexShrink={1} {...frame}>
+      <Text>
+        {title === undefined ? null : <Text color={t.path}>{`${title} `}</Text>}
+        <Text color={t.number} dimColor={added === 0}>{`+${added}`}</Text>
+        <Text> </Text>
+        <Text color={t.codeFlag} dimColor={removed === 0}>{`−${removed}`}</Text>
+      </Text>
+      {shown.map((r, i) => {
+        const bg = tints[r.mark]
+        return (
+          <Box key={`d${i}`} flexDirection="row" {...(bg ? { backgroundColor: bg } : {})}>
+            {look === 'bar' ? <Text color={color(r.mark)}>{r.mark === ' ' ? '  ' : '▌ '}</Text> : null}
+            <Text dimColor>{`${String(r.num).padStart(gutter)} `}</Text>
+            <Text color={color(r.mark)} dimColor={r.mark === ' '}>{`${r.mark} `}</Text>
+            <Text color={bg || look === 'bar' ? t.codeText : color(r.mark)} dimColor={r.mark === ' '}>{r.text === '' ? ' ' : r.text}</Text>
+          </Box>
+        )
+      })}
+      {rows.length > shown.length && toggle?.folded !== true ? <Text dimColor>{`… +${rows.length - shown.length} lines`}</Text> : null}
+      {toggle?.element ?? null}
     </Box>
   )
 }
+
+const diffRow = (el: ElementTable, style: Style, cards: RenderElement[], below: boolean): RenderElement => (
+  <el.Box flexDirection="row">
+    <el.Text dimColor>{below ? '     ' : '  ⎿  '}</el.Text>
+    <el.Box flexDirection="column" flexShrink={1} {...(style.diffStyle === 'full' ? { flexGrow: 1 } : { alignItems: 'flex-start' as const })}>{cards}</el.Box>
+  </el.Box>
+)
+
+export const renderDiffCard = (el: ElementTable, style: Style, output: unknown, fold: Fold, id: string): RenderElement | undefined => {
+  const rows = diffLines(output)
+  return rows === undefined ? undefined : diffRow(el, style, [diffBox(el, style, rows, fold, id, '')], false)
+}
+
+type EditedFile = { path: string; rows: DiffLine[] }
+
+export type BashEdits = { files: EditedFile[]; more: number; shared: boolean }
+
+export const EDIT_NOTES = {
+  first: 'every file that changed while this ran, by this command or anything else: a view of the changes, not an audit of the command',
+  shared: 'another command ran in this repository at the same time, so changes by either may show under either one',
+  tree: 'a git step in this command can move the working tree, so these may be its changes rather than edits',
+} as const
+
+export const bashEdits = (output: unknown): BashEdits | undefined => {
+  if (output === null || typeof output !== 'object') return undefined
+  const diff = (output as { bashEditDiff?: unknown }).bashEditDiff
+  if (diff === null || typeof diff !== 'object') return undefined
+  const { files, moreFiles, shared } = diff as { files?: unknown; moreFiles?: unknown; shared?: unknown }
+  if (!Array.isArray(files) || files.length === 0) return undefined
+  const edited: EditedFile[] = []
+  for (const file of files as ({ filePath?: unknown; hunks?: unknown } | null)[]) {
+    const rows = diffLines({ structuredPatch: file?.hunks })
+    if (typeof file?.filePath !== 'string' || rows === undefined) return undefined
+    edited.push({ path: file.filePath, rows })
+  }
+  return { files: edited, more: typeof moreFiles === 'number' && moreFiles > 0 ? moreFiles : 0, shared: shared === true }
+}
+
+export const withoutBashEdits = (output: unknown): unknown => {
+  if (output === null || typeof output !== 'object') return output
+  const { bashEditDiff: _, ...rest } = output as Record<string, unknown>
+  return rest
+}
+
+export const hasShellOutput = (output: unknown): boolean => {
+  const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
+  return lines(out.stdout).length + lines(out.stderr).length > 0
+}
+
+export const renderBashEdits = (el: ElementTable, style: Style, edits: BashEdits, fold: Fold, id: string, below = false, notes: readonly string[] = []): RenderElement => {
+  const cards = edits.files.map((file, i) => diffBox(el, style, file.rows, fold, `${id}:${i}`, String(i), shortPath(style, file.path)))
+  const more = edits.more ? [<el.Text key="more" dimColor>{`… +${edits.more} more ${edits.more === 1 ? 'file' : 'files'}`}</el.Text>] : []
+  const said = notes.map((note, i) => <el.Text key={`note${i}`} dimColor>{`(${note})`}</el.Text>)
+  return diffRow(el, style, [...cards, ...more, ...said], below)
+}
+
+const TREE_MOVERS = new Set(['checkout', 'switch', 'stash', 'pull', 'merge', 'rebase', 'reset', 'restore', 'clean', 'cherry-pick', 'revert'])
+
+const gitSubcommand = (args: string[]): string | undefined => {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!
+    if (!arg.startsWith('-')) return arg
+    if (arg === '-C' || arg === '-c') i++
+  }
+  return undefined
+}
+
+export const editNotes = (edits: BashEdits, first: boolean, command?: string): string[] => [
+  ...(first ? [EDIT_NOTES.first] : []),
+  ...(edits.shared ? [EDIT_NOTES.shared] : []),
+  ...(command !== undefined && movesTree(command) ? [EDIT_NOTES.tree] : []),
+]
+
+export const movesTree = (command: string): boolean =>
+  parseShell(command).segments.some(({ words }) => {
+    const argv = commandWords(words)
+    const [name, ...rest] = argv[0] === 'sudo' ? argv.slice(1) : argv
+    return name?.split('/').pop() === 'git' && TREE_MOVERS.has(gitSubcommand(rest) ?? '')
+  })
 
 const NOISE_LINES = /^((Error:\s*)?Exit code \d+|at\s+(\S+\s+\()?\S+:\d+(:\d+)?\)?|Node\.js v\d.*|exit status \d+|\.\.\. \d+ more)$/i
 
@@ -810,9 +992,7 @@ export const refusalReason = (output: unknown): string | undefined => {
   return output.replace(/\s+/g, ' ').trim()
 }
 
-export const CALLS_REMEMBERED = 2000
-
-export const rememberCall = (calls: Set<string>, id: string, limit = CALLS_REMEMBERED): void => {
+export const rememberCall = (calls: Set<string>, id: string, limit = 2000): void => {
   calls.delete(id)
   calls.add(id)
   if (calls.size > limit) calls.delete(calls.values().next().value!)
@@ -1016,14 +1196,14 @@ const readsOnly = ({ words }: ShellPart): boolean => {
   if (name === undefined) return true
   const args = rest.join(' ')
   if (name === 'gh' && rest[0] === 'api') return ghApiReadsOnly(rest.slice(1))
-  if (name in READ_SUBCOMMANDS) return READ_SUBCOMMANDS[name]!.test(args) && !(name === 'git' && rest.some(a => /^--output\b/.test(a)))
+  if (Object.hasOwn(READ_SUBCOMMANDS, name)) return READ_SUBCOMMANDS[name]!.test(args) && !(name === 'git' && rest.some(a => /^--output\b/.test(a)))
   if (!READ_COMMANDS.has(name)) return false
   if (name === 'sed') {
     const [script, ...files] = rest.filter(a => a !== '-n')
     return script !== undefined && /^\d+(,\d+)?p$/.test(script) && files.every(f => !f.startsWith('-'))
   }
   if (name === 'find') return !rest.some(a => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/.test(a))
-  if (name === 'awk') return !rest.some(a => /^(-f|--file)/.test(a)) && !/system\s*\(|getline|[|>]/.test(args)
+  if (name === 'awk') return !rest.some(a => /^(-f|--file|-i|--include|-E|--exec|-l|--load)/.test(a)) && !/system\s*\(|getline|@(include|load)|[|>]/.test(args)
   if (name === 'sort') return !rest.some(a => /^(-[A-Za-z]*o|--output)/.test(a))
   if (name === 'uniq') return operandsOf(name, rest).length < 2
   if (name === 'tree') return !rest.some(a => /^(-o|--output)/.test(a))
@@ -1044,13 +1224,13 @@ export const isReadOnlyCall = (tool: string, input: unknown): boolean => {
 
 const TRIVIAL_PROGRAMS = new Set(['cd', 'echo', 'export', 'printf', 'pwd', 'set', 'test', 'true'])
 
-export const programsOf = (command: string, limit = 3): string[] => {
+export const programsOf = (command: string): string[] => {
   const names: string[] = []
   for (const part of parseShell(command).segments) {
     const name = commandWords(part.words)[0]?.split('/').pop()
     if (name && !TRIVIAL_PROGRAMS.has(name) && !names.includes(name)) names.push(name)
   }
-  return names.length > limit ? [...names.slice(0, limit), '…'] : names
+  return names.length > 3 ? [...names.slice(0, 3), '…'] : names
 }
 
 export const shortenPaths = (text: string, places: Places): string => {

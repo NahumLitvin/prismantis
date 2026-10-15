@@ -5,8 +5,9 @@ import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
-import { tableArt, width } from '../hooks/render'
+import { isReadOnlyCall, tableArt, takesEditorLinks, takesHttpLinks, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
+import { claudeAt, linksHttp } from './claude-version'
 import { clipboardEnv, recordCopies } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
@@ -45,6 +46,22 @@ test('a four-backtick fence keeps triple-backtick examples inside one code block
   const [code] = blocks
   if (code?.kind !== 'code') throw new Error('not code')
   expect(code.lines).toEqual(['```bash', 'ls', '```'])
+})
+
+for (const [input, expected] of [
+  ['## Using C#', [{ kind: 'text', text: 'Using C#' }]],
+  ['## Title ##', [{ kind: 'text', text: 'Title' }]],
+  ['[Foo](https://e.org/wiki/Foo_(bar)) ok', [{ kind: 'link', text: 'Foo', href: 'https://e.org/wiki/Foo_(bar)' }, { kind: 'text', text: ' ok' }]],
+  ['see https://e.org/wiki/Foo_(bar) ok', [{ kind: 'text', text: 'see ' }, { kind: 'link', text: 'https://e.org/wiki/Foo_(bar)', href: 'https://e.org/wiki/Foo_(bar)' }, { kind: 'text', text: ' ok' }]],
+  ['see (https://e.org/x) ok', [{ kind: 'text', text: 'see (' }, { kind: 'link', text: 'https://e.org/x', href: 'https://e.org/x' }, { kind: 'text', text: ') ok' }]],
+  ['[`render.tsx`](hooks/render.tsx)', [{ kind: 'link', text: 'render.tsx', href: 'hooks/render.tsx' }]],
+  ['call f(*args, **kwargs) now', [{ kind: 'text', text: 'call f(*args, **kwargs) now' }]],
+  ['**a *b* c**', [{ kind: 'strong', children: [{ kind: 'text', text: 'a ' }, { kind: 'emphasis', children: [{ kind: 'text', text: 'b' }] }, { kind: 'text', text: ' c' }] }]],
+  ['f(_a, _)', [{ kind: 'text', text: 'f(_a, _)' }]],
+  ['f(*args, **kwargs) and **b**', [{ kind: 'text', text: 'f(*args, **kwargs) and ' }, { kind: 'strong', children: [{ kind: 'text', text: 'b' }] }]],
+] as const) test(`inline markdown: ${input}`, async () => {
+  const [block] = parse(input, hl)
+  expect(block && 'inline' in block ? block.inline : block).toEqual(expected)
 })
 
 test('a one-dash delimiter row makes a table', async () => {
@@ -326,14 +343,21 @@ test('the help screen shows every element prismantis draws', async () => {
   for (const lang of ['bash', 'json', 'mermaid', 'math']) expect(langs.includes(lang)).toBe(true)
   const links = blocks.flatMap(b => (b.kind === 'paragraph' ? b.inline.filter(n => n.kind === 'link') : []))
   expect(links.some(l => l.kind === 'link' && l.text !== l.href) && links.some(l => l.kind === 'link' && l.text === l.href)).toBe(true)
+  expect(links.some(l => l.kind === 'link' && l.href.endsWith('Foo_(bar)')) && links.some(l => l.kind === 'link' && l.text === 'render.tsx')).toBe(true)
+  expect(showcaseText([])).toContain('f(*args, **kwargs)')
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(kinds.has('notes')).toBe(true)
+  expect(blocks.some(b => b.kind === 'table' && b.header.some(h => h.some(n => n.kind === 'footnote')))).toBe(true)
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
+  expect(showcaseText([])).toContain('copyButtonStyle')
   expect(showcaseText([])).toContain('+M more lines')
   expect(showcaseText([])).toContain('```figure')
   expect(blocks.some(b => b.kind === 'code' && b.lines.length > 30)).toBe(true)
   expect(showcaseText([])).toContain('diff card headed `+N −M`')
+  expect(showcaseText([])).toContain('Files a shell command changes')
+  expect(showcaseText([])).toContain('Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`')
+  expect(showcaseText([])).not.toContain('diffAddedColor')
 })
 
 test('mermaid boxes stay closed around wide labels', async () => {
@@ -483,13 +507,132 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
   await ui.unmount()
 })
 
-test('only https and localhost links become terminal hyperlinks', async $ => {
+test('only http and https links become terminal hyperlinks', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(mount('[x](http://example.com)'))))) return
   const ui = await $.ui.mount(mount('[docs](https://example.com) [dev](http://localhost:3000) [plain](http://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [disk](file:///etc/passwd)'))
   const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
-  expect(links).toEqual(['https://example.com', 'http://localhost:3000'])
-  expect(await ui.find({ type: 'Text', text: /^run$/ })).toBeDefined()
+  expect(links).toEqual(['https://example.com', 'http://localhost:3000', 'http://example.com'])
+  expect(await ui.find({ type: 'Text', text: /^run \(javascript:alert\(1\)\)$/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a named link drops its own underline so the terminal hyperlink style shows', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('[prismantis on GitHub](https://github.com/NahumLitvin/prismantis)'), surface })
+    const [link] = await ui.findAll({ type: 'Link' })
+    const label = await ui.find({ type: 'Text', text: /^prismantis on GitHub$/ })
+    expect(link?.props.href).toBe('https://github.com/NahumLitvin/prismantis')
+    expect(label?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    expect(label?.props.underline).toBeFalsy()
+    await ui.unmount()
+  }
+})
+
+test('plain http links and bare URLs are hyperlinks drawn in the link color on the terminal', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(mount('[x](http://example.com)'))))) return
+  const ui = await $.ui.mount(mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://example.com', 'http://example.org/raw', 'https://example.com/raw'])
+  for (const text of [/^plain http$/, /^http:\/\/example\.org\/raw$/, /^https:\/\/example\.com\/raw$/]) {
+    const drawnText = await ui.find({ type: 'Text', text })
+    expect(drawnText?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    expect(drawnText?.props.underline).toBeFalsy()
+  }
+  await ui.unmount()
+})
+
+for (const [where, surface, base] of [
+  ['on desktop, which links only https', 'desktop', '2.1.289'],
+  ['on Claude Code 2.1.288, which refuses http hyperlinks', 'terminal', '2.1.288'],
+  ['when the Claude Code version is unknown', 'terminal', undefined],
+] as const) {
+  test(`plain http links draw as plain text ${where}`, async ($, on) => {
+    if (base) claudeAt(on, base)
+    const ui = await $.ui.mount({ ...mount('[plain http](http://example.com) http://example.org/raw https://example.com/raw'), surface })
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['https://example.com/raw'])
+    for (const text of [/^plain http \(http:\/\/example\.com\)$/, /^http:\/\/example\.org\/raw$/]) {
+      const drawnText = await ui.find({ type: 'Text', text })
+      expect(drawnText).toBeDefined()
+      expect(drawnText?.props.color).toBeUndefined()
+    }
+    expect((await ui.find({ type: 'Text', text: /^https:\/\/example\.com\/raw$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].link)
+    await ui.unmount()
+  })
+}
+
+test('http hyperlinks start at Claude Code 2.1.289', () => {
+  for (const base of ['2.1.289', '2.1.289-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesHttpLinks(base)).toBe(true)
+  for (const base of ['2.1.288', '2.1.287', '2.0.999', '1.9.400', 'dev', '', undefined]) expect(takesHttpLinks(base)).toBe(false)
+})
+
+const EDITOR_LINKS = '[note](vscode://file/C:/src/notes.md:12) [insiders](vscode-insiders://file/home/me/app.ts) [clone](vscode://vscode.git/clone?url=https://example.com/x.git)'
+
+test('VS Code file links become terminal hyperlinks from Claude Code 2.1.294', async ($, on) => {
+  claudeAt(on, '2.1.294')
+  if (!(await linksHttp($.ui.mount(mount('[x](vscode://file/C:/x.md)'))))) return
+  const ui = await $.ui.mount(mount(EDITOR_LINKS))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['vscode://file/C:/src/notes.md:12', 'vscode-insiders://file/home/me/app.ts'])
+  expect(await ui.find({ type: 'Text', text: /^clone \(vscode:\/\/vscode\.git\/clone\?url=https:\/\/example\.com\/x\.git\)$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+for (const [where, surface, base] of [
+  ['on desktop, which links only https', 'desktop', '2.1.294'],
+  ['on Claude Code 2.1.293', 'terminal', '2.1.293'],
+  ['when the Claude Code version is unknown', 'terminal', undefined],
+] as const) {
+  test(`VS Code file links draw as plain text ${where}`, async ($, on) => {
+    if (base) claudeAt(on, base)
+    const ui = await $.ui.mount({ ...mount(EDITOR_LINKS), surface })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    expect(await ui.find({ type: 'Text', text: /^note \(vscode:\/\/file\/C:\/src\/notes\.md:12\)$/ })).toBeDefined()
+    await ui.unmount()
+  })
+}
+
+test('VS Code file hyperlinks start at Claude Code 2.1.294', () => {
+  for (const base of ['2.1.294', '2.1.294-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesEditorLinks(base)).toBe(true)
+  for (const base of ['2.1.293', '2.1.289', '2.1.287', '2.0.999', 'dev', '', undefined]) expect(takesEditorLinks(base)).toBe(false)
+})
+
+test('links that cannot be clicked draw as plain text with their target, as Claude Code draws them', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...mount('[mail](mailto:someone@example.com) [someone@example.com](mailto:someone@example.com) [disk](file:///etc/passwd)'), surface })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    for (const text of ['mail (someone@example.com)', 'someone@example.com', 'disk (file:///etc/passwd)']) {
+      const drawnText = await ui.find({ type: 'Text', text: new RegExp(`^${text.replace(/[.()]/g, '\\$&')}$`) })
+      expect(drawnText).toBeDefined()
+      expect(drawnText?.props.color).toBeUndefined()
+      expect(drawnText?.props.underline).toBeFalsy()
+    }
+    await ui.unmount()
+  }
+})
+
+test('copying a table keeps its links as written', async ($, on) => {
+  const copied = stubClipboard(on)
+  const source = '| who | site |\n|---|---|\n| [mail](mailto:someone@example.com) | [docs](https://example.com) |'
+  const ui = await $.ui.mount(mount(source))
+  const button = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ md')
+  await ui.press({ key: button!.key! })
+  expect(copied).toEqual([source])
+  await ui.unmount()
+})
+
+for (const tableStyle of ['box', 'rules'] as const) {
+  test(`a ${tableStyle} table cell link that cannot be clicked draws as plain text and its column fits it`, { options: { tableStyle } }, async $ => {
+    const ui = await $.ui.mount(mount('| who | n |\n|---|---|\n| [mail](mailto:someone@example.com) | 1 |'))
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    const cell = await ui.find({ type: 'Text', text: /^mail \(someone@example\.com\)$/ })
+    expect(cell).toBeDefined()
+    expect(cell?.props.color).toBeUndefined()
+    expect(cell?.props.underline).toBeFalsy()
+    const widths = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).map(b => b.props.width as number)
+    expect(Math.max(...widths) >= 'mail (someone@example.com)'.length).toBe(true)
+    await ui.unmount()
+  })
+}
 
 test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
@@ -552,6 +695,98 @@ test('chart y-axis ticks sit an even number of rows apart', async () => {
   }
 })
 
+const barColumns = (axis: string) => [...axis.matchAll(/┬|▀+/g)].map(m => m.index + Math.floor(m[0].length / 2))
+const block = (ch = '') => /[█▀▄]/.test(ch)
+
+for (const [values, axisRange] of [[[400, 1200, 1900, 2500, 800], '0 --> 2500'], [[12, 10, 8], '0 --> 14']] as const) {
+  test(`a bar stands on the axis line, reaches the gridlines at or below its value and stops on its own, with its value centered on top: ${values.join(', ')}`, () => {
+    for (const title of ['\n  title "Sizes"', ''])
+    for (const columns of [60, 120, 200]) {
+      const chart = `xychart-beta${title}\n  x-axis [${values.map((_, i) => `b${i + 1}`).join(', ')}]\n  y-axis ${axisRange}\n  bar [${values.join(', ')}]`
+      const lines = mermaidText(chart, false, columns)!.split('\n')
+      const axis = lines.find(l => /^\s*0┼─/.test(l)) ?? ''
+      const bars = barColumns(axis)
+      expect(bars.length).toBe(values.length)
+      bars.forEach(c => expect(axis[c]).toBe('▀'))
+      for (const line of lines) {
+        const tick = line.match(/^\s*(\d+)┤/)?.[1]
+        if (tick === undefined) continue
+        bars.forEach((c, i) => {
+          expect(block(line[c])).toBe(Number(tick) <= values[i]!)
+          if (Number(tick) === values[i]) expect(line[c]).toBe('▄')
+        })
+      }
+      bars.forEach((c, i) => {
+        const label = String(values[i])
+        const top = lines.findIndex(l => block(l[c]))
+        const bar = lines[top]!
+        let [left, right] = [c, c]
+        while (block(bar[left - 1])) left--
+        while (block(bar[right + 1])) right++
+        const from = lines[top - 1]!.indexOf(label, left - label.length)
+        expect(from).toBeGreaterThan(-1)
+        expect([0, 1]).toContain(from - left - (right - (from + label.length - 1)))
+      })
+    }
+  })
+}
+
+for (const values of [[-5, 3, 8, -2, 0], [-6, 6, -2, 2], [-5, -3, -8]]) {
+  test(`bars with negatives grow both ways from a solid 0 line, stop on their own gridline and keep their value at their end: ${values.join(', ')}`, () => {
+    const chart = `xychart-beta\n  x-axis [${values.map((_, i) => `b${i + 1}`).join(', ')}]\n  bar [${values.join(', ')}]`
+    for (const columns of [60, 120, 200]) {
+      const lines = mermaidText(chart, false, columns)!.split('\n')
+      const ticks = lines.flatMap((l, r) => {
+        const tick = l.match(/^\s*(-?[\d.]+)[┤┼]/)?.[1]
+        return tick === undefined ? [] : [{ r, tick: Number(tick) }]
+      })
+      const axis = ticks.at(-1)!.r
+      const bars = barColumns(lines[axis]!)
+      expect(bars.length).toBe(values.length)
+      const [hi, lo] = [ticks[0]!.tick, ticks.at(-1)!.tick]
+      const base = Math.min(Math.max(0, lo), hi)
+      const baseRow = ticks.find(t => t.tick === base)!.r
+      expect(lines[baseRow]).toMatch(/^\s*-?[\d.]+┼[─▀▄]+$/)
+      bars.forEach((c, i) => expect(lines[baseRow]![c]).toBe(values[i] === base ? '─' : values[i]! > base ? '▀' : '▄'))
+      for (const { r, tick } of ticks.filter(t => t.r !== axis && t.r !== baseRow)) {
+        bars.forEach((c, i) => {
+          expect(block(lines[r]![c])).toBe((base < tick && tick <= values[i]!) || (values[i]! <= tick && tick < base))
+          if (tick === values[i]) expect(lines[r]![c]).toBe(tick > base ? '▄' : '▀')
+        })
+      }
+      bars.forEach((c, i) => {
+        const label = String(values[i])
+        const filled = lines.flatMap((l, r) => (block(l[c]) ? [r] : []))
+        const row = values[i]! < 0 ? (filled.at(-1) ?? baseRow) + 1 : (filled[0] ?? baseRow) - 1
+        if (row < axis) expect(lines[row]!.slice(c - label.length, c + label.length)).toContain(label)
+      })
+    }
+  })
+}
+
+test('a line at 0 runs along the axis line', () => {
+  for (const columns of [60, 120, 200]) {
+    const lines = mermaidText('xychart-beta\n  x-axis [a, b, c]\n  y-axis 0 --> 100\n  line [0, 60, 100]', false, columns)!.split('\n')
+    const axis = lines.findIndex(l => /^\s*0┼/.test(l))
+    expect(lines[axis]).toMatch(/^\s*0┼─+╯/)
+    expect(lines[axis - 1]).not.toMatch(/─/)
+  }
+})
+
+test('a line over a bar chart passes behind the bars and leaves their heights alone', () => {
+  const bars = 'xychart-beta\n  x-axis [a, b, c, d]\n  y-axis 0 --> 100\n  bar [20, 50, 80, 40]'
+  for (const ascii of [false, true])
+  for (const columns of [60, 120, 200]) {
+    const cells = (chart: string) => {
+      const lines = mermaidText(chart, ascii, columns)!.split('\n')
+      const top = lines.findIndex(l => /^\s*\d+[┤+]/.test(l))
+      const axis = lines.findIndex(l => /^\s*0[┼+]/.test(l))
+      return lines.slice(top, axis + 1).flatMap((l, r) => [...l].flatMap((ch, c) => (/[█▀▄#]/.test(ch) ? [`${axis - top - r}:${c}`] : [])))
+    }
+    for (const line of ['line [20, 50, 80, 40]', 'line [0, 50, 100, 25]']) expect(cells(`${bars}\n  ${line}`)).toEqual(cells(bars))
+  }
+})
+
 test('footnotes number by first reference, collect at the end, and undefined ones stay literal', () => {
   const blocks = parse('Two[^b] and one[^a] and ghost[^x].\n\n[^a]: first\n    more\n[^b]: second\n\n```\n[^c]: not a note\n```', hl)
   const [para, code, notes] = blocks
@@ -569,37 +804,47 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ type: 'Text', text: /¹ Measured twice\./ })).toBeDefined()
     await ui.unmount()
   })
+
+  for (const tableStyle of ['box', 'rules'] as const) {
+    test(`footnote marks in table cells draw in the paragraph mark color on ${surface}, ${tableStyle}`, { options: { tableStyle } }, async ($) => {
+      const accent = PRESETS['catppuccin-mocha'].accent
+      const ui = await $.ui.mount({ ...mount('Fast[^a].\n\n| Metric[^b] | **Value**[^c] | A long header that has to wrap[^a] |\n|---|---|---|\n| p99[^a] | 40ms[^b] | x |\n\n[^a]: A.\n[^b]: B.\n[^c]: C.', 40), surface })
+      const marks = await ui.findAll({ type: 'Text', text: /^[¹²³]$/ })
+      expect(new Set(marks.map(m => m.text))).toEqual(new Set(['¹', '²', '³']))
+      expect(marks.filter(m => m.props.color !== accent).map(m => m.text)).toEqual([])
+      expect(marks.length).toBe(6)
+      expect((await ui.find({ type: 'Text', text: /^Metric²$/ }))?.props).toMatchObject({ bold: true, color: PRESETS['catppuccin-mocha'].tableHeader })
+      await ui.unmount()
+    })
+  }
 }
 
-const heights = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }, kind: 'bar' | 'line') => {
-  const byTick = new Map<string, string>()
-  let axis = ''
-  for (const { text } of await ui.findAll({ type: 'Text' })) {
-    const at = text.search(/[┤┼]/)
-    const tick = text.match(/^\s*(\d+)[┤┼]/)?.[1]
-    if (at < 0) continue
-    const line = text.slice(at)
-    if (tick !== undefined) {
-      if (line.length > (byTick.get(tick)?.length ?? 0)) byTick.set(tick, line)
-    } else if (/^\s*┼─/.test(text) && line.length > axis.length) axis = line
-  }
-  const rows = [...byTick.values()]
-  const columns = kind === 'bar'
-    ? [...new Set(rows.flatMap(r => [...r].flatMap((ch, c) => (ch === '█' && r[c - 1] !== '█' ? [c] : []))))].sort((a, b) => a - b)
-    : [...axis].flatMap((ch, c) => (ch === '┬' ? [c] : []))
-  return columns.map(c => (kind === 'bar' ? rows.filter(r => r[c] === '█').length - 1 : rows.length - 1 - rows.findIndex(r => /[╭╮╯╰│─]/.test(r[c] ?? ''))))
+const chartRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }) => {
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  const axis = texts.find(t => /^\s*0┼─/.test(t)) ?? ''
+  const gutter = axis.indexOf('┼')
+  const rows = texts.filter(t => t.length > gutter + 1 && /[┤│┼]/.test(t[gutter] ?? '') && /^[\s\d.]*$/.test(t.slice(0, gutter)))
+  return { rows, columns: barColumns(axis) }
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
   for (const kind of ['bar', 'line'] as const) {
-    for (const values of [[3, 7, 5], [2, 3, 4, 16]]) {
+    for (const values of [[3, 7, 5], [2, 3, 4, 16], [400, 1200, 1900, 2500, 800]]) {
       test(`${kind} chart heights follow their values on ${surface}: ${values.join(', ')}`, async $ => {
         const labels = values.map((_, i) => `L${i + 1}`).join(', ')
         const ui = await $.ui.mount({ ...mount(`\`\`\`mermaid\nxychart-beta\n  x-axis [${labels}]\n  y-axis 0 --> ${Math.max(...values) + 2}\n  ${kind} [${values.join(', ')}]\n\`\`\``), surface })
-        const got = await heights(ui, kind)
-        const tallest = Math.max(...got)
-        expect(got.length).toBe(values.length)
-        values.forEach((v, i) => expect(Math.abs(got[i]! - (tallest * v) / Math.max(...values)) <= 1).toBe(true))
+        const { rows, columns } = await chartRows(ui)
+        expect(columns.length).toBe(values.length)
+        if (kind === 'bar') {
+          for (const row of rows) {
+            const tick = row.match(/^\s*(\d+)┤/)?.[1]
+            if (tick !== undefined) columns.forEach((c, i) => expect(block(row[c])).toBe(Number(tick) <= values[i]!))
+          }
+        } else {
+          const got = columns.map(c => rows.length - 1 - rows.findIndex(r => /[╭╮╯╰│─]/.test(r[c] ?? '')))
+          const tallest = Math.max(...got)
+          values.forEach((v, i) => expect(Math.abs(got[i]! - (tallest * v) / Math.max(...values)) <= 1).toBe(true))
+        }
         await ui.unmount()
       })
     }
@@ -738,4 +983,57 @@ test('terminal control sequences in a reply never reach the drawn text', async $
   expect(all).toContain('hidden')
   expect(all).not.toMatch(/evil\.test|\]52;|\]8;;|\[2J|\[31m/)
   expect(/[\x00-\x08\x0b-\x1f\x7f]/.test(all)).toBe(false)
+})
+
+test('a localhost lookalike host stays link text on desktop, which links plain http only for localhost', async $ => {
+  const ui = await $.ui.mount({ ...mount('[a](http://localhost@evil.example/) [b](http://localhost.evil.example/) [c](http://localhost:3000/x) [d](http://localhost)'), surface: 'desktop' })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:3000/x', 'http://localhost'])
+  await ui.unmount()
+})
+
+test('awk that edits a file in place is not read-only', async () => {
+  expect(isReadOnlyCall('Bash', { command: "awk -i inplace '{sub(/a/,\"b\")}1' f.txt" })).toBe(false)
+  expect(isReadOnlyCall('Bash', { command: "awk --include=inplace '{print}' f.txt" })).toBe(false)
+  expect(isReadOnlyCall('Bash', { command: "awk '{print $1}' f.txt" })).toBe(true)
+})
+
+test('table art fits wide characters into columns too narrow for them', async () => {
+  const cols = 26
+  const art = tableArt(tableOf(`|${' h |'.repeat(cols)}\n|${'---|'.repeat(cols)}\n|${' 中文中文 |'.repeat(cols)}`))
+  expect(art.split('\n').length > 3).toBe(true)
+})
+
+for (const [text, cols] of [['©', 1], ['™', 1], ['↔', 1], ['▶', 1], ['⚠', 1], ['⚠️', 2], ['✅', 2], ['🙂', 2], ['🇮🇱', 2], ['1️⃣', 2], ['𠀀', 2], ['中', 2], ['é', 1]] as const) test(`${text} takes ${cols} terminal column${cols > 1 ? 's' : ''}`, async () => {
+  expect(width(text)).toBe(cols)
+})
+
+test('a mermaid box around a text-style symbol closes', async () => {
+  const art = mermaidText('flowchart TD\n  A[sync ↔ async] --> B[done]', false, 80)!
+  const box = art.split("\n").slice(0, 3).map(l => [...l.trimEnd()].length)
+  expect(new Set(box).size).toBe(1)
+})
+
+test('a long unbroken table cell wraps in linear time', async () => {
+  const cost = (n: number) => best(() => tableArt(tableOf(`| h |\n|---|\n| ${'a'.repeat(n)} |`)), 3)
+  cost(1000)
+  expect(cost(40000) / Math.max(cost(10000), 0.05) < 8).toBe(true)
+})
+
+for (const command of ['toString', 'constructor', '__proto__', 'hasOwnProperty x']) test(`a command named ${command} is not read-only and does not throw`, async () => {
+  expect(isReadOnlyCall('Bash', { command })).toBe(false)
+})
+
+for (const command of [`awk '@include "inplace"; {sub(/a/,"b")} 1' f.txt`, `awk '@load "inplace"; 1' f.txt`, 'awk -E prog.awk f.txt', 'awk --exec=prog.awk f.txt', "awk -l inplace -e '1' f.txt"]) test(`${command} is not read-only`, async () => {
+  expect(isReadOnlyCall('Bash', { command })).toBe(false)
+})
+
+test('localhost links with a query or a hash stay clickable on desktop', async $ => {
+  const ui = await $.ui.mount({ ...mount('[a](http://localhost:5173?debug=1) [b](http://localhost#/home) [c](http://localhost.evil.example/)'), surface: 'desktop' })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['http://localhost:5173?debug=1', 'http://localhost#/home'])
+  await ui.unmount()
+})
+
+test('a footnote definition inside a four-backtick fence stays code', async () => {
+  const blocks = parse('````text\n```\n[^x]: inside code\n````\n\nSee[^x]', hl)
+  expect(blocks.some(b => b.kind === 'notes')).toBe(false)
 })

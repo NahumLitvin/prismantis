@@ -8,10 +8,10 @@ import type { Block } from './markdown'
 import { parse, texText } from './markdown'
 import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
-import { FIGURE_HINT, drawFigure, isFigureLang } from './figure'
-import { boxArt, inlineMarks, mermaidText, shortenEdgeLabels, unsupportedKind } from './mermaid'
-import type { Drawn, Fold } from './render'
-import { isReadOnlyCall, remember, rememberCall, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, width } from './render'
+import { FIGURE_HINT } from './figure'
+import { drawDiagrams } from './mermaid'
+import type { Fold } from './render'
+import { bashEdits, editNotes, hasShellOutput, isReadOnlyCall, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
 import { HINT, helpText, rtlShowcaseText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
@@ -54,12 +54,6 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 const expandedCalls = new Set<string>()
 const readOnlyCalls = new Set<string>()
 
-const markExpanded = (id: string) => {
-  expandedCalls.delete(id)
-  expandedCalls.add(id)
-  if (expandedCalls.size > 500) expandedCalls.delete(expandedCalls.values().next().value!)
-}
-
 const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.columns ?? 100) - 4)
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
@@ -80,6 +74,7 @@ const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
 type Typeset = Exclude<Formula, { error: true }> & { tex: string }
 
 const showsImages = async ($: EngineInterface): Promise<boolean> => {
+  if (await $.env.get('CLAUDE_CODE_FORCE_TERMINAL_IMAGES')) return true
   if (await $.env.get('TMUX')) return false
   const terminal = await detectTerminal($)
   return terminal === 'kitty' || terminal === 'ghostty'
@@ -88,11 +83,11 @@ const showsImages = async ($: EngineInterface): Promise<boolean> => {
 type Latex = { command: string; dir: string }
 type LatexSession = { style: Style; color: string; pending: Set<string>; wanted: Set<string>; batch: string[]; engine?: Promise<Latex | null>; ready?: Latex | null; stopped?: boolean; queue: Promise<void> }
 
-const formulaKey = (latex: LatexSession, tex: string) => `${latex.color}\0${tex}`
+const formulaKey = (color: string, tex: string) => `${color}\0${tex}`
 
-const typeset = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], fontSize = LATEX_FONT_PX, dpr = LATEX_DPR): Promise<Formula[]> => {
+const typeset = async ($: EngineInterface, color: string, engine: Latex, texs: string[], fontSize = LATEX_FONT_PX, dpr = LATEX_DPR): Promise<Formula[]> => {
   const { stdout } = await $.process.run(
-    [engine.command, '--output-dir', engine.dir, '--color', latex.color, '--background-color', 'transparent', '--font-size', String(fontSize), '--dpr', String(dpr)],
+    [engine.command, '--output-dir', engine.dir, '--color', color, '--background-color', 'transparent', '--font-size', String(fontSize), '--dpr', String(dpr)],
     { stdin: `${texs.join('\n')}\n`, timeoutMs: 2000 },
   )
   const rendered = renderedOf(stdout)
@@ -104,11 +99,11 @@ const typeset = async ($: EngineInterface, latex: LatexSession, engine: Latex, t
   }))
 }
 
-const withPadding = async ($: EngineInterface, latex: LatexSession, engine: Latex, texs: string[], results: Formula[]): Promise<Formula[]> => {
+const withPadding = async ($: EngineInterface, color: string, engine: Latex, texs: string[], results: Formula[]): Promise<Formula[]> => {
   const padded: Formula[] = []
   for (const [i, result] of results.entries()) {
     const pad = 'png' in result ? padFor(result) : null
-    const [again] = pad ? await typeset($, latex, engine, [texs[i]!], pad.fontSize, pad.dpr).catch((): Formula[] => []) : []
+    const [again] = pad ? await typeset($, color, engine, [texs[i]!], pad.fontSize, pad.dpr).catch((): Formula[] => []) : []
     padded.push(again && 'png' in again && 'png' in result ? { ...result, padded: again } : result)
   }
   return padded
@@ -120,7 +115,7 @@ const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Late
   const suffix = (await read($, latexDir)) || crypto.randomUUID()
   await update($, latexDir, () => suffix)
   const engine = { command: 'ratex-render', dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${await $.session.id()}-${suffix}` }
-  const [check] = await typeset($, latex, engine, ['x^2'])
+  const [check] = await typeset($, latex.color, engine, ['x^2'])
   return check && 'png' in check ? engine : null
 }
 
@@ -140,23 +135,24 @@ const stopLatex = (latex: LatexSession) => {
 }
 
 const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: string[]): Promise<void> => {
+  const color = latex.color
   const engine = await latexEngine($, latex)
   if (!engine || latex.stopped) return
-  const results = await typeset($, latex, engine, texs).then(
-    done => withPadding($, latex, engine, texs, done),
+  const results = await typeset($, color, engine, texs).then(
+    done => withPadding($, color, engine, texs, done),
     () => null,
   )
   if (!results) return stopLatex(latex)
-  const fresh = texs.map((tex, i) => [formulaKey(latex, tex), results[i]!] as const)
+  const fresh = texs.map((tex, i) => [formulaKey(color, tex), results[i]!] as const)
   await update($, formulas, store => keepFormulas(store, fresh, latex.wanted))
   latex.wanted.clear()
-  for (const tex of texs) latex.pending.delete(formulaKey(latex, tex))
+  for (const tex of texs) latex.pending.delete(formulaKey(color, tex))
 }
 
 const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: string, blocks: Block[]): Promise<Map<number, Typeset>> => {
   const maths = [...blocks.entries()].flatMap(([i, block]) => {
     const tex = mathOf(block)
-    return tex === null ? [] : [{ i, tex, key: formulaKey(latex, tex) }]
+    return tex === null ? [] : [{ i, tex, key: formulaKey(latex.color, tex) }]
   })
   if (surface !== 'terminal' || maths.length === 0) return new Map()
   void latexEngine($, latex)
@@ -195,7 +191,12 @@ const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null>
   return await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : null
 }
 
-type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null> }
+type LinkReach = { http: boolean; editor: boolean }
+
+type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null>; links?: Promise<LinkReach> }
+
+const linkReach = ($: EngineInterface, probes: Probes): Promise<LinkReach> =>
+  (probes.links ??= $.session.version().then(v => ({ http: takesHttpLinks(v.base), editor: takesEditorLinks(v.base) }), () => ({ http: false, editor: false })))
 
 const probe = async ($: EngineInterface, style: Style, probes: Probes): Promise<Terminal | null> => {
   probes.terminal ??= applyRtl($, style)
@@ -239,31 +240,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       />
     ) : null
   }
-  const drawn: Drawn = new Map()
-  if (style.mermaid) {
-    for (const [i, block] of blocks.entries()) {
-      if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
-      const source = block.lines.join('\n')
-      let narrowest = Infinity
-      for (const max of [Infinity, 24, 12]) {
-        const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
-        const wide = art === null ? Infinity : Math.max(...art.split('\n').map(width))
-        narrowest = Math.min(narrowest, wide)
-        if (art === null || wide > columns - 2) continue
-        drawn.set(i, { element: boxArt(el, style, art, `b${i}`, inlineMarks(source)), art })
-        break
-      }
-      if (!drawn.has(i) && !block.isOpen) {
-        const kind = unsupportedKind(source)
-        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
-      }
-    }
-  }
-  for (const [i, block] of blocks.entries()) {
-    if (block.kind !== 'code' || !isFigureLang(block.lang)) continue
-    const figure = drawFigure(el, style, block, columns, `b${i}`)
-    if (figure) drawn.set(i, figure)
-  }
+  const drawn = drawDiagrams(el, style, blocks, columns)
   const Image = 'Image' in el ? el.Image : null
   if (Image) {
     for (const [i, formula] of math) {
@@ -278,7 +255,10 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   }
   const elements = renderBlocks(el, style, blocks, columns, drawn, copy, folder($, el, open))
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
-  return button ? [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>] : elements
+  if (!button) return elements
+  return style.copyButtonStyle === 'hover'
+    ? [...elements, <el.Box position="absolute" bottom={0} right={0} display="none" hover={{ display: 'flex' }}>{button}</el.Box>]
+    : [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>]
 }
 
 export const register: Register = (on, options) => {
@@ -292,31 +272,57 @@ export const register: Register = (on, options) => {
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
-  const forSurface = (base: Style, surface: RenderSurface): Style => (surface === 'terminal' || !base.htmlCopy ? base : { ...base, htmlCopy: null })
-  const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
   const probes: Probes = {}
+  const forSurface = (base: Style, surface: RenderSurface, links: LinkReach): Style => {
+    const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor } : base) : base.htmlCopy ? { ...base, htmlCopy: null } : base
+    return surface === 'mobile' && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
+  }
+  const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
 
   const quiet = style.toolOutput === 'quiet'
+  const shellCommands = new Map<string, string>()
+  const noteCommand = (id: string | undefined, tool: string, input: unknown) => {
+    const command = tool === 'Bash' && input !== null && typeof input === 'object' ? (input as { command?: unknown }).command : undefined
+    if (!id || typeof command !== 'string') return
+    shellCommands.delete(id)
+    shellCommands.set(id, command)
+    if (shellCommands.size > 500) shellCommands.delete(shellCommands.keys().next().value!)
+  }
+  let firstEdit: string | undefined
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => {
       await locate($, style)
+      for (const call of e.props.calls) noteCommand(call.tool_use_id, call.tool, call.input)
       if (quiet) for (const call of e.props.calls) if (call.tool_use_id && isReadOnlyCall(call.tool, call.input)) rememberCall(readOnlyCalls, call.tool_use_id)
       if (e.props.isExpanded) {
-        for (const call of e.props.calls) if (call.tool_use_id) markExpanded(call.tool_use_id)
+        for (const call of e.props.calls) if (call.tool_use_id) rememberCall(expandedCalls, call.tool_use_id, 500)
         return next(e)
       }
       return renderToolGroup($.ui.resolve(e), fit(e.viewport), e.props.calls, e.props.isActive, e.viewport?.columns)
     })
     on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
       await locate($, style)
+      noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns)
-      return e.props.tool === 'Bash' || e.props.tool === 'PowerShell' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
+      const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
+      return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
     })
     on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
       if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) {
         const el = $.ui.resolve(e)
         return renderDiffCard(el, fit(e.viewport), e.props.output, folder($, el, await read($, unfolded)), e.props.tool_use_id) ?? next(e)
+      }
+      const edits = e.props.tool === 'Bash' && !e.props.isErrored ? bashEdits(e.props.output) : undefined
+      if (edits) {
+        await locate($, style)
+        const el = $.ui.resolve(e)
+        const output = withoutBashEdits(e.props.output)
+        const above = !hasShellOutput(output) ? null : quiet ? renderShellResult(el, fit(e.viewport), output) : await next({ ...e, props: { ...e.props, output } })
+        firstEdit ??= e.props.tool_use_id
+        const notes = editNotes(edits, firstEdit === e.props.tool_use_id, shellCommands.get(e.props.tool_use_id))
+        const cards = renderBashEdits(el, fit(e.viewport), edits, folder($, el, await read($, unfolded)), e.props.tool_use_id, above !== null, notes)
+        return above === null ? cards : <el.Box flexDirection="column">{above}{cards}</el.Box>
       }
       if (!quiet) return next(e)
       await locate($, style)
@@ -365,7 +371,8 @@ export const register: Register = (on, options) => {
     if (name !== 'random' || options.theme !== 'random') return { text: `Theme set to ${name}.` }
     const others = RANDOM_THEMES.filter(t => t !== themeName)
     themeName = others[Math.floor(Math.random() * others.length)]!
-    Object.assign(style, resolveStyle({ ...options, theme: themeName }))
+    style.theme = resolveStyle({ ...options, theme: themeName }).theme
+    latex.color = ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080')
     $.ui.invalidate('ui.render')
     return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
   })
@@ -405,7 +412,8 @@ export const register: Register = (on, options) => {
     const { Box } = el
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const open = await read($, unfolded)
-    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, forSurface(fit(e.viewport), e.surface), blocks, columnsOf(e.viewport), math, undefined, open)}</Box>
+    const surfaceStyle = forSurface(fit(e.viewport), e.surface, await linkReach($, probes))
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, undefined, open)}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
@@ -425,10 +433,10 @@ export const register: Register = (on, options) => {
     const { Box, Text } = el
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const math = await mathOfBlocks($, latex, e.surface, blocks)
-    const surfaceStyle = forSurface(fit(e.viewport), e.surface)
+    const surfaceStyle = forSurface(fit(e.viewport), e.surface, await linkReach($, probes))
     const open = await read($, unfolded)
     return (
-      <Box flexDirection="row">
+      <Box key="msg" flexDirection="row">
         <Box width={2} flexShrink={0}>
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
@@ -439,11 +447,12 @@ export const register: Register = (on, options) => {
     )
   })
 
-  on('prismantis.markdown', ($, e, next) => {
+  on('prismantis.markdown', async ($, e, next) => {
     const blocks = parseCached(e.text, shared, 20)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
-    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...style, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
+    const surfaceStyle = forSurface(style, e.surface, await linkReach($, probes))
+    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...surfaceStyle, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
   })
 }

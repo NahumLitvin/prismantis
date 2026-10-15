@@ -14,6 +14,8 @@ export const showcaseText = (themes: readonly string[]): string => `
 
 Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inline code\`, a [link](https://github.com/NahumLitvin/prismantis) and a bare URL https://github.com/NahumLitvin/prismantis/issues, both clickable, numbers like 99.9% and 250ms, paths like ~/src/app.ts.
 
+Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses [Foo_(bar)](https://en.wikipedia.org/wiki/Foo_(bar)), a file link [\`render.tsx\`](https://github.com/NahumLitvin/prismantis/blob/main/hooks/render.tsx) and **bold with *italic* inside**.
+
 ## Commands
 
 | Command | Does |
@@ -46,9 +48,9 @@ Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, \`inli
 
 ### Copy tables
 
-Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS or Linux terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. If that fails, it copies the plain text alone.
+Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS or Linux terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. If that fails, it copies the plain text alone. Set \`copyButtonStyle\` to \`hover\` in \`/config\` and every copy button hides until the pointer is on its block.
 
-| Item | Quantity | Status |
+| Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
 | **Apples** | 3 | *Ready* |
 | Oranges | 5 | Pending |
@@ -81,7 +83,7 @@ Scroll up: what you typed draws in a bubble. \`promptStyle\` switches to \`bar\`
 
 Tool calls draw as one line, dimmed on the right by default. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1–40\`, \`Searched src/ for "TODO"\`.
 
-Each edit or new file draws as a diff card headed \`+N −M\`: added and removed lines on a faint tint of the number and flag colors, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest.
+Each edit or new file draws as a diff card headed \`+N −M\`: added and removed lines on a tint of the number and flag colors kept readable in every theme, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest. Files a shell command changes (\`sed -i\`, a script) get the same card, one per file, headed by its path. Set \`diffStyle\` in \`/config\` for the look: \`card\`, \`full\`, \`marks\` or \`bar\`.
 
 ### Quotes and rules
 
@@ -142,6 +144,7 @@ $$
 
 Latency fell to 120ms[^lat] after the cache change[^cache].
 
+[^count]: Counted at close.
 [^lat]: Median of 50 runs.
 [^cache]: Entries expire after 10m.
 

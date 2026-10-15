@@ -1,8 +1,9 @@
 import type { On } from 'claude-code'
 import { expect, mock, test as base } from 'claude-code/testing'
 
-import { keepFormulas, padFor } from '../hooks/latex'
+import { keepFormulas, padFor, ratexColor } from '../hooks/latex'
 import { parse, texText } from '../hooks/markdown'
+import { PRESETS } from '../hooks/presets'
 
 const PNG_160x80 = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABQAQAAAAC2JkOZAAAAFklEQVR42mNgGAWjYBSMglEwCgYeAAAGkAAB8Q2GVgAAAABJRU5ErkJggg=='
 const PNG_800x400 = 'iVBORw0KGgoAAAANSUhEUgAAAyAAAAGQAQAAAAB+XjmZAAAAPklEQVR42u3BMQEAAADCoPVPbQ0PoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4NndAAAYtfwy0AAAAASUVORK5CYII='
@@ -280,6 +281,21 @@ for (const [name, env] of [['a terminal without kitty graphics', { TERM_PROGRAM:
     await clock.settle()
 
     expect(runs.length).toBe(0)
+    await ui.unmount()
+  })
+}
+
+for (const [name, env] of [['a background session', { TMPDIR: '/tmp/', CLAUDE_CODE_FORCE_TERMINAL_IMAGES: '1' }], ['tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0', CLAUDE_CODE_FORCE_TERMINAL_IMAGES: '1' }]] as const) {
+  test(`latex draws in ${name} when CLAUDE_CODE_FORCE_TERMINAL_IMAGES is set`, async ($, on) => {
+    mock.env(on, env)
+    const clock = mock.clock(on)
+    const runs = ratex(on)
+
+    const ui = await $.ui.mount(reply(REPLY))
+    await clock.settle()
+
+    expect(runs.length).toBeGreaterThan(0)
+    expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('\\int_0^1 x^2\\,dx')
     await ui.unmount()
   })
 }
@@ -599,4 +615,49 @@ test('in Warp a formula draws as Unicode text, not as its TeX source', async ($,
   expect(await ui.find({ type: 'Text', text: /^∫₀¹ x² dx$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /\\int/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('after /prismantis random, new formulas take the new theme color', { options: { theme: 'random' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  on('config.set', (_, e) => ({ value: e.value }))
+  const clock = mock.clock(on)
+  const runs = ratex(on)
+  const first = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  await first.unmount()
+  const run = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const picked = (PRESETS as Record<string, { diagramText?: string; codeText?: string }>)[/^Theme set to random: (\S+) for now/.exec(run.text ?? '')?.[1] ?? '']
+  const second = await $.ui.mount(reply('Next:\n\n$$\nx^3\n$$'))
+  await clock.settle()
+  expect(runs.at(-1)?.argv[runs.at(-1)!.argv.indexOf('--color') + 1]).toBe(ratexColor(picked?.diagramText ?? picked?.codeText ?? '#808080'))
+  await second.unmount()
+})
+
+test('a theme switch while a formula typesets redraws it in the new color', { options: { theme: 'random' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  on('config.set', (_, e) => ({ value: e.value }))
+  const clock = mock.clock(on)
+  let gate: Promise<void> = Promise.resolve()
+  const runs = ratex(on, ok, PNG_160x80, { then: (done: () => void) => gate.then(done) } as Promise<void>)
+  const warm = await $.ui.mount(reply(REPLY))
+  await clock.settle()
+  await warm.unmount()
+  let release = () => {}
+  gate = new Promise(r => (release = r))
+  const late = await $.ui.mount(reply('Late:\n\n$$\nx^3\n$$'))
+  await clock.settle()
+  const run = await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  release()
+  await clock.settle()
+  await late.unmount()
+  const picked = (PRESETS as Record<string, { diagramText?: string; codeText?: string }>)[/^Theme set to random: (\S+) for now/.exec(run.text ?? '')?.[1] ?? '']
+  const again = await $.ui.mount(reply('Late:\n\n$$\nx^3\n$$'))
+  await clock.settle()
+  const cubes = runs.filter(r => r.formulas.includes('x^3'))
+  expect(cubes.at(-1)?.argv[cubes.at(-1)!.argv.indexOf('--color') + 1]).toBe(ratexColor(picked?.diagramText ?? picked?.codeText ?? '#808080'))
+  await again.unmount()
+})
+
+for (const tex of ['\\toString x', '\\constructor x', '\\hasOwnProperty x', '\\left\\toString x \\right.']) test(`${tex} draws as text, not as JavaScript`, async () => {
+  expect(texText(tex)).not.toMatch(/function|native code|\[object/)
 })

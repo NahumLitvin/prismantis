@@ -1,6 +1,6 @@
 {
   "name": "prismantis",
-  "version": "0.18.1",
+  "version": "0.20.0",
   "description": "Colorful, themeable rendering for Claude Code replies: tables, headings, code, numbers, paths and links.",
   "author": {
     "name": "Nahum Litvin",
@@ -265,7 +265,7 @@
     "ruleColor": {
       "type": "string",
       "title": "Rules",
-      "description": "Color for horizontal rules and heading banners. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
+      "description": "Color for horizontal rules, diff card borders and chart gridlines. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
     "bulletColor": {
@@ -273,6 +273,13 @@
       "title": "Bullets",
       "description": "Color for list bullets and numbers. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
+    },
+    "diffStyle": {
+      "type": "string",
+      "title": "Diff style",
+      "description": "How edit and shell edit diffs draw. card: a rounded box with tinted lines. full: no box, each changed line tinted across the width. marks: no box and no tint, changed lines in the number and flag colors. bar: no box and no tint, a colored ▌ before each changed line.",
+      "default": "card",
+      "options": ["card", "full", "marks", "bar"]
     },
     "mermaid": {
       "type": "boolean",
@@ -285,6 +292,13 @@
       "title": "Copy buttons",
       "description": "Put a copy button on code blocks, tables, diagrams, lists and quotes. Reach them with ctrl+x tab then Enter, or click where the terminal passes clicks through.",
       "default": true
+    },
+    "copyButtonStyle": {
+      "type": "string",
+      "title": "Copy button style",
+      "description": "inline: buttons beside or above each block, always shown. hover: a block's buttons float over its top-right corner only while the pointer is over it, and the reply's over its bottom-right corner, so they take no line; ctrl+x tab does not reach them, and the mobile app, which has no pointer, shows them inline. Needs copyButtons on.",
+      "default": "inline",
+      "options": ["inline", "hover"]
     },
     "diagramHints": {
       "type": "boolean",

@@ -11,6 +11,118 @@ const track = result => {
 
 const XYCHART = /beautiful-mermaid\/src\/ascii\/xychart\.ts$/
 const SIZE = ['const PLOT_WIDTH = 60', 'const PLOT_HEIGHT = 20']
+const BAR_SCALE = [
+  [
+    `  const yTicks = niceTickValues(yRange.min, yRange.max)
+  const yLabels = yTicks.map(v => formatTickValue(v))
+  const yGutter = Math.max(...yLabels.map(l => l.length)) + 1
+
+  const plotW = Math.max(PLOT_WIDTH, dataCount * 6)
+  const plotH = PLOT_HEIGHT
+`,
+    `  const rawTicks = niceTickValues(yRange.min, yRange.max)
+  const step = rawTicks.length > 1 ? rawTicks[1]! - rawTicks[0]! : Math.abs(yRange.max - yRange.min) || 1
+  const lo = Math.floor(yRange.min / step + 1e-9) * step
+  const hi = Math.max(lo + step, Math.ceil(yRange.max / step - 1e-9) * step)
+  const intervals = Math.round((hi - lo) / step)
+  const yTicks = Array.from({ length: intervals + 1 }, (_, i) => Math.round((lo + i * step) * 1e10) / 1e10)
+  const yLabels = yTicks.map(v => formatTickValue(v))
+  const yGutter = Math.max(...yLabels.map(l => l.length)) + 1
+
+  const plotW = Math.max(PLOT_WIDTH, dataCount * 6)
+  const perTick = Math.max(1, Math.round(PLOT_HEIGHT / intervals))
+  const plotH = intervals * perTick
+  const unit = step / perTick
+  const level = (v: number): number => (v - lo) / unit
+  const base = level(Math.min(Math.max(0, lo), hi))
+  const zero = Math.round(base) - 1
+`,
+  ],
+  [
+    `  const valueToRow = (v: number): number => {
+    const t = (v - yRange.min) / (yRange.max - yRange.min || 1)
+    return Math.round(t * (plotH - 1))
+  }
+`,
+    `  const valueToRow = (v: number): number => Math.min(plotH - 1, Math.max(-1, Math.round(level(v)) - 1))
+`,
+  ],
+  [
+    `    const row = valueToRow(tick)
+    if (row < 0 || row >= plotH) continue
+    const displayRow = plotTop + (plotH - 1 - row)
+    const label = formatTickValue(tick)
+    // Tick mark on axis
+    set(canvas, roles, displayRow, plotLeft - 1, row === 0 ? ch.origin : ch.yTick, 'border')
+`,
+    `    const row = Math.round(level(tick)) - 1
+    if (row < -1 || row >= plotH) continue
+    const displayRow = plotTop + (plotH - 1 - row)
+    const label = formatTickValue(tick)
+    set(canvas, roles, displayRow, plotLeft - 1, row === -1 || row === zero ? ch.origin : ch.yTick, 'border')
+`,
+  ],
+  [
+    `    const row = valueToRow(tick)
+    if (row < 0 || row >= plotH) continue
+    const displayRow = plotTop + (plotH - 1 - row)
+    for (let c = plotLeft; c < plotLeft + bandW * dataCount; c++) {
+      if (get(canvas, displayRow, c) === ' ') {
+        set(canvas, roles, displayRow, c, ch.grid, 'line')
+`,
+    `    const row = Math.round(level(tick)) - 1
+    if (row < 0 || row >= plotH) continue
+    const displayRow = plotTop + (plotH - 1 - row)
+    for (let c = plotLeft; c < plotLeft + bandW * dataCount; c++) {
+      if (get(canvas, displayRow, c) === ' ') {
+        set(canvas, roles, displayRow, c, row === zero ? ch.hLine : ch.grid, row === zero ? 'border' : 'line')
+`,
+  ],
+  [
+    `    const baseRow = valueToRow(Math.max(0, yRange.min))
+`,
+    '',
+  ],
+  [
+    `        const valRow = valueToRow(entry.data[i]!)
+        const fromRow = Math.min(baseRow, valRow)
+        const toRow = Math.max(baseRow, valRow)
+
+        for (let row = fromRow; row <= toRow; row++) {
+          const displayRow = plotTop + (plotH - 1 - row)
+          for (let c = bx; c < bx + singleBarW; c++) {
+            set(canvas, roles, displayRow, c, ch.bar, 'arrow', hexColors, hexColor)
+          }
+        }
+`,
+    `        const exact = level(entry.data[i]!)
+        const value = exact < base ? Math.ceil(exact * 2 - 1e-9) / 2 : Math.floor(exact * 2 + 1e-9) / 2
+        const from = Math.max(0, Math.min(base, value))
+        const to = Math.min(plotH, Math.max(base, value))
+
+        for (let row = -1; row < plotH; row++) {
+          const low = from <= row + 0.5 + 1e-9 && to >= row + 1 - 1e-9
+          const high = from <= row + 1 + 1e-9 && to >= row + 1.5 - 1e-9
+          const glyph = ch === ASC ? (value < base ? high : low) && ch.bar : low && high ? ch.bar : low ? '▄' : high && '▀'
+          if (!glyph) continue
+          const displayRow = plotTop + (plotH - 1 - row)
+          for (let c = bx; c < bx + singleBarW; c++) {
+            set(canvas, roles, displayRow, c, glyph, 'arrow', hexColors, hexColor)
+          }
+        }
+`,
+  ],
+  [
+    `  const drawAt = (col: number, row: number, char: string) => {
+    const displayRow = plotTop + (plotH - 1 - row)
+    if (displayRow >= 0 && col >= plotLeft && col < plotLeft + plotTotalW) {
+`,
+    `  const drawAt = (col: number, row: number, char: string) => {
+    const displayRow = plotTop + (plotH - 1 - row)
+    if (displayRow >= 0 && col >= plotLeft && col < plotLeft + plotTotalW && ![ch.bar, '▀', '▄'].includes(get(canvas, displayRow, col))) {
+`,
+  ],
+]
 const CANVAS = /beautiful-mermaid\/src\/ascii\/canvas\.ts$/
 const CANVAS_ANCHOR = 'export function isJunctionChar('
 const CLEAR_LABEL_GAPS = `export function clearLabelGaps(canvas: Canvas, label: Canvas): void {
@@ -83,6 +195,10 @@ track(await build({
         for (const line of SIZE) {
           if (!src.includes(line)) throw new Error(`xychart.ts no longer has "${line}"`)
           src = src.replace(line, line.replace('const', 'let'))
+        }
+        for (const [from, to] of BAR_SCALE) {
+          if (!src.includes(from)) throw new Error(`xychart.ts no longer has "${from.trim().split('\n')[0]}"`)
+          src = src.replace(from, to)
         }
         src += '\nexport const setChartSize = (width: number, height: number) => { PLOT_WIDTH = width; PLOT_HEIGHT = height }\n'
         return { contents: src, loader: 'ts' }

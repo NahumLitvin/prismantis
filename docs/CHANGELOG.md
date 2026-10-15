@@ -8,6 +8,78 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Codex: installing prismantis in Codex gives it the same model note as Claude Code, plus what Codex's own renderer cannot draw, so replies come back with tables, fenced commands, mermaid sized for Codex and text figures. `$prismantis` shows the demo, and `$prismantis-themes` installs the 16 themes as Codex syntax themes, which color code, inline code, table headers and mermaid boxes; `/theme` picks one. Prose, headings and copy buttons stay Codex's own. Codex asks you to trust the hook once in `/hooks`. Everything in it is generated from the Claude Code side.
 
+## [0.20.0] - 2026-10-14
+
+### Added
+
+- `diffStyle` picks how Edit, Write and shell edit diffs draw: `card` (the default) frames the lines in a rounded box with tinted lines, `full` drops the box and tints each changed line across the width, `marks` drops the tint and draws the changed lines in the number and flag colors, which reads in 256-color terminals and `mono` too, and `bar` drops the tint and puts a `▌` in the line's color before each changed line. Every style keeps the `+N −M` header, line numbers, folding at 20 lines and one block per changed file. Tool output other than diffs is unchanged ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
+- `copyButtonStyle: hover` shows copy buttons only while the pointer is on their block: a block's buttons float over its top-right corner, or from its left edge on a block narrower than they are, and `⧉ copy reply` over the reply's bottom-right corner, out of the flow, so they reserve no line and nothing moves when they show. `inline`, the default, keeps today's look. ctrl+x tab does not reach a hidden button; `/prismantis copy` still copies without a mouse. The mobile app, which has no pointer, draws them inline.
+
+### Changed
+
+- Diff lines sit on a bolder tint that keeps code text readable: the number or flag color mixed into black on dark themes (30%) or white on light ones (20%), whichever contrasts more with the code text, and less where the text would drop below 4.5:1 (only `solarized-light`, at 17% and 13%). It used to be 20% over the rule color, a gray, which put code text at 3.1:1 in `tokyo-night` and under 4.5:1 in 7 of the 15 color presets; now every one is at 4.5:1 or more ([#132](https://github.com/NahumLitvin/prismantis/issues/132), [#146](https://github.com/NahumLitvin/prismantis/issues/146)).
+
+### Fixed
+
+- Files a shell command changed (`sed -i`, a script) draw as the same diff card as Edit and Write results, in the theme's number and flag colors, instead of Claude Code's own red and green diff. Each changed file gets its own card headed by its path, with `… +K more files` when Claude Code listed more, and each card folds on its own. The command's output still draws above the cards. Dim notes under them say what Claude Code's own diff says: on the first one of a session, that it shows every file that changed while the command ran, by it or anything else; that another command ran in the repository at the same time, when Claude Code saw one; and that a git step in the command (`checkout`, `reset`, `stash`, `pull`, …) can move the working tree. `toolOutput: quiet` keeps these diffs under the command's first lines, where it used to drop them. A failed command, a diff the card cannot read, and `toolRows: false` keep Claude Code's drawing ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
+- The `ruleColor` description in `/config` no longer says it colors heading banners, which take the heading color. It names what the color draws: horizontal rules, diff card borders and chart gridlines ([#132](https://github.com/NahumLitvin/prismantis/issues/132)).
+
+## [0.19.0] - 2026-10-14
+
+### Changed
+
+- Links that open a file in VS Code, `vscode://file/…` and `vscode-insiders://file/…`, are clickable terminal hyperlinks on Claude Code 2.1.294 and later, so a reply can point at `src/app.ts:42` and a click opens that line. Claude Code 2.1.287 throws out the whole reply for such a link and 2.1.294 is the first release known to accept it, so below 2.1.294, when the version cannot be read, and on the desktop app and other remote surfaces, they draw as plain text, as other unclickable links do. Other `vscode://` links, which reach extensions' URI handlers (`vscode://vscode.git/clone?url=…`), always draw as plain text.
+
+### Fixed
+
+- Bar chart heights line up with the y-axis. A bar used to fill the `0` row as well as its own, and charts could settle on one row per tick, so 400 reached the 500 line and 1200 stopped at 1000. Bars are now drawn to the half cell: each one rises from the middle of the axis line, reaches every gridline at or below its value, stops exactly on a gridline it equals, and never passes its value. A terminal draws `─` and `·` through the middle of a cell, so the line under a bar and a tip that ends mid-cell are half blocks (`▀`, `▄`) in the bar's color. `0` sits on the axis line, a line chart at `0` runs along it, every tick gets the same number of rows, and an axis without a set range ends on a whole tick.
+- Bar charts with negative values. Every bar used to fill the `0` row, so `2` and `-2` drew to the same height, and an all-negative chart ran its bars up past the top of the chart. The `0` line is now drawn solid like the axis line, and bars grow up or down from its middle and stop exactly where their value is, to the half cell. An all-negative chart hangs its bars from a solid line at the top of the axis.
+- Bar values sit at the end of their bar. A value was centered on its tick column, which is right of the middle of an even-width bar, so `1200` hung off its bar's edge. A negative bar's value sat above `0` on the positive side, and the bar at the top of an untitled chart, or any bar in an all-negative chart, lost its value. Values are now centered on their bar, half a cell to the right when they cannot center exactly (`1200` covers a four-wide bar, `800` sits over its last three cells), a negative bar's value sits under it, and a bar that reaches the top of the axis keeps its value on a row above the chart.
+- A line over a bar chart passes behind the bars instead of overwriting their tips, so a bar under the line no longer looks shorter than its value.
+- Footnote marks in a table's header row draw in the footnote color, as they do in paragraphs and body cells. Before, they took the header color and looked like part of the column name.
+
+## [0.18.4] - 2026-10-14
+
+### Fixed
+
+- Named links like `[docs](https://example.com)` keep the link color but no longer draw their own underline, so the terminal's hyperlink style shows (in Windows Terminal, a dashed underline that turns solid on hover). A terminal that styles hyperlinks only on hover shows colored text until then.
+- Bare URLs draw in the link color again, as they did before they became hyperlinks in 0.9.0. Terminals without hyperlinks still show the URL once.
+- Plain `http:` links and bare `http://` URLs are clickable terminal hyperlinks on Claude Code 2.1.289 and later, as in Claude Code without prismantis. They drew in the link color but could not be clicked since 0.13.0, because such a link makes Claude Code 2.1.288 and earlier throw out the whole reply; there, and when the version cannot be read, they draw as plain text, as below. The desktop app and other remote surfaces link only `https:` and `http://localhost`, so there they draw as plain text too.
+- Links that cannot be clicked no longer look clickable. `mailto:` and other links that do not become hyperlinks draw as plain text, the label then the target in parentheses, as Claude Code draws them: `[mail](mailto:someone@example.com)` draws as `mail (someone@example.com)`, and a label that matches its target draws once. This holds in paragraphs, lists, quotes, headings, table cells, right-to-left text and `$.prismantis.markdown`. Copying keeps the markdown as written.
+
+## [0.18.3] - 2026-10-13
+
+### Changed
+
+- A table cell holding one very long word (a hash, a base64 blob, a minified line) wraps in linear time: a 10,000-character cell redraws in 3 ms instead of 355 ms. Right-to-left lines are laid out once per text and width instead of on every redraw (stream replay bench, 1.2 ms to 0.9 ms per redraw); the first draw of a long Hebrew reply costs about 15% more.
+- A streaming reply redraws about 3.7x faster (1.0 ms instead of 3.9 ms per redraw in the stream replay bench), and Hebrew text about 4.8x faster. Diagrams no longer re-measure their art on every redraw, and single characters skip the grapheme segmenter. Nothing looks different.
+- A reply with diagrams redraws faster again while it streams: their art width is measured once instead of on every redraw, up to three times per diagram that does not fit (stream replay bench, 3.2 ms to 1.2 ms per redraw).
+
+### Fixed
+
+- `/prismantis theme random` no longer turns off right-to-left reordering, the HTML table copy and path shortening for the rest of the session. It changes only the colors.
+- Switching theme while a formula is still being typeset no longer stores the old color as the new theme's image; the formula is typeset again in the new color.
+- In kitty, a link whose URL holds Hebrew keeps its URL as written instead of reversing it.
+- A TeX command or a shell program named like a built-in JavaScript property (`\toString`, `\constructor`, a `toString` command) no longer draws `function toString() { [native code] }` or breaks quiet tool rows.
+- `awk '@include "inplace"'`, `awk -E`, `awk --exec` and `awk -l` can edit files, so `toolOutput: quiet` no longer hides their output as a read.
+- `http://localhost:5173?debug=1` and `http://localhost#/home` are clickable again.
+- A footnote definition quoted inside a code block no longer becomes a real footnote.
+- Two long code blocks that differ only in where their lines break fold and unfold on their own.
+- An expanded shell command whose result is an error message shows that message instead of "(No output)".
+- Code-shaped prose draws as written. `## Using C#` keeps its `#`, a link with parentheses such as `wiki/Foo_(bar)` keeps its whole URL, bare or named, and a file link written as ``[`render.tsx`](…)`` loses its backticks. `f(*args, **kwargs)` and `f(_a, _)` no longer turn italic or bold, and `**bold *italic* inside**` stays bold. The demo shows these cases.
+- A named link in a right-to-left line stays clickable and keeps its target. Before, reordering a Hebrew line turned the link's target into its own reversed text.
+- `http://localhost@evil.example/` and `http://localhost.evil.example/` no longer pass as localhost links. Only `http://localhost`, with an optional port, becomes clickable over plain `http`.
+- `awk -i inplace` edits a file, so `toolOutput: quiet` no longer hides its output as a read.
+- Copying a table as art no longer fails when a column is narrower than a wide character such as `中`.
+- After `/prismantis theme random`, new LaTeX formulas draw in the new theme's color instead of the old one.
+- Text-style symbols such as `↔`, `™`, `©`, `▶` and `⚠` count as one column, as terminals draw them, so a diagram box around them closes. Emoji drawn as emoji (`✅`, `⚠️`), flags, keycaps like `1️⃣` and rare CJK characters such as `𠀀` count as two.
+
+## [0.18.2] - 2026-10-13
+
+### Fixed
+
+- LaTeX math draws as images wherever `CLAUDE_CODE_FORCE_TERMINAL_IMAGES` is set, the variable that makes Claude Code draw images, also inside tmux, as Claude Code does. Before, prismantis found the terminal only by `TERM_PROGRAM`, `TERM` and `KITTY_WINDOW_ID`, so a background session, whose process carries none of them, drew every formula as text even when viewed in kitty or Ghostty.
+
 ## [0.18.1] - 2026-10-13
 
 ### Security
