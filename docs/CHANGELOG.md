@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.23.0] - 2026-10-15
+
+### Added
+
+- The `⧉ html` table copy works in a local Windows terminal. It puts the table on the clipboard as HTML and tab-separated text through Windows' built-in PowerShell, so pasting into Slack makes a native table, and Word and web editors keep the header row and column alignment. Over SSH the button stays hidden, as on macOS and Linux ([#144](https://github.com/NahumLitvin/prismantis/pull/144)).
+
 ## [0.22.0] - 2026-10-15
 
 ### Added
