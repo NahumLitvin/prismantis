@@ -1,5 +1,14 @@
 import { RANDOM_THEMES } from './theme'
 
+export const HINT = [
+  'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
+  'Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:',
+  'flowcharts, sequence diagrams and xychart-beta bar or line charts.',
+  'When a reply carries a numeric series or a flow that is easier to see than read, add a small diagram or chart with short labels, not a second picture of what a figure already shows.',
+  'Skip diagrams and pictures for short or simple answers.',
+  'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
+].join(' ')
+
 export const showcaseText = (themes: readonly string[]): string => `
 # prismantis
 

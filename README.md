@@ -56,6 +56,10 @@ claude plugin uninstall prismantis@prismantis
 
 For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX math](#latex-math). Until then formulas draw as text.
 
+### Codex
+
+prismantis also runs in Codex, with themes for code, tables and diagrams and the same session note. Install, what works today, and the two Codex issues it waits on for parity: [codex/README.md](codex/README.md).
+
 ## Features
 
 | Feature | What you get |

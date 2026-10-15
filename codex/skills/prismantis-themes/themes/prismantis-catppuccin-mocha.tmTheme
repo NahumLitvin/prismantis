@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key><string>prismantis-catppuccin-mocha</string>
+	<key>settings</key>
+	<array>
+		<dict><key>settings</key><dict><key>foreground</key><string>#cdd6f4</string></dict></dict>
+		<dict><key>scope</key><string>comment</string><key>settings</key><dict><key>foreground</key><string>#6c7086</string></dict></dict>
+		<dict><key>scope</key><string>meta.preprocessor</string><key>settings</key><dict><key>foreground</key><string>#6c7086</string></dict></dict>
+		<dict><key>scope</key><string>meta.tag.sgml.doctype</string><key>settings</key><dict><key>foreground</key><string>#6c7086</string></dict></dict>
+		<dict><key>scope</key><string>string.unquoted.cdata</string><key>settings</key><dict><key>foreground</key><string>#6c7086</string></dict></dict>
+		<dict><key>scope</key><string>string</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>constant.character</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>string.template</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>string.quoted.attribute-value</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>markup.underline.link</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>constant.numeric</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>constant.language</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>constant, variable.other.constant</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>constant.other.symbol</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>markup.inserted</string><key>settings</key><dict><key>foreground</key><string>#a6e3a1</string></dict></dict>
+		<dict><key>scope</key><string>keyword, storage, storage.type, storage.modifier</string><key>settings</key><dict><key>foreground</key><string>#f38ba8</string></dict></dict>
+		<dict><key>scope</key><string>keyword.other.important</string><key>settings</key><dict><key>foreground</key><string>#f38ba8</string></dict></dict>
+		<dict><key>scope</key><string>keyword.control.at-rule</string><key>settings</key><dict><key>foreground</key><string>#f38ba8</string></dict></dict>
+		<dict><key>scope</key><string>keyword.other.rule</string><key>settings</key><dict><key>foreground</key><string>#f38ba8</string></dict></dict>
+		<dict><key>scope</key><string>markup.deleted</string><key>settings</key><dict><key>foreground</key><string>#f38ba8</string></dict></dict>
+		<dict><key>scope</key><string>entity.name.function, support.function</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+		<dict><key>scope</key><string>entity.name.type, entity.name.class, support.type, support.class</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+		<dict><key>scope</key><string>support.function.builtin</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+		<dict><key>scope</key><string>support.type.property-name</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+		<dict><key>scope</key><string>entity.name.selector</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+		<dict><key>scope</key><string>variable.other.property</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+		<dict><key>scope</key><string>entity.name.tag</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+		<dict><key>scope</key><string>entity.other.attribute-name</string><key>settings</key><dict><key>foreground</key><string>#f5c2e7</string></dict></dict>
+		<dict><key>scope</key><string>variable</string><key>settings</key><dict><key>foreground</key><string>#f5c2e7</string></dict></dict>
+		<dict><key>scope</key><string>string.regexp</string><key>settings</key><dict><key>foreground</key><string>#89dceb</string></dict></dict>
+		<dict><key>scope</key><string>markup.inline.raw.string.markdown, markup.raw.inline.markdown</string><key>settings</key><dict><key>foreground</key><string>#89dceb</string></dict></dict>
+		<dict><key>scope</key><string>markup.heading</string><key>settings</key><dict><key>foreground</key><string>#f9e2af</string></dict></dict>
+		<dict><key>scope</key><string>markup.bold</string><key>settings</key><dict><key>foreground</key><string>#ffffff</string></dict></dict>
+		<dict><key>scope</key><string>markup.italic</string><key>settings</key><dict><key>foreground</key><string>#f5c2e7</string></dict></dict>
+		<dict><key>scope</key><string>markup.quote</string><key>settings</key><dict><key>foreground</key><string>#9399b2</string></dict></dict>
+		<dict><key>scope</key><string>markup.list</string><key>settings</key><dict><key>foreground</key><string>#cba6f7</string></dict></dict>
+		<dict><key>scope</key><string>markup.underline.link</string><key>settings</key><dict><key>foreground</key><string>#89b4fa</string></dict></dict>
+	</array>
+</dict>
+</plist>

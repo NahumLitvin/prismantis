@@ -188,7 +188,7 @@ const renderFlow = (el: ElementTable, style: Style, lines: Inline[][], key: stri
   return lines.map((line, i) => <Text key={`${key}.${i}`} {...props}>{renderInline(el, style, line, `${key}.${i}`)}</Text>)
 }
 
-const PRISM_COLORS: Record<string, keyof Theme> = {
+export const PRISM_COLORS: Record<string, keyof Theme> = {
   comment: 'codeComment', prolog: 'codeComment', doctype: 'codeComment', cdata: 'codeComment',
   string: 'codeString', char: 'codeString', 'template-string': 'codeString', 'attr-value': 'codeString', url: 'codeString',
   number: 'number', boolean: 'number', constant: 'number', symbol: 'number', inserted: 'number',
