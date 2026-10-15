@@ -65,7 +65,7 @@ jobs:
       - name: Bundle matches its source and holds only MIT packages
         run: npm --prefix scripts run build:vendor && git diff --exit-code hooks/vendor
       - name: Codex files match their Claude Code source
-        run: npm --prefix scripts run build:codex && test -z "$(git status --porcelain codex .codex-plugin)"
+        run: npm --prefix scripts run build:codex && test -z "$(git status --porcelain codex .codex-plugin .agents)"
       - name: Render snapshots match
         run: npm --prefix scripts run snapshot
       - name: Node counts stay within baseline (timings reported, not gated)

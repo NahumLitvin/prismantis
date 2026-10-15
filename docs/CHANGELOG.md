@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `codex plugin add prismantis@prismantis` installs the plugin. Codex 0.162 skips a marketplace entry whose source is `github`, the form Claude Code uses, and reported "plugin `prismantis` was not found". The repo now also ships `.agents/plugins/marketplace.json`, which Codex reads first, with the same release pinned as a git `url` source. Claude Code still reads its own marketplace and installs as before.
+
 ## [0.21.0] - 2026-10-15
 
 ### Added

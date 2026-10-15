@@ -117,3 +117,8 @@ write('README.md', [
 const manifest = JSON.parse(readFileSync(join(root, '.claude-plugin/plugin.json'), 'utf8'))
 mkdirSync(join(root, '.codex-plugin'), { recursive: true })
 writeFileSync(join(root, '.codex-plugin/plugin.json'), `${JSON.stringify({ name: manifest.name, version: manifest.version, description: `Themeable Codex replies: ${cc.PRESET_NAMES.length} prismantis syntax themes for code, inline code, table headers and mermaid, and a session note that gets tables, diagrams and figures into replies.`, hooks: './codex/hooks.json', skills: './codex/skills' }, null, 2)}\n`)
+
+const market = JSON.parse(readFileSync(join(root, '.claude-plugin/marketplace.json'), 'utf8'))
+const plugins = market.plugins.map(({ source, ...plugin }) => ({ ...plugin, source: { source: 'url', url: `https://github.com/${source.repo}.git`, ref: source.ref, sha: source.sha } }))
+mkdirSync(join(root, '.agents/plugins'), { recursive: true })
+writeFileSync(join(root, '.agents/plugins/marketplace.json'), `${JSON.stringify({ ...market, plugins }, null, 2)}\n`)
