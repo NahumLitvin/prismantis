@@ -217,7 +217,9 @@ const probe = async ($: EngineInterface, style: Style, probes: Probes): Promise<
 }
 
 const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: string, text: string): Promise<string | null> => {
-  const command = clipboardCommand(backend, html, text)
+  const systemRoot = backend === 'windows' ? await $.env.get('SystemRoot') : undefined
+  const command = clipboardCommand(backend, html, text, systemRoot)
+  if (backend === 'windows' && !systemRoot) return command.failure
   const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: 5000 }).catch(() => null)
   if (!result) return command.failure
   return result.exitCode === 0 ? null : result.stderr.trim() || command.failure

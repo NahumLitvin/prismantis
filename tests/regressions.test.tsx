@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { helpText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
-import { tableExcelHtml, tableHtml, tableText } from '../hooks/html'
+import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import { isReadOnlyCall, tableArt, takesEditorLinks, takesHttpLinks, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
@@ -100,21 +100,6 @@ test('HTML table copying escapes content and preserves safe inline formatting', 
   expect(html).toContain('&lt;script&gt;alert')
   expect(html).not.toContain('javascript:')
   expect(html).toContain('<td style="text-align: left"></td>')
-})
-
-test('Excel-style HTML copying draws every row as td cells with the fragment inside the table', async () => {
-  const html = tableExcelHtml(tableOf('| Name | Value |\n|--|--|\n| **a** | <b> |\n| short |'))
-  expect(html).not.toContain('<th')
-  expect(html).not.toContain('<thead')
-  expect(html).toContain('<td class=xl65>Name</td>')
-  expect(html).toContain('<td class=xl65>Value</td>')
-  expect(html).toContain('<td class=xl66><strong>a</strong></td>')
-  expect(html).toContain('<td class=xl66>&lt;b&gt;</td>')
-  expect(html).toContain('<td class=xl66></td>')
-  expect(html).toContain('<meta name=ProgId content=Excel.Sheet>')
-  expect(html.indexOf('<table')).toBeLessThan(html.indexOf('<!--StartFragment-->'))
-  expect(html.indexOf('<!--StartFragment-->')).toBeLessThan(html.indexOf('<!--EndFragment-->'))
-  expect(html.indexOf('<!--EndFragment-->')).toBeLessThan(html.indexOf('</table>'))
 })
 
 test('tab-separated copying quotes embedded separators and literal quotes', async () => {

@@ -44,8 +44,8 @@ for (const [backend, setup] of Object.entries(backends)) test(`${backend} copies
   await ui.unmount()
 })
 
-test('windows copies Excel-style HTML and CRLF plain text through PowerShell', async ($, on) => {
-  clipboardEnv(on, 'other', { OS: 'Windows_NT' })
+test('windows copies HTML and CRLF plain text through PowerShell', async ($, on) => {
+  clipboardEnv(on, 'other', { OS: 'Windows_NT', SystemRoot: 'C:\\Windows' })
   const calls: { argv: readonly string[]; input: string }[] = []
   on('process.run', (_, e) => {
     calls.push({ argv: e.argv, input: e.init?.stdin ?? '' })
@@ -59,17 +59,37 @@ test('windows copies Excel-style HTML and CRLF plain text through PowerShell', a
   expect(calls).toHaveLength(0)
   await ui.press({ key: 'html0' })
   expect(calls).toHaveLength(1)
-  expect(calls[0]!.argv[0]).toBe('powershell.exe')
+  expect(calls[0]!.argv[0]).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
+  expect(calls[0]!.argv).not.toContain('-ExecutionPolicy')
   expect(calls[0]!.argv).toContain('-STA')
   expect(calls[0]!.argv.at(-1)).toBe(WIN_TABLE_COPY)
   expect(calls[0]!.input).toMatch(/^[\x00-\x7e]*$/)
   const payload = JSON.parse(calls[0]!.input)
-  expect(payload.html).toContain('ProgId content=Excel.Sheet')
-  expect(payload.html).toContain('<!--StartFragment-->')
+  expect(payload.html.startsWith('<table>')).toBe(true)
+  expect(payload.html).toContain('<th style="text-align: left">Name</th>')
+  expect(payload.html).not.toContain('Excel')
   expect(payload.html).toContain('✅ done')
   expect(payload.text).toBe('Name\tValue\r\n✅ done\t❌ failed')
   expect(copies).toHaveLength(0)
   expect(toasts).toEqual(['Copied formatted table'])
+  await ui.unmount()
+})
+
+test('windows without SystemRoot falls back to plain text without running PowerShell', async ($, on) => {
+  clipboardEnv(on, 'other', { OS: 'Windows_NT' })
+  let processes = 0
+  on('process.run', () => {
+    processes++
+    return runResult(0)
+  })
+  const copies = recordCopies(on)
+  const toasts = recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount(mount)
+  await ui.press({ key: 'html0' })
+  expect(processes).toBe(0)
+  expect(copies).toEqual([plain])
+  expect(toasts).toEqual(['Copied as plain text (Windows clipboard helper failed)'])
   await ui.unmount()
 })
 

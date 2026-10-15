@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- `⧉ html` on tables now shows in a local Windows terminal too. It writes Excel-style HTML and tab-separated plain text to the clipboard through Windows' built-in `powershell.exe`, so pasting into Slack makes a native table. Slack keeps the cell text but drops bold, links and alignment.
+- `⧉ html` on tables now shows in a local Windows terminal too. It writes HTML and tab-separated plain text to the clipboard through Windows' built-in `powershell.exe`, so pasting into Slack makes a native table, and Word and online editors keep the header row and alignment. Slack keeps the cell text but drops bold, links and alignment.
 
 ### Changed
 

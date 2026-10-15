@@ -26,21 +26,19 @@ try {
   Add-Type -AssemblyName System.Windows.Forms
   $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
   $utf8 = New-Object Text.UTF8Encoding($false)
-  $doc = [string]$payload.html
-  $crlf = [string][char]13 + [string][char]10
+  $fragment = [string]$payload.html
+  $lf = [string][char]10
+  $crlf = [string][char]13 + $lf
   $template = 'Version:1.0' + $crlf + 'StartHTML:{0:D10}' + $crlf + 'EndHTML:{1:D10}' + $crlf + 'StartFragment:{2:D10}' + $crlf + 'EndFragment:{3:D10}' + $crlf
   $headerLen = $utf8.GetByteCount(($template -f 0, 0, 0, 0))
-  $startMark = '<!--StartFragment-->'
-  $endMark = '<!--EndFragment-->'
-  $startAt = $doc.IndexOf($startMark)
-  $endAt = $doc.IndexOf($endMark)
-  if ($startAt -lt 0 -or $endAt -lt 0) { throw 'Table HTML has no fragment markers' }
-  $startFragment = $headerLen + $utf8.GetByteCount($doc.Substring(0, $startAt + $startMark.Length))
-  $endFragment = $headerLen + $utf8.GetByteCount($doc.Substring(0, $endAt))
-  $endHtml = $headerLen + $utf8.GetByteCount($doc)
-  $cf = ($template -f $headerLen, $endHtml, $startFragment, $endFragment) + $doc
+  $prefix = '<html>' + $lf + '<head>' + $lf + '<meta charset="utf-8">' + $lf + '</head>' + $lf + '<body>' + $lf + '<!--StartFragment-->' + $lf
+  $suffix = $lf + '<!--EndFragment-->' + $lf + '</body>' + $lf + '</html>'
+  $startFragment = $headerLen + $utf8.GetByteCount($prefix)
+  $endFragment = $startFragment + $utf8.GetByteCount($fragment)
+  $endHtml = $endFragment + $utf8.GetByteCount($suffix)
+  $cf = ($template -f $headerLen, $endHtml, $startFragment, $endFragment) + $prefix + $fragment + $suffix
   $data = New-Object System.Windows.Forms.DataObject
-  $data.SetData('HTML Format', (New-Object IO.MemoryStream(, $utf8.GetBytes($cf))))
+  $data.SetData('HTML Format', (New-Object IO.MemoryStream(, [byte[]]($utf8.GetBytes($cf) + [byte]0))))
   $data.SetData([System.Windows.Forms.DataFormats]::UnicodeText, [string]$payload.text)
   [System.Windows.Forms.Clipboard]::SetDataObject($data, $true)
 } catch {
@@ -57,10 +55,10 @@ const ascii = (json: string): string =>
     return unit > 0x7e ? `\\u${unit.toString(16).padStart(4, '0')}` : json[i]
   }).join('')
 
-export const clipboardCommand = (backend: ClipboardBackend, html: string, text: string) => backend === 'windows'
+export const clipboardCommand = (backend: ClipboardBackend, html: string, text: string, systemRoot?: string) => backend === 'windows'
   ? {
     stdin: ascii(JSON.stringify({ html, text: text.replace(/\r?\n/g, '\r\n') })),
-    argv: ['powershell.exe', '-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-Command', WIN_TABLE_COPY],
+    argv: [`${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`, '-NoProfile', '-NonInteractive', '-STA', '-Command', WIN_TABLE_COPY],
     failure: 'Windows clipboard helper failed',
   }
   : {
