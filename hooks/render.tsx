@@ -384,8 +384,8 @@ export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
 }
 
 const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: string) => (
-  <Box key={key} minWidth={w}>
-    <Box position="absolute" top={0} bottom={0} left={0} minWidth={w} overflow="hidden">
+  <Box key={key} flexDirection="column" minWidth={w}>
+    <Box height={0} flexGrow={1} overflow="hidden">
       {drawn}
     </Box>
   </Box>

@@ -153,10 +153,12 @@ for (const [kind, cell] of [
   test(`a boxed row with a ${kind} keeps the link whole and clips its borders to the row`, async $ => {
     const ui = await $.ui.mount(mount(`| n | link |\n|---|---|\n| 1 | ${cell} |`, 40))
     const links = await ui.findAll({ type: 'Link' })
-    const clips = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.overflow === 'hidden')
+    const boxes = await ui.findAll({ type: 'Box' })
+    const clips = boxes.filter(b => b.props.overflow === 'hidden' && b.props.height === 0)
     expect(links.length).toBe(1)
     expect(clips.length).toBe(3)
     expect(clips.every(b => drawn(b).split('\n').length > 2)).toBe(true)
+    expect(boxes.some(b => b.props.position === 'absolute' && drawn(b).includes('│'))).toBe(false)
     await ui.unmount()
   })
 }
@@ -1152,6 +1154,15 @@ test('a quote bar covers a wrapped banner heading and its rule', { options: { he
 test('a quote bar covers a task list progress line that wraps', { options: { taskStyle: 'progress', copyButtons: false } }, async $ => {
   const ui = await $.ui.mount(mount('> - [ ] x', 24))
   expect(Math.max(...(await barLines(ui))) >= 3).toBe(true)
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`a quote bar stays in the flow, clipped to the quote's rows, on ${surface}`, async $ => {
+  const ui = await $.ui.mount({ ...mount(DRAFT), surface })
+  const boxes = await ui.findAll({ type: 'Box' })
+  const clips = boxes.filter(b => b.props.overflow === 'hidden' && b.props.height === 0 && b.props.flexGrow === 1)
+  expect(clips.some(b => /^(│ \n){9,}│ $/.test(drawn(b)))).toBe(true)
+  expect(boxes.some(b => b.props.position === 'absolute' && drawn(b).includes('│'))).toBe(false)
   await ui.unmount()
 })
 
