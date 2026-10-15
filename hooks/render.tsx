@@ -241,7 +241,30 @@ const marksIn = (nodes: Inline[], at = 0): Mark[] => {
   return out
 }
 
-const pressInline = (el: ElementTable, style: Style, nodes: Inline[], key: string, tip: Tip | undefined, look: TextLook = {}, box: { justifyContent?: 'flex-start' | 'flex-end' | 'center' } = {}): RenderElement | null => {
+const piecesOf = (text: string, a: number, b: number, columns: number, marks: Mark[]): (readonly [number, number])[] => {
+  if (width(text.slice(a, b)) <= columns) return [[a, b]]
+  const out: [number, number][] = []
+  let start = a
+  let at = a
+  let taken = 0
+  for (const g of graphemes(text.slice(a, b))) {
+    const step = width(g)
+    if (at > start && taken + step > columns) {
+      const cut = marks.find(m => m.start < at && at < m.end)?.start ?? at
+      if (cut > start) {
+        out.push([start, cut])
+        taken = width(text.slice(cut, at))
+        start = cut
+      }
+    }
+    at += g.length
+    taken += step
+  }
+  out.push([start, b])
+  return out
+}
+
+const pressInline = (el: ElementTable, style: Style, nodes: Inline[], columns: number, key: string, tip: Tip | undefined, look: TextLook = {}, box: { justifyContent?: 'flex-start' | 'flex-end' | 'center' } = {}): RenderElement | null => {
   const marks = tip ? marksIn(nodes).flatMap(m => {
     const press = tip(m.note)
     return press ? [{ ...m, press }] : []
@@ -249,7 +272,8 @@ const pressInline = (el: ElementTable, style: Style, nodes: Inline[], key: strin
   if (!marks.length) return null
   const { Box, Text, Button } = el
   const run = (a: number, b: number) => <Text key={`${key}.t${a}`} {...look}>{renderInline(el, style, sliceInline(nodes, a, b), `${key}.t${a}`)}</Text>
-  const words = [...inlineText(nodes).matchAll(/\s*\S+\s*/g)].map(m => [m.index, m.index + m[0].length] as const)
+  const text = inlineText(nodes)
+  const words = [...text.matchAll(/\s*\S+\s*/g)].flatMap(m => piecesOf(text, m.index, m.index + m[0].length, Math.max(1, columns), marks))
   return (
     <Box key={key} flexDirection="row" flexWrap="wrap" {...box}>
       {words.map(([a, b]) => {
@@ -499,7 +523,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
         const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
           <Box key={`${k}.${c}`} width={w} flexShrink={0} justifyContent={side}>
-            {pressInline(el, style, runs, `${k}.${c}.p`, tip, isHeader ? { bold: true, color: t.tableHeader } : {}, { justifyContent: side })
+            {pressInline(el, style, runs, w, `${k}.${c}.p`, tip, isHeader ? { bold: true, color: t.tableHeader } : {}, { justifyContent: side })
               ?? (isHeader
                 ? <Text bold color={t.tableHeader}>{runs.some(n => n.kind === 'footnote') ? renderInline(el, style, runs, `${k}.${c}`) : inlineText(runs)}</Text>
                 : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>)}
@@ -576,7 +600,7 @@ const renderParagraph = (el: ElementTable, style: Style, block: Extract<Block, {
   const rtl = flowOf(style, block.inline, columns)
   if (rtl?.base === 'R') return <Box key={key} flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, key, prose(style))}</Box>
   const inline = rtl ? rtl.lines[0]! : block.inline
-  return pressInline(el, style, inline, key, tip, { ...(style.narration ? { bold: true } : {}), ...prose(style) }) ?? <Text key={key} bold={style.narration} {...prose(style)}>{renderInline(el, style, inline, key)}</Text>
+  return pressInline(el, style, inline, columns, key, tip, { ...(style.narration ? { bold: true } : {}), ...prose(style) }) ?? <Text key={key} bold={style.narration} {...prose(style)}>{renderInline(el, style, inline, key)}</Text>
 }
 
 const leadInline = (blocks: Block[]): Inline[] => {
@@ -660,7 +684,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         ) : (
           <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
             <Text color={glyphColor}>{`${glyph} `}</Text>
-            {pressInline(el, style, rtl ? rtl.lines[0]! : item.inline, `${k}.i`, tip, { ...(item.task === true ? { dimColor: true, strikethrough: strike } : {}), ...prose(style) }) ?? <Text dimColor={item.task === true} strikethrough={item.task === true && strike} {...prose(style)}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>}
+            {pressInline(el, style, rtl ? rtl.lines[0]! : item.inline, columns - pad, `${k}.i`, tip, { ...(item.task === true ? { dimColor: true, strikethrough: strike } : {}), ...prose(style) }) ?? <Text dimColor={item.task === true} strikethrough={item.task === true && strike} {...prose(style)}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>}
           </Box>
         )
         if (!item.blocks) return row

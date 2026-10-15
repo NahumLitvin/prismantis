@@ -7,7 +7,7 @@ import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import { isReadOnlyCall, tableArt, takesClickableMarks, takesEditorLinks, takesHttpLinks, width } from '../hooks/render'
 import { PRESETS } from '../hooks/presets'
-import { claudeAt, linksHttp, marksClickable } from './claude-version'
+import { claudeAt, linksHttp } from './claude-version'
 import { clipboardEnv, recordCopies, recordToasts } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
@@ -847,7 +847,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     for (const base of [undefined, CLICKABLE]) {
       test(`footnote marks in table cells draw in the paragraph mark color on ${surface}, ${tableStyle}${base ? `, Claude Code ${base}` : ''}`, { options: { tableStyle } }, async ($, on) => {
         if (base) claudeAt(on, base)
-        if (base && !(await marksClickable($.ui.mount({ ...mount(NOTED), surface })))) return
+        if (base && !(await linksHttp($.ui.mount({ ...mount(NOTED), surface })))) return
         const accent = PRESETS['catppuccin-mocha'].accent
         const ui = await $.ui.mount({ ...mount('Fast[^a].\n\n| Metric[^b] | **Value**[^c] | A long header that has to wrap[^a] |\n|---|---|---|\n| p99[^a] | 40ms[^b] | x |\n\n[^a]: A.\n[^b]: B.\n[^c]: C.', 40), surface })
         const marks = await ui.findAll({ type: 'Text', text: /^[¹²³]$/ })
@@ -872,19 +872,31 @@ for (const surface of ['terminal', 'desktop'] as const) {
   test(`a click on a footnote mark in a sentence, list, quote or table shows its note on ${surface}`, async ($, on) => {
     claudeAt(on, CLICKABLE)
     const toasts = recordToasts(on)
-    if (!(await marksClickable($.ui.mount({ ...mount(NOTED), surface })))) return
+    if (!(await linksHttp($.ui.mount({ ...mount(NOTED), surface })))) return
     const ui = await $.ui.mount({ ...mount('Fast[^a] and steady.\n\n- Cold[^b] start\n\n> Quiet[^a] release.\n\n| M | V |\n|---|---|\n| p99 | 40ms[^b] |\n\n[^a]: Measured twice.\n[^b]: First request.'), surface })
     const marks = await ui.findAll({ type: 'Button', text: /^[¹²]$/ })
     expect(marks.map(m => m.text)).toEqual(['¹', '²', '¹', '²'])
     for (const mark of marks) await ui.press({ key: mark.key! })
     expect(toasts).toEqual(['¹ Measured twice.', '² First request.', '¹ Measured twice.', '² First request.'])
+    expect((await ui.find({ type: 'Text', text: /^Quiet$/ }))?.props).toMatchObject({ italic: true, color: PRESETS['catppuccin-mocha'].quote })
+    await ui.unmount()
+  })
+
+  test(`a mark after a word wider than the line stays at the word's end on ${surface}`, async ($, on) => {
+    claudeAt(on, CLICKABLE)
+    if (!(await linksHttp($.ui.mount({ ...mount(NOTED), surface })))) return
+    const long = 'supercalifragilisticexpialidocious-extra-long-token'
+    const ui = await $.ui.mount({ ...mount(`Token ${long}[^a] here.\n\n- item ${long}[^a] end\n\n[^a]: The long token.`, 40), surface })
+    const words = (await ui.findAll({ type: 'Box' })).filter(b => b.props.flexShrink === 0 && b.text.includes('¹'))
+    expect(words.map(w => w.text.trim().endsWith('token¹'))).toEqual([true, true])
+    expect(words.filter(w => width(w.text.trimEnd()) > 38).map(w => w.text)).toEqual([])
     await ui.unmount()
   })
 
   test(`/prismantis demo footnote marks are clickable on ${surface}`, async ($, on) => {
     claudeAt(on, CLICKABLE)
     const toasts = recordToasts(on)
-    if (!(await marksClickable($.ui.mount({ ...mount(NOTED), surface })))) return
+    if (!(await linksHttp($.ui.mount({ ...mount(NOTED), surface })))) return
     const ui = await $.ui.mount({ ...DEMO, surface })
     const marks = await ui.findAll({ type: 'Button', text: /^[¹²³]$/ })
     expect(marks.map(m => m.text)).toEqual(['¹', '²', '³'])

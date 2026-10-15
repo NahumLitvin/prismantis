@@ -4,5 +4,3 @@ export const claudeAt = (on: On, base: string) => on('session.version', () => ({
 
 export const linksHttp = (mounting: Promise<{ unmount: () => Promise<void> }>): Promise<boolean> =>
   mounting.then(async ui => (await ui.unmount(), true), () => false)
-
-export const marksClickable = linksHttp
