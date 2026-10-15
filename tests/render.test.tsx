@@ -242,14 +242,23 @@ test('copyButtonStyle hover floats every copy button out of the flow, shown only
   await ui.unmount()
 })
 
-test('copyButtonStyle hover starts buttons wider than their block at its left edge, so they never run off the left of the screen', { options: { copyButtonStyle: 'hover' } }, async $ => {
-  const ui = await $.ui.mount({ ...draw('| Region | p99 |\n|---|---:|\n| eu | 12 |\n\n```bash\nls\n```'), surface: 'terminal' })
-  const corners = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.top === 0)
-  expect(corners.map(b => b.text)).toEqual(['⧉ md⧉ art', '⧉ copy'])
-  for (const corner of corners) {
-    expect(corner.props).toMatchObject({ left: 0, minWidth: '100%', justifyContent: 'flex-end' })
-    expect(corner.props.right).toBeUndefined()
+for (const surface of ['terminal', 'desktop'] as const) test(`copyButtonStyle hover covers only its buttons' cells on ${surface}, so the rest of the row stays drawn while they show`, { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Region | p99 |\n|---|---:|\n| eu | 12 |\n\n```bash\nls\n```\n\n> ```bash\n> npm test\n> ```\n>\n> Run that first.'), surface })
+  const floats = (await ui.findAll({ type: 'Box' })).filter(b => b.props.position === 'absolute' && b.props.display === 'none')
+  expect(floats.map(b => b.text)).toEqual(['⧉ md⧉ art', '⧉ copy', '⧉ copy', '⧉ copy', '⧉ copy reply'])
+  for (const float of floats) {
+    expect(float.props.right).toBe(0)
+    expect(float.props.left).toBeUndefined()
+    expect(float.props.minWidth).toBeUndefined()
+    expect(float.props.width).toBeUndefined()
   }
+  await ui.unmount()
+})
+
+test('copyButtonStyle hover makes a block at least as wide as its buttons, so buttons anchored right never run off its left edge', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| a |\n|---|\n| 1 |\n\n```\nx\n```'), surface: 'terminal' })
+  expect((await ui.find({ key: 'c0' }))?.props.minWidth).toBe('[ ⧉ md ] [ ⧉ art ]'.length)
+  expect((await ui.find({ key: 'b1' }))?.props.minWidth).toBe('[ ⧉ copy ]'.length)
   await ui.unmount()
 })
 

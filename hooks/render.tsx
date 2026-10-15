@@ -757,7 +757,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const { Box, Text } = el
   const t = style.theme
   const hover = style.copyButtonStyle === 'hover'
-  const floating = (button: RenderElement | null, low = false) => (button ? <Box position="absolute" {...(low ? { bottom: 0 } : { top: 0 })} left={0} minWidth="100%" justifyContent="flex-end" display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
+  const floating = (button: RenderElement | null, low = false) => (button ? <Box position="absolute" {...(low ? { bottom: 0 } : { top: 0 })} right={0} display="none" hover={{ display: 'flex' }}>{button}</Box> : null)
   const reserved = (buttons: (RenderElement | null | undefined)[]): number =>
     buttons.reduce<number>((w, button) => (button?.type === 'Button' ? w + (w ? 1 : 0) + width(`[ ${button.props.label} ]`) : w), 0)
   const shown = blocks.map(block => drawable(block, style.httpLinks, style.editorLinks))
@@ -794,12 +794,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
         const rows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
         const gutter = String(lines.length).length
+        const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         return (
-          <Box key={key} flexDirection="column" alignSelf="flex-start">
+          <Box key={key} flexDirection="column" alignSelf="flex-start" {...(hover ? { minWidth: reserved([button]) } : {})}>
             {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={4}>
               <Text color={t.codeComment}>{`── ${block.lang || 'code'}`}</Text>
-              {hover ? floating(copy?.(lines.join('\n'), `copy${b}`) ?? null) : copy?.(lines.join('\n'), `copy${b}`) ?? null}
+              {hover ? floating(button) : button}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
               {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
