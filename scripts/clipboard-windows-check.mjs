@@ -19,11 +19,35 @@ assert.equal(write.status, 0, write.stderr || write.error?.message)
 const read = `
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
-$data = [System.Windows.Forms.Clipboard]::GetDataObject()
-$utf8 = New-Object Text.UTF8Encoding($false)
-foreach ($format in 'HTML Format', 'UnicodeText') {
-  [Console]::Out.WriteLine([Convert]::ToBase64String($utf8.GetBytes([string]$data.GetData($format))))
+Add-Type -Namespace Win32 -Name Clip -MemberDefinition '
+[DllImport("user32.dll")] public static extern bool OpenClipboard(IntPtr owner);
+[DllImport("user32.dll")] public static extern bool CloseClipboard();
+[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern uint RegisterClipboardFormat(string name);
+[DllImport("user32.dll")] public static extern IntPtr GetClipboardData(uint format);
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr handle);
+[DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr handle);
+[DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr handle);
+'
+if (-not [Win32.Clip]::OpenClipboard([IntPtr]::Zero)) { throw 'Cannot open clipboard' }
+try {
+  $handle = [Win32.Clip]::GetClipboardData([Win32.Clip]::RegisterClipboardFormat('HTML Format'))
+  if ($handle -eq [IntPtr]::Zero) { throw 'No HTML Format on clipboard' }
+  $pointer = [Win32.Clip]::GlobalLock($handle)
+  if ($pointer -eq [IntPtr]::Zero) { throw 'Cannot lock HTML Format' }
+  try {
+    $bytes = New-Object byte[] ([int][Win32.Clip]::GlobalSize($handle).ToUInt64())
+    [Runtime.InteropServices.Marshal]::Copy($pointer, $bytes, 0, $bytes.Length)
+  } finally {
+    [void][Win32.Clip]::GlobalUnlock($handle)
+  }
+} finally {
+  [void][Win32.Clip]::CloseClipboard()
 }
+$end = [Array]::IndexOf($bytes, [byte]0)
+if ($end -ge 0) { [Array]::Resize([ref]$bytes, $end) }
+[Console]::Out.WriteLine([Convert]::ToBase64String($bytes))
+$utf8 = New-Object Text.UTF8Encoding($false)
+[Console]::Out.WriteLine([Convert]::ToBase64String($utf8.GetBytes([string][System.Windows.Forms.Clipboard]::GetDataObject().GetData('UnicodeText'))))
 `
 const readback = spawnSync(command.argv[0], ['-NoProfile', '-NonInteractive', '-STA', '-Command', read], { encoding: 'utf8', timeout: 30000 })
 assert.equal(readback.status, 0, readback.stderr || readback.error?.message)
