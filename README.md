@@ -58,17 +58,7 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 
 ### Codex
 
-Codex has no way for a plugin to redraw replies, so prismantis there gives Codex the same model note as Claude Code and ships the 16 themes as Codex syntax themes: code, inline code, table headers and mermaid boxes take the theme colors, prose stays Codex's own. `$prismantis` shows the demo, `$prismantis-themes` installs the themes and `/theme` picks one.
-
-| Codex alone | With prismantis |
-|---|---|
-| ![Codex in its default colors](docs/compare/codex-before.png) | ![Codex in prismantis-dracula](docs/compare/codex-after.png) |
-
-Install it, then trust its hook once in `/hooks`:
-
-```bash
-codex plugin marketplace add NahumLitvin/prismantis && codex plugin add prismantis@prismantis
-```
+prismantis also runs in Codex, with themes for code, tables and diagrams and the same session note. Install, what works today, and the two Codex issues it waits on for parity: [codex/README.md](codex/README.md).
 
 ## Features
 
