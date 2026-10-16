@@ -2,7 +2,7 @@ import type { Inline } from './markdown'
 
 type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
-export type Shape = 'visual' | 'words' | 'logical' | 'inverse'
+export type Shape = 'visual' | 'words' | 'logical' | 'mirror' | 'inverse'
 
 export const TERMINALS = {
   warp: 'visual',
@@ -13,7 +13,7 @@ export const TERMINALS = {
   'windows-terminal': 'visual',
   'apple-terminal': 'logical',
   kitty: 'words',
-  iterm: 'logical',
+  iterm: 'mirror',
   gnome: 'logical',
   konsole: 'logical',
 } as const satisfies Record<string, Shape>
@@ -203,12 +203,27 @@ const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
 
 export const containsRtl = (nodes: Inline[]): boolean => nodes.some(n => ('children' in n ? containsRtl(n.children) : R.test(n.text)))
 
+export const ROW_MARK: Inline = { kind: 'dim', text: '׀ ' }
+
+const asWritten = (shape: Shape) => shape === 'logical' || shape === 'mirror'
+
+const isLetter = (u: Unit) => /\p{L}/u.test(u.ch)
+
+const startsLatin = (line: Unit[]): boolean => {
+  const first = line.find(isLetter)
+  return first !== undefined && !R.test(first.ch)
+}
+
 export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual'): Flow | null => {
   if (!containsRtl(nodes)) return null
   const all = flatten(nodes)
   const base = baseOf(all)
-  const logical = base === 'R' ? wrapUnits(all, columns, measure) : [all]
-  const lines = logical.map(line => rebuild(shape === 'logical' ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base)))
+  const marked = asWritten(shape) && base === 'R' && all.some(u => isLetter(u) && !R.test(u.ch))
+  const logical = base === 'R' ? wrapUnits(all, columns - (marked ? measure(ROW_MARK.text) : 0), measure) : [all]
+  const lines = logical.map(line => {
+    const built = rebuild(asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base))
+    return marked && startsLatin(line) ? [ROW_MARK, ...built] : built
+  })
   return { base, lines: shape === 'words' ? lines.map(line => shapeNodes(line, shape)) : lines }
 }
 
@@ -219,7 +234,7 @@ const visualText = (text: string): string => {
 }
 
 export const commentTail = (line: string, shape: Shape = 'visual'): { head: string; marker: string; tail: string } | null => {
-  if (shape === 'logical' || !R.test(line)) return null
+  if (asWritten(shape) || !R.test(line)) return null
   const m = COMMENT.exec(line)
   return m && R.test(m[3]!) ? { head: m[1]!, marker: m[2]!, tail: shapeText(visualText(m[3]!), shape) } : null
 }

@@ -573,7 +573,7 @@ const renderHeading = (el: ElementTable, style: Style, block: Extract<Block, { k
   const rtl = flowOf(style, block.inline, Infinity)
   if (!rtl) return drawHeading(el, style, block, block.inline, key)
   const heading = drawHeading(el, style, block, rtl.lines[0]!, key)
-  return rtl.base === 'R' ? <el.Box key={key} alignSelf="flex-end">{heading}</el.Box> : heading
+  return rtl.base === 'R' && !mirrored(style) ? <el.Box key={key} alignSelf="flex-end">{heading}</el.Box> : heading
 }
 
 const drawHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, inline: Inline[], key: string) => {
@@ -600,10 +600,12 @@ const ALERT_COLOR = { note: 'blue', tip: 'green', important: 'magenta', warning:
 
 const prose = (style: Style) => (style.inside === 'quote' ? { italic: true, color: style.theme.quote } : {})
 
+const mirrored = (style: Style) => style.shape === 'mirror'
+
 const renderParagraph = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'paragraph' }>, columns: number, key: string, tip?: Tip) => {
   const { Box, Text } = el
   const rtl = flowOf(style, block.inline, columns)
-  if (rtl?.base === 'R') return <Box key={key} flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, key, prose(style))}</Box>
+  if (rtl?.base === 'R') return <Box key={key} flexDirection="column" {...(mirrored(style) ? {} : { alignItems: 'flex-end' as const })}>{renderFlow(el, style, rtl.lines, key, prose(style))}</Box>
   const inline = rtl ? rtl.lines[0]! : block.inline
   return pressInline(el, style, inline, columns, key, tip, { ...(style.narration ? { bold: true } : {}), ...prose(style) }) ?? <Text key={key} bold={style.narration} {...prose(style)}>{renderInline(el, style, inline, key)}</Text>
 }
@@ -681,7 +683,12 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         const glyphColor = item.task && tick ? t.accent : t.bullet
         const pad = item.depth * 2 + glyph.length + 1
         const rtl = flowOf(style, item.inline, columns - pad)
-        const row = rtl?.base === 'R' ? (
+        const row = rtl?.base === 'R' && mirrored(style) ? (
+          <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
+            <Text color={glyphColor}>{`${glyph} `}</Text>
+            <Box flexDirection="column">{renderFlow(el, style, rtl.lines, k, prose(style))}</Box>
+          </Box>
+        ) : rtl?.base === 'R' ? (
           <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
             <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k, prose(style))}</Box>
             <Text color={glyphColor}>{` ${glyph}`}</Text>

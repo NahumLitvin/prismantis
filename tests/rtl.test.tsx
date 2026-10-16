@@ -4,7 +4,7 @@ import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
 import { PRESETS } from '../hooks/presets'
-import { commentTail, flow, terminalLine } from '../hooks/rtl'
+import { ROW_MARK, commentTail, flow, terminalLine } from '../hooks/rtl'
 import { claudeAt, linksHttp } from './claude-version'
 
 const measure = (s: string) => [...s].length
@@ -343,4 +343,48 @@ test('kitty shaping keeps a Hebrew URL as written', async () => {
   const href = 'https://he.wikipedia.org/wiki/שלום'
   const lines = flow([{ kind: 'text', text: 'ראו ' }, { kind: 'link', text: 'מאמר', href }, { kind: 'text', text: ' עכשיו' }], 200, measure, 'words')?.lines ?? []
   expect(lines.flat().filter(n => n.kind === 'link').map(l => l.kind === 'link' && l.href)).toEqual([href])
+})
+
+test('on a terminal that does its own bidi, a Hebrew line that opens with a Latin word gets a Hebrew mark first', async () => {
+  const f = flow([{ kind: 'text', text: 'kubectl נכשל על ה-cluster' }], 100, measure, 'logical')
+  expect(f?.base).toBe('R')
+  expect(f?.lines[0]?.[0]).toEqual(ROW_MARK)
+  expect(inlineText(f!.lines[0]!)).toBe('׀ kubectl נכשל על ה-cluster')
+})
+
+test('a Hebrew line that opens with a Hebrew word gets no mark, and other shapes never do', async () => {
+  expect(flow([{ kind: 'text', text: 'שלום kubectl' }], 100, measure, 'logical')?.lines[0]?.[0]).not.toEqual(ROW_MARK)
+  expect(flow([{ kind: 'text', text: 'kubectl נכשל על ה-cluster' }], 100, measure, 'visual')?.lines[0]?.[0]).not.toEqual(ROW_MARK)
+  expect(flow([{ kind: 'text', text: 'kubectl נכשל על ה-cluster' }], 100, measure, 'words')?.lines[0]?.[0]).not.toEqual(ROW_MARK)
+})
+
+test('an English-majority line with a Hebrew tail stays left and gets no mark', async () => {
+  const f = flow([{ kind: 'text', text: 'kubectl get pods shows three pods stuck וזה מסביר' }], 100, measure, 'logical')
+  expect(f?.base).toBe('L')
+  expect(f?.lines[0]?.[0]).not.toEqual(ROW_MARK)
+})
+
+test('a wrapped Hebrew paragraph marks only the rows that open with Latin, and every row still fits', async () => {
+  const f = flow([{ kind: 'text', text: 'הבדיקה נפלה בגלל timeout ארוך מאוד pytest נתקע kubeconfig חסר' }], 24, measure, 'logical')
+  const rows = f!.lines.map(inlineText)
+  expect(rows.length >= 2).toBe(true)
+  for (const row of rows) expect(measure(row) <= 24).toBe(true)
+  for (const row of rows) expect(/^׀ [A-Za-z]/.test(row) || /^[^A-Za-z]*[֐-׿]/.test(row)).toBe(true)
+  expect(rows.some(row => row.startsWith('׀ '))).toBe(true)
+})
+
+test('iTerm mirrors a right-to-left row itself, so a Hebrew paragraph that opens with Latin gets the mark and no right alignment', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount('kubectl נכשל על ה-cluster\n\n- GC-174176 נכשל שוב'))
+  expect(await ui.find({ type: 'Text', text: /^׀ $/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(false)
+  expect(await ui.find({ type: 'Text', text: /^• $/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ •$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('Apple Terminal keeps the right alignment and gets the mark too', { options: { rtl: 'apple-terminal' } }, async $ => {
+  const ui = await $.ui.mount(mount('kubectl נכשל על ה-cluster'))
+  expect(await ui.find({ type: 'Text', text: /^׀ $/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
+  await ui.unmount()
 })
