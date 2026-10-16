@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.24.1] - 2026-10-16
+
+### Fixed
+
+- With `copyButtonStyle: hover`, hovering a block no longer blanks the rest of the row its copy buttons appear on. The buttons cover only their own cells on code blocks, tables, lists, quotes, alerts and mermaid diagrams, a block narrower than its buttons widens to fit them, and right-to-left lists, quotes, alerts and tables show their buttons at the left, where their lines end ([#170](https://github.com/NahumLitvin/prismantis/pull/170)).
+
 ## [0.24.0] - 2026-10-15
 
 ### Added
