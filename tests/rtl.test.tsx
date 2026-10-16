@@ -388,3 +388,10 @@ test('Apple Terminal keeps the right alignment and gets the mark too', { options
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })
+
+test('iTerm draws a Hebrew prompt bubble across the whole width, so the terminal mirrors it in place', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount({ plugin: 'prismantis', component: 'UserMessage' as const, props: { text: 'עשיתי reload, תראה את השורות', origin: { kind: 'composer' } as never, isExpanded: true }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round' && b.props.width === '100%')).toBe(true)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end' || b.props.alignItems === 'flex-end')).toBe(false)
+  await ui.unmount()
+})

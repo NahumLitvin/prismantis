@@ -1635,7 +1635,8 @@ export const renderUserPrompt = (el: ElementTable, style: Style, text: string, c
   const t = style.theme
   const color = style.promptStyle === 'chevron' ? t.accent : t.heading
   const lines = text.split('\n').map(line => flowOf(style, [{ kind: 'text', text: line }], columns - 4 - (time === undefined ? 0 : time.length + 1)))
-  const rtl = lines.some(l => l?.base === 'R')
+  const hebrew = lines.some(l => l?.base === 'R')
+  const rtl = hebrew && !mirrored(style)
   const body = (
     <Box flexDirection="column" {...(rtl ? { alignItems: 'flex-end' as const } : {})}>
       {text.split('\n').map((line, i) => {
@@ -1647,7 +1648,7 @@ export const renderUserPrompt = (el: ElementTable, style: Style, text: string, c
   const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
   if (style.promptStyle === 'bubble') {
-    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'}>{content}</Box>
+    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} {...(hebrew && !rtl ? { width: '100%' } : {})}>{content}</Box>
   }
   const mark = <Text color={t.accent} bold>{style.promptStyle === 'bar' ? (rtl ? ' ▐' : '▌ ') : rtl ? ' ‹' : '› '}</Text>
   return <Box flexDirection="row" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>
