@@ -3,7 +3,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
-import { displayText, inlineText, texText } from './markdown'
+import { displayText, inlineText, isWebLink, texText } from './markdown'
 import type { Flow } from './rtl'
 import { commentTail, commentVisual, containsRtl, flow, hasRtl, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
@@ -115,7 +115,10 @@ const plainLink = (text: string, href: string): string => {
 }
 
 const unlink = (nodes: Inline[], http: boolean, editor: boolean): Inline[] =>
-  nodes.map(n => (n.kind === 'link' && !isHyperlink(n.href, http, editor) ? { kind: 'text', text: plainLink(n.text, n.href) } : 'children' in n ? { ...n, children: unlink(n.children, http, editor) } : n))
+  nodes.map(node => {
+    const n: Inline = node.kind === 'image' && isWebLink(node.src) ? { kind: 'link', text: node.text, href: node.src } : node
+    return n.kind === 'link' && !isHyperlink(n.href, http, editor) ? { kind: 'text', text: plainLink(n.text, n.href) } : 'children' in n ? { ...n, children: unlink(n.children, http, editor) } : n
+  })
 
 const unlinkBlock = (block: Block, http: boolean, editor: boolean): Block => {
   const plain = (nodes: Inline[]) => unlink(nodes, http, editor)
@@ -210,6 +213,8 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
         return n.text === n.href ? <Text key={key} color={t.link}><el.Link href={n.href} /></Text> : <el.Link key={key} href={n.href}><Text color={t.link}>{n.text}</Text></el.Link>
+      case 'image':
+        return <Text key={key} color={t.link}>{n.text}</Text>
       case 'number':
         return <Text key={key} color={t.number}>{n.text}</Text>
       case 'path':
@@ -785,7 +790,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       case 'heading':
         return renderHeading(el, style, block, key)
       case 'paragraph':
-        return renderParagraph(el, style, block, columns, key, tip)
+        return drawn.get(b)?.element ?? renderParagraph(el, style, block, columns, key, tip)
       case 'quote':
         return renderQuote(el, style, block, beside(b), key, copy, fold, tip)
       case 'alert':

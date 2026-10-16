@@ -55,6 +55,8 @@ const flatten = (nodes: Inline[], wrap: Fmt['wrap'] = []): Unit[] =>
         return n.text === n.href
           ? units(n.text, { wrap, leaf: 'link', href: n.href })
           : [...units(n.text, { wrap, leaf: 'link', href: n.href }), ...units(` (${n.href})`, { wrap, leaf: 'dim' })]
+      case 'image':
+        return units(n.text, { wrap, leaf: 'text' })
       default:
         return units(n.text, { wrap, leaf: n.kind })
     }

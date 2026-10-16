@@ -3,7 +3,7 @@ import type { EngineInterface, PromptOrigin, Register, RenderElement, RenderSurf
 
 import { clockText, endedAt, promptKey, sentAt, withRecord } from './clock'
 import type { Formula } from './latex'
-import { LATEX_DPR, LATEX_FONT_PX, fitsImage, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
+import { LATEX_DPR, LATEX_FONT_PX, MAX_IMAGE_BYTES, fitImage, fitsImage, imageFile, imageOf, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
 import type { Block } from './markdown'
 import { nestedBlocks, parse } from './markdown'
 import type { ClipboardBackend } from './clipboard'
@@ -179,6 +179,34 @@ const mathOfBlocks = async ($: EngineInterface, latex: LatexSession, surface: st
   }))
 }
 
+type Picture = { png: string; width: number; height: number; alt: string }
+
+const pictureOf = async ($: EngineInterface, src: string, home: string): Promise<Omit<Picture, 'alt'> | null> => {
+  const file = imageFile(src, home)
+  if (!file) return null
+  const stat = 'path' in file ? await $.fs.stat(file.path).catch(() => null) : null
+  if ('path' in file && (stat?.kind !== 'file' || stat.size > MAX_IMAGE_BYTES)) return null
+  const png = 'png' in file ? file.png : await $.fs.read(file.path, { as: 'bytes' }).then(r => r.base64, () => '')
+  const size = png ? pngSize(png) : null
+  return size && size.width > 0 && size.height > 0 && fitsImage(png) ? { png, ...size } : null
+}
+
+const loaded = new Map<string, Promise<Omit<Picture, 'alt'> | null>>()
+
+const picturesOf = async ($: EngineInterface, style: Style, probes: Probes, surface: string, blocks: Block[]): Promise<Map<number, Picture>> => {
+  const images = [...blocks.entries()].flatMap(([i, block]) => {
+    const image = imageOf(block)
+    return image ? [{ i, ...image }] : []
+  })
+  if (surface !== 'terminal' || images.length === 0 || !(await (probes.images ??= showsImages($).catch(() => false)))) return new Map()
+  await locate($, style)
+  const found = await Promise.all(images.map(async ({ i, alt, src }) => {
+    const picture = await remember(loaded, src, () => pictureOf($, src, style.home), 50)
+    return picture ? [[i, { ...picture, alt }] as const] : []
+  }))
+  return new Map(found.flat())
+}
+
 const locate = async ($: EngineInterface, style: Style) => {
   style.cwd = await $.session.root().catch(() => style.cwd)
   style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? (await $.env.get('USERPROFILE').catch(() => undefined)) ?? ''
@@ -194,7 +222,7 @@ const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null>
 
 type LinkReach = { http: boolean; editor: boolean; marks: boolean }
 
-type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null>; links?: Promise<LinkReach> }
+type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null>; links?: Promise<LinkReach>; images?: Promise<boolean> }
 
 const linkReach = ($: EngineInterface, probes: Probes): Promise<LinkReach> =>
   (probes.links ??= $.session.version().then(v => ({ http: takesHttpLinks(v.base), editor: takesEditorLinks(v.base), marks: takesClickableMarks(v.base) }), () => ({ http: false, editor: false, marks: false })))
@@ -222,7 +250,7 @@ const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolv
   return { folded, element: <el.Button key={key} variant="secondary" label={folded ? `+${hidden} more lines` : 'show less'} onPress={() => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))} /> }
 }
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }): RenderElement[] => {
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
     const copied = async (surface: RenderSurface): Promise<string> => {
@@ -249,6 +277,10 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     for (const [i, formula] of math) {
       const picked = pickFormula(formula, columns)
       if (picked) drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picked.picture.png }} columns={picked.fit.columns} rows={picked.fit.rows} alt={formula.tex} /> })
+    }
+    for (const [i, picture] of pictures) {
+      const fit = fitImage(picture, columns)
+      drawn.set(i, { element: <Image key={`b${i}`} source={{ png: picture.png }} columns={fit.columns} rows={fit.rows} alt={picture.alt} /> })
     }
   }
   const tip = notes?.press ? noteTip(blocks, text => void $.ui.toast(text)) : undefined
@@ -410,10 +442,11 @@ export const register: Register = (on, options) => {
     const el = $.ui.resolve(e)
     const { Box } = el
     const math = await mathOfBlocks($, latex, e.surface, blocks)
+    const pictures = await picturesOf($, style, probes, e.surface, blocks)
     const open = await read($, unfolded)
     const reach = await linkReach($, probes)
     const surfaceStyle = forSurface(fit(e.viewport), e.surface, reach)
-    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, undefined, open, { id: e.requestId, press: reach.marks })}</Box>
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, pictures, undefined, open, { id: e.requestId, press: reach.marks })}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
@@ -433,6 +466,7 @@ export const register: Register = (on, options) => {
     const { Box, Text } = el
     const narration = style.toolStyle === 'tree-bold' && blocks.length === 1 && blocks[0]!.kind === 'paragraph'
     const math = await mathOfBlocks($, latex, e.surface, blocks)
+    const pictures = await picturesOf($, style, probes, e.surface, blocks)
     const reach = await linkReach($, probes)
     const surfaceStyle = forSurface(fit(e.viewport), e.surface, reach)
     const open = await read($, unfolded)
@@ -442,7 +476,7 @@ export const register: Register = (on, options) => {
           <Text color={style.theme.accent}>{e.props.isFirstOfReply ? '●' : ' '}</Text>
         </Box>
         <Box flexDirection="column" rowGap={1} flexGrow={1}>
-          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined, open, { id: e.requestId, press: reach.marks })}
+          {drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columnsOf(e.viewport), math, pictures, blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined, open, { id: e.requestId, press: reach.marks })}
         </Box>
       </Box>
     )

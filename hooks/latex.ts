@@ -12,7 +12,7 @@ export const LATEX_DPR = 1
 const PX_PER_ROW = LATEX_FONT_PX * LATEX_DPR
 const CELL_RATIO = 0.5
 const RATEX_MARGIN_PX = 10
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024
+export const MAX_IMAGE_BYTES = 2 * 1024 * 1024
 
 const ANSI16 = ['000000', 'cd0000', '00cd00', 'cdcd00', '0000ee', 'cd00cd', '00cdcd', 'e5e5e5', '7f7f7f', 'ff0000', '00ff00', 'ffff00', '5c5cff', 'ff00ff', '00ffff', 'ffffff']
 const ANSI_NAMES = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
@@ -96,3 +96,27 @@ export const pickFormula = (formula: Exclude<Formula, { error: true }>, columns:
 }
 
 export const renderedOf = (stdout: string): Set<number> => new Set([...stdout.matchAll(/^OK\s+(\d+)\s/gm)].map(m => Number(m[1])))
+
+const IMAGE_PX_PER_COLUMN = 10
+const IMAGE_MAX_ROWS = 20
+
+export const imageOf = (block: Block): { alt: string; src: string } | null => {
+  if (block.kind !== 'paragraph') return null
+  const [only, ...rest] = block.inline.filter(n => n.kind !== 'text' || n.text.trim())
+  return only?.kind === 'image' && rest.length === 0 ? { alt: only.text, src: only.src } : null
+}
+
+export const imageFile = (src: string, home: string): { png: string } | { path: string } | null => {
+  const data = /^data:image\/png;base64,([A-Za-z0-9+/]{32,}=*)$/i.exec(src)
+  if (data) return { png: data[1]! }
+  if (/^file:\/\//i.test(src)) return { path: decodeURIComponent(src.slice(7)) }
+  if (src.startsWith('~/')) return home ? { path: `${home}${src.slice(1)}` } : null
+  return /^[a-z][a-z0-9+.-]*:/i.test(src) ? null : { path: src }
+}
+
+export const fitImage = (size: Size, columns: number): Fit => {
+  const aspect = size.width / size.height / CELL_RATIO
+  const wide = Math.max(1, Math.min(255, columns - 2, Math.ceil(size.width / IMAGE_PX_PER_COLUMN)))
+  const rows = Math.max(1, Math.min(IMAGE_MAX_ROWS, Math.round(wide / aspect)))
+  return { columns: Math.max(1, Math.min(wide, Math.round(rows * aspect))), rows }
+}
