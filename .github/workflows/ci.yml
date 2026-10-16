@@ -146,6 +146,8 @@ jobs:
           test "$v" = "$m" && test "$v" = "$c"
       - name: Lockfile pins no registry
         run: "! grep -q '\"resolved\"' scripts/package-lock.json"
+      - name: Hooks never use the network
+        run: "! grep -rnE 'fetch\\(|XMLHttpRequest|WebSocket' hooks"
       - name: No code comments
         run: "! grep -rnE '^\\s*//|/\\*' --include='*.ts' --include='*.tsx' hooks tests --exclude-dir=vendor"
 

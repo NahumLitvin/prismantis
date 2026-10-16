@@ -52,3 +52,11 @@ test('terminal control sequences in a reply are never drawn', async $ => {
   expect(texts.length).toBeGreaterThan(4)
   expect(texts.filter(t => /[\u001b\u0007\u009b]/.test(t))).toEqual([])
 })
+
+test('only web links in a reply are clickable, in every block', async $ => {
+  const links = '[ok](https://a.dev) [a](smb://host/share) [b](file:///Applications/Calculator.app) [c](ms-msdt:/id) [d](javascript:alert(1))'
+  const ui = await $.ui.mount(reply(`${links}\n\n> ${links}\n\n> [!NOTE]\n> ${links}\n\n- x\n  - ${links}\n\n| a |\n|---|\n| ${links} |\n\nn[^a]\n\n[^a]: ${links}`))
+  const hrefs = (await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))
+  expect(hrefs.length).toBe(6)
+  expect(hrefs.filter(h => h !== 'https://a.dev')).toEqual([])
+})
