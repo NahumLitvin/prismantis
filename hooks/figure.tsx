@@ -1,7 +1,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { graphemes, heldLtr, mirrored, remember, width } from './render'
-import { hasRtl, holdEngine, holdText } from './rtl'
+import { asIs, hasRtl, holdEngine, holdText, led } from './rtl'
 import type { Style, Theme } from './theme'
 
 export const FIGURE_ROLES = ['accent', 'warn', 'ok', 'note', 'dim', 'strong'] as const
@@ -193,11 +193,27 @@ const runColor = (style: Style, role: FigureRole | undefined): string | undefine
 
 const isBold = (style: Style, role: FigureRole | undefined): boolean => role === 'strong' || (role === 'warn' && !runColor(style, 'warn'))
 
+const heldRuns = (style: Style, line: string): FigureRun[] => {
+  const runs = figureRuns(line)
+  const hold = !hasRtl(line) ? null : mirrored(style) ? holdText : style.shape === 'engine' ? holdEngine : null
+  const chars = runs.flatMap(run => [...run.text])
+  const roles = runs.flatMap(run => [...run.text].map(() => run.role))
+  const base = hold ? hold(chars) : asIs(chars)
+  const { cells, from } = mirrored(style) ? led(chars, base) : base
+  const held: FigureRun[] = []
+  cells.forEach((ch, p) => {
+    const role = roles[from[p]!]
+    const last = held.at(-1)
+    if (last && last.role === role) last.text += ch
+    else held.push(role ? { text: ch, role } : { text: ch })
+  })
+  return held
+}
+
 const figureElement = ({ Box, Text }: ElementTable, style: Style, lines: readonly string[], key: string): RenderElement => (
-  <Box key={key} flexDirection="column" paddingLeft={2}>
+  <Box key={key} flexDirection="column" paddingLeft={mirrored(style) ? 0 : 2}>
     {lines.map((line, i) => {
-      const hold = !hasRtl(line) ? null : mirrored(style) ? holdText : style.shape === 'engine' ? holdEngine : null
-      const runs = figureRuns(line).map(run => (hold ? { ...run, text: hold([...run.text]).cells.join('') } : run))
+      const runs = heldRuns(style, line)
       return (
         <Text key={`${key}.${i}`} {...heldLtr(style)}>
           {runs.length

@@ -507,6 +507,26 @@ test('iTerm keeps a diagram row with Hebrew left to right: blanks around labels 
   }
 })
 
+test('iTerm opens every held diagram row with a braille blank, so an edge label on a diamond edge does not turn its row right to left', { options: { rtl: 'iterm' } }, async $ => {
+  for (const source of ['```mermaid\nflowchart TD\n  B{האם יש cache?} -->|כן| C[מחזירים]\n  B -->|לא| D[פונים]\n```', '```figure\n◇──כן──◇\n```']) {
+    const ui = await $.ui.mount(mount(source))
+    const rows = await hebrewRows(ui)
+    expect(rows.filter(t => /◇─+כן─+◇/.test(t)).some(t => t.startsWith('⠀⠀'))).toBe(true)
+    await ui.unmount()
+  }
+})
+
+test('iTerm holds a figure row as one line, so a colored word inside a mixed label keeps the label in reading order', { options: { rtl: 'iterm' } }, async $ => {
+  const plain = await $.ui.mount(mount('```figure\n│ שלב build │\n```'))
+  const [want] = await hebrewRows(plain)
+  await plain.unmount()
+  const ui = await $.ui.mount(mount('```figure\n│ {strong:שלב} build │\n```'))
+  const [got] = await hebrewRows(ui)
+  expect(got).toBe(want)
+  expect((await ui.findAll({ type: 'Text' })).some(t => t.text === 'שלב' && t.props.bold === true)).toBe(true)
+  await ui.unmount()
+})
+
 test('terminals that do not mirror rows draw diagrams with plain spaces', { options: { rtl: 'warp' } }, async $ => {
   for (const source of DIAGRAMS) {
     const ui = await $.ui.mount(mount(source))

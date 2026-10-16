@@ -5,7 +5,7 @@ import { drawFigure, isFigureLang } from './figure'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
 import { cells, graphemes, heldLtr, mirrored, remember, width } from './render'
-import { holdEngine, holdRow } from './rtl'
+import { asIs, holdEngine, holdRow, led } from './rtl'
 import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
@@ -183,9 +183,9 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
   painted.set(style.theme, cache)
   const { grid, colors } = remember(cache, art, () => paint(art, style))
   return (
-    <Box key={key} flexDirection="column" paddingLeft={2}>
+    <Box key={key} flexDirection="column" paddingLeft={mirrored(style) ? 0 : 2}>
       {grid.map((row, i) => {
-        const { cells: chars, from } = mirrored(style) ? holdRow(row) : style.shape === 'engine' ? holdEngine(row) : { cells: row, from: row.map((_, c) => c) }
+        const { cells: chars, from } = mirrored(style) ? led(row, holdRow(row)) : style.shape === 'engine' ? holdEngine(row) : asIs(row)
         const marked: (Mark | undefined)[] = row.map(() => undefined)
         for (const [phrase, mark] of marks)
           for (let c = 0; c + phrase.length <= row.length; c++)

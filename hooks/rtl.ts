@@ -318,10 +318,15 @@ const hold = (chars: string[], label: (all: Cell[]) => Cell[], blank: string[]):
   return held
 }
 
-const asIs = (chars: string[]): Held => ({ cells: chars, from: chars.map((_, c) => c) })
+export const asIs = (chars: string[]): Held => ({ cells: chars, from: chars.map((_, c) => c) })
 
 export const holdText = (chars: string[]): Held => hold(chars, rightToLeft, [LTR_BLANK])
 
 export const holdEngine = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? hold(chars, engineLabel, [LRM, ' ']) : asIs(chars))
 
 export const holdRow = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? holdText(chars) : asIs(chars))
+
+export const led = (chars: string[], held: Held): Held => {
+  const blank = chars.some(ch => R.test(ch)) ? LTR_BLANK : ' '
+  return { cells: [blank, blank, ...held.cells], from: [-1, -1, ...held.from] }
+}
