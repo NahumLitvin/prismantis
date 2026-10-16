@@ -1244,7 +1244,8 @@ for (const surface of ['terminal', 'desktop'] as const) test(`a code block and a
   const source = `Before.\n\n> Run it:\n>\n> \`\`\`bash\n> npm test\n> \`\`\`\n>\n${table.split('\n').map(line => `> ${line}`).join('\n')}`
   const ui = await $.ui.mount({ ...mount(source, 60), surface })
   expect(await ui.find({ type: 'Text', text: /^── bash$/ })).toBeDefined()
-  expect((await ui.find({ type: 'Text', text: /^npm$/ }))?.props.color).toBe(t.codeCommand)
+  if (surface === 'desktop') expect((await ui.find({ type: 'Code' }))?.props.source).toBe('npm test')
+  else expect((await ui.find({ type: 'Text', text: /^npm$/ }))?.props.color).toBe(t.codeCommand)
   expect((await ui.find({ type: 'Text', text: /^Check$/ }))?.props.color).toBe(t.tableHeader)
   const edge = await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })
   expect(width('│ ') + width(edge!.text) + 2 + width('[ ⧉ copy ]') <= 60 - 4).toBe(true)

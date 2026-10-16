@@ -851,8 +851,10 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const lines = block.lines
         const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
+        const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
         const drawnRows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
-        const rows = style.shape === 'engine' ? drawnRows.map((row, i) => <Text key={`${key}.ltr${i}`} dir="ltr">{row}</Text>) : drawnRows
+        const rows = style.nativeCode ? [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(block.lang ? { language: block.lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
+          : style.shape === 'engine' ? drawnRows.map((row, i) => <Text key={`${key}.ltr${i}`} dir="ltr">{row}</Text>) : drawnRows
         const gutter = String(lines.length).length
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const float = hover ? floating(button, [button]) : null
@@ -864,7 +866,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
               {float ? float.element : button}
             </Box>
             <Box flexDirection="column" paddingLeft={2}>
-              {lines.length < NUMBER_AT || lines.length > NUMBER_MAX ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
+              {!numbered || style.nativeCode ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
               {toggle?.element ?? null}
             </Box>
           </Box>
