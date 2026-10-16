@@ -296,7 +296,7 @@ export const setupParts = (themes: readonly string[], at: number): SetupParts =>
   const next = steps[at + 1]
   return {
     head: `## Setup ${at + 1}/${steps.length}: ${step.title}\n\n${step.note}`,
-    options: step.options.map((value, i) => ({ value, text: `### ${i + 1}. ${value}${step.sample ? `\n\n${step.sample}` : ''}` })),
+    options: step.options.map((value, i) => ({ value, text: `### ${i + 1}. ${value}${step.key === 'theme' && value !== 'mono' && !RANDOM_THEMES.includes(value) ? ' (for a light terminal)' : ''}${step.sample ? `\n\n${step.sample}` : ''}` })),
     tail: `Pick with \`/prismantis setup ${step.name} <number or name>\`${step.key === 'theme' ? ' or `random`' : ''}.${next ? ` Skip with \`/prismantis setup ${next.name}\`.` : ''} Stop any time, \`/prismantis setup\` starts over.`,
   }
 }
