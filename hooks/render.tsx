@@ -854,7 +854,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
         const drawnRows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
         const rows = style.nativeCode ? [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(block.lang ? { language: block.lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
-          : style.shape === 'engine' ? drawnRows.map((row, i) => <Text key={`${key}.ltr${i}`} dir="ltr">{row}</Text>) : drawnRows
+          : style.shape === 'engine' ? drawnRows.map((row, i) => <Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</Text>) : drawnRows
         const gutter = String(lines.length).length
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const float = hover ? floating(button, [button]) : null
