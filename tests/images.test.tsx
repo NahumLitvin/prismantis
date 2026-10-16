@@ -19,10 +19,15 @@ const reply = (text: string) => ({
 
 const files = (on: On, found: Record<string, string> = {}, kinds: Record<string, 'file' | 'other'> = {}) => {
   const reads: string[] = []
-  on('fs.stat', (_, e) => (e.path in found || e.path in kinds ? { value: { kind: kinds[e.path] ?? 'file', size: ((found[e.path] ?? '').length * 3) / 4, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` }))
+  const unix = (path: string) => path.replace(/\\/g, '/').replace(/^[A-Za-z]:/, '')
+  on('fs.stat', (_, e) => {
+    const path = unix(e.path)
+    return path in found || path in kinds ? { value: { kind: kinds[path] ?? 'file', size: ((found[path] ?? '').length * 3) / 4, mtimeMs: 0, isLink: false } } : { deny: `no such file ${path}` }
+  })
   on('fs.read', (_, e) => {
-    reads.push(e.path)
-    return e.path in found ? { value: { base64: found[e.path]! } } : { deny: `no such file ${e.path}` }
+    const path = unix(e.path)
+    reads.push(path)
+    return path in found ? { value: { base64: found[path]! } } : { deny: `no such file ${path}` }
   })
   return reads
 }
