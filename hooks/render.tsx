@@ -848,7 +848,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       const start = wide && (rtlTables[b] || flowOf(style, leadInline([block]), columns)?.base === 'R')
       const float = floating(button, second ? [first, second, html] : [first], opensWithCopy(block), start)!
       return (
-        <Box key={`c${b}`} flexDirection="column" minWidth={float.minWidth} {...(wide ? {} : { alignSelf: 'flex-start' as const })}>
+        <Box key={`c${b}`} flexDirection="column" minWidth={float.minWidth} {...(start ? {} : { alignSelf: 'flex-start' as const })}>
           {element}
           {float.element}
         </Box>
