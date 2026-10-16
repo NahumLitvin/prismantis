@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, PromptOrigin, Register, RenderElement, RenderSurface } from 'claude-code'
+import type { EngineInterface, PluginOptions, PromptOrigin, Register, RenderElement, RenderSurface } from 'claude-code'
 
 import { clockText, endedAt, promptKey, sentAt, withRecord } from './clock'
 import type { Formula } from './latex'
@@ -12,7 +12,7 @@ import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { Fold } from './render'
 import { bashEdits, drawMath, editNotes, hasShellOutput, instanceKey, isReadOnlyCall, noteTip, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
-import { HINT, helpText, rtlShowcaseText, showcaseText } from './help'
+import { HINT, SETUP_DONE, findSetup, helpText, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
@@ -260,17 +260,64 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     : [...elements, <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>]
 }
 
+const THEME_ARGS = [...PRESET_NAMES, 'random']
+
+type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
+
+const setTheme = async ($: EngineInterface, picked: Picked, name: string): Promise<string> => {
+  const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
+  if (result.deny) return `Could not switch theme: ${result.deny}`
+  if (name !== 'random' || picked.options.theme !== 'random') return `Theme set to ${name}.`
+  const others = RANDOM_THEMES.filter(t => t !== picked.theme)
+  picked.theme = others[Math.floor(Math.random() * others.length)]!
+  const style = picked.latex.style
+  style.theme = resolveStyle({ ...picked.options, theme: picked.theme }).theme
+  picked.latex.color = ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080')
+  $.ui.invalidate('ui.render')
+  return `Theme set to random: ${picked.theme} for now.\nkeep it: /prismantis theme ${picked.theme}`
+}
+
+const setup = async ($: EngineInterface, picked: Picked, stepName?: string, pick?: string): Promise<string> => {
+  const steps = setupSteps(PRESET_NAMES)
+  const at = stepName ? steps.findIndex(s => s.name === stepName) : 0
+  const step = steps[at]
+  if (!step) return `Unknown setup step "${stepName}". Steps: ${steps.map(s => s.name).join(', ')}`
+  if (!pick) return setupText(setupParts(PRESET_NAMES, at))
+  const choices = step.key === 'theme' ? THEME_ARGS : step.options
+  const value = /^\d+$/.test(pick) ? step.options[Number(pick) - 1] : pick
+  if (!value || !choices.includes(value)) return `Unknown ${step.name} pick "${pick}". Pick 1-${step.options.length} or one of: ${choices.join(', ')}`
+  const saved = step.key === 'theme' ? await setTheme($, picked, value) : await $.config.set({ key: `${$.plugin.name}.${step.key}`, value }).then(r => (r.deny ? `Could not save ${step.key}: ${r.deny}` : `${step.title} set to ${value}.`))
+  if (saved.startsWith('Could not')) return saved
+  return `${saved}\n\n${at + 1 < steps.length ? setupText(setupParts(PRESET_NAMES, at + 1)) : SETUP_DONE}`
+}
+
+const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, base: Style, options: PluginOptions, found: NonNullable<ReturnType<typeof findSetup>>, columns: number): RenderElement[] => {
+  const key = setupSteps(PRESET_NAMES)[found.at]!.key
+  const md = (style: Style, text: string, id: string) => <el.Box key={id} flexDirection="column" rowGap={1}>{drawMarkdown($, el, style, parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns)}</el.Box>
+  const sample = (style: Style, value: string, id: string): RenderElement[] => {
+    if (key === 'promptStyle') return [value === 'off' ? <el.Text key={id} dimColor>{'> fix the failing test'}</el.Text> : <el.Box key={id}>{renderUserPrompt(el, style, 'fix the failing test', columns)}</el.Box>]
+    if (key === 'toolStyle') return [md({ ...style, narration: style.toolStyle === 'tree-bold' }, 'Reading the config.', `${id}s`), <el.Box key={id}>{renderToolRow(el, style, { tool: 'Read', input: { file_path: 'src/config.ts' }, isRunning: false, isErrored: false, isInterrupted: false }, columns)}</el.Box>]
+    return []
+  }
+  const picks = found.parts.options.map(({ value, text }, i) => {
+    const style = key === 'theme' ? { ...base, theme: resolveStyle({ ...options, theme: value }).theme } : { ...base, [key]: value }
+    return <el.Box key={`o${i}`} flexDirection="column">{md(style, text, 'm')}{sample(style, value, 'x')}</el.Box>
+  })
+  return [...(found.before ? [md(base, found.before, 'before')] : []), md(base, found.parts.head, 'head'), ...picks, md(base, found.parts.tail, 'tail')]
+}
+
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
-  let themeName = pickTheme(options.theme)
-  const style = resolveStyle({ ...options, theme: themeName })
+  const firstTheme = pickTheme(options.theme)
+  const style = resolveStyle({ ...options, theme: firstTheme })
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
   const shared = new Map<string, ReturnType<typeof parse>>()
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
+  const picked: Picked = { theme: firstTheme, options, latex }
   const probes: Probes = {}
   const forSurface = (base: Style, surface: RenderSurface, links: LinkReach): Style => {
     const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor } : base) : base.htmlCopy ? { ...base, htmlCopy: null } : base
@@ -340,16 +387,16 @@ export const register: Register = (on, options) => {
     void latexEngine($, latex)
     const started = await next(e)
     await $.command
-      .register({ name: 'prismantis', description: 'Switch the prismantis theme, copy the last reply, or show the demo', argumentHint: '[theme [<name> | random] | copy [code] | demo]' })
+      .register({ name: 'prismantis', description: 'Switch the prismantis theme, pick styles from samples, copy the last reply, or show the demo', argumentHint: '[theme [<name> | random] | setup [<step> [<pick>]] | copy [code] | demo]' })
       .catch(() => undefined)
     return started
   })
 
   on('command.run', { command: 'prismantis' }, async ($, e) => {
-    const [first, second] = e.args.trim().split(/\s+/)
-    const themeArgs = [...PRESET_NAMES, 'random']
-    const [sub, name] = themeArgs.includes(first ?? '') ? ['theme', first] : [first, second]
+    const [first, second, third] = e.args.trim().split(/\s+/)
+    const [sub, name] = THEME_ARGS.includes(first ?? '') ? ['theme', first] : [first, second]
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
+    if (sub === 'setup') return { text: await setup($, picked, name, third) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
       if (!reply) return { text: 'Nothing to copy yet.' }
@@ -363,17 +410,9 @@ export const register: Register = (on, options) => {
       return { text: rtlShowcaseText() }
     }
     if (sub !== 'theme') return { text: helpText(PRESET_NAMES) }
-    if (!name) return { text: options.theme === 'random' ? `current: ${themeName} (random)\nkeep it: /prismantis theme ${themeName}` : `current: ${themeName}` }
-    if (!themeArgs.includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
-    const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
-    if (result.deny) return { text: `Could not switch theme: ${result.deny}` }
-    if (name !== 'random' || options.theme !== 'random') return { text: `Theme set to ${name}.` }
-    const others = RANDOM_THEMES.filter(t => t !== themeName)
-    themeName = others[Math.floor(Math.random() * others.length)]!
-    style.theme = resolveStyle({ ...options, theme: themeName }).theme
-    latex.color = ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080')
-    $.ui.invalidate('ui.render')
-    return { text: `Theme set to random: ${themeName} for now.\nkeep it: /prismantis theme ${themeName}` }
+    if (!name) return { text: options.theme === 'random' ? `current: ${picked.theme} (random)\nkeep it: /prismantis theme ${picked.theme}` : `current: ${picked.theme}` }
+    if (!THEME_ARGS.includes(name)) return { text: `Unknown theme "${name}". Themes: ${PRESET_NAMES.join(', ')}, random` }
+    return { text: await setTheme($, picked, name) }
   })
 
   on('ui.render', { component: 'TurnDuration' }, async ($, e) => {
@@ -405,6 +444,12 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => {
     if (e.props.isErrored) return next(e)
     if (e.props.text.includes('\u001b')) return next(e)
+    const found = e.props.command === 'prismantis' ? findSetup(PRESET_NAMES, e.props.text) : undefined
+    if (found) {
+      const el = $.ui.resolve(e)
+      const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes)), copyButtons: false }
+      return <el.Box flexDirection="column" rowGap={1}>{drawSetup($, el, base, options, found, columnsOf(e.viewport))}</el.Box>
+    }
     const blocks = parseCached(e.props.text)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve(e)

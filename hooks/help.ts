@@ -23,6 +23,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | \`/prismantis\` | This screen |
 | \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
+| \`/prismantis setup\` | Pick a theme, table, task, prompt and tool row style from drawn samples |
 | \`/config\` | Edit any option |
 
 > [!NOTE]
@@ -209,6 +210,7 @@ export const helpText = (themes: readonly string[]): string => `
 |---------|------|
 | \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
+| \`/prismantis setup\` | Pick a theme, table, task, prompt and tool row style from drawn samples |
 | \`/prismantis demo\` | Full showcase, every element and diagram |
 | \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |
 
@@ -275,3 +277,39 @@ export const rtlShowcaseText = (): string => `
 ls -la # רשימת הקבצים בתיקייה
 \`\`\`
 `
+
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'taskStyle' | 'promptStyle' | 'toolStyle'; title: string; note: string; options: readonly string[]; sample: string }
+
+export const setupSteps = (themes: readonly string[]): SetupStep[] => [
+  { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
+  { name: 'tables', key: 'tableStyle', title: 'Tables', note: 'How markdown tables draw.', options: ['box', 'rules', 'grid', 'minimal'], sample: '| Item | Qty |\n|:-----|----:|\n| Apples | 3 |\n| Pears | 5 |' },
+  { name: 'tasks', key: 'taskStyle', title: 'Tasks', note: 'How `- [ ]` and `- [x]` items draw.', options: ['checks', 'ticks', 'box', 'progress'], sample: '- [x] Parse the reply\n- [x] Draw it\n- [ ] Ship it' },
+  { name: 'prompts', key: 'promptStyle', title: 'Your prompts', note: 'How what you type draws in the transcript. `off` keeps Claude Code\'s own look.', options: ['bubble', 'bar', 'chevron', 'off'], sample: '' },
+  { name: 'tools', key: 'toolStyle', title: 'Tool rows', note: 'How tool rows sit next to Claude\'s sentences. Sharing sessions as screenshots? `chat` and `tree-dim` draw tool rows in dim gray, the first thing to blur when an image gets resized, so pick `tree-bold` or `classic`.', options: ['chat', 'tree-dim', 'tree-bold', 'classic'], sample: '' },
+]
+
+export type SetupParts = { head: string; options: { value: string; text: string }[]; tail: string }
+
+export const setupParts = (themes: readonly string[], at: number): SetupParts => {
+  const steps = setupSteps(themes)
+  const step = steps[at]!
+  const next = steps[at + 1]
+  return {
+    head: `## Setup ${at + 1}/${steps.length}: ${step.title}\n\n${step.note}`,
+    options: step.options.map((value, i) => ({ value, text: `### ${i + 1}. ${value}${step.sample ? `\n\n${step.sample}` : ''}` })),
+    tail: `Pick with \`/prismantis setup ${step.name} <number or name>\`${step.key === 'theme' ? ' or `random`' : ''}.${next ? ` Skip with \`/prismantis setup ${next.name}\`.` : ''} Stop any time, \`/prismantis setup\` starts over.`,
+  }
+}
+
+export const setupText = (parts: SetupParts): string => [parts.head, ...parts.options.map(o => o.text), parts.tail].join('\n\n')
+
+export const SETUP_DONE = 'Setup done. Run `/prismantis setup` again any time, and `/config` has every other option.'
+
+export const findSetup = (themes: readonly string[], text: string): { at: number; before: string; parts: SetupParts } | undefined => {
+  for (let at = 0; at < setupSteps(themes).length; at++) {
+    const parts = setupParts(themes, at)
+    const whole = setupText(parts)
+    if (text.endsWith(whole)) return { at, before: text.slice(0, -whole.length).trim(), parts }
+  }
+  return undefined
+}

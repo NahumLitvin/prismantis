@@ -21,6 +21,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
+| `/prismantis setup` | Pick a theme, table, task, prompt and tool row style from drawn samples |
 | `/config` | Edit any option |
 
 > [!NOTE]

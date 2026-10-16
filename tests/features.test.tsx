@@ -6,7 +6,8 @@ import { clockText, endedAt, sentAt } from '../hooks/clock'
 import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
-import { RANDOM_THEMES, pickTheme } from '../hooks/theme'
+import { RANDOM_THEMES, pickTheme, resolveStyle } from '../hooks/theme'
+import { SETUP_DONE, setupParts, setupSteps, setupText } from '../hooks/help'
 import type { Theme } from '../hooks/theme'
 import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
@@ -1416,4 +1417,63 @@ test('an expanded shell row whose output is an error string shows that string', 
   })
   expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await row.unmount()
+})
+
+const setupRun = ($: Parameters<TestBody>[0], args: string) => $.command.run({ command: 'prismantis', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+
+test('/prismantis setup walks every step, saves each pick through config, and can restart or jump to a step', async ($, on) => {
+  const writes: { key: string; value: unknown }[] = []
+  on('config.set', (_, e) => {
+    writes.push({ key: e.key, value: e.value })
+    return { value: e.value }
+  })
+  const steps = setupSteps(PRESET_NAMES)
+  expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'promptStyle', 'toolStyle'])
+  for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
+  expect(steps[0]!.options).toEqual(PRESET_NAMES)
+  expect((await setupRun($, 'setup')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
+  expect((await setupRun($, 'setup theme nord')).text).toBe(`Theme set to nord.\n\n${setupText(setupParts(PRESET_NAMES, 1))}`)
+  expect((await setupRun($, 'setup tables 3')).text).toBe(`Tables set to grid.\n\n${setupText(setupParts(PRESET_NAMES, 2))}`)
+  expect((await setupRun($, 'setup tasks progress')).text?.startsWith('Tasks set to progress.')).toBe(true)
+  expect((await setupRun($, 'setup prompts bar')).text?.startsWith('Your prompts set to bar.')).toBe(true)
+  expect((await setupRun($, 'setup tools tree-bold')).text).toBe(`Tool rows set to tree-bold.\n\n${SETUP_DONE}`)
+  expect(writes).toEqual([
+    { key: 'prismantis.theme', value: 'nord' },
+    { key: 'prismantis.tableStyle', value: 'grid' },
+    { key: 'prismantis.taskStyle', value: 'progress' },
+    { key: 'prismantis.promptStyle', value: 'bar' },
+    { key: 'prismantis.toolStyle', value: 'tree-bold' },
+  ])
+  expect((await setupRun($, 'setup tasks')).text).toBe(setupText(setupParts(PRESET_NAMES, 2)))
+  expect((await setupRun($, 'setup tables 9')).text?.startsWith('Unknown tables pick "9".')).toBe(true)
+  expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
+  expect(writes).toHaveLength(5)
+  expect(setupText(setupParts(PRESET_NAMES, 4))).toContain('`tree-bold` or `classic`')
+})
+
+test('/prismantis setup stops on a refused save', async ($, on) => {
+  on('config.set', () => ({ deny: 'managed' }))
+  expect((await setupRun($, 'setup tables box')).text).toBe('Could not save tableStyle: managed')
+})
+
+test('/prismantis setup draws each sample in its own style', async $ => {
+  const mount = async (at: number) =>
+    $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'CommandOutput', props: { command: 'prismantis', args: 'setup', text: `Tables set to box.\n\n${setupText(setupParts(PRESET_NAMES, at))}`, isErrored: false }, viewport: { columns: 100, rows: 40 } })
+  const themes = await mount(0)
+  for (const name of ['nord', 'dracula']) {
+    const heading = await themes.find({ type: 'Text', text: new RegExp(`${name}$`) })
+    expect(heading?.props.color).toBe(PRESETS[name as keyof typeof PRESETS].accent)
+  }
+  await themes.unmount()
+  const tasks = await mount(2)
+  expect(await tasks.find({ type: 'Text', text: /^✓ $/ })).toBeTruthy()
+  expect(await tasks.find({ type: 'Text', text: /\[✓\]/ })).toBeTruthy()
+  await tasks.unmount()
+  const prompts = await mount(3)
+  expect(await prompts.findAll({ type: 'Text', text: /fix the failing test/ })).toHaveLength(4)
+  await prompts.unmount()
+  const tools = await mount(4)
+  expect(await tools.find({ type: 'Text', text: /⎿/ })).toBeTruthy()
+  expect(await tools.findAll({ type: 'Text', text: /^Read$/ })).toHaveLength(4)
+  await tools.unmount()
 })
