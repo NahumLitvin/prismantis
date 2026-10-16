@@ -3,7 +3,7 @@ import { RANDOM_THEMES } from './theme'
 export const HINT = [
   'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
   'Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:',
-  'flowcharts, sequence diagrams and xychart-beta bar or line charts.',
+  'flowcharts, sequence diagrams, xychart-beta bar or line charts, pie charts and gantt schedules.',
   'When a reply carries a numeric series or a flow that is easier to see than read, add a small diagram or chart with short labels, not a second picture of what a figure already shows.',
   'Skip diagrams and pictures for short or simple answers.',
   'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
@@ -181,6 +181,25 @@ xychart-beta
     x-axis [text, head, num, code, diag]
     y-axis "options" 0 --> 8
     bar [7, 3, 2, 6, 2]
+\`\`\`
+
+\`\`\`mermaid
+pie showData title Time per reply stage
+    "Parse" : 3
+    "Draw" : 9
+    "Paint" : 5
+\`\`\`
+
+\`\`\`mermaid
+gantt
+    title Release week
+    dateFormat YYYY-MM-DD
+    section Build
+    Parser   :p, 2026-10-05, 2d
+    Renderer :r, after p, 3d
+    section Ship
+    Review   :after r, 2d
+    Release  :milestone, 2026-10-12, 0d
 \`\`\`
 
 A diagram wider than the terminal stays source, with a dim line saying why:

@@ -181,6 +181,25 @@ xychart-beta
     bar [7, 3, 2, 6, 2]
 ```
 
+```mermaid
+pie showData title Time per reply stage
+    "Parse" : 3
+    "Draw" : 9
+    "Paint" : 5
+```
+
+```mermaid
+gantt
+    title Release week
+    dateFormat YYYY-MM-DD
+    section Build
+    Parser   :p, 2026-10-05, 2d
+    Renderer :r, after p, 3d
+    section Ship
+    Review   :after r, 2d
+    Release  :milestone, 2026-10-12, 0d
+```
+
 A diagram wider than the terminal stays source, with a dim line saying why:
 
 ```mermaid

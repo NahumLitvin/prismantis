@@ -358,6 +358,8 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('copyButtonStyle')
   expect(showcaseText([])).toContain('+M more lines')
   expect(showcaseText([])).toContain('```figure')
+  expect(showcaseText([])).toContain('pie showData')
+  expect(showcaseText([])).toContain('Release  :milestone')
   expect(blocks.some(b => b.kind === 'code' && b.lines.length > 30)).toBe(true)
   expect(showcaseText([])).toContain('diff card headed `+N −M`')
   expect(showcaseText([])).toContain('Files a shell command changes')
@@ -408,7 +410,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(4)
+  expect(diagrams.length).toBe(6)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -971,7 +973,7 @@ test('a diagram the renderer cannot draw shows its source under a failure note',
 })
 
 test('a diagram type the renderer has no drawing for says so instead of failing', async $ => {
-  for (const kind of ['pie', 'gantt', 'mindmap', 'timeline', 'journey', 'gitGraph']) {
+  for (const kind of ['mindmap', 'timeline', 'journey', 'gitGraph']) {
     const ui = await $.ui.mount(mount('```mermaid\n' + kind + '\n  title T\n```'))
     expect(await ui.find({ type: 'Text', text: `${kind} diagrams draw as source for now` })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
@@ -980,12 +982,53 @@ test('a diagram type the renderer has no drawing for says so instead of failing'
 })
 
 test('a half-streamed diagram shows no note until its fence closes', async $ => {
-  const open = await $.ui.mount(mount('```mermaid\npie\n  "a" : 3'))
+  const open = await $.ui.mount(mount('```mermaid\nmindmap\n  root'))
   expect(await open.find({ type: 'Text', text: /diagram|draw as source/ })).toBeUndefined()
   await open.unmount()
-  const closed = await $.ui.mount(mount('```mermaid\npie\n  "a" : 3\n```'))
-  expect(await closed.find({ type: 'Text', text: /^pie diagrams draw as source for now$/ })).toBeDefined()
+  const closed = await $.ui.mount(mount('```mermaid\nmindmap\n  root\n```'))
+  expect(await closed.find({ type: 'Text', text: /^mindmap diagrams draw as source for now$/ })).toBeDefined()
   await closed.unmount()
+})
+
+test('a pie chart draws one bar per slice, largest first, with its share', () => {
+  const art = mermaidText('pie showData title Pets\n  "Cats" : 85\n  "Dogs" : 386\n  "Rats" : 0\n  "Mice" : 0.5', false, 80)!.split('\n')
+  expect(art[0]).toBe('Pets')
+  expect(art.slice(1).map(l => l.split(' ')[0])).toEqual(['Dogs', 'Cats', 'Mice', 'Rats'])
+  expect(art[1]).toMatch(/█ 386  82%$/)
+  expect(art[3]).toMatch(/<1%$/)
+  expect(art[4]).not.toContain('█')
+  expect(new Set(art.slice(1).map(l => width(l))).size).toBe(1)
+})
+
+test('a gantt chart places each task on a shared time axis', () => {
+  const art = mermaidText('gantt\n  dateFormat YYYY-MM-DD\n  section Build\n  Parse :p, 2026-10-01, 7d\n  Draw :after p, 7d\n  Ship :milestone, 2026-10-15, 0d', false, 80)!.split('\n')
+  expect(art[0]!.trim().startsWith('10-01')).toBe(true)
+  expect(art[1]!.trim()).toMatch(/^▏(─+▏)+$/)
+  const span = (line: string) => [line.indexOf('█'), line.lastIndexOf('█')]
+  const [parse, draw] = [span(art[3]!), span(art[4]!)]
+  expect(draw[0]).toBe(parse[1]! + 1)
+  expect(draw[1]! - draw[0]!).toBe(parse[1]! - parse[0]!)
+  expect(art[5]!.indexOf('◆')).toBe(draw[1])
+  expect(art[2]).toBe('Build')
+})
+
+test('pie and gantt sources the chart cannot read show a failure note, not a broken chart', async $ => {
+  for (const source of ['pie\n  "a" : -1', 'pie\n  "a" : 0', 'gantt\n  Task : 3d', 'gantt\n  dateFormat X\n  Task : 1, 2', 'gantt\n  Task : after nope, 1d']) {
+    expect(mermaidText(source, false, 80)).toBeNull()
+    const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('pie and gantt charts shrink to a narrow terminal and use plain glyphs in ascii mode', () => {
+  const pie = 'pie\n  "A very long slice label that goes on" : 3\n  "b" : 1'
+  const gantt = 'gantt\n  dateFormat HH:mm\n  Deploy : 10:00, 45m\n  Verify : 30m'
+  for (const source of [pie, gantt]) {
+    expect(Math.max(...mermaidText(source, false, 50)!.split('\n').map(width)) <= 48).toBe(true)
+    expect(mermaidText(source, true, 80)).not.toMatch(/[█▏─◆]/)
+  }
+  expect(mermaidText(gantt, false, 80)).toContain('10:00')
 })
 
 test('a diagram that fits draws without a note', async $ => {

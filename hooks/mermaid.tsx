@@ -1,5 +1,6 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
+import { ganttText, pieText } from './charts'
 import { drawFigure, isFigureLang } from './figure'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
@@ -57,12 +58,16 @@ const labelBars = (art: string, source: string): string => {
 
 const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
 
-const SUPPORTED = /^(flowchart|graph|statediagram(-v2)?|xychart(-beta)?|sequencediagram|classdiagram|erdiagram)$/i
+const SUPPORTED = /^(flowchart|graph|statediagram(-v2)?|xychart(-beta)?|sequencediagram|classdiagram|erdiagram|pie|gantt)$/i
+
+const kindOf = (source: string) => source.replace(/^(\s*%%[^\n]*\n)+/, '').trim().split(/\s/)[0] ?? ''
 
 const unsupportedKind = (source: string): string | undefined => {
-  const kind = source.replace(/^(\s*%%[^\n]*\n)+/, '').trim().split(/\s/)[0] ?? ''
+  const kind = kindOf(source)
   return kind && !SUPPORTED.test(kind) ? kind : undefined
 }
+
+const OWN: Record<string, typeof pieText> = { pie: pieText, gantt: ganttText }
 
 const INLINE_TAG = /<\/?(?:b|i|u|s|em|strong|del|code|small|sub|sup|span|mark)\b[^<>\n]*>/gi
 
@@ -81,6 +86,8 @@ export const mermaidText = (source: string, ascii: boolean, columns: number): st
   remember(fitted, `${ascii}:${columns}:${source}`, () => {
     source = source.replace(INLINE_TAG, '')
     if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
+    const own = OWN[kindOf(source).toLowerCase()]
+    if (own) return own(source, ascii, columns)
     const art = draw(source, ascii, columns)
     if (art === null || artWidth(art) <= columns - 2 || !SIDEWAYS.test(source)) return art
     return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
@@ -102,7 +109,7 @@ const draw = (source: string, ascii: boolean, columns: number): string | null =>
   })
 }
 
-const LINE = /[─-╿◇]/
+const LINE = /[─-╿◇▏]/
 const ARROW = /[►◄▲▼]/
 
 type Painted = { grid: string[][]; colors: (string | undefined)[][] }
