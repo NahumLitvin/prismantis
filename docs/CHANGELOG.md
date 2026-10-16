@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.25.0] - 2026-10-16
+
+### Added
+
+- `/prismantis setup` walks five steps: theme, tables, tasks, your prompts and tool rows. Each step draws every option in its own style. Pick by name or number (`/prismantis setup tables grid` or `/prismantis setup tables 3`), and the pick saves to `/config`, applies right away and shows the next step. Light themes are marked as made for a light terminal ([#178](https://github.com/NahumLitvin/prismantis/pull/178)).
+- Mermaid `pie` and `gantt` blocks draw as colored box art instead of source. A pie draws one bar per slice, largest first, with its share, and the value under `showData`. A gantt draws sections and tasks as bars on a shared date or time axis, with `after`, `until`, durations from `ms` to `w` and milestones. `excludes weekends` and `axisFormat` are not handled yet ([#177](https://github.com/NahumLitvin/prismantis/pull/177)).
+- In kitty and Ghostty, a markdown image on a line of its own draws as a picture when it is a PNG from a local path, `~/`, `file://` or a `data:` URL, up to 20 rows and 2 MiB. Web images are never downloaded and stay links that show the alt text. Other terminals, tmux and images inside a sentence show the alt text in the link color instead of a stray `!` ([#179](https://github.com/NahumLitvin/prismantis/pull/179)).
+
+### Fixed
+
+- On the desktop app, VS Code and mobile, code blocks keep their indentation and alignment. They draw through the app's own code element, in the app's highlight colors, and folding and the copy button work as before ([#176](https://github.com/NahumLitvin/prismantis/pull/176)).
+
 ## [0.24.1] - 2026-10-16
 
 ### Fixed
