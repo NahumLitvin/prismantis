@@ -5,7 +5,7 @@ import { drawFigure, isFigureLang } from './figure'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
 import { cells, graphemes, heldLtr, mirrored, remember, width } from './render'
-import { hasRtl, holdEngine, holdRow } from './rtl'
+import { holdEngine, holdRow } from './rtl'
 import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
@@ -185,18 +185,20 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
       {grid.map((row, i) => {
-        const chars = mirrored(style) ? graphemes(holdRow(row)) : style.shape === 'engine' && row.some(hasRtl) ? graphemes(holdEngine(row)) : row
-        const marked: (Mark | undefined)[] = chars.map(() => undefined)
+        const { cells: chars, from } = mirrored(style) ? holdRow(row) : style.shape === 'engine' ? holdEngine(row) : { cells: row, from: row.map((_, c) => c) }
+        const marked: (Mark | undefined)[] = row.map(() => undefined)
         for (const [phrase, mark] of marks)
-          for (let c = 0; c + phrase.length <= chars.length; c++)
+          for (let c = 0; c + phrase.length <= row.length; c++)
             if (phrase.every((ch, k) => row[c + k] === ch)) for (let k = 0; k < phrase.length; k++) marked[c + k] = mark
+        const hueAt = (p: number) => colors[i]?.[from[p]!]
+        const markAt = (p: number) => marked[from[p]!]
         const parts: RenderElement[] = []
         let at = 0
         while (at < chars.length) {
-          const hue = colors[i]?.[at]
-          const mark = marked[at]
+          const hue = hueAt(at)
+          const mark = markAt(at)
           let end = at + 1
-          while (end < chars.length && colors[i]?.[end] === hue && marked[end] === mark) end++
+          while (end < chars.length && hueAt(end) === hue && markAt(end) === mark) end++
           parts.push(<Text key={`t${parts.length}`} color={hue} {...mark}>{chars.slice(at, end).join('')}</Text>)
           at = end
         }

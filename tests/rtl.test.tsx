@@ -413,9 +413,20 @@ test('Windows Terminal mirrors brackets around English inside a Hebrew row and s
 })
 
 test('Windows Terminal diagram labels that read right to left are sent so Claude Code shows them in reading order, with blanks between labels held', async () => {
-  expect(holdEngine([...'│ עם engine │'])).toBe('│⠀engine עם⠀│')
-  expect(holdEngine([...'│ יש עברית? │'])).toBe('│⠀?יש עברית⠀│')
-  expect(holdEngine([...'│ התחלה │──►│ סוף │'])).toBe('│⠀התחלה⠀│──►│⠀סוף⠀│')
+  const sent = (row: string) => holdEngine([...row]).cells.join('')
+  expect(sent('│ עם engine │')).toBe('│‎ engine עם‎ │')
+  expect(sent('│ יש עברית? │')).toBe('│‎ ?יש עברית‎ │')
+  expect(sent('│ התחלה │──►│ סוף │')).toBe('│‎ התחלה‎ │──►│‎ סוף‎ │')
+  expect(sent('│ ArgoCD sync │')).toBe('│ ArgoCD sync │')
+})
+
+test('a held diagram row says where each drawn cell came from, so colors and marks land on the same letters after a label is reordered', () => {
+  for (const [row, hold, blanks] of [[[...'│ עם engine │'], holdEngine, ['‎', ' ']], [[...'│ האם יש token │'], holdRow, ['⠀']]] as const) {
+    const held = hold([...row])
+    expect(held.cells.join('')).not.toBe(row.join(''))
+    expect(held.cells.length).toBe(held.from.length)
+    held.cells.forEach((ch, p) => expect(blanks.includes(ch) ? row[held.from[p]!] : ch).toBe(row[held.from[p]!]))
+  }
 })
 
 test('a wrapped Hebrew paragraph marks only the rows that open with Latin, and every row still fits', async () => {
@@ -475,10 +486,10 @@ test('iTerm adds no row mark inside a quote, an alert or a table cell, where a p
 })
 
 test('a diagram label that opens in Hebrew and holds English reads right to left once a terminal reorders the held row', () => {
-  const held = holdRow([...'│ האם יש token? │'])
+  const held = holdRow([...'│ האם יש token? │']).cells.join('')
   expect(held.startsWith('│⠀') && held.endsWith('⠀│')).toBe(true)
   expect(inlineText(terminalLine([{ kind: 'text', text: held }]))).toBe(`│⠀${visual('האם יש token?')}⠀│`)
-  expect(holdRow([...'│ ArgoCD sync │'])).toBe('│ ArgoCD sync │')
+  expect(holdRow([...'│ ArgoCD sync │']).cells.join('')).toBe('│ ArgoCD sync │')
 })
 
 const DIAGRAMS = ['```mermaid\nflowchart LR\n  A[בקשה נכנסת] --> B[ArgoCD sync]\n```', '```figure\n│ שלב א │──►│ שלב ב │\n```']

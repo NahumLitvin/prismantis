@@ -88,7 +88,7 @@ const baseOf = (all: Unit[]): Dir => {
   return all.map(u => classify(u.ch)).find(Boolean) ?? 'R'
 }
 
-const reorder = (all: Unit[], base: Dir): Unit[] => {
+const reorder = <U extends Unit>(all: U[], base: Dir): U[] => {
   const strong = all.map((u, i) => {
     const own = classify(u.ch)
     if (own) return own
@@ -108,7 +108,7 @@ const reorder = (all: Unit[], base: Dir): Unit[] => {
     next[i] = seen
   }
   const dir = strong.map((s, i): Dir => s ?? ((prev[i] ?? base) === (next[i] ?? base) ? (prev[i] ?? base) : base))
-  const runs: { d: Dir; u: Unit[] }[] = []
+  const runs: { d: Dir; u: U[] }[] = []
   all.forEach((u, i) => {
     const last = runs.at(-1)
     if (last && last.d === dir[i]) last.u.push(u)
@@ -150,7 +150,7 @@ const levelsOf = (all: Unit[], base: Dir): number[] => {
   })
 }
 
-const terminalBidi = (all: Unit[], mirror = true): Unit[] => {
+const terminalBidi = <U extends Unit>(all: U[], mirror = true): U[] => {
   const levels = levelsOf(all, 'L')
   let out = all.map((u, i) => ({ u: mirror && levels[i]! % 2 ? { ...u, ch: MIRROR[u.ch] ?? u.ch } : u, l: levels[i]! }))
   for (let l = 2; l >= 1; l--) {
@@ -284,20 +284,44 @@ const inLabel = (chars: string[], c: number) => {
   return WORD.test(a) && WORD.test(b) && (R.test(a) || R.test(b))
 }
 
-const rightToLeft = (label: string): string => {
-  const all = units(label, { wrap: [], leaf: 'text' })
-  return baseOf(all) === 'R' && all.some(u => bidiClass(u.ch) === 'L') ? terminalBidi(reorder(all, 'R')).map(u => u.ch).join('') : label
+type Cell = Unit & { at: number }
+
+export type Held = { cells: string[]; from: number[] }
+
+const PLAIN: Fmt = { wrap: [], leaf: 'text' }
+
+const rightToLeft = (all: Cell[]): Cell[] => (baseOf(all) === 'R' && all.some(u => bidiClass(u.ch) === 'L') ? terminalBidi(reorder(all, 'R')) : all)
+
+const engineLabel = (all: Cell[]): Cell[] => (all.some(u => R.test(u.ch)) && baseOf(all) === 'R' ? terminalBidi(reorder(all, 'R'), false) : all)
+
+const hold = (chars: string[], label: (all: Cell[]) => Cell[], blank: string[]): Held => {
+  const held: Held = { cells: [], from: [] }
+  let run: Cell[] = []
+  const flush = () => {
+    for (const u of label(run)) {
+      held.cells.push(u.ch)
+      held.from.push(u.at)
+    }
+    run = []
+  }
+  chars.forEach((ch, c) => {
+    if (ch === ' ' && !inLabel(chars, c)) {
+      flush()
+      for (const b of blank) {
+        held.cells.push(b)
+        held.from.push(c)
+      }
+    } else if (MARK.test(ch) && run.length) run.at(-1)!.ch += ch
+    else run.push({ ch, fmt: PLAIN, at: c })
+  })
+  flush()
+  return held
 }
 
-const holdBlanks = (chars: string[]): string => chars.map((ch, c) => (ch === ' ' && !inLabel(chars, c) ? LTR_BLANK : ch)).join('')
+const asIs = (chars: string[]): Held => ({ cells: chars, from: chars.map((_, c) => c) })
 
-export const holdText = (chars: string[]): string => holdBlanks(chars).split(LTR_BLANK).map(rightToLeft).join(LTR_BLANK)
+export const holdText = (chars: string[]): Held => hold(chars, rightToLeft, [LTR_BLANK])
 
-const engineLabel = (label: string): string => {
-  const all = units(label, { wrap: [], leaf: 'text' })
-  return R.test(label) && baseOf(all) === 'R' ? terminalBidi(reorder(all, 'R'), false).map(u => u.ch).join('') : label
-}
+export const holdEngine = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? hold(chars, engineLabel, [LRM, ' ']) : asIs(chars))
 
-export const holdEngine = (chars: string[]): string => holdBlanks(chars).split(LTR_BLANK).map(engineLabel).join(LTR_BLANK)
-
-export const holdRow = (chars: string[]): string => (chars.some(ch => R.test(ch)) ? holdText(chars) : chars.join(''))
+export const holdRow = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? holdText(chars) : asIs(chars))

@@ -197,7 +197,7 @@ const figureElement = ({ Box, Text }: ElementTable, style: Style, lines: readonl
   <Box key={key} flexDirection="column" paddingLeft={2}>
     {lines.map((line, i) => {
       const hold = !hasRtl(line) ? null : mirrored(style) ? holdText : style.shape === 'engine' ? holdEngine : null
-      const runs = figureRuns(line).map(run => (hold ? { ...run, text: hold([...run.text]) } : run))
+      const runs = figureRuns(line).map(run => (hold ? { ...run, text: hold([...run.text]).cells.join('') } : run))
       return (
         <Text key={`${key}.${i}`} {...heldLtr(style)}>
           {runs.length
