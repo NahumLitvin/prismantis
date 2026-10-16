@@ -342,6 +342,23 @@ test('fence languages that name Prism internals fall back to plain code', async 
   }
 })
 
+test('code blocks draw through the native Code element off the terminal', async $ => {
+  const ui = await $.ui.mount({ ...draw('```ts\nconst name = "shop"\n  return name\n```'), surface: 'desktop' })
+  const code = await ui.find({ type: 'Code' })
+  expect(code?.props.source).toBe('const name = "shop"\n  return name')
+  expect(code?.props.language).toBe('ts')
+  expect(code?.props.startLine).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^const$/ })).toBeUndefined()
+  await ui.unmount()
+  const long = await $.ui.mount({ ...draw(longCode(12)), surface: 'desktop' })
+  expect((await long.find({ type: 'Code' }))?.props.startLine).toBe(1)
+  expect(await long.find({ type: 'Text', text: /^ 1  $/ })).toBeUndefined()
+  await long.unmount()
+  const term = await $.ui.mount({ ...draw('```ts\nconst name = "shop"\n```'), surface: 'terminal' })
+  expect(await term.find({ type: 'Code' })).toBeUndefined()
+  await term.unmount()
+})
+
 test('tables draw boxed by default, with a double line under the header', async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...draw(TABLE), surface })
@@ -363,16 +380,14 @@ test('tableStyle rules keeps the open look', { options: { tableStyle: 'rules' } 
 const longCode = (n: number) => `\`\`\`text\n${Array.from({ length: n }, (_, i) => `step ${i + 1}`).join('\n')}\n\`\`\``
 
 test('code blocks of 10+ lines get one numbered Text per line, shorter ones none', async $ => {
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ ...draw(longCode(12)), surface })
-    expect(await ui.find({ type: 'Text', text: /^ 1  $/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^12  $/ })).toBeDefined()
-    await ui.unmount()
-    const short = await $.ui.mount({ ...draw(longCode(9)), surface })
-    expect(await short.find({ type: 'Text', text: /^step 9$/ })).toBeDefined()
-    expect(await short.find({ type: 'Text', text: /^9  step 9$/ })).toBeUndefined()
-    await short.unmount()
-  }
+  const ui = await $.ui.mount({ ...draw(longCode(12)), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^ 1  $/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^12  $/ })).toBeDefined()
+  await ui.unmount()
+  const short = await $.ui.mount({ ...draw(longCode(9)), surface: 'terminal' })
+  expect(await short.find({ type: 'Text', text: /^step 9$/ })).toBeDefined()
+  expect(await short.find({ type: 'Text', text: /^9  step 9$/ })).toBeUndefined()
+  await short.unmount()
 })
 
 test('a wrapped numbered line keeps its continuation after the gutter', async $ => {
@@ -394,16 +409,16 @@ test('long code blocks fold to 20 lines, open and fold back on press, and copy e
   })
   for (const [surface, n] of [['terminal', 40], ['desktop', 45]] as const) {
     const ui = await $.ui.mount({ ...draw(longCode(n)), surface })
-    expect(await ui.find({ type: 'Text', text: /^20  $/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^21  $/ })).toBeUndefined()
+    const shown = async () => surface === 'desktop' ? String((await ui.find({ type: 'Code' }))!.props.source).split('\n').length : (await ui.findAll({ type: 'Text', text: /^ *\d+  $/ })).length
+    expect(await shown()).toBe(20)
     expect((await ui.find({ key: 'fold0' }))?.props.label).toBe(`+${n - 20} more lines`)
     await ui.press({ key: 'copy0' })
     expect(copied.at(-1)).toBe(Array.from({ length: n }, (_, i) => `step ${i + 1}`).join('\n'))
     await ui.press({ key: 'fold0' })
-    expect(await ui.find({ type: 'Text', text: new RegExp(`^${n}  $`) })).toBeDefined()
+    expect(await shown()).toBe(n)
     expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
     await ui.press({ key: 'fold0' })
-    expect(await ui.find({ type: 'Text', text: /^21  $/ })).toBeUndefined()
+    expect(await shown()).toBe(20)
     expect((await ui.find({ key: 'fold0' }))?.props.label).toBe(`+${n - 20} more lines`)
     await ui.unmount()
   }
