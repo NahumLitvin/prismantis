@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A box in a figure whose rows were padded to different widths now draws closed. Each closed box (`┌┐` over `└┘`) is measured row by row and its frame is padded to the widest row, inner boxes first, so a side that slipped a few columns no longer floats inside or outside the box.
+
 ## [0.24.0] - 2026-10-15
 
 ### Added

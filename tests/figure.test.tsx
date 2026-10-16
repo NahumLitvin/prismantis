@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 
-import { FIGURE_GLYPHS, FIGURE_HINT, FIGURE_MAX_COLUMNS, FIGURE_MAX_LINES, FIGURE_ROLES, FIGURE_SAFE_COLUMNS, checkFigure, figureRoleColors, figureRuns, figureText, isFigureLang } from '../hooks/figure'
+import { FIGURE_GLYPHS, FIGURE_HINT, FIGURE_MAX_COLUMNS, FIGURE_MAX_LINES, FIGURE_ROLES, FIGURE_SAFE_COLUMNS, checkFigure, figureRoleColors, figureRuns, figureText, isFigureLang, reframe } from '../hooks/figure'
 import { PRESETS } from '../hooks/presets'
 import { width } from '../hooks/render'
 
@@ -117,6 +117,28 @@ test('emoji-capable arrows are drawn as their text forms', () => {
 
 test('clean pictures have no findings', () => {
   for (const picture of [CARDS, STORE, TIMELINE, ROUNDED, FORK, LEGS, BRANCH, NESTED, CYCLE, CHILDREN, SIDEWAYS, ACCENTED]) expect(checkFigure(picture)).toEqual([])
+})
+
+const drawn = (picture: readonly string[]) => reframe(picture.map(figureRuns)).map(runs => runs.map(run => run.text).join(''))
+
+test('clean pictures are not reframed', () => {
+  for (const picture of [CARDS, STORE, TIMELINE, ROUNDED, FORK, LEGS, BRANCH, NESTED, CYCLE, CHILDREN, SIDEWAYS, ACCENTED]) expect(drawn(picture)).toEqual(picture.map(figureText))
+})
+
+test('a box row whose side falls short is padded to the frame', () => {
+  expect(drawn(['┌──────┐', '│ {accent:ab} │', '└──────┘'])).toEqual(['┌──────┐', '│ ab   │', '└──────┘'])
+})
+
+test('a box row whose side overshoots widens the whole frame', () => {
+  expect(drawn(['┌────┐', '│ {accent:abcd} │', '├────┤', '└────┘'])).toEqual(['┌──────┐', '│ abcd │', '├──────┤', '└──────┘'])
+})
+
+test('a slipped inner box is reframed first, then the box around it', () => {
+  expect(drawn(['┌──────────┐', '│ ┌──┐     │', '│ │ abc │ │', '│ └──┘     │', '└──────────┘'])).toEqual(['┌─────────────┐', '│ ┌─────┐     │', '│ │ abc │     │', '│ └─────┘     │', '└─────────────┘'])
+})
+
+test('reframed border fill keeps the color of its corner', () => {
+  expect(reframe([[{ text: '┌──┐', role: 'accent' }], [{ text: '│ abc │' }], [{ text: '└──┘', role: 'accent' }]])[0]).toEqual([{ text: '┌─────┐', role: 'accent' }])
 })
 
 test('glyphs that may draw as emoji are found once per line', () => {
@@ -295,7 +317,7 @@ test('a figure with a wide glyph or a markup error stays a code block', async ($
   }
 })
 
-test('a figure whose frame slips or does not close is drawn as written, without a note', async ($, on) => {
+test('a figure whose frame slips is reframed and one that does not close is drawn as written, without a note', async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(reply(['```figure', '┌────────┐', '│ v1.4.2 │', '│ old    │', '```'].join('\n'), surface))
@@ -305,7 +327,7 @@ test('a figure whose frame slips or does not close is drawn as written, without 
     await ui.unmount()
     const modules = await $.ui.mount(reply(['```figure', ...MODULES, '```'].join('\n'), surface))
     expect(await modules.find({ type: 'Text', text: /^── figure$/ })).toBeUndefined()
-    expect(await modules.find({ type: 'Text', text: /^│ ┌─ Team A ───────┐  ┌─ Team B ───────┐  ┌─ Team C ───────┐ │$/ })).toBeDefined()
+    expect(await modules.find({ type: 'Text', text: /^│ ┌─ Team A ────────┐  ┌─ Team B ────────┐  ┌─ Team C ────────┐ │$/ })).toBeDefined()
     await modules.unmount()
   }
 })

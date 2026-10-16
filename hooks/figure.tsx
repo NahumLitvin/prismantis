@@ -192,10 +192,9 @@ const runColor = (style: Style, role: FigureRole | undefined): string | undefine
 
 const isBold = (style: Style, role: FigureRole | undefined): boolean => role === 'strong' || (role === 'warn' && !runColor(style, 'warn'))
 
-const figureElement = ({ Box, Text }: ElementTable, style: Style, lines: readonly string[], key: string): RenderElement => (
+const figureElement = ({ Box, Text }: ElementTable, style: Style, rows: readonly (readonly FigureRun[])[], key: string): RenderElement => (
   <Box key={key} flexDirection="column" paddingLeft={2}>
-    {lines.map((line, i) => {
-      const runs = figureRuns(line)
+    {rows.map((runs, i) => {
       return (
         <Text key={`${key}.${i}`}>
           {runs.length
@@ -211,13 +210,96 @@ const figureElement = ({ Box, Text }: ElementTable, style: Style, lines: readonl
   </Box>
 )
 
-type FigureDecision = { lines: readonly string[]; texts: readonly string[]; widest: number } | { note: string }
+type Cell = { glyph: string; role?: FigureRole }
+
+const TOP_LEFT = '┌╔╭'
+const TOP_RIGHT = '┐╗╮'
+const BOTTOM_LEFT = '└╚╰'
+const BOTTOM_RIGHT = '┘╝╯'
+const SIDE = '│║├┤┼╟╢╠╣▲▼►◄'
+const RULE = '─═'
+const MAX_REFRAMES = 200
+
+type Frame = { top: number; bottom: number; left: number; right: number; edges: readonly number[] }
+
+const cellsOf = (runs: readonly FigureRun[]): Cell[] => runs.flatMap(run => graphemes(run.text).map(glyph => ({ glyph, role: run.role })))
+
+const runsOf = (cells: readonly Cell[]): FigureRun[] =>
+  cells.reduce<FigureRun[]>((runs, cell) => {
+    const last = runs[runs.length - 1]
+    if (last && last.role === cell.role) last.text += cell.glyph
+    else runs.push(cell.role ? { text: cell.glyph, role: cell.role } : { text: cell.glyph })
+    return runs
+  }, [])
+
+const glyphAt = (row: readonly Cell[] | undefined, column: number): string => row?.[column]?.glyph ?? ''
+
+const nearest = (row: readonly Cell[], from: number, target: number, set: string): number => {
+  let best = -1
+  row.forEach((cell, column) => {
+    if (column > from && set.includes(cell.glyph) && (best < 0 || Math.abs(column - target) < Math.abs(best - target))) best = column
+  })
+  return best
+}
+
+const frameAt = (grid: readonly Cell[][], top: number, left: number): Frame | undefined => {
+  const row = grid[top]!
+  const right = row.findIndex((cell, column) => column > left && (TOP_RIGHT.includes(cell.glyph) || TOP_LEFT.includes(cell.glyph)))
+  if (right < 0 || !TOP_RIGHT.includes(glyphAt(row, right))) return undefined
+  const edges = [right]
+  for (let bottom = top + 1; bottom < grid.length; bottom++) {
+    const line = grid[bottom]!
+    const start = glyphAt(line, left)
+    if (BOTTOM_LEFT.includes(start) && start) {
+      const corner = nearest(line, left, right, BOTTOM_RIGHT)
+      return corner < 0 ? undefined : { top, bottom, left, right, edges: [...edges, corner] }
+    }
+    if (!start || !SIDE.includes(start)) return undefined
+    const edge = nearest(line, left, right, SIDE)
+    if (edge < 0) return undefined
+    edges.push(edge)
+  }
+  return undefined
+}
+
+const framesOf = (grid: readonly Cell[][]): Frame[] =>
+  grid
+    .flatMap((row, top) => row.flatMap((cell, left) => (TOP_LEFT.includes(cell.glyph) ? [frameAt(grid, top, left)] : [])))
+    .filter((frame): frame is Frame => frame !== undefined)
+    .sort((a, b) => a.right - a.left - (b.right - b.left))
+
+const fillFor = (row: readonly Cell[], edge: number, outer: boolean): string => {
+  const before = glyphAt(row, edge - 1)
+  return RULE.includes(before) && before ? before : outer ? '─' : ' '
+}
+
+const widen = (grid: Cell[][], frame: Frame): boolean => {
+  const target = Math.max(...frame.edges)
+  if (frame.edges.every(edge => edge === target)) return false
+  frame.edges.forEach((edge, i) => {
+    const row = grid[frame.top + i]!
+    const outer = i === 0 || i === frame.edges.length - 1
+    const role = row[edge]?.role
+    const fill = fillFor(row, edge, outer)
+    row.splice(edge, 0, ...Array.from({ length: target - edge }, () => (fill === ' ' ? { glyph: fill } : { glyph: fill, role })))
+  })
+  return true
+}
+
+export const reframe = (rows: readonly (readonly FigureRun[])[]): FigureRun[][] => {
+  const grid = rows.map(cellsOf)
+  for (let pass = 0; pass < MAX_REFRAMES; pass++) if (!framesOf(grid).some(frame => widen(grid, frame))) break
+  return grid.map(runsOf)
+}
+
+type FigureDecision = { rows: readonly (readonly FigureRun[])[]; texts: readonly string[]; widest: number } | { note: string }
 
 const decisions = new Map<string, FigureDecision>()
 
 const drawable = (lines: readonly string[]): FigureDecision => {
-  const texts = lines.map(figureText)
-  return { lines, texts, widest: Math.max(0, ...texts.map(width)) }
+  const rows = reframe(lines.map(figureRuns))
+  const texts = rows.map(runs => runs.map(run => run.text).join(''))
+  return { rows, texts, widest: Math.max(0, ...texts.map(width)) }
 }
 
 const decide = (raw: readonly string[]): FigureDecision => {
@@ -235,7 +317,7 @@ export const drawFigure = (el: ElementTable, style: Style, block: { lines: reado
   if (block.isOpen) return null
   const decision = remember(decisions, block.lines.join('\n'), () => decide(block.lines))
   if ('note' in decision) return decision
-  if (decision.lines.length === 0) return null
+  if (decision.rows.length === 0) return null
   if (decision.widest > columns - 2) return { note: `figure is ${decision.widest} cols, terminal is ${columns}` }
-  return { element: figureElement(el, style, decision.lines, key), art: decision.texts.join('\n') }
+  return { element: figureElement(el, style, decision.rows, key), art: decision.texts.join('\n') }
 }
