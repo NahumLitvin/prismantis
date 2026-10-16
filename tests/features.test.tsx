@@ -1457,7 +1457,7 @@ test('/prismantis setup stops on a refused save', async ($, on) => {
 })
 
 test('/prismantis setup marks light themes for a light terminal', () => {
-  const labels = setupParts(PRESET_NAMES, 0).options.map(o => o.text.split('\n')[0])
+  const labels = setupParts(PRESET_NAMES, 0).options.map(o => o.text.split('\n')[0] ?? '')
   expect(labels.filter(l => l.endsWith('(for a light terminal)')).length).toBe(PRESET_NAMES.filter(t => /latte|light|dawn/.test(t)).length)
   expect(labels.find(l => l.includes('mono'))).not.toContain('light terminal')
 })
