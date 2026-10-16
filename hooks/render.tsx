@@ -186,15 +186,11 @@ const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   return width(text) <= w ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
 }
 
-const mirrored = (style: Style) => style.shape === 'mirror'
-
-const unmarked = (line: Inline[]): Inline[] => (line[0] === ROW_MARK ? line.slice(1) : line)
-
-const walled = (style: Style, lines: Inline[][]): Inline[][] => (mirrored(style) && style.inside ? lines.map(unmarked) : lines)
+export const mirrored = (style: Style) => style.shape === 'mirror'
 
 const flows = new Map<string, Flow | null>()
-const flowOf = (style: Style, nodes: Inline[], columns: number) =>
-  style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape), 2000) : null
+const flowOf = (style: Style, nodes: Inline[], columns: number, mark = !(style.inside && mirrored(style))) =>
+  style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${mark}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape, mark), 2000) : null
 
 const noteHover = (style: Style, note: number | undefined) =>
   note === undefined || style.noteKey === undefined ? {} : { hover: { scope: `fn:${style.noteKey}:${note}`, inverse: true } }
@@ -226,14 +222,14 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'path':
         return <Text key={key} color={t.path}>{n.text}</Text>
       case 'dim':
-        return n.text === ROW_MARK_TEXT ? <Text key={key} color={t.rule}>{n.text}</Text> : <Text key={key} dimColor>{n.text}</Text>
+        return n === ROW_MARK ? <Text key={key} color={t.rule}>{n.text}</Text> : <Text key={key} dimColor>{n.text}</Text>
       case 'footnote':
         return <Text key={key} color={t.accent} {...noteHover(style, n.note)}>{n.text}</Text>
     }
   })
 }
 
-const renderFlow = (el: ElementTable, style: Style, lines: Inline[][], key: string, props: { italic?: boolean; color?: string; bold?: boolean } = {}) => {
+const renderFlow = (el: ElementTable, style: Style, lines: Inline[][], key: string, props: TextLook = {}) => {
   const { Text } = el
   return lines.map((line, i) => <Text key={`${key}.${i}`} {...props}>{renderInline(el, style, line, `${key}.${i}`)}</Text>)
 }
@@ -487,7 +483,8 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
-  if (rtl && !mirror) order.reverse()
+  const flip = rtl && !mirror
+  if (flip) order.reverse()
   const lead = (k: string) => (mirror ? <Text key={`${k}.m`} color={t.rule}>{ROW_MARK_TEXT}</Text> : null)
   const ruleChar = style.tableStyle === 'grid' ? '━' : '─'
   const justify = (c: number) =>
@@ -533,8 +530,8 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       {box && border(`${k}.l`, wall('│ '))}
       {order.map((c, i) => {
         const w = widths[c]!
-        const cell = flowOf(style, cells[c] ?? [], Infinity)
-        const content = cell ? (mirror ? unmarked(cell.lines[0]!) : cell.lines[0]!) : (cells[c] ?? [])
+        const cell = flowOf(style, cells[c] ?? [], Infinity, !mirror)
+        const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = mirror ? (block.align[c] === 'center' ? 'center' : 'flex-start') : cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
         const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
@@ -570,7 +567,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       lines.push(...wrappedRow(r, `${key}.r${i}`, false))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
-    return <Box key={key} flexDirection="column" {...(rtl && !mirror ? { alignSelf: 'flex-end' as const } : {})}>{lines}</Box>
+    return <Box key={key} flexDirection="column" {...(flip ? { alignSelf: 'flex-end' as const } : {})}>{lines}</Box>
   }
 
   const body: RenderElement[] = [row(block.header, `${key}.h`, true), rule(`${key}.hr`, true)]
@@ -578,14 +575,24 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     body.push(row(r, `${key}.r${i}`, false))
     if (style.tableStyle !== 'minimal' && i < block.rows.length - 1) body.push(rule(`${key}.r${i}r`, false))
   })
-  return <Box key={key} flexDirection="column" {...(rtl && !mirror ? { alignSelf: 'flex-end' as const } : {})}>{body}</Box>
+  return <Box key={key} flexDirection="column" {...(flip ? { alignSelf: 'flex-end' as const } : {})}>{body}</Box>
 }
 
 const renderHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, key: string) => {
   const rtl = flowOf(style, block.inline, Infinity)
   if (!rtl) return drawHeading(el, style, block, block.inline, key)
+  if (rtl.base === 'R' && mirrored(style) && style.headingStyle === 'banner' && block.level <= 2) return mirroredBanner(el, style, block.level, rtl.lines[0]!, key)
   const heading = drawHeading(el, style, block, rtl.lines[0]!, key)
   return rtl.base === 'R' && !mirrored(style) ? <el.Box key={key} alignSelf="flex-end">{heading}</el.Box> : heading
+}
+
+const mirroredBanner = (el: ElementTable, style: Style, level: number, inline: Inline[], key: string) => {
+  const { Box, Text } = el
+  const color = style.theme.heading
+  const text = <Text key={`${key}.h`} bold underline={level === 2} color={color}>{level === 1 ? `${WALL} ` : ''}{renderInline(el, style, inline, key)}{level === 1 ? ` ${WALL}` : ''}</Text>
+  if (level === 2) return text
+  const edge = (k: string) => <Text key={k} color={color}>{WALL + '━'.repeat(width(inlineText(inline)) + 2) + WALL}</Text>
+  return <Box key={key} flexDirection="column">{edge(`${key}.t`)}{text}{edge(`${key}.b`)}</Box>
 }
 
 const drawHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, inline: Inline[], key: string) => {
@@ -615,7 +622,7 @@ const prose = (style: Style) => (style.inside === 'quote' ? { italic: true, colo
 const renderParagraph = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'paragraph' }>, columns: number, key: string, tip?: Tip) => {
   const { Box, Text } = el
   const rtl = flowOf(style, block.inline, columns)
-  if (rtl?.base === 'R') return <Box key={key} flexDirection="column" {...(mirrored(style) ? {} : { alignItems: 'flex-end' as const })}>{renderFlow(el, style, walled(style, rtl.lines), key, prose(style))}</Box>
+  if (rtl?.base === 'R') return <Box key={key} flexDirection="column" {...(mirrored(style) ? {} : { alignItems: 'flex-end' as const })}>{renderFlow(el, style, rtl.lines, key, prose(style))}</Box>
   const inline = rtl ? rtl.lines[0]! : block.inline
   return pressInline(el, style, inline, columns, key, tip, { ...(style.narration ? { bold: true } : {}), ...prose(style) }) ?? <Text key={key} bold={style.narration} {...prose(style)}>{renderInline(el, style, inline, key)}</Text>
 }
@@ -713,20 +720,21 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         const glyphColor = item.task && tick ? t.accent : t.bullet
         const pad = item.depth * 2 + glyph.length + 1
         const rtl = flowOf(style, item.inline, columns - pad)
+        const look = { ...(item.task === true ? { dimColor: true, strikethrough: strike } : {}), ...prose(style) }
         const row = rtl?.base === 'R' && mirrored(style) ? (
           <Box key={k} flexDirection="row">
             <Text color={glyphColor}>{`${' '.repeat(item.depth * 2)}${glyph} `}</Text>
-            <Box flexDirection="column">{renderFlow(el, style, walled(style, rtl.lines), k, prose(style))}</Box>
+            <Box flexDirection="column">{renderFlow(el, style, rtl.lines, k, look)}</Box>
           </Box>
         ) : rtl?.base === 'R' ? (
           <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
-            <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k, prose(style))}</Box>
+            <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k, look)}</Box>
             <Text color={glyphColor}>{` ${glyph}`}</Text>
           </Box>
         ) : (
           <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
             <Text color={glyphColor}>{`${glyph} `}</Text>
-            {pressInline(el, style, rtl ? rtl.lines[0]! : item.inline, columns - pad, `${k}.i`, tip, { ...(item.task === true ? { dimColor: true, strikethrough: strike } : {}), ...prose(style) }) ?? <Text dimColor={item.task === true} strikethrough={item.task === true && strike} {...prose(style)}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>}
+            {pressInline(el, style, rtl ? rtl.lines[0]! : item.inline, columns - pad, `${k}.i`, tip, look) ?? <Text dimColor={item.task === true} strikethrough={item.task === true && strike} {...prose(style)}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>}
           </Box>
         )
         if (!item.blocks) return row
@@ -884,7 +892,9 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     ) : first
     if (!button) return element
     const { Box } = el
-    const rtl = style.reorder && hasRtl(block.raw) && !mirrored(style)
+    const hebrew = style.reorder && hasRtl(block.raw)
+    const rtl = hebrew && !mirrored(style)
+    const mirror = hebrew && mirrored(style)
     if (hover) {
       const wide = rtl && (block.kind === 'list' || block.kind === 'quote' || block.kind === 'alert' || rtlTables[b])
       const start = wide && (rtlTables[b] || flowOf(style, leadInline([block]), columns)?.base === 'R')
@@ -896,7 +906,6 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         </Box>
       )
     }
-    const mirror = mirrored(style) && hasRtl(block.raw)
     return (block.kind === 'quote' || block.kind === 'alert') && !mirrored(style) ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
@@ -1679,7 +1688,7 @@ export const renderUserPrompt = (el: ElementTable, style: Style, text: string, c
   const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
   if (style.promptStyle === 'bubble') {
-    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} {...(hebrew && !rtl ? { width: '100%' } : {})}>{content}</Box>
+    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} {...(hebrew && mirrored(style) ? { width: '100%' } : {})}>{content}</Box>
   }
   const mark = <Text color={t.accent} bold>{style.promptStyle === 'bar' ? (rtl ? ' ▐' : '▌ ') : rtl ? ' ‹' : '› '}</Text>
   return <Box flexDirection="row" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>

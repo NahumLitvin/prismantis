@@ -1,6 +1,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { graphemes, remember, width } from './render'
+import { graphemes, mirrored, remember, width } from './render'
+import { hasRtl, holdText } from './rtl'
 import type { Style, Theme } from './theme'
 
 export const FIGURE_ROLES = ['accent', 'warn', 'ok', 'note', 'dim', 'strong'] as const
@@ -195,7 +196,8 @@ const isBold = (style: Style, role: FigureRole | undefined): boolean => role ===
 const figureElement = ({ Box, Text }: ElementTable, style: Style, lines: readonly string[], key: string): RenderElement => (
   <Box key={key} flexDirection="column" paddingLeft={2}>
     {lines.map((line, i) => {
-      const runs = figureRuns(line)
+      const held = mirrored(style) && hasRtl(line)
+      const runs = figureRuns(line).map(run => (held ? { ...run, text: holdText([...run.text]) } : run))
       return (
         <Text key={`${key}.${i}`}>
           {runs.length

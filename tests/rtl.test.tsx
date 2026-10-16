@@ -4,7 +4,7 @@ import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
 import { PRESETS } from '../hooks/presets'
-import { ROW_MARK, commentTail, flow, terminalLine } from '../hooks/rtl'
+import { ROW_MARK, ROW_MARK_TEXT, commentTail, flow, holdRow, terminalLine } from '../hooks/rtl'
 import { claudeAt, linksHttp } from './claude-version'
 
 const measure = (s: string) => [...s].length
@@ -16,6 +16,14 @@ const mount = (text: string, columns = 120) => ({
   component: 'AssistantMessage' as const,
   props: { text, isFirstOfReply: true },
   viewport: { columns, rows: 40 },
+  surface: 'terminal' as const,
+})
+
+const mountDemo = (text: string) => ({
+  plugin: 'prismantis',
+  component: 'CommandOutput' as const,
+  props: { command: 'prismantis', args: 'demo-rtl', text, isErrored: false },
+  viewport: { columns: 120, rows: 40 },
   surface: 'terminal' as const,
 })
 
@@ -293,11 +301,39 @@ test('detection also runs when a prompt is submitted, so a reload without sessio
 })
 
 test('the demo-rtl screen has every element and draws right to left', { options: { rtl: 'warp' } }, async $ => {
-  const ui = await $.ui.mount({ plugin: 'prismantis', component: 'CommandOutput' as const, props: { command: 'prismantis', args: 'demo-rtl', text: rtlShowcaseText(), isErrored: false }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
+  const ui = await $.ui.mount(mountDemo(rtlShowcaseText()))
   expect(await ui.find({ type: 'Text', text: /^לאמשל ןימימ תירבע$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.alignItems === 'flex-end').length >= 3).toBe(true)
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.width === '100%')).toBe(true)
   await ui.unmount()
+})
+
+test('the demo-rtl screen draws a diagram with a mixed Hebrew label as held art on iTerm', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mountDemo(rtlShowcaseText()))
+  expect((await ui.findAll({ type: 'Text' })).some(t => t.text.includes('⠀') && t.text.includes('cache'))).toBe(true)
+  await ui.unmount()
+})
+
+for (const rtl of ['iterm', 'warp'] as const)
+  test(`a done task in Hebrew keeps the done look on ${rtl}`, { options: { rtl, taskStyle: 'checks' } }, async $ => {
+    const ui = await $.ui.mount(mount('- [x] לסיים את הבדיקות\n- [ ] לכתוב את המדריך'))
+    const texts = (await ui.findAll({ type: 'Text' })).filter(t => /[א-ת]/.test(t.text))
+    expect(texts.some(t => t.text.includes('תוקידבה') || t.text.includes('הבדיקות') ? t.props.strikethrough === true && t.props.dimColor === true : false)).toBe(true)
+    expect(texts.some(t => (t.text.includes('ךירדמה') || t.text.includes('המדריך')) && t.props.strikethrough === true)).toBe(false)
+    await ui.unmount()
+  })
+
+test('the demo-rtl screen shows a Hebrew row that opens with English on iTerm', { options: { rtl: 'iterm' } }, async $ => {
+  const marks = async (text: string) => {
+    const ui = await $.ui.mount(mountDemo(text))
+    const n = (await ui.findAll({ type: 'Text' })).filter(t => t.text === ROW_MARK_TEXT).length
+    await ui.unmount()
+    return n
+  }
+  const demo = rtlShowcaseText()
+  const englishFirst = demo.split('\n').filter(l => /^- [A-Za-z]/.test(l))
+  expect(englishFirst.length).toBe(1)
+  expect(await marks(demo)).toBeGreaterThan(await marks(demo.replace(`${englishFirst[0]}\n`, '')))
 })
 
 test('links in a Hebrew paragraph are hyperlinks in the link color, or plain text where they cannot be clicked', { options: { rtl: 'warp' } }, async ($, on) => {
@@ -411,6 +447,57 @@ test('iTerm draws a Hebrew table in reading order with a paseq wall on every row
   await ui.unmount()
 })
 
+test('iTerm adds no row mark inside a quote, an alert or a table cell, where a paseq wall already leads the row', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const rule = PRESETS['catppuccin-mocha'].rule
+  for (const text of ['> kubectl החזיר שגיאה', '> [!NOTE]\n> kubectl החזיר שגיאה', '| כלי | הערה |\n|---|---|\n| kubectl בודק | רץ אתמול |']) {
+    const ui = await $.ui.mount(mount(text))
+    expect((await ui.findAll({ type: 'Text' })).filter(t => t.text === ROW_MARK_TEXT && t.props.color === rule)).toEqual([])
+    await ui.unmount()
+  }
+})
+
+test('a diagram label that opens in Hebrew and holds English reads right to left once a terminal reorders the held row', () => {
+  const held = holdRow([...'│ האם יש token? │'])
+  expect(held.startsWith('│⠀') && held.endsWith('⠀│')).toBe(true)
+  expect(inlineText(terminalLine([{ kind: 'text', text: held }]))).toBe(`│⠀${visual('האם יש token?')}⠀│`)
+  expect(holdRow([...'│ ArgoCD sync │'])).toBe('│ ArgoCD sync │')
+})
+
+const DIAGRAMS = ['```mermaid\nflowchart LR\n  A[בקשה נכנסת] --> B[ArgoCD sync]\n```', '```figure\n│ שלב א │──►│ שלב ב │\n```']
+
+const hebrewRows = async (ui: { findAll: (q: { type: 'Text' }) => Promise<{ text: string }[]> }) => (await ui.findAll({ type: 'Text' })).map(t => t.text).filter(t => /[א-ת]/.test(t))
+
+test('iTerm keeps a diagram row with Hebrew left to right: blanks around labels become braille blanks, spaces inside a Hebrew label stay', { options: { rtl: 'iterm' } }, async $ => {
+  for (const source of DIAGRAMS) {
+    const ui = await $.ui.mount(mount(source))
+    const rows = await hebrewRows(ui)
+    expect(rows.some(t => t.includes('⠀'))).toBe(true)
+    expect(rows.every(t => !/^ | $| [─│├┤►]|[─│├┤►] /.test(t))).toBe(true)
+    expect(rows.some(t => /[א-ת] [א-ת]/.test(t))).toBe(true)
+    await ui.unmount()
+  }
+})
+
+test('terminals that do not mirror rows draw diagrams with plain spaces', { options: { rtl: 'warp' } }, async $ => {
+  for (const source of DIAGRAMS) {
+    const ui = await $.ui.mount(mount(source))
+    const rows = await hebrewRows(ui)
+    expect(rows.length > 0).toBe(true)
+    expect(rows.some(t => t.includes('⠀'))).toBe(false)
+    await ui.unmount()
+  }
+})
+
+test('iTerm draws a Hebrew banner heading so every row of it mirrors: paseq walls for the title box, an underline for the section title', { options: { rtl: 'iterm', headingStyle: 'banner' } }, async $ => {
+  const ui = await $.ui.mount(mount('# עברית מימין לשמאל\n\n## רשימות'))
+  const texts = await ui.findAll({ type: 'Text' })
+  expect(texts.filter(t => /^׀━+׀$/.test(t.text)).length).toBe(2)
+  expect(texts.some(t => /^━+$/.test(t.text))).toBe(false)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'bold')).toBe(false)
+  expect(texts.some(t => /רשימות|תומישר/.test(t.text) && t.props.underline === true)).toBe(true)
+  await ui.unmount()
+})
+
 test('iTerm draws the quote bar as a paseq, so the row mirrors without a mark of its own', { options: { rtl: 'iterm' } }, async $ => {
   const ui = await $.ui.mount(mount('> kubectl החזיר שגיאה'))
   expect(await ui.find({ type: 'Text', text: /^׀ $/ })).toBeDefined()
@@ -426,7 +513,7 @@ test('iTerm draws a Hebrew alert as a paseq frame so every row mirrors alike', {
   await ui.unmount()
 })
 
-test('iTerm marks the engine notice line when it holds Hebrew', { options: { rtl: 'iterm' } }, async ($, on) => {
+test('iTerm marks the engine notice line when it holds Hebrew and opens with English', { options: { rtl: 'iterm' } }, async ($, on) => {
   let drawn = ''
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -436,4 +523,7 @@ test('iTerm marks the engine notice line when it holds Hebrew', { options: { rtl
   const ui = await $.ui.mount({ plugin: 'prismantis', component: 'InfoNotice' as const, props: { text: 'recap: תיקנו את ה-RTL', command: '/config' }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
   expect(drawn).toBe('׀ recap: תיקנו את ה-RTL')
   await ui.unmount()
+  const hebrewFirst = await $.ui.mount({ plugin: 'prismantis', component: 'InfoNotice' as const, props: { text: 'תיקנו את ה-RTL', command: '/config' }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
+  expect(drawn).toBe('תיקנו את ה-RTL')
+  await hebrewFirst.unmount()
 })

@@ -283,6 +283,7 @@ export const rtlShowcaseText = (): string => `
 ## רשימות
 
 - פרוסים בשני אזורים (us-east ו-eu-west)
+- Python מתאים גם לסקריפטים קצרים
 - מחליפים ערכת נושא עם \`/prismantis theme nord\`
 
 1. מתקינים את התוסף
@@ -300,6 +301,13 @@ export const rtlShowcaseText = (): string => `
 
 \`\`\`bash
 ls -la # רשימת הקבצים בתיקייה
+\`\`\`
+
+\`\`\`mermaid
+flowchart LR
+  A[בקשה חדשה] --> B{האם יש cache?}
+  B -->|כן| C[מחזירים מה-cache]
+  B -->|לא| D[פונים לשרת]
 \`\`\`
 `
 

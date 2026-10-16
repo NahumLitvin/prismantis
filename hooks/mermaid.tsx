@@ -4,7 +4,8 @@ import { ganttText, pieText } from './charts'
 import { drawFigure, isFigureLang } from './figure'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
-import { cells, graphemes, remember, width } from './render'
+import { cells, graphemes, mirrored, remember, width } from './render'
+import { holdRow } from './rtl'
 import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
@@ -183,11 +184,12 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
   const { grid, colors } = remember(cache, art, () => paint(art, style))
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
-      {grid.map((chars, i) => {
+      {grid.map((row, i) => {
+        const chars = mirrored(style) ? graphemes(holdRow(row)) : row
         const marked: (Mark | undefined)[] = chars.map(() => undefined)
         for (const [phrase, mark] of marks)
           for (let c = 0; c + phrase.length <= chars.length; c++)
-            if (phrase.every((ch, k) => chars[c + k] === ch)) for (let k = 0; k < phrase.length; k++) marked[c + k] = mark
+            if (phrase.every((ch, k) => row[c + k] === ch)) for (let k = 0; k < phrase.length; k++) marked[c + k] = mark
         const parts: RenderElement[] = []
         let at = 0
         while (at < chars.length) {

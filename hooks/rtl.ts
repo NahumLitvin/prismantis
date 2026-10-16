@@ -211,18 +211,15 @@ export const ROW_MARK: Inline = { kind: 'dim', text: ROW_MARK_TEXT }
 
 const asWritten = (shape: Shape) => shape === 'logical' || shape === 'mirror'
 
-const isLetter = (u: Unit) => /\p{L}/u.test(u.ch)
+const startsLatin = (line: Unit[]): boolean => line.map(u => bidiClass(u.ch)).find(c => c === 'L' || c === 'R') === 'L'
 
-const startsLatin = (line: Unit[]): boolean => {
-  const first = line.find(isLetter)
-  return first !== undefined && !R.test(first.ch)
-}
+export const opensLatin = (text: string): boolean => startsLatin(units(text, { wrap: [], leaf: 'text' }))
 
-export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual'): Flow | null => {
+export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual', mark = true): Flow | null => {
   if (!containsRtl(nodes)) return null
   const all = flatten(nodes)
   const base = shape === 'mirror' ? 'R' : baseOf(all)
-  const marked = asWritten(shape) && base === 'R' && all.some(u => isLetter(u) && !R.test(u.ch))
+  const marked = mark && asWritten(shape) && base === 'R' && all.some(u => bidiClass(u.ch) === 'L')
   const logical = base === 'R' ? wrapUnits(all, columns - (marked ? measure(ROW_MARK_TEXT) : 0), measure) : [all]
   const lines = logical.map(line => {
     const built = rebuild(asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base))
@@ -249,3 +246,22 @@ export const commentVisual = (text: string, shape: Shape = 'visual'): string => 
 }
 
 export const hasRtl = (text: string): boolean => R.test(text)
+
+export const LTR_BLANK = '⠀'
+
+const WORD = /[\p{L}\p{N}\p{P}]/u
+
+const inLabel = (chars: string[], c: number) => {
+  const [a = '', b = ''] = [chars[c - 1], chars[c + 1]]
+  return WORD.test(a) && WORD.test(b) && (R.test(a) || R.test(b))
+}
+
+const rightToLeft = (label: string): string => {
+  const all = units(label, { wrap: [], leaf: 'text' })
+  return baseOf(all) === 'R' && all.some(u => bidiClass(u.ch) === 'L') ? terminalBidi(reorder(all, 'R')).map(u => u.ch).join('') : label
+}
+
+export const holdText = (chars: string[]): string =>
+  chars.map((ch, c) => (ch === ' ' && !inLabel(chars, c) ? LTR_BLANK : ch)).join('').split(LTR_BLANK).map(rightToLeft).join(LTR_BLANK)
+
+export const holdRow = (chars: string[]): string => (chars.some(ch => R.test(ch)) ? holdText(chars) : chars.join(''))
