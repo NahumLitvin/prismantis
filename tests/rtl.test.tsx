@@ -421,7 +421,8 @@ test('Windows Terminal diagram labels that read right to left are sent so Claude
 })
 
 test('a held diagram row says where each drawn cell came from, so colors and marks land on the same letters after a label is reordered', () => {
-  for (const [row, hold, blanks] of [[[...'│ עם engine │'], holdEngine, ['‎', ' ']], [[...'│ האם יש token │'], holdRow, ['⠀']]] as const) {
+  const cases: [string[], typeof holdRow, string[]][] = [[[...'│ עם engine │'], holdEngine, ['‎', ' ']], [[...'│ האם יש token │'], holdRow, ['⠀']]]
+  for (const [row, hold, blanks] of cases) {
     const held = hold([...row])
     expect(held.cells.join('')).not.toBe(row.join(''))
     expect(held.cells.length).toBe(held.from.length)
