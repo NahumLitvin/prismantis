@@ -358,6 +358,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('copyButtonStyle')
   expect(showcaseText([])).toContain('+M more lines')
   expect(showcaseText([])).toContain('```figure')
+  expect(showcaseText([])).toContain('padded to its widest row')
   expect(blocks.some(b => b.kind === 'code' && b.lines.length > 30)).toBe(true)
   expect(showcaseText([])).toContain('diff card headed `+N −M`')
   expect(showcaseText([])).toContain('Files a shell command changes')

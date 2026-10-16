@@ -200,6 +200,15 @@ Provider  {accent:██████████████}{warn:✗} timeout 
 Handler   {ok:████████████████████} 200, nobody waits
 Bookings  0                   {ok:1}                 {warn:2 twice}
 \`\`\`
+
+A box whose rows slip off its frame is padded to its widest row, inner boxes first:
+
+\`\`\`figure
+{accent:┌─ queue ──────────┐}
+{accent:│} {ok:● worker 1} {accent:│}
+{accent:│} {warn:▲ worker 2 slow}      {accent:│}
+{accent:└──────────────────┘}
+\`\`\`
 `
 
 export const helpText = (themes: readonly string[]): string => `
