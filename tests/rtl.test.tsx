@@ -395,3 +395,45 @@ test('iTerm draws a Hebrew prompt bubble across the whole width, so the terminal
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end' || b.props.alignItems === 'flex-end')).toBe(false)
   await ui.unmount()
 })
+
+test('under mirror any Hebrew makes the line right-to-left, so an English-majority line gets the mark too', async () => {
+  const f = flow([{ kind: 'text', text: 'kubectl get pods shows three pods stuck וזה מסביר' }], 100, measure, 'mirror')
+  expect(f?.base).toBe('R')
+  expect(f?.lines[0]?.[0]).toEqual(ROW_MARK)
+})
+
+test('iTerm draws a Hebrew table in reading order with a paseq wall on every row, frame included', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount('| רכיב | Status | הערה |\n|---|---|---|\n| הבדיקה | passed | רצה אתמול |'))
+  const marks = (await ui.findAll({ type: 'Text' })).filter(t => t.text.startsWith('׀'))
+  expect(marks.length >= 5).toBe(true)
+  expect(await ui.find({ type: 'Text', text: /^׀[─┬]+׀$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end' && b.props.key !== 'reply')).toBe(false)
+  await ui.unmount()
+})
+
+test('iTerm draws the quote bar as a paseq, so the row mirrors without a mark of its own', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount('> kubectl החזיר שגיאה'))
+  expect(await ui.find({ type: 'Text', text: /^׀ $/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^│ $/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('iTerm draws a Hebrew alert as a paseq frame so every row mirrors alike', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount('> [!NOTE]\n> הריצה הבאה מתחילה בעוד שעה'))
+  expect(await ui.find({ type: 'Text', text: /^׀─+׀$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Note$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(false)
+  await ui.unmount()
+})
+
+test('iTerm marks the engine notice line when it holds Hebrew', { options: { rtl: 'iterm' } }, async ($, on) => {
+  let drawn = ''
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    drawn = e.component === 'InfoNotice' ? String(e.props.text) : ''
+    return <Text>{drawn}</Text>
+  })
+  const ui = await $.ui.mount({ plugin: 'prismantis', component: 'InfoNotice' as const, props: { text: 'recap: תיקנו את ה-RTL', command: '/config' }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
+  expect(drawn).toBe('׀ recap: תיקנו את ה-RTL')
+  await ui.unmount()
+})

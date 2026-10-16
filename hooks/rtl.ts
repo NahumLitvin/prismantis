@@ -203,7 +203,11 @@ const shapeNodes = (nodes: Inline[], shape: Shape): Inline[] =>
 
 export const containsRtl = (nodes: Inline[]): boolean => nodes.some(n => ('children' in n ? containsRtl(n.children) : R.test(n.text)))
 
-export const ROW_MARK: Inline = { kind: 'dim', text: '׀ ' }
+export const WALL = '׀'
+
+export const ROW_MARK_TEXT = `${WALL} `
+
+export const ROW_MARK: Inline = { kind: 'dim', text: ROW_MARK_TEXT }
 
 const asWritten = (shape: Shape) => shape === 'logical' || shape === 'mirror'
 
@@ -217,9 +221,9 @@ const startsLatin = (line: Unit[]): boolean => {
 export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual'): Flow | null => {
   if (!containsRtl(nodes)) return null
   const all = flatten(nodes)
-  const base = baseOf(all)
+  const base = shape === 'mirror' ? 'R' : baseOf(all)
   const marked = asWritten(shape) && base === 'R' && all.some(u => isLetter(u) && !R.test(u.ch))
-  const logical = base === 'R' ? wrapUnits(all, columns - (marked ? measure(ROW_MARK.text) : 0), measure) : [all]
+  const logical = base === 'R' ? wrapUnits(all, columns - (marked ? measure(ROW_MARK_TEXT) : 0), measure) : [all]
   const lines = logical.map(line => {
     const built = rebuild(asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base))
     return marked && startsLatin(line) ? [ROW_MARK, ...built] : built
