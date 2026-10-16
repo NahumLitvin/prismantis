@@ -8,7 +8,7 @@ description: Cut a prismantis release - version bump, changelog, verify, tag and
 1. **Pick the version.** Breaking option or token renames are minor while below 1.0 (and major after). New features are minor. Fixes are patch.
 2. **Set it in both manifests**: `version` in `.claude-plugin/plugin.json` and `plugins[0].version` in `.claude-plugin/marketplace.json`.
 3. **Changelog:** add a dated `## [x.y.z]` at the top of docs/CHANGELOG.md, with Added, Changed and Fixed written for users. PRs do not touch the file, so write it from the "What changes for the user" section of every PR merged since the last tag (`git log vPREV..HEAD --oneline`), one entry per user-visible change, linking the PR. Fold in anything still under `## [Unreleased]` and drop that heading.
-4. **Vendor:** if `scripts/package.json` changed, run `npm --prefix scripts run build:vendor`, and confirm the bundle has no `import` statements and no non-MIT code (`grep -c -i elk hooks/vendor/*.js` must print 0).
+4. **Generated files:** run `npm --prefix scripts run build:codex`, since PRs leave `codex/` stale. If `scripts/package.json` changed, also run `npm --prefix scripts run build:vendor`, and confirm the bundle has no `import` statements and no non-MIT code (`grep -c -i elk hooks/vendor/*.js` must print 0).
 5. **Verify:** run every step in AGENTS.md Verify, plus `live-check`.
 6. **Fresh install test** against a throwaway config:
    ```
