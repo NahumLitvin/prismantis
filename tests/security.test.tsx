@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import type { ClipboardBackend } from '../hooks/clipboard'
 import { clipboardCommand } from '../hooks/clipboard'
 import { tableHtml } from '../hooks/html'
-import { imageFile, mathOf } from '../hooks/latex'
+import { mathOf } from '../hooks/latex'
 import type { Block } from '../hooks/markdown'
 import { parse } from '../hooks/markdown'
 
@@ -43,10 +43,6 @@ test('a formula reaches the math renderer as one stdin line', () => {
   const tex = mathOf(blockOf('```math\nx^2\n\\\\ y\n\ninjected\n```', 'code'))
   expect(tex).not.toBeNull()
   expect(tex).not.toContain('\n')
-})
-
-test('image sources never name another machine', () => {
-  for (const src of ['https://x.io/a.png', 'file://host/share/a.png', 'file:////host/a.png', 'file://%2F%2Fhost/a.png', '//host/share/a.png', '\\\\host\\share\\a.png', '/\\host\\a.png', 'smb://host/a.png', 'file:///tmp/%E0.png']) expect(imageFile(src, '/h')).toBeNull()
 })
 
 test('terminal control sequences in a reply are never drawn', async $ => {

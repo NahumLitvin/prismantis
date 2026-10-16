@@ -6,4 +6,4 @@ prismantis is a Claude Code plugin that draws the model's markdown replies. Trea
 - Terminal output: control and escape sequences are stripped in `parse` (hooks/markdown.ts) before anything is drawn.
 - Links (`el.Link`): what schemes can a reply make clickable?
 
-tests/security.test.tsx pins these. Flag a change that widens any of them. Do not flag drawing, layout or theme code that never leaves the screen.
+tests/security.test.tsx and tests/images.test.tsx pin these. Flag a change that widens any of them. Do not flag drawing, layout or theme code that never leaves the screen.
