@@ -98,6 +98,8 @@ test('a file that is not a PNG, or an image inside a sentence, stays text', asyn
 test('image sources resolve to local files or inline bytes only', async () => {
   expect(imageFile('file:///tmp/a%20b.png', '/h')).toEqual({ path: '/tmp/a b.png' })
   expect(imageFile('~/a.png', '/h')).toEqual({ path: '/h/a.png' })
+  expect(imageFile('file://localhost/tmp/a.png', '/h')).toEqual({ path: '/tmp/a.png' })
+  for (const src of ['file://host/share/a.png', 'file:////host/share/a.png', 'file://%2F%2Fhost/a.png', '//host/share/a.png', '\\\\host\\share\\a.png', '/\\host\\a.png', 'file:///tmp/%E0.png']) expect(imageFile(src, '/h')).toBeNull()
   expect(imageFile('docs/a.png', '/h')).toEqual({ path: 'docs/a.png' })
   for (const src of ['https://x.io/a.png', 'http://x.io/a.png', 'ftp://x.io/a.png', 'data:image/png;base64,abc', 'data:text/html;base64,PGh0bWw+PGh0bWw+PGh0bWw+PGh0bWw+PGh0bWw+']) expect(imageFile(src, '/h')).toBeNull()
   expect(fitImage({ width: 4000, height: 100 }, 80)).toEqual({ columns: 78, rows: 1 })

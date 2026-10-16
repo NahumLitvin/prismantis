@@ -106,12 +106,25 @@ export const imageOf = (block: Block): { alt: string; src: string } | null => {
   return only?.kind === 'image' && rest.length === 0 ? { alt: only.text, src: only.src } : null
 }
 
+const local = (path: string): { path: string } | null => (path.replace(/\\/g, '/').startsWith('//') ? null : { path })
+
+const decoded = (text: string): string | null => {
+  try {
+    return decodeURIComponent(text)
+  } catch {
+    return null
+  }
+}
+
 export const imageFile = (src: string, home: string): { png: string } | { path: string } | null => {
   const data = /^data:image\/png;base64,([A-Za-z0-9+/]{32,}=*)$/i.exec(src)
   if (data) return { png: data[1]! }
-  if (/^file:\/\//i.test(src)) return { path: decodeURIComponent(src.slice(7)) }
+  if (/^file:\/\//i.test(src)) {
+    const path = decoded(src.slice(7))?.replace(/^localhost(?=\/)/i, '')
+    return path?.startsWith('/') ? local(path) : null
+  }
   if (src.startsWith('~/')) return home ? { path: `${home}${src.slice(1)}` } : null
-  return /^[a-z][a-z0-9+.-]*:/i.test(src) ? null : { path: src }
+  return /^[a-z][a-z0-9+.-]*:/i.test(src) ? null : local(src)
 }
 
 export const fitImage = (size: Size, columns: number): Fit => {
