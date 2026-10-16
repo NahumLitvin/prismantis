@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.25.1] - 2026-10-16
+
+### Security
+
+- An image source in a reply can no longer point at another machine. `file://` URLs take only an empty host or `localhost`, and paths that start with `//` or `\\` are refused, so on Windows a reply cannot make the mod open an SMB connection, which could leak the login hash. Images load only in kitty and Ghostty, or with `CLAUDE_CODE_FORCE_TERMINAL_IMAGES`, so 0.25.0 was reachable only on Windows with that variable set. Such a source now shows its alt text, and a malformed `%` escape in a `file://` source no longer throws. Reported by @tomerbr1 ([#182](https://github.com/NahumLitvin/prismantis/issues/182), [#185](https://github.com/NahumLitvin/prismantis/pull/185)).
+
 ## [0.25.0] - 2026-10-16
 
 ### Added
