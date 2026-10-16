@@ -188,6 +188,8 @@ const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
 
 export const mirrored = (style: Style) => style.shape === 'mirror'
 
+export const heldLtr = (style: Style) => (style.shape === 'engine' ? { dir: 'ltr' as const } : {})
+
 const flows = new Map<string, Flow | null>()
 const flowOf = (style: Style, nodes: Inline[], columns: number, mark = !(style.inside && mirrored(style))) =>
   style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${mark}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape, mark), 2000) : null
@@ -849,7 +851,8 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const lines = block.lines
         const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
-        const rows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
+        const drawnRows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`))
+        const rows = style.shape === 'engine' ? drawnRows.map((row, i) => <Text key={`${key}.ltr${i}`} dir="ltr">{row}</Text>) : drawnRows
         const gutter = String(lines.length).length
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const float = hover ? floating(button, [button]) : null

@@ -4,7 +4,7 @@ import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
 import { PRESETS } from '../hooks/presets'
-import { ROW_MARK, ROW_MARK_TEXT, commentTail, flow, holdRow, terminalLine } from '../hooks/rtl'
+import { ROW_MARK, ROW_MARK_TEXT, TERMINALS, commentTail, flow, holdEngine, holdRow, terminalLine } from '../hooks/rtl'
 import { claudeAt, linksHttp } from './claude-version'
 
 const measure = (s: string) => [...s].length
@@ -398,6 +398,24 @@ test('an English-majority line with a Hebrew tail stays left and gets no mark', 
   const f = flow([{ kind: 'text', text: 'kubectl get pods shows three pods stuck וזה מסביר' }], 100, measure, 'logical')
   expect(f?.base).toBe('L')
   expect(f?.lines[0]?.[0]).not.toEqual(ROW_MARK)
+})
+
+test('Windows Terminal leaves the order to Claude Code: inline code is held left to right by LRMs and right-to-left brackets come mirrored', async () => {
+  const f = flow([{ kind: 'text', text: 'ואז ' }, { kind: 'code', text: '/reload-plugins' }, { kind: 'text', text: ' (עכשיו)' }], 100, measure, TERMINALS['windows-terminal'])
+  expect(f?.base).toBe('R')
+  expect(inlineText(f!.lines[0]!)).toBe('ואז \u200E/reload-plugins\u200E )עכשיו(')
+})
+
+test('Windows Terminal mirrors brackets around English inside a Hebrew row and still marks a row that opens with Latin', async () => {
+  const f = flow([{ kind: 'text', text: 'kubectl נכשל (timeout) על ה-cluster' }], 100, measure, 'engine')
+  expect(f?.lines[0]?.[0]).toEqual(ROW_MARK)
+  expect(inlineText(f!.lines[0]!)).toBe('׀ kubectl נכשל )timeout( על ה-cluster')
+})
+
+test('Windows Terminal diagram labels that read right to left are sent so Claude Code shows them in reading order, with blanks between labels held', async () => {
+  expect(holdEngine([...'│ עם engine │'])).toBe('│⠀engine עם⠀│')
+  expect(holdEngine([...'│ יש עברית? │'])).toBe('│⠀?יש עברית⠀│')
+  expect(holdEngine([...'│ התחלה │──►│ סוף │'])).toBe('│⠀התחלה⠀│──►│⠀סוף⠀│')
 })
 
 test('a wrapped Hebrew paragraph marks only the rows that open with Latin, and every row still fits', async () => {

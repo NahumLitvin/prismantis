@@ -1,7 +1,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { graphemes, mirrored, remember, width } from './render'
-import { hasRtl, holdText } from './rtl'
+import { graphemes, heldLtr, mirrored, remember, width } from './render'
+import { hasRtl, holdEngine, holdText } from './rtl'
 import type { Style, Theme } from './theme'
 
 export const FIGURE_ROLES = ['accent', 'warn', 'ok', 'note', 'dim', 'strong'] as const
@@ -196,10 +196,10 @@ const isBold = (style: Style, role: FigureRole | undefined): boolean => role ===
 const figureElement = ({ Box, Text }: ElementTable, style: Style, lines: readonly string[], key: string): RenderElement => (
   <Box key={key} flexDirection="column" paddingLeft={2}>
     {lines.map((line, i) => {
-      const held = mirrored(style) && hasRtl(line)
-      const runs = figureRuns(line).map(run => (held ? { ...run, text: holdText([...run.text]) } : run))
+      const hold = !hasRtl(line) ? null : mirrored(style) ? holdText : style.shape === 'engine' ? holdEngine : null
+      const runs = figureRuns(line).map(run => (hold ? { ...run, text: hold([...run.text]) } : run))
       return (
-        <Text key={`${key}.${i}`}>
+        <Text key={`${key}.${i}`} {...heldLtr(style)}>
           {runs.length
             ? runs.map((run, r) => (
                 <Text key={`r${r}`} color={runColor(style, run.role)} bold={isBold(style, run.role)} dimColor={run.role === 'dim' && !style.theme.codeComment}>

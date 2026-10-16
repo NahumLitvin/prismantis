@@ -4,8 +4,8 @@ import { ganttText, pieText } from './charts'
 import { drawFigure, isFigureLang } from './figure'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
-import { cells, graphemes, mirrored, remember, width } from './render'
-import { holdRow } from './rtl'
+import { cells, graphemes, heldLtr, mirrored, remember, width } from './render'
+import { hasRtl, holdEngine, holdRow } from './rtl'
 import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
@@ -185,7 +185,7 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
       {grid.map((row, i) => {
-        const chars = mirrored(style) ? graphemes(holdRow(row)) : row
+        const chars = mirrored(style) ? graphemes(holdRow(row)) : style.shape === 'engine' && row.some(hasRtl) ? graphemes(holdEngine(row)) : row
         const marked: (Mark | undefined)[] = chars.map(() => undefined)
         for (const [phrase, mark] of marks)
           for (let c = 0; c + phrase.length <= chars.length; c++)
@@ -200,7 +200,7 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
           parts.push(<Text key={`t${parts.length}`} color={hue} {...mark}>{chars.slice(at, end).join('')}</Text>)
           at = end
         }
-        return <Text key={`${key}.${i}`}>{parts.length ? parts : ' '}</Text>
+        return <Text key={`${key}.${i}`} {...heldLtr(style)}>{parts.length ? parts : ' '}</Text>
       })}
     </Box>
   )

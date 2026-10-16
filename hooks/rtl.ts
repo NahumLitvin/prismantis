@@ -2,7 +2,7 @@ import type { Inline } from './markdown'
 
 type Dir = 'R' | 'L'
 export type Flow = { base: Dir; lines: Inline[][] }
-export type Shape = 'visual' | 'words' | 'logical' | 'mirror' | 'inverse'
+export type Shape = 'visual' | 'words' | 'logical' | 'mirror' | 'inverse' | 'engine'
 
 export const TERMINALS = {
   warp: 'visual',
@@ -10,7 +10,7 @@ export const TERMINALS = {
   wezterm: 'visual',
   vscode: 'visual',
   alacritty: 'visual',
-  'windows-terminal': 'visual',
+  'windows-terminal': 'engine',
   'apple-terminal': 'logical',
   kitty: 'words',
   iterm: 'mirror',
@@ -118,10 +118,12 @@ const reorder = (all: Unit[], base: Dir): Unit[] => {
   return (base === 'R' ? out.reverse() : out).flat()
 }
 
-const bidiClass = (ch: string): string =>
-  R.test(ch) ? 'R' : /[٠-٩]/.test(ch) ? 'AN' : /[0-9۰-۹]/.test(ch) ? 'EN' : /\p{L}/u.test(ch) ? 'L' : /[+-]/.test(ch) ? 'ES' : /[#$%°£€¥₪‰¢]/.test(ch) ? 'ET' : /[,.:/]/.test(ch) ? 'CS' : 'N'
+const LRM = '\u200E'
 
-const terminalBidi = (all: Unit[]): Unit[] => {
+const bidiClass = (ch: string): string =>
+  ch === LRM ? 'L' : R.test(ch) ? 'R' : /[٠-٩]/.test(ch) ? 'AN' : /[0-9۰-۹]/.test(ch) ? 'EN' : /\p{L}/u.test(ch) ? 'L' : /[+-]/.test(ch) ? 'ES' : /[#$%°£€¥₪‰¢]/.test(ch) ? 'ET' : /[,.:/]/.test(ch) ? 'CS' : 'N'
+
+const levelsOf = (all: Unit[], base: Dir): number[] => {
   const t = all.map(u => bidiClass(u.ch))
   t.forEach((c, i) => {
     if ((c === 'ES' || c === 'CS') && t[i - 1] === 'EN' && t[i + 1] === 'EN') t[i] = 'EN'
@@ -129,21 +131,28 @@ const terminalBidi = (all: Unit[]): Unit[] => {
   })
   for (let i = 1; i < t.length; i++) if (t[i] === 'ET' && t[i - 1] === 'EN') t[i] = 'EN'
   for (let i = t.length - 2; i >= 0; i--) if (t[i] === 'ET' && t[i + 1] === 'EN') t[i] = 'EN'
-  let strong = 'L'
+  let strong: string = base
   const w = t.map(c => {
     if (c === 'L' || c === 'R') strong = c
     return c === 'EN' && strong === 'L' ? 'L' : c === 'ES' || c === 'ET' || c === 'CS' ? 'N' : c
   })
-  const rtlSide = (c?: string) => c !== undefined && c !== 'L'
-  const levels = w.map((c, i) => {
-    if (c !== 'N') return c === 'L' ? 0 : c === 'R' ? 1 : 2
+  const rtlSide = (c?: string) => (c ?? base) !== 'L'
+  const ltr = base === 'L' ? 0 : 2
+  const rtl = 1
+  return w.map((c, i) => {
+    if (c !== 'N') return c === 'L' ? ltr : c === 'R' ? rtl : 2
     let a = i
     while (w[a] === 'N') a--
     let b = i
     while (w[b] === 'N') b++
-    return rtlSide(w[a]) && rtlSide(w[b]) ? 1 : 0
+    const [before, after] = [rtlSide(w[a]), rtlSide(w[b])]
+    return before === after ? (before ? rtl : ltr) : base === 'L' ? 0 : 1
   })
-  let out = all.map((u, i) => ({ u: levels[i]! % 2 ? { ...u, ch: MIRROR[u.ch] ?? u.ch } : u, l: levels[i]! }))
+}
+
+const terminalBidi = (all: Unit[], mirror = true): Unit[] => {
+  const levels = levelsOf(all, 'L')
+  let out = all.map((u, i) => ({ u: mirror && levels[i]! % 2 ? { ...u, ch: MIRROR[u.ch] ?? u.ch } : u, l: levels[i]! }))
   for (let l = 2; l >= 1; l--) {
     const done: typeof out = []
     let run: typeof out = []
@@ -209,7 +218,25 @@ export const ROW_MARK_TEXT = `${WALL} `
 
 export const ROW_MARK: Inline = { kind: 'dim', text: ROW_MARK_TEXT }
 
-const asWritten = (shape: Shape) => shape === 'logical' || shape === 'mirror'
+const asWritten = (shape: Shape) => shape === 'logical' || shape === 'mirror' || shape === 'engine'
+
+const ISOLATED: Fmt['leaf'][] = ['code', 'math', 'path']
+
+const isolate = (all: Unit[]): Unit[] =>
+  all.flatMap((u, i) => {
+    if (!ISOLATED.includes(u.fmt.leaf)) return [u]
+    const mark = { ch: LRM, fmt: u.fmt }
+    const opens = i === 0 || !sameFmt(all[i - 1]!.fmt, u.fmt)
+    const closes = i === all.length - 1 || !sameFmt(all[i + 1]!.fmt, u.fmt)
+    return [...(opens ? [mark] : []), u, ...(closes ? [mark] : [])]
+  })
+
+const forEngine = (line: Unit[], lead: boolean): Unit[] => {
+  const all = isolate(line)
+  const first = all.map(u => bidiClass(u.ch)).find(c => c === 'L' || c === 'R')
+  const levels = levelsOf(all, lead || first === 'R' ? 'R' : 'L')
+  return all.map((u, i) => (levels[i]! % 2 ? { ...u, ch: MIRROR[u.ch] ?? u.ch } : u))
+}
 
 const startsLatin = (line: Unit[]): boolean => line.map(u => bidiClass(u.ch)).find(c => c === 'L' || c === 'R') === 'L'
 
@@ -222,8 +249,9 @@ export const flow = (nodes: Inline[], columns: number, measure: (s: string) => n
   const marked = mark && asWritten(shape) && base === 'R' && all.some(u => bidiClass(u.ch) === 'L')
   const logical = base === 'R' ? wrapUnits(all, columns - (marked ? measure(ROW_MARK_TEXT) : 0), measure) : [all]
   const lines = logical.map(line => {
-    const built = rebuild(asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base))
-    return marked && startsLatin(line) ? [ROW_MARK, ...built] : built
+    const lead = marked && startsLatin(line)
+    const built = rebuild(shape === 'engine' ? forEngine(line, lead) : asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base))
+    return lead ? [ROW_MARK, ...built] : built
   })
   return { base, lines: shape === 'words' ? lines.map(line => shapeNodes(line, shape)) : lines }
 }
@@ -261,7 +289,15 @@ const rightToLeft = (label: string): string => {
   return baseOf(all) === 'R' && all.some(u => bidiClass(u.ch) === 'L') ? terminalBidi(reorder(all, 'R')).map(u => u.ch).join('') : label
 }
 
-export const holdText = (chars: string[]): string =>
-  chars.map((ch, c) => (ch === ' ' && !inLabel(chars, c) ? LTR_BLANK : ch)).join('').split(LTR_BLANK).map(rightToLeft).join(LTR_BLANK)
+const holdBlanks = (chars: string[]): string => chars.map((ch, c) => (ch === ' ' && !inLabel(chars, c) ? LTR_BLANK : ch)).join('')
+
+export const holdText = (chars: string[]): string => holdBlanks(chars).split(LTR_BLANK).map(rightToLeft).join(LTR_BLANK)
+
+const engineLabel = (label: string): string => {
+  const all = units(label, { wrap: [], leaf: 'text' })
+  return R.test(label) && baseOf(all) === 'R' ? terminalBidi(reorder(all, 'R'), false).map(u => u.ch).join('') : label
+}
+
+export const holdEngine = (chars: string[]): string => holdBlanks(chars).split(LTR_BLANK).map(engineLabel).join(LTR_BLANK)
 
 export const holdRow = (chars: string[]): string => (chars.some(ch => R.test(ch)) ? holdText(chars) : chars.join(''))
