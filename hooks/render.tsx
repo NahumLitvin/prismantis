@@ -1294,7 +1294,7 @@ const quietToolRow = (el: ElementTable, style: Style, row: ToolRow, columns: num
 
 export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = 100): RenderElement => {
   if (style.toolOutput === 'quiet') return quietToolRow(el, style, row, columns)
-  const { Box, Text } = el
+  const { Text } = el
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
   const verb = VERBS[row.tool] ?? row.tool.replace(/^mcp__([^_]+)__/, '$1 ')
@@ -1641,7 +1641,7 @@ const quietToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow
 
 export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[], isActive: boolean, columns = 100): RenderElement => {
   if (style.toolOutput === 'quiet') return quietToolGroup(el, style, calls, isActive, columns)
-  const { Box, Text } = el
+  const { Text } = el
   const t = style.theme
   const failed = calls.filter(c => c.isErrored).length
   const running = isActive && calls.some(c => c.isRunning)

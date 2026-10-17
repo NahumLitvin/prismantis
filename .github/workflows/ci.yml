@@ -72,6 +72,8 @@ jobs:
         run: npm --prefix scripts run snapshot
       - name: Node counts stay within baseline (timings reported, not gated)
         run: npm --prefix scripts run bench:check -- --no-time
+      - name: Cognitive complexity stays within baseline
+        run: npm --prefix scripts run complexity:check
       - name: Bundles stay light
         run: |
           size=$(cat hooks/vendor/*.js | wc -c)

@@ -32,6 +32,8 @@ npm --prefix scripts run bench:check     # timings vs docs/bench-baseline.json (
 
 CI gates snapshots and node counts but only prints timings (`bench:check -- --no-time`), because the calibration ratio differs between an M-series laptop and a Linux runner. Run the full check locally before a release. After an intended visual change run `snapshot:update` and review the diff; after an intended speed or size change run `npm --prefix scripts run bench -- --update`.
 
+CI also fails when a file's cognitive complexity grows: the sum of how far each function goes past 15, as Biome measures it. Split the function instead. When a change lowers it, run `npm --prefix scripts run complexity:update` so the lower number becomes the new limit.
+
 Claude Code refuses any tree over 20000 nodes and silently draws its own text, so a node-count rise lowers that ceiling (about 500 highlighted code lines, 1000 table rows).
 
 ## Rules

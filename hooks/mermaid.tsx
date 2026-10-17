@@ -218,7 +218,7 @@ const cap = (label: string, max: number) => {
 }
 
 export const shortenEdgeLabels = (source: string, max: number): string =>
-  source.replace(EDGE_LABEL, (m, open, quoted, close, piped) =>
+  source.replace(EDGE_LABEL, (_, open, quoted, close, piped) =>
     quoted !== undefined ? `${open}"${cap(quoted, max)}"${close}` : `|${cap(piped, max)}|`)
 
 export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {

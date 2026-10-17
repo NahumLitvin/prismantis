@@ -649,7 +649,7 @@ test('double underscores inside a word stay literal, as in mcp__serena__activate
   expect(block?.kind === 'paragraph' ? inlineText(block.inline) : null).toBe('Call mcp__serena__activate_project, not this.')
 })
 
-test('a flowchart whose long edge label makes it too wide draws with the label shortened, not as source', async ($, on) => {
+test('a flowchart whose long edge label makes it too wide draws with the label shortened, not as source', async $ => {
   const source = [
     'flowchart TD',
     '  A["Tank sensor<br/>posts a reading every 10s"] --> B["POST to ingest :8080"]',
@@ -671,7 +671,7 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
   await ui.unmount()
 })
 
-test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async ($, on) => {
+test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async $ => {
   const art = mermaidText('flowchart TD\n  A["metrics-server<br/><i>one slow scrape</i>"] --> B["<b>kubelet</b>"]', false, 80)!
   expect(art).toContain('one slow scrape')
   expect(art).toContain('kubelet')
