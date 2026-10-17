@@ -1519,13 +1519,38 @@ test('/prismantis setup sent from a Remote Control client to a terminal session 
 test('/prismantis setup in the pane stays on the step and keeps the pane open when a save is refused', async ($, on) => {
   on('config.set', () => ({ deny: 'managed' }))
   on('ui.focus', () => ({}))
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
   const panes: string[] = []
   paneStandIn(on, panes)
   await setupRun($, 'setup')
   const pane = await setupPane($, 'terminal')
   await pane.press({ key: 'pick:theme:nord' })
   expect(await pane.find({ type: 'Text', text: /Setup 1\/6: Theme/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Button', key: 'pick:theme:nord' })).toMatchObject({ props: { variant: 'primary' } })
   expect(panes).toEqual(['open prismantis-setup'])
+  expect(toasts.at(-1)).toBe('Could not switch theme: managed')
+  await pane.unmount()
+})
+
+test('/prismantis setup in the pane shows the next step and its toast before the save returns, since a save that changes a value reloads the mod', async ($, on) => {
+  on('config.set', () => new Promise(() => undefined))
+  on('ui.focus', () => ({}))
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const pane = await setupPane($, 'terminal')
+  await pane.press({ key: 'pick:theme:dracula' })
+  expect(await pane.find({ type: 'Text', text: /Setup 2\/6: Tables/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Button', key: 'pick:tables:box' })).toMatchObject({ props: { variant: 'primary' } })
+  expect(toasts).toEqual(['Theme set to dracula.'])
   await pane.unmount()
 })
 

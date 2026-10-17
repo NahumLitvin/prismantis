@@ -21,6 +21,7 @@ declare module 'claude-code' {
       turnEnds: { durationMs: number; at: number }[]
       setupAt: number
       setupFocus: string
+      setupLand: string
       drawn: StateFamily<number>
     }
   }

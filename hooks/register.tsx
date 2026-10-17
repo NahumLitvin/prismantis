@@ -64,6 +64,7 @@ const sent = atom({ plugin: 'prismantis', key: 'sent' } as const, [])
 const turnEnds = atom({ plugin: 'prismantis', key: 'turnEnds' } as const, [])
 const setupAt = atom({ plugin: 'prismantis', key: 'setupAt' } as const, 0)
 const setupFocus = atom({ plugin: 'prismantis', key: 'setupFocus' } as const, '')
+const setupLand = atom({ plugin: 'prismantis', key: 'setupLand' } as const, '')
 
 const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
   const ref = { plugin: 'prismantis', key: 'drawn', id } as const
@@ -323,6 +324,7 @@ const SETUP_LIST_COLUMNS = 30
 const openSetupPane = async ($: EngineInterface): Promise<string | undefined> => {
   await update($, setupAt, () => 0)
   await update($, setupFocus, () => '')
+  await update($, setupLand, () => '')
   const opened = await $.ui.open({ id: SETUP_PANE, title: 'prismantis setup', focus: true, closeOnEscape: true, rows: 40, columns: 90 })
   if (opened.isPlaced) return SETUP_PANE_OPENED
   await $.ui.close({ id: SETUP_PANE })
@@ -331,23 +333,31 @@ const openSetupPane = async ($: EngineInterface): Promise<string | undefined> =>
 
 const pickKey = (step: SetupStep, value: string) => `${SETUP_PICK}${step.name}:${value}`
 
+const showSetupStep = async ($: EngineInterface, at: number, step: SetupStep, value: string): Promise<void> => {
+  await update($, setupFocus, () => value)
+  await update($, setupLand, () => pickKey(step, value))
+  await update($, setupAt, () => at)
+}
+
 const pickInPane = async ($: EngineInterface, picked: Picked, at: number, value: string, currentOf: (step: SetupStep) => string): Promise<void> => {
   const steps = setupSteps(PRESET_NAMES)
-  const saved = await saveSetupPick($, picked, steps[at]!, value)
+  const step = steps[at]!
   const nextStep = steps[at + 1]
-  if (saved.startsWith('Could not')) {
-    $.ui.toast(saved)
-    return
-  }
-  if (!nextStep) {
-    $.ui.toast(`${saved} Setup done.`)
-    await $.ui.close({ id: SETUP_PANE })
-    return
-  }
+  const done = `${step.title} set to ${value}.`
+  if (nextStep) await showSetupStep($, at + 1, nextStep, currentOf(nextStep))
+  else await $.ui.close({ id: SETUP_PANE })
+  $.ui.toast(nextStep ? done : `${done} Setup done.`)
+  const saved = await saveSetupPick($, picked, step, value)
+  if (saved === done) return
   $.ui.toast(saved)
-  await update($, setupFocus, () => currentOf(nextStep))
-  await update($, setupAt, () => at + 1)
-  await $.ui.focus({ requestId: SETUP_PANE, key: pickKey(nextStep, currentOf(nextStep)) }).catch(() => undefined)
+  if (nextStep && saved.startsWith('Could not')) await showSetupStep($, at, step, value)
+}
+
+const landSetupFocus = ($: EngineInterface, key: string): void => {
+  $.clock.after(0, async () => {
+    await $.ui.focus({ requestId: SETUP_PANE, key }).catch(() => undefined)
+    await update($, setupLand, () => '')
+  })
 }
 
 const setup = async ($: EngineInterface, picked: Picked, origin: PromptOrigin, stepName?: string, pick?: string): Promise<string> => {
@@ -585,6 +595,7 @@ export const register: Register = (on, options) => {
     return hints.length ? next({ ...e, context: [...(e.context ?? []), ...hints] }) : next(e)
   })
 
+  let landing = ''
   const currentOf = (step: SetupStep): string => (step.key === 'theme' ? (options.theme === 'random' ? 'random' : picked.theme) : String(style[step.key]))
 
   on('ui.focus', async ($, e, next) => {
@@ -596,6 +607,11 @@ export const register: Register = (on, options) => {
     const steps = setupSteps(PRESET_NAMES)
     const at = Math.min(await read($, setupAt), steps.length - 1)
     const step = steps[at]!
+    const land = await read($, setupLand)
+    if (land !== landing) {
+      landing = land
+      if (land) landSetupFocus($, land)
+    }
     const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes)), copyButtons: false }
     const view: SetupView = { el: $.ui.resolve(e), base, options, at, step, current: currentOf(step), columns: e.props.bodyColumns, pick: value => void pickInPane($, picked, at, value, currentOf) }
     return setupKeyboardPane($, view, await read($, setupFocus), picked.theme)
