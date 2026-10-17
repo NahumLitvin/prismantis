@@ -1495,3 +1495,14 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   expect(await output.findAll({ type: 'Text', text: /\+3 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)
   await output.unmount()
 })
+
+test('/prismantis demo adds a section in the language of LANG, and demo ko picks one', async ($, on) => {
+  mock.env(on, { LANG: 'ko_KR.UTF-8' })
+  expect((await setupRun($, 'demo')).text).toContain('## 한국어')
+  expect((await setupRun($, 'demo ko')).text).toContain('자연어로 정의')
+})
+
+test('/prismantis demo stays English when LANG names no showcase language', async ($, on) => {
+  mock.env(on, { LANG: 'en_US.UTF-8' })
+  expect((await setupRun($, 'demo')).text).not.toContain('한국어')
+})

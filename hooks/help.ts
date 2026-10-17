@@ -236,7 +236,7 @@ export const helpText = (themes: readonly string[]): string => `
 | \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
 | \`/prismantis setup\` | Pick a theme, table, task, prompt, tool row and tool output style from drawn samples |
-| \`/prismantis demo\` | Full showcase, every element and diagram |
+| \`/prismantis demo\` | Full showcase, every element and diagram, plus a section in your language (Korean so far, or \`demo ko\`) |
 | \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |
 
 ### ${themes.length} themes
@@ -310,6 +310,37 @@ flowchart LR
   B -->|לא| D[פונים לשרת]
 \`\`\`
 `
+
+const KOREAN_SHOWCASE = `
+## 한국어
+
+**안녕하세요**, 한국어 답변도 prismantis가 그대로 그립니다. 영어 용어 \`kubectl\`, 숫자 99.9%와 250ms, 경로 ~/src/app.ts도 함께 표시됩니다.
+
+- 서울 리전과 도쿄 리전에 배포
+- \`/prismantis theme nord\`로 테마 변경
+
+| 서비스 | 리전 | 버전 |
+| :--- | :--- | ---: |
+| 게이트웨이 | ap-northeast-2 | 2.14.0 |
+| 결제 | ap-northeast-1 | 1.8.3 |
+
+\`\`\`figure
+{accent:┌─ 빌드 ─────────────┐}
+{accent:│} 자연어로 정의      {accent:│}
+{accent:│} {ok:✓ 테스트 통과}      {accent:│}
+{accent:│} {warn:▲ 배포 대기}        {accent:│}
+{accent:└────────────────────┘}
+\`\`\`
+
+\`\`\`mermaid
+flowchart LR
+  A[새 요청] --> B{캐시 있음?}
+  B -->|예| C[캐시에서 반환]
+  B -->|아니오| D[서버 호출]
+\`\`\`
+`
+
+export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
 export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'taskStyle' | 'promptStyle' | 'toolStyle' | 'toolOutput'; title: string; note: string; options: readonly string[]; sample: string }
 
