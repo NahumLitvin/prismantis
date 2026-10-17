@@ -1428,7 +1428,7 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
     return { value: e.value }
   })
   const steps = setupSteps(PRESET_NAMES)
-  expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'promptStyle', 'toolStyle'])
+  expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'promptStyle', 'toolStyle', 'toolOutput'])
   for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
   expect(steps[0]!.options).toEqual(PRESET_NAMES)
   expect((await setupRun($, 'setup')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
@@ -1436,18 +1436,20 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
   expect((await setupRun($, 'setup tables 3')).text).toBe(`Tables set to grid.\n\n${setupText(setupParts(PRESET_NAMES, 2))}`)
   expect((await setupRun($, 'setup tasks progress')).text?.startsWith('Tasks set to progress.')).toBe(true)
   expect((await setupRun($, 'setup prompts bar')).text?.startsWith('Your prompts set to bar.')).toBe(true)
-  expect((await setupRun($, 'setup tools tree-bold')).text).toBe(`Tool rows set to tree-bold.\n\n${SETUP_DONE}`)
+  expect((await setupRun($, 'setup tools tree-bold')).text).toBe(`Tool rows set to tree-bold.\n\n${setupText(setupParts(PRESET_NAMES, 5))}`)
+  expect((await setupRun($, 'setup output 2')).text).toBe(`Tool output set to quiet.\n\n${SETUP_DONE}`)
   expect(writes).toEqual([
     { key: 'prismantis.theme', value: 'nord' },
     { key: 'prismantis.tableStyle', value: 'grid' },
     { key: 'prismantis.taskStyle', value: 'progress' },
     { key: 'prismantis.promptStyle', value: 'bar' },
     { key: 'prismantis.toolStyle', value: 'tree-bold' },
+    { key: 'prismantis.toolOutput', value: 'quiet' },
   ])
   expect((await setupRun($, 'setup tasks')).text).toBe(setupText(setupParts(PRESET_NAMES, 2)))
   expect((await setupRun($, 'setup tables 9')).text?.startsWith('Unknown tables pick "9".')).toBe(true)
   expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
-  expect(writes).toHaveLength(5)
+  expect(writes).toHaveLength(6)
   expect(setupText(setupParts(PRESET_NAMES, 4))).toContain('`tree-bold` or `classic`')
 })
 
@@ -1482,4 +1484,14 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   expect(await tools.find({ type: 'Text', text: /⎿/ })).toBeTruthy()
   expect(await tools.findAll({ type: 'Text', text: /^Read$/ })).toHaveLength(4)
   await tools.unmount()
+  const output = await mount(5)
+  expect(await output.findAll({ type: 'Text', text: /^Build the app · npm/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /Error: Exit code 2/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /error TS2322/ })).toHaveLength(7)
+  expect(await output.findAll({ type: 'Text', text: /\+4 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /Found 10 errors in the same file/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /On branch main/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /Allowed by auto mode classifier/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /\+3 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)
+  await output.unmount()
 })

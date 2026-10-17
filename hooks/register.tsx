@@ -323,12 +323,49 @@ const setup = async ($: EngineInterface, picked: Picked, stepName?: string, pick
   return `${saved}\n\n${at + 1 < steps.length ? setupText(setupParts(PRESET_NAMES, at + 1)) : SETUP_DONE}`
 }
 
+const SETUP_GIT_STATUS = [
+  'On branch main',
+  'Changes not staged for commit:',
+  '  (use "git add <file>..." to update what will be committed)',
+  '        modified:   src/app.ts',
+  '',
+  'no changes added to commit (use "git add" and/or "git commit -a")',
+]
+const SETUP_BUILD_ERROR = [
+  '> app@1.4.0 build',
+  '> tsc',
+  ...[3, 7, 12, 18, 25, 31, 40, 44, 52, 60].map(line => `src/app.ts(${line},5): error TS2322: Type 'string' is not assignable to type 'number'.`),
+  'Found 10 errors in the same file, starting at: src/app.ts:3',
+]
+
+const toolOutputSample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, value: string, id: string, columns: number): RenderElement[] => {
+  const status = { tool: 'Bash', input: { command: 'git status' }, isRunning: false, isErrored: false, isInterrupted: false }
+  const build = { tool: 'Bash', input: { command: 'npm run build', description: 'Build the app' }, isRunning: false, isErrored: true, isInterrupted: false }
+  const statusRow = <el.Box key={`${id}s`}>{renderToolRow(el, style, status, columns)}</el.Box>
+  const buildRow = <el.Box key={`${id}r`}>{renderToolRow(el, style, build, columns)}</el.Box>
+  if (value === 'quiet') return [statusRow, buildRow, renderFailure(el, style, SETUP_BUILD_ERROR.join('\n'), `${id}e`) ?? <el.Box key={`${id}e`} />]
+  const folded = (lines: readonly string[], keep: number, color?: string) => [
+    ...lines.slice(0, keep).map((line, i) => <el.Text key={`l${i}`} color={color}>{`${i === 0 ? '  ⎿  ' : '     '}${line}`}</el.Text>),
+    <el.Text key="more" dimColor>{`     … +${lines.length - keep} lines (ctrl+o to expand)`}</el.Text>,
+  ]
+  return [
+    statusRow,
+    <el.Box key={`${id}so`} flexDirection="column">
+      {folded(SETUP_GIT_STATUS, 3)}
+      <el.Text key="allowed" dimColor>{'  ⎿  Allowed by auto mode classifier'}</el.Text>
+    </el.Box>,
+    buildRow,
+    <el.Box key={`${id}e`} flexDirection="column">{folded(['Error: Exit code 2', ...SETUP_BUILD_ERROR], 10, style.theme.codeFlag)}</el.Box>,
+  ]
+}
+
 const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, base: Style, options: PluginOptions, found: NonNullable<ReturnType<typeof findSetup>>, columns: number): RenderElement[] => {
   const key = setupSteps(PRESET_NAMES)[found.at]!.key
   const md = (style: Style, text: string, id: string) => <el.Box key={id} flexDirection="column" rowGap={1}>{drawMarkdown($, el, style, parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns)}</el.Box>
   const sample = (style: Style, value: string, id: string): RenderElement[] => {
     if (key === 'promptStyle') return [value === 'off' ? <el.Text key={id} dimColor>{'> fix the failing test'}</el.Text> : <el.Box key={id}>{renderUserPrompt(el, style, 'fix the failing test', columns)}</el.Box>]
     if (key === 'toolStyle') return [md({ ...style, narration: style.toolStyle === 'tree-bold' }, 'Reading the config.', `${id}s`), <el.Box key={id}>{renderToolRow(el, style, { tool: 'Read', input: { file_path: 'src/config.ts' }, isRunning: false, isErrored: false, isInterrupted: false }, columns)}</el.Box>]
+    if (key === 'toolOutput') return toolOutputSample(el, style, value, id, columns)
     return []
   }
   const picks = found.parts.options.map(({ value, text }, i) => {
