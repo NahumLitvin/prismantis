@@ -1470,7 +1470,7 @@ const paneStandIn = (on: Parameters<TestBody>[1], log: string[], surfaces: reado
 const setupPane = ($: Parameters<TestBody>[0], surface: 'terminal' | 'desktop') =>
   $.ui.mount({ plugin: 'prismantis', surface, component: 'Pane', requestId: 'prismantis-setup', props: { title: 'prismantis setup', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 48 }, view: {} }, viewport: { columns: 180, rows: 50 } })
 
-for (const surface of ['terminal'] as const) test(`/prismantis setup opens a pane on ${surface}: arrows move through the styles with a preview of the one in focus, Enter saves it and shows the next step, the last pick closes the pane`, async ($, on) => {
+test('/prismantis setup opens a pane in the terminal: arrows move through the styles with a preview of the one in focus, Enter saves it and shows the next step, the last pick closes the pane', async ($, on) => {
   const writes: { key: string; value: unknown }[] = []
   on('config.set', (_, e) => {
     writes.push({ key: e.key, value: e.value })
@@ -1481,7 +1481,7 @@ for (const surface of ['terminal'] as const) test(`/prismantis setup opens a pan
   paneStandIn(on, panes)
   expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
   expect(panes).toEqual(['open prismantis-setup'])
-  const pane = await setupPane($, surface)
+  const pane = await setupPane($, 'terminal')
   expect(await pane.find({ type: 'Text', text: /Setup 1\/6: Theme/ })).toBeTruthy()
   expect(await pane.find({ type: 'Text', text: new RegExp(SETUP_PANE_KEYS.slice(0, 20)) })).toBeTruthy()
   expect((await pane.findAll({ type: 'Button' })).map(b => b.props.key)).toHaveLength(PRESET_NAMES.length + 1)
