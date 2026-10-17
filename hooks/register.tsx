@@ -320,12 +320,15 @@ const SETUP_PANE = 'prismantis-setup'
 
 const SETUP_PICK = 'pick:'
 const SETUP_LIST_COLUMNS = 30
+const SETUP_HEAD_ROWS = 8
+
+const openPane = ($: EngineInterface) => $.ui.open({ id: SETUP_PANE, title: 'prismantis setup', focus: true, closeOnEscape: true, rows: 40, columns: 90 })
 
 const openSetupPane = async ($: EngineInterface): Promise<string | undefined> => {
   await update($, setupAt, () => 0)
   await update($, setupFocus, () => '')
   await update($, setupLand, () => '')
-  const opened = await $.ui.open({ id: SETUP_PANE, title: 'prismantis setup', focus: true, closeOnEscape: true, rows: 40, columns: 90 })
+  const opened = await openPane($)
   if (opened.isPlaced) return SETUP_PANE_OPENED
   await $.ui.close({ id: SETUP_PANE })
   return undefined
@@ -350,13 +353,15 @@ const pickInPane = async ($: EngineInterface, picked: Picked, at: number, value:
   const saved = await saveSetupPick($, picked, step, value)
   if (saved === done) return
   $.ui.toast(saved)
-  if (nextStep && saved.startsWith('Could not')) await showSetupStep($, at, step, value)
+  if (!saved.startsWith('Could not')) return
+  await showSetupStep($, at, step, value)
+  if (!nextStep) await openPane($)
 }
 
 const landSetupFocus = ($: EngineInterface, key: string): void => {
   $.clock.after(0, async () => {
     await $.ui.focus({ requestId: SETUP_PANE, key }).catch(() => undefined)
-    await update($, setupLand, () => '')
+    await update($, setupLand, land => (land === key ? '' : land))
   })
 }
 
@@ -413,7 +418,7 @@ const toolOutputSample = (el: ReturnType<EngineInterface['ui']['resolve']>, styl
   ]
 }
 
-type SetupView = { el: ReturnType<EngineInterface['ui']['resolve']>; base: Style; options: PluginOptions; at: number; step: SetupStep; current: string; columns: number; pick: (value: string) => void }
+type SetupView = { el: ReturnType<EngineInterface['ui']['resolve']>; base: Style; options: PluginOptions; at: number; step: SetupStep; current: string; columns: number; rows: number; pick: (value: string) => void }
 
 const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, randomTheme: string): RenderElement => {
   const { el, step } = v
@@ -424,13 +429,16 @@ const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, ra
   const options = parts.options.filter(o => o.value === sampled).map(o => (step.key === 'theme' ? { ...o, text: `${o.text.split('\n\n')[0]}\n\n${THEME_PREVIEW}` } : o))
   const drawn = drawSetup($, el, v.base, v.options, { at: v.at, before: '', parts: { ...parts, options, tail: '' } }, Math.max(40, v.columns - SETUP_LIST_COLUMNS))
   const buttons = choices.map(value => <el.Button key={pickKey(step, value)} label={value === v.current ? `${value} (now)` : value} variant={value === shown ? 'primary' : 'secondary'} autoFocus={value === v.current ? true : undefined} onPress={() => v.pick(value)} />)
+  const fits = choices.length + SETUP_HEAD_ROWS <= v.rows
   return (
-    <el.Box flexDirection="column" rowGap={1}>
-      {drawn[0]}
-      <el.Text dimColor>{SETUP_PANE_KEYS}</el.Text>
-      <el.Box flexDirection="row" columnGap={4}>
+    <el.Box flexDirection="column" rowGap={1} {...(fits ? { height: v.rows, overflow: 'hidden' as const } : {})}>
+      <el.Box flexDirection="column" flexShrink={0}>{drawn[0]}</el.Box>
+      <el.Box flexShrink={0}><el.Text dimColor>{SETUP_PANE_KEYS}</el.Text></el.Box>
+      <el.Box flexDirection="row" columnGap={4} flexShrink={1} overflow="hidden">
         <el.Box flexDirection="column" flexShrink={0}>{buttons}</el.Box>
-        <el.Box flexDirection="column" flexGrow={1}>{drawn.slice(1, -1)}</el.Box>
+        <el.Box flexDirection="column" flexGrow={1} overflow="hidden">
+          <el.Box flexDirection="column" flexShrink={0}>{drawn.slice(1, -1)}</el.Box>
+        </el.Box>
       </el.Box>
     </el.Box>
   )
@@ -613,7 +621,7 @@ export const register: Register = (on, options) => {
       if (land) landSetupFocus($, land)
     }
     const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes)), copyButtons: false }
-    const view: SetupView = { el: $.ui.resolve(e), base, options, at, step, current: currentOf(step), columns: e.props.bodyColumns, pick: value => void pickInPane($, picked, at, value, currentOf) }
+    const view: SetupView = { el: $.ui.resolve(e), base, options, at, step, current: currentOf(step), columns: e.props.bodyColumns, rows: e.props.scroll.bodyRows, pick: value => void pickInPane($, picked, at, value, currentOf) }
     return setupKeyboardPane($, view, await read($, setupFocus), picked.theme)
   })
 

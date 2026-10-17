@@ -1536,6 +1536,37 @@ test('/prismantis setup in the pane stays on the step and keeps the pane open wh
   await pane.unmount()
 })
 
+test('/prismantis setup in the pane keeps to the rows it is given when the list fits, so the arrows move the ring instead of scrolling', async ($, on) => {
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const mount = (bodyRows: number) => $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'Pane', requestId: 'prismantis-setup', props: { title: 'prismantis setup', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows }, view: {} }, viewport: { columns: 100, rows: 40 } })
+  const fits = await mount(26)
+  expect((await fits.findAll({ type: 'Box' })).filter(b => b.props.height === 26 && b.props.overflow === 'hidden')).toHaveLength(1)
+  await fits.unmount()
+  const tight = await mount(20)
+  expect((await tight.findAll({ type: 'Box' })).filter(b => b.props.height !== undefined)).toHaveLength(0)
+  await tight.unmount()
+})
+
+test('/prismantis setup in the pane opens again on the last step when its save is refused', async ($, on) => {
+  on('config.set', (_, e) => (e.key === 'prismantis.toolOutput' ? { deny: 'managed' } : { value: e.value }))
+  on('ui.focus', () => ({}))
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  const panes: string[] = []
+  paneStandIn(on, panes)
+  await setupRun($, 'setup')
+  const pane = await setupPane($, 'terminal')
+  for (const [step, value] of [['theme', 'nord'], ['tables', 'grid'], ['tasks', 'progress'], ['prompts', 'bar'], ['tools', 'tree-bold'], ['output', 'quiet']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup', 'open prismantis-setup'])
+  expect(await pane.find({ type: 'Text', text: /Setup 6\/6: Tool output/ })).toBeTruthy()
+  expect(toasts.at(-1)).toBe('Could not save toolOutput: managed')
+  await pane.unmount()
+})
+
 test('/prismantis setup in the pane shows the next step and its toast before the save returns, since a save that changes a value reloads the mod', async ($, on) => {
   on('config.set', () => new Promise(() => undefined))
   on('ui.focus', () => ({}))
