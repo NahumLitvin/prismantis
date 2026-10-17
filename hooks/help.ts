@@ -387,9 +387,9 @@ export const THEME_PREVIEW = [
   '```',
 ].join('\n')
 
-export const SETUP_PANE_OPENED = 'Setup opened in a pane: ↑↓ moves through the styles with a preview, Enter saves it and shows the next step, Esc closes the pane. `/prismantis setup theme` walks the steps here instead.'
+export const SETUP_PANE_OPENED = 'Setup opened in a pane: ↑↓ or Tab moves through the styles with a preview, Enter saves it and shows the next step, Esc closes the pane. `/prismantis setup theme` walks the steps here instead.'
 
-export const SETUP_PANE_KEYS = '↑↓ moves through the styles and shows each one beside the list, Enter saves it and shows the next step, Esc closes the pane.'
+export const SETUP_PANE_KEYS = '↑↓ or Tab moves through the styles and shows each one beside the list, Enter saves it and shows the next step, Esc closes the pane.'
 
 export const SETUP_DONE = 'Setup done. Run `/prismantis setup` again any time, and `/config` has every other option.'
 
