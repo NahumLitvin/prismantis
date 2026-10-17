@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.25.2] - 2026-10-17
+
+### Fixed
+
+- A reply holding an 8-bit control character (U+0080 to U+009F, such as the one-byte CSI `\u009b`) now draws with prismantis. Those characters passed the control filter, so Claude Code refused the drawing and showed the reply as plain text; they are now stripped with the other control sequences ([#188](https://github.com/NahumLitvin/prismantis/pull/188)).
+
 ## [0.25.1] - 2026-10-16
 
 ### Security
