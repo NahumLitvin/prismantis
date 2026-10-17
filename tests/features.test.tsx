@@ -7,7 +7,7 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from '../hooks/theme'
-import { SETUP_DONE, setupParts, setupSteps, setupText } from '../hooks/help'
+import { ISSUE_HINT, SETUP_DONE, setupParts, setupSteps, setupText } from '../hooks/help'
 import type { Theme } from '../hooks/theme'
 import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
@@ -521,7 +521,7 @@ test('no render hint when diagramHints is off', { options: { diagramHints: false
   })
   await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
   expect(seen).toHaveLength(1)
-  expect((seen[0] ?? []).some(c => c.includes('prismantis'))).toBe(false)
+  expect((seen[0] ?? []).filter(c => c !== ISSUE_HINT).some(c => c.includes('prismantis'))).toBe(false)
   expect(seen[0] ?? []).not.toContain(FIGURE_HINT)
 })
 
@@ -1494,4 +1494,37 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   expect(await output.findAll({ type: 'Text', text: /Allowed by auto mode classifier/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /\+3 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)
   await output.unmount()
+})
+
+test('the issue hint rides the first prompt and every tenth, also with diagram hints off', async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  for (let i = 0; i < 11; i++) await $.prompt.submit({ text: `prompt ${i}`, wait: false, origin: { kind: 'composer' } })
+  expect(seen.map(c => c?.includes(ISSUE_HINT) ?? false)).toEqual([true, false, false, false, false, false, false, false, false, false, true])
+})
+
+test('issueHint off leaves the issue hint out', { options: { issueHint: false } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
+  expect(seen[0]?.includes(ISSUE_HINT) ?? false).toBe(false)
+})
+
+test('with diagram hints off, the issue hint still goes out alone', { options: { diagramHints: false } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
+  expect(seen[0]).toEqual([ISSUE_HINT])
 })

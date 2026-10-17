@@ -12,7 +12,7 @@ import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { Fold } from './render'
 import { bashEdits, drawMath, editNotes, hasShellOutput, instanceKey, isReadOnlyCall, mirrored, noteTip, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
-import { HINT, SETUP_DONE, findSetup, helpText, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
+import { HINT, ISSUE_HINT, SETUP_DONE, findSetup, helpText, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
@@ -375,6 +375,11 @@ const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['res
   return [...(found.before ? [md(base, found.before, 'before')] : []), md(base, found.parts.head, 'head'), ...picks, md(base, found.parts.tail, 'tail')]
 }
 
+const hintsFor = (style: Style, latex: LatexSession, nth: number): string[] => [
+  ...(style.diagramHints ? [HINT, FIGURE_HINT, ...(latex.ready && !latex.stopped ? [LATEX_HINT] : [])] : []),
+  ...(style.issueHint && nth % 10 === 0 ? [ISSUE_HINT] : []),
+]
+
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
@@ -385,6 +390,7 @@ export const register: Register = (on, options) => {
   const shared = new Map<string, ReturnType<typeof parse>>()
   let terminal: Terminal | null = null
   const fit = (viewport?: { isFullscreen?: boolean }): Style => (terminal === 'apple-terminal' && viewport?.isFullscreen ? { ...style, shape: 'inverse' } : style)
+  let prompts = 0
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
   const picked: Picked = { theme: firstTheme, options, latex }
   const probes: Probes = {}
@@ -504,10 +510,10 @@ export const register: Register = (on, options) => {
       await update($, sent, list => withRecord(list, { text: promptKey(e.text), at }))
     }
     terminal = await probe($, style, probes)
-    if (!style.diagramHints || !takesHint(e.origin)) return next(e)
-    void latexEngine($, latex)
-    const hints = [HINT, FIGURE_HINT, ...(latex.ready && !latex.stopped ? [LATEX_HINT] : [])]
-    return next({ ...e, context: [...(e.context ?? []), ...hints] })
+    if (!takesHint(e.origin)) return next(e)
+    if (style.diagramHints) void latexEngine($, latex)
+    const hints = hintsFor(style, latex, prompts++)
+    return hints.length ? next({ ...e, context: [...(e.context ?? []), ...hints] }) : next(e)
   })
 
   on('ui.render', { component: 'InfoNotice' }, async (_$, e, next) =>

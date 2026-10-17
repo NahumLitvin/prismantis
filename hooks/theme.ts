@@ -38,6 +38,7 @@ export type Style = {
   httpLinks: boolean
   editorLinks: boolean
   diagramHints: boolean
+  issueHint: boolean
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
   shape: Shape
@@ -88,6 +89,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     httpLinks: false,
     editorLinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
+    issueHint: options.issueHint !== false,
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',
     shape: rtl === 'auto' || rtl === 'off' ? 'visual' : TERMINALS[rtl],

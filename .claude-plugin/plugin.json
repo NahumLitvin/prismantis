@@ -312,6 +312,12 @@
       "default": "inline",
       "options": ["inline", "hover"]
     },
+    "issueHint": {
+      "type": "boolean",
+      "title": "Issue hint",
+      "description": "On your first prompt and every tenth after it, tell the model it can offer, after asking you, to open a minimal repro issue on prismantis when you say something drew wrong. About 35 tokens each time.",
+      "default": true
+    },
     "diagramHints": {
       "type": "boolean",
       "title": "Diagram hints",

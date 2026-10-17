@@ -311,6 +311,8 @@ flowchart LR
 \`\`\`
 `
 
+export const ISSUE_HINT = 'If the user says prismantis drew something wrong, offer (ask first) a minimal repro issue at https://github.com/NahumLitvin/prismantis/issues.'
+
 export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'taskStyle' | 'promptStyle' | 'toolStyle' | 'toolOutput'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
