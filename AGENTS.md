@@ -85,4 +85,5 @@ Dependencies and licenses:
 | `.claude/skills/add-theme` | adding or renaming a color preset |
 | `.claude/skills/demo` | printing the demo reply to eyeball every feature |
 | `.claude/skills/live-check` | seeing a change render in a real session |
+| `.claude/skills/drive-check` | pressing keys in a pane or button before merging, in a throwaway config |
 | `.claude/skills/release` | cutting a version |
