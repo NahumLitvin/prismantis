@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.27.0] - 2026-10-17
+
+### Added
+
+- `/prismantis setup` has a sixth step, Tool output. It draws `full` and `quiet` with the same two calls, a `git status` and a build that fails, so you can see how much of each call shows before picking. Pick with `/prismantis setup output quiet` or `/prismantis setup output 2`. Contributed by @b33eep ([#198](https://github.com/NahumLitvin/prismantis/pull/198)).
+
 ## [0.26.0] - 2026-10-17
 
 ### Changed
