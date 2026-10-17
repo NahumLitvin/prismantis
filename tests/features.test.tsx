@@ -7,7 +7,7 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from '../hooks/theme'
-import { ISSUE_HINT, SETUP_DONE, setupParts, setupSteps, setupText } from '../hooks/help'
+import { ISSUE_HINT, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, setupParts, setupSteps, setupText } from '../hooks/help'
 import type { Theme } from '../hooks/theme'
 import { EDIT_NOTES, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, tint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 
@@ -1423,6 +1423,7 @@ const setupRun = ($: Parameters<TestBody>[0], args: string) => $.command.run({ c
 
 test('/prismantis setup walks every step, saves each pick through config, and can restart or jump to a step', async ($, on) => {
   const writes: { key: string; value: unknown }[] = []
+  paneStandIn(on, [])
   on('config.set', (_, e) => {
     writes.push({ key: e.key, value: e.value })
     return { value: e.value }
@@ -1431,7 +1432,8 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
   expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'promptStyle', 'toolStyle', 'toolOutput'])
   for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
   expect(steps[0]!.options).toEqual(PRESET_NAMES)
-  expect((await setupRun($, 'setup')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
+  expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
+  expect((await setupRun($, 'setup theme')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
   expect((await setupRun($, 'setup theme nord')).text).toBe(`Theme set to nord.\n\n${setupText(setupParts(PRESET_NAMES, 1))}`)
   expect((await setupRun($, 'setup tables 3')).text).toBe(`Tables set to grid.\n\n${setupText(setupParts(PRESET_NAMES, 2))}`)
   expect((await setupRun($, 'setup tasks progress')).text?.startsWith('Tasks set to progress.')).toBe(true)
@@ -1451,6 +1453,161 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
   expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
   expect(writes).toHaveLength(6)
   expect(setupText(setupParts(PRESET_NAMES, 4))).toContain('`tree-bold` or `classic`')
+})
+
+const paneStandIn = (on: Parameters<TestBody>[1], log: string[], surfaces: readonly ('terminal' | 'desktop')[] = ['terminal']) => {
+  on('session.surfaces', () => ({ value: surfaces }))
+  on('ui.open', (_, e) => {
+    log.push(`open ${e.id}`)
+    return { value: { isPlaced: true as const } }
+  })
+  on('ui.close', (_, e) => {
+    log.push(`close ${e.id}`)
+    return { value: undefined }
+  })
+}
+
+const setupPane = ($: Parameters<TestBody>[0], surface: 'terminal' | 'desktop') =>
+  $.ui.mount({ plugin: 'prismantis', surface, component: 'Pane', requestId: 'prismantis-setup', props: { title: 'prismantis setup', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 48 }, view: {} }, viewport: { columns: 180, rows: 50 } })
+
+test('/prismantis setup opens a pane in the terminal: arrows move through the styles with a preview of the one in focus, Enter saves it and shows the next step, the last pick closes the pane', async ($, on) => {
+  const writes: { key: string; value: unknown }[] = []
+  on('config.set', (_, e) => {
+    writes.push({ key: e.key, value: e.value })
+    return { value: e.value }
+  })
+  on('ui.focus', () => ({}))
+  const panes: string[] = []
+  paneStandIn(on, panes)
+  expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
+  expect(panes).toEqual(['open prismantis-setup'])
+  const pane = await setupPane($, 'terminal')
+  expect(await pane.find({ type: 'Text', text: /Setup 1\/6: Theme/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: new RegExp(SETUP_PANE_KEYS.slice(0, 20)) })).toBeTruthy()
+  expect((await pane.findAll({ type: 'Button' })).map(b => b.props.key)).toHaveLength(PRESET_NAMES.length + 1)
+  expect(await pane.find({ type: 'Button', key: 'pick:theme:catppuccin-mocha' })).toMatchObject({ props: { autoFocus: true, variant: 'primary' } })
+  expect(await pane.find({ type: 'Text', text: /^\d+\. catppuccin-mocha/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /^\d+\. nord/ })).toBeUndefined()
+  await $.ui.focus({ component: 'Pane', requestId: 'prismantis-setup', element: 'pick:theme:nord', origin: { kind: 'person' } })
+  expect(await pane.find({ type: 'Text', text: /^\d+\. nord/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /^\d+\. catppuccin-mocha/ })).toBeUndefined()
+  await pane.press({ key: 'pick:theme:nord' })
+  expect(await pane.find({ type: 'Text', text: /Setup 2\/6: Tables/ })).toBeTruthy()
+  for (const [step, value] of [['tables', 'grid'], ['tasks', 'progress'], ['prompts', 'bar'], ['tools', 'tree-bold']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  expect(await pane.find({ type: 'Text', text: /Setup 6\/6: Tool output/ })).toBeTruthy()
+  await pane.press({ key: 'pick:output:quiet' })
+  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.tableStyle=grid', 'prismantis.taskStyle=progress', 'prismantis.promptStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.toolOutput=quiet'])
+  expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup'])
+  await pane.unmount()
+})
+
+test('/prismantis setup in a session with no terminal, as the desktop app runs it, walks the steps in the transcript and opens no pane', async ($, on) => {
+  const panes: string[] = []
+  paneStandIn(on, panes, ['desktop'])
+  expect((await setupRun($, 'setup')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
+  expect(panes).toEqual([])
+})
+
+test('/prismantis setup sent from a Remote Control client to a terminal session walks the steps in the transcript and opens no pane', async ($, on) => {
+  const panes: string[] = []
+  paneStandIn(on, panes, ['terminal', 'desktop'])
+  const run = await $.command.run({ command: 'prismantis', args: 'setup', origin: { kind: 'bridge' }, presentation: { isFullscreen: false, columns: 120 } })
+  expect(run.text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
+  expect(panes).toEqual([])
+})
+
+test('/prismantis setup in the pane stays on the step and keeps the pane open when a save is refused', async ($, on) => {
+  on('config.set', () => ({ deny: 'managed' }))
+  on('ui.focus', () => ({}))
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  const panes: string[] = []
+  paneStandIn(on, panes)
+  await setupRun($, 'setup')
+  const pane = await setupPane($, 'terminal')
+  await pane.press({ key: 'pick:theme:nord' })
+  expect(await pane.find({ type: 'Text', text: /Setup 1\/6: Theme/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Button', key: 'pick:theme:nord' })).toMatchObject({ props: { variant: 'primary' } })
+  expect(panes).toEqual(['open prismantis-setup'])
+  expect(toasts.at(-1)).toBe('Could not switch theme: managed')
+  await pane.unmount()
+})
+
+test('/prismantis setup in the pane keeps to the rows it is given when the list fits, so the arrows move the ring instead of scrolling', async ($, on) => {
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const mount = (bodyRows: number) => $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'Pane', requestId: 'prismantis-setup', props: { title: 'prismantis setup', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows }, view: {} }, viewport: { columns: 100, rows: 40 } })
+  const fits = await mount(26)
+  expect((await fits.findAll({ type: 'Box' })).filter(b => b.props.height === 26 && b.props.overflow === 'hidden')).toHaveLength(1)
+  await fits.unmount()
+  const tight = await mount(20)
+  expect((await tight.findAll({ type: 'Box' })).filter(b => b.props.height !== undefined)).toHaveLength(0)
+  await tight.unmount()
+})
+
+test('/prismantis setup in the pane opens again on the last step when its save is refused', async ($, on) => {
+  on('config.set', (_, e) => (e.key === 'prismantis.toolOutput' ? { deny: 'managed' } : { value: e.value }))
+  on('ui.focus', () => ({}))
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  const panes: string[] = []
+  paneStandIn(on, panes)
+  await setupRun($, 'setup')
+  const pane = await setupPane($, 'terminal')
+  for (const [step, value] of [['theme', 'nord'], ['tables', 'grid'], ['tasks', 'progress'], ['prompts', 'bar'], ['tools', 'tree-bold'], ['output', 'quiet']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup', 'open prismantis-setup'])
+  expect(await pane.find({ type: 'Text', text: /Setup 6\/6: Tool output/ })).toBeTruthy()
+  expect(toasts.at(-1)).toBe('Could not save toolOutput: managed')
+  await pane.unmount()
+})
+
+test('/prismantis setup in the pane shows the next step and its toast before the save returns, since a save that changes a value reloads the mod', async ($, on) => {
+  on('config.set', () => new Promise(() => undefined))
+  on('ui.focus', () => ({}))
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const pane = await setupPane($, 'terminal')
+  await pane.press({ key: 'pick:theme:dracula' })
+  expect(await pane.find({ type: 'Text', text: /Setup 2\/6: Tables/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Button', key: 'pick:tables:box' })).toMatchObject({ props: { variant: 'primary' } })
+  expect(toasts).toEqual(['Theme set to dracula.'])
+  await pane.unmount()
+})
+
+test('/prismantis setup walks the steps in the transcript and closes the pane when no surface can place it', async ($, on) => {
+  const panes: string[] = []
+  on('session.surfaces', () => ({ value: ['terminal' as const] }))
+  on('ui.open', (_, e) => {
+    panes.push(`open ${e.id}`)
+    return { value: { isPlaced: false as const, reason: 'no-surface' } }
+  })
+  on('ui.close', (_, e) => {
+    panes.push(`close ${e.id}`)
+    return { value: undefined }
+  })
+  expect((await setupRun($, 'setup')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
+  expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup'])
+})
+
+test('/prismantis setup previews the theme random uses now when the ring is on random', { options: { theme: 'random' } }, async ($, on) => {
+  on('ui.focus', () => ({}))
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const pane = await setupPane($, 'terminal')
+  expect(await pane.find({ type: 'Button', key: 'pick:theme:random' })).toMatchObject({ props: { autoFocus: true, variant: 'primary' } })
+  expect(await pane.find({ type: 'Text', text: /Release notes/ })).toBeTruthy()
+  await pane.unmount()
 })
 
 test('/prismantis setup stops on a refused save', async ($, on) => {

@@ -19,6 +19,9 @@ declare module 'claude-code' {
       unfolded: string[]
       sent: { text: string; at: number }[]
       turnEnds: { durationMs: number; at: number }[]
+      setupAt: number
+      setupFocus: string
+      setupLand: string
       drawn: StateFamily<number>
     }
   }

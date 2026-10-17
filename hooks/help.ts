@@ -369,6 +369,25 @@ export const setupParts = (themes: readonly string[], at: number): SetupParts =>
 
 export const setupText = (parts: SetupParts): string => [parts.head, ...parts.options.map(o => o.text), parts.tail].join('\n\n')
 
+export const THEME_PREVIEW = [
+  '#### Release notes',
+  '',
+  '**Bold**, `inline code`, 250ms and ~/src/app.ts.',
+  '',
+  '| Service | Status | p95 |',
+  '|:--|:--|--:|',
+  '| api | healthy | 120ms |',
+  '| billing | degraded | 840ms |',
+  '',
+  '```ts',
+  'const total = items.reduce((sum, item) => sum + item.qty, 0)',
+  '```',
+].join('\n')
+
+export const SETUP_PANE_OPENED = 'Setup opened in a pane: ↑↓ or Tab moves through the styles with a preview, Enter saves it and shows the next step, Esc closes the pane. `/prismantis setup theme` walks the steps here instead.'
+
+export const SETUP_PANE_KEYS = '↑↓ or Tab moves, Enter saves and shows the next step, Esc closes.'
+
 export const SETUP_DONE = 'Setup done. Run `/prismantis setup` again any time, and `/config` has every other option.'
 
 export const findSetup = (themes: readonly string[], text: string): { at: number; before: string; parts: SetupParts } | undefined => {
