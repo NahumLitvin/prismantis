@@ -125,8 +125,24 @@ test('glyphs that may draw as emoji are found once per line', () => {
   expect(checkFigure(['✓ ✗ ▶ ◀ ▲ ▼ ● ○ ■ □ → ← · ⧉'])).toEqual([])
 })
 
-test('glyphs two columns wide are found once per line', () => {
-  expect(checkFigure(['名前 ok'])).toEqual([{ line: 1, message: '"名", "前" take two columns, use one-column glyphs' }])
+const KOREAN = lines(`{accent:┌─ 빌드 ─────────┐}
+{accent:│} {ok:자연어로 정의}  {accent:│}
+{accent:│} build {warn:실패}     {accent:│}
+{accent:└────────────────┘}`)
+
+test('Korean, Japanese and Chinese letters and fullwidth forms pass the checker', () => {
+  expect(checkFigure(KOREAN)).toEqual([])
+  expect(checkFigure(['名前 ok', 'カタカナ ひらがな', '中文 标签', 'ＡＢＣ　１２３'])).toEqual([])
+})
+
+test('flags, skin tones and keycaps still count as emoji', () => {
+  expect(checkFigure(['ok 🇮🇪'])).toEqual([{ line: 1, message: '"🇮🇪" may draw as an emoji, use a text glyph' }])
+  expect(checkFigure(['자연어 🚀'])).toEqual([{ line: 1, message: '"🚀" may draw as an emoji, use a text glyph' }])
+  expect(checkFigure(['step 1⃣']).map(finding => finding.message)).toEqual(['"1⃣" may draw as an emoji, use a text glyph'])
+})
+
+test('a Korean box closes in the same column on every line, wide letters counted twice', () => {
+  expect(new Set(KOREAN.map(line => width(figureText(line)))).size).toBe(1)
 })
 
 test(`a line wider than ${FIGURE_MAX_COLUMNS} columns is found, wide glyphs counted twice and markup not at all`, () => {
@@ -158,12 +174,14 @@ test('braces that hold data are no finding', () => {
   expect(checkFigure(['config {id:42} {a:b} {retries:3} {node:api} {os:linux}', '{on:1} {dir:/tmp} {notes:x} {string:x} { ok: true }'])).toEqual([])
 })
 
-test('the figure hint names the opening line, every role, the width and one-column glyphs', () => {
+test('the figure hint names the opening line, every role, the width, one-column glyphs and two-column letters', () => {
   expect(FIGURE_HINT).toContain('opening line is exactly ```figure')
   for (const role of FIGURE_ROLES) expect(FIGURE_HINT).toContain(`${role} for `)
   expect(FIGURE_HINT).toContain(`At most ${FIGURE_SAFE_COLUMNS} columns`)
   expect(FIGURE_HINT).toContain(`glyphs one column wide such as ${FIGURE_GLYPHS}`)
   expect(FIGURE_HINT).toContain('markup takes no columns')
+  expect(FIGURE_HINT).toContain('CJK letters take two columns')
+  expect(FIGURE_HINT).toContain('count them twice')
 })
 
 test('the figure hint says when to draw one and when not', () => {
@@ -172,8 +190,8 @@ test('the figure hint says when to draw one and when not', () => {
   expect(FIGURE_HINT).toContain('build the reply around them')
 })
 
-test('the figure hint stays under 950 characters', () => {
-  expect(FIGURE_HINT.length).toBeLessThanOrEqual(950)
+test('the figure hint stays under 1000 characters', () => {
+  expect(FIGURE_HINT.length).toBeLessThanOrEqual(1000)
 })
 
 test('every glyph the figure hint offers passes the checker', () => {
@@ -284,10 +302,10 @@ test('a figure offers its source and its drawn text as copies', async ($, on) =>
   }
 })
 
-test('a figure with a wide glyph or a markup error stays a code block', async ($, on) => {
+test('a figure with an emoji or a markup error stays a code block', async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
-    for (const line of ['┌────┐ 名', '{OK:done}']) {
+    for (const line of ['┌────┐ 🚀', '{OK:done}']) {
       const ui = await $.ui.mount(reply(['```figure', line, '```'].join('\n'), surface))
       expect(await ui.find({ type: 'Text', text: /^── figure$/ })).toBeDefined()
       await ui.unmount()
@@ -402,15 +420,14 @@ test('marks that draw no column are found, they would hide in the picture', () =
 })
 
 test('a finding lists at most eight glyphs', () => {
-  const wide = '一二三四五六七八九十'
-  expect(checkFigure([wide]).map(finding => finding.message)).toContain('"一", "二", "三", "四", "五", "六", "七", "八" and 2 more take two columns, use one-column glyphs')
+  expect(checkFigure(['🚀🔥🎉🍕🎈🐛🌍📦🧪🔧']).map(finding => finding.message)).toContain('"🚀", "🔥", "🎉", "🍕", "🎈", "🐛", "🌍", "📦" and 2 more may draw as an emoji, use a text glyph')
 })
 
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`a figure that stays code says why in a dim line on ${surface}`, async ($, on) => {
     engine(on)
-    const finding = await $.ui.mount(reply(['```figure', '┌────────┐', '│ v1.4.2 │', '│ 名     │', '```'].join('\n'), surface))
-    expect(await finding.find({ type: 'Text', text: /^figure line 3: "名" take two columns, use one-column glyphs$/ })).toBeDefined()
+    const finding = await $.ui.mount(reply(['```figure', '┌────────┐', '│ v1.4.2 │', '│ 🚀     │', '```'].join('\n'), surface))
+    expect(await finding.find({ type: 'Text', text: /^figure line 3: "🚀" may draw as an emoji, use a text glyph$/ })).toBeDefined()
     await finding.unmount()
     const wide = await $.ui.mount(reply(['```figure', `{accent:${'─'.repeat(70)}}`, '```'].join('\n'), surface, 60))
     expect(await wide.find({ type: 'Text', text: /^figure is 70 cols, terminal is \d+$/ })).toBeDefined()
@@ -445,6 +462,18 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const art = (await ui.findAll({ type: 'Button' })).find(button => button.props.label === '⧉ art')
     await ui.press({ key: art!.key! })
     expect(copied).toEqual(['┌──┐ plain break\ndone'])
+    await ui.unmount()
+  })
+
+  test(`a Korean figure draws as written, frame aligned and colored, on ${surface}`, async ($, on) => {
+    engine(on)
+    const ui = await $.ui.mount(reply(['```figure', ...KOREAN, '```'].join('\n'), surface))
+    expect(await ui.find({ type: 'Text', text: /^── figure$/ })).toBeUndefined()
+    const word = await ui.find({ type: 'Text', text: /^자연어로 정의$/ })
+    expect(word?.props.color).toBeDefined()
+    expect(word?.props.color).not.toBe((await ui.find({ type: 'Text', text: /^ build $/ }))?.props.color)
+    const drawn = await Promise.all(['│ 자연어로 정의  │', '│ build 실패     │', '┌─ 빌드 ─────────┐'].map(async text => (await ui.find({ type: 'Text', text: new RegExp(`^${text}$`) }))?.text))
+    expect(drawn.map(text => width(text ?? ''))).toEqual([18, 18, 18])
     await ui.unmount()
   })
 

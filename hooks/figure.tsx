@@ -29,14 +29,14 @@ export const FIGURE_HINT = [
   'Prefer one over mermaid when position carries meaning: durations racing on a time axis, a screen layout, phases, before/after; mermaid stays for plain flows and charts; none for short answers, code changes or reports. The prose never retells the picture.',
   'When the user asks you to explain, compare or plan something and pictures would make it easier to grasp, build the reply around them, with the core on the first screen as a picture or a sentence.',
   'Color with {role:text}, not nested: accent for lines, warn for risk, ok for healthy, note for time, dim for asides, strong for emphasis.',
-  `At most ${FIGURE_SAFE_COLUMNS} columns, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji or tabs; markup takes no columns, so align on the drawn text. Draw a time axis with edge ticks like ▏───▏───▏, not ├┼┤: █ fills its cell, ├┼┤ sit mid-cell.`,
+  `At most ${FIGURE_SAFE_COLUMNS} columns, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji or tabs; markup takes no columns, so align on the drawn text. CJK letters take two columns, count them twice. Draw a time axis with edge ticks like ▏───▏───▏, not ├┼┤: █ fills its cell, ├┼┤ sit mid-cell.`,
 ].join(' ')
 
 const MARKUP = new RegExp(`\\{(${FIGURE_ROLES.join('|')}):([^{}]*)\\}`, 'g')
 const MARKER = /\{([A-Za-z][\w-]*):/g
 const TEXT_FORMS: Record<string, string> = { '▶': '►', '◀': '◄' }
 const ROLE_TOKENS: Record<FigureRole, keyof Theme> = { accent: 'diagram', warn: 'codeFlag', ok: 'codeString', note: 'heading', dim: 'codeComment', strong: 'strong' }
-const EMOJI_CAPABLE = /\p{Extended_Pictographic}/u
+const EMOJI_CAPABLE = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\u20e3/u
 const CONTROL = /[\0-\x08\x0b-\x1f\x7f-\x9f]/
 const DIRECTION_MARK = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/
 const INVISIBLE = /[\u00ad\u200b-\u200d\u2028\u2029\ufeff]/
@@ -95,7 +95,6 @@ const lineMessages = (line: string): string[] => {
   const text = figureText(line)
   const glyphs = graphemes(text)
   const emoji = glyphs.filter(glyph => EMOJI_CAPABLE.test(glyph))
-  const wide = glyphs.filter(glyph => !EMOJI_CAPABLE.test(glyph) && width(glyph) === 2)
   const columns = width(text)
   return [
     ...(columns > FIGURE_MAX_COLUMNS ? [`${columns} columns wide, at most ${FIGURE_MAX_COLUMNS}`] : []),
@@ -104,7 +103,6 @@ const lineMessages = (line: string): string[] => {
     ...(DIRECTION_MARK.test(text) ? ['direction mark, use plain text'] : []),
     ...(INVISIBLE.test(text) ? ['invisible character, use plain text'] : []),
     ...(emoji.length ? [`${quoted(emoji)} may draw as an emoji, use a text glyph`] : []),
-    ...(wide.length ? [`${quoted(wide)} take two columns, use one-column glyphs`] : []),
     ...markupMessages(line),
   ]
 }
