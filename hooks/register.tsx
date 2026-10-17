@@ -12,7 +12,8 @@ import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { Fold } from './render'
 import { bashEdits, drawMath, editNotes, hasShellOutput, instanceKey, isReadOnlyCall, mirrored, noteTip, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
-import { HINT, ISSUE_HINT, SETUP_DONE, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
+import type { SetupStep } from './help'
+import { HINT, ISSUE_HINT, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
@@ -61,6 +62,8 @@ const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
 const unfolded = atom({ plugin: 'prismantis', key: 'unfolded' } as const, [] as string[])
 const sent = atom({ plugin: 'prismantis', key: 'sent' } as const, [])
 const turnEnds = atom({ plugin: 'prismantis', key: 'turnEnds' } as const, [])
+const setupAt = atom({ plugin: 'prismantis', key: 'setupAt' } as const, 0)
+const setupFocus = atom({ plugin: 'prismantis', key: 'setupFocus' } as const, '')
 
 const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
   const ref = { plugin: 'prismantis', key: 'drawn', id } as const
@@ -309,7 +312,48 @@ const setTheme = async ($: EngineInterface, picked: Picked, name: string): Promi
   return `Theme set to random: ${picked.theme} for now.\nkeep it: /prismantis theme ${picked.theme}`
 }
 
-const setup = async ($: EngineInterface, picked: Picked, stepName?: string, pick?: string): Promise<string> => {
+const saveSetupPick = async ($: EngineInterface, picked: Picked, step: SetupStep, value: string): Promise<string> =>
+  step.key === 'theme' ? setTheme($, picked, value) : $.config.set({ key: `${$.plugin.name}.${step.key}`, value }).then(r => (r.deny ? `Could not save ${step.key}: ${r.deny}` : `${step.title} set to ${value}.`))
+
+const SETUP_PANE = 'prismantis-setup'
+
+const SETUP_PICK = 'pick:'
+const SETUP_LIST_COLUMNS = 30
+
+const openSetupPane = async ($: EngineInterface): Promise<string | undefined> => {
+  await update($, setupAt, () => 0)
+  await update($, setupFocus, () => '')
+  const opened = await $.ui.open({ id: SETUP_PANE, title: 'prismantis setup', focus: true, closeOnEscape: true, rows: 40, columns: 90 })
+  if (opened.isPlaced) return SETUP_PANE_OPENED
+  await $.ui.close({ id: SETUP_PANE })
+  return undefined
+}
+
+const pickKey = (step: SetupStep, value: string) => `${SETUP_PICK}${step.name}:${value}`
+
+const pickInPane = async ($: EngineInterface, picked: Picked, at: number, value: string, currentOf: (step: SetupStep) => string): Promise<void> => {
+  const steps = setupSteps(PRESET_NAMES)
+  const saved = await saveSetupPick($, picked, steps[at]!, value)
+  const nextStep = steps[at + 1]
+  if (saved.startsWith('Could not')) {
+    $.ui.toast(saved)
+    return
+  }
+  if (!nextStep) {
+    $.ui.toast(`${saved} Setup done.`)
+    await $.ui.close({ id: SETUP_PANE })
+    return
+  }
+  $.ui.toast(saved)
+  await update($, setupFocus, () => currentOf(nextStep))
+  await update($, setupAt, () => at + 1)
+  await $.ui.focus({ requestId: SETUP_PANE, key: pickKey(nextStep, currentOf(nextStep)) }).catch(() => undefined)
+}
+
+const setup = async ($: EngineInterface, picked: Picked, origin: PromptOrigin, stepName?: string, pick?: string): Promise<string> => {
+  const inTerminal = !stepName && origin.kind === 'composer' && (await $.session.surfaces()).includes('terminal')
+  const opened = inTerminal ? await openSetupPane($) : undefined
+  if (opened) return opened
   const steps = setupSteps(PRESET_NAMES)
   const at = stepName ? steps.findIndex(s => s.name === stepName) : 0
   const step = steps[at]
@@ -318,7 +362,7 @@ const setup = async ($: EngineInterface, picked: Picked, stepName?: string, pick
   const choices = step.key === 'theme' ? THEME_ARGS : step.options
   const value = /^\d+$/.test(pick) ? step.options[Number(pick) - 1] : pick
   if (!value || !choices.includes(value)) return `Unknown ${step.name} pick "${pick}". Pick 1-${step.options.length} or one of: ${choices.join(', ')}`
-  const saved = step.key === 'theme' ? await setTheme($, picked, value) : await $.config.set({ key: `${$.plugin.name}.${step.key}`, value }).then(r => (r.deny ? `Could not save ${step.key}: ${r.deny}` : `${step.title} set to ${value}.`))
+  const saved = await saveSetupPick($, picked, step, value)
   if (saved.startsWith('Could not')) return saved
   return `${saved}\n\n${at + 1 < steps.length ? setupText(setupParts(PRESET_NAMES, at + 1)) : SETUP_DONE}`
 }
@@ -357,6 +401,29 @@ const toolOutputSample = (el: ReturnType<EngineInterface['ui']['resolve']>, styl
     buildRow,
     <el.Box key={`${id}e`} flexDirection="column">{folded(['Error: Exit code 2', ...SETUP_BUILD_ERROR], 10, style.theme.codeFlag)}</el.Box>,
   ]
+}
+
+type SetupView = { el: ReturnType<EngineInterface['ui']['resolve']>; base: Style; options: PluginOptions; at: number; step: SetupStep; current: string; columns: number; pick: (value: string) => void }
+
+const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, randomTheme: string): RenderElement => {
+  const { el, step } = v
+  const choices = step.key === 'theme' ? THEME_ARGS : step.options
+  const shown = choices.includes(focused) ? focused : v.current
+  const sampled = shown === 'random' ? randomTheme : shown
+  const parts = setupParts(PRESET_NAMES, v.at)
+  const options = parts.options.filter(o => o.value === sampled).map(o => (step.key === 'theme' ? { ...o, text: `${o.text.split('\n\n')[0]}\n\n${THEME_PREVIEW}` } : o))
+  const drawn = drawSetup($, el, v.base, v.options, { at: v.at, before: '', parts: { ...parts, options, tail: '' } }, Math.max(40, v.columns - SETUP_LIST_COLUMNS))
+  const buttons = choices.map(value => <el.Button key={pickKey(step, value)} label={value === v.current ? `${value} (now)` : value} variant={value === shown ? 'primary' : 'secondary'} autoFocus={value === v.current ? true : undefined} onPress={() => v.pick(value)} />)
+  return (
+    <el.Box flexDirection="column" rowGap={1}>
+      {drawn[0]}
+      <el.Text dimColor>{SETUP_PANE_KEYS}</el.Text>
+      <el.Box flexDirection="row" columnGap={4}>
+        <el.Box flexDirection="column" flexShrink={0}>{buttons}</el.Box>
+        <el.Box flexDirection="column" flexGrow={1}>{drawn.slice(1, -1)}</el.Box>
+      </el.Box>
+    </el.Box>
+  )
 }
 
 const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, base: Style, options: PluginOptions, found: NonNullable<ReturnType<typeof findSetup>>, columns: number): RenderElement[] => {
@@ -473,7 +540,7 @@ export const register: Register = (on, options) => {
     const [first, second, third] = e.args.trim().split(/\s+/)
     const [sub, name] = THEME_ARGS.includes(first ?? '') ? ['theme', first] : [first, second]
     if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) + languageShowcase(await localeOf($, name)) }
-    if (sub === 'setup') return { text: await setup($, picked, name, third) }
+    if (sub === 'setup') return { text: await setup($, picked, e.origin, name, third) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())
       if (!reply) return { text: 'Nothing to copy yet.' }
@@ -516,6 +583,22 @@ export const register: Register = (on, options) => {
     if (style.diagramHints) void latexEngine($, latex)
     const hints = hintsFor(style, latex, prompts++)
     return hints.length ? next({ ...e, context: [...(e.context ?? []), ...hints] }) : next(e)
+  })
+
+  const currentOf = (step: SetupStep): string => (step.key === 'theme' ? (options.theme === 'random' ? 'random' : picked.theme) : String(style[step.key]))
+
+  on('ui.focus', async ($, e, next) => {
+    if (e.component === 'Pane' && e.requestId === SETUP_PANE && e.element?.startsWith(SETUP_PICK)) await update($, setupFocus, () => e.element!.slice(e.element!.indexOf(':', SETUP_PICK.length) + 1))
+    return next(e)
+  })
+
+  on('ui.render', { component: 'Pane', requestId: SETUP_PANE }, async ($, e) => {
+    const steps = setupSteps(PRESET_NAMES)
+    const at = Math.min(await read($, setupAt), steps.length - 1)
+    const step = steps[at]!
+    const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes)), copyButtons: false }
+    const view: SetupView = { el: $.ui.resolve(e), base, options, at, step, current: currentOf(step), columns: e.props.bodyColumns, pick: value => void pickInPane($, picked, at, value, currentOf) }
+    return setupKeyboardPane($, view, await read($, setupFocus), picked.theme)
   })
 
   on('ui.render', { component: 'InfoNotice' }, async (_$, e, next) =>
