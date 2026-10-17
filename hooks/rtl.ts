@@ -294,6 +294,24 @@ const rightToLeft = (all: Cell[]): Cell[] => (baseOf(all) === 'R' && all.some(u 
 
 const engineLabel = (all: Cell[]): Cell[] => (all.some(u => R.test(u.ch)) && baseOf(all) === 'R' ? terminalBidi(reorder(all, 'R'), false) : all)
 
+const visualLabel = (all: Cell[]): Cell[] => {
+  const out: Cell[] = []
+  let words: Cell[] = []
+  const flush = () => {
+    out.push(...(words.some(u => R.test(u.ch)) ? reorder(words, baseOf(words)) : words))
+    words = []
+  }
+  for (const u of all) {
+    if (WORD.test(u.ch) || u.ch === ' ') words.push(u)
+    else {
+      flush()
+      out.push(u)
+    }
+  }
+  flush()
+  return out
+}
+
 const hold = (chars: string[], label: (all: Cell[]) => Cell[], blank: string[]): Held => {
   const held: Held = { cells: [], from: [] }
   let run: Cell[] = []
@@ -323,6 +341,8 @@ export const asIs = (chars: string[]): Held => ({ cells: chars, from: chars.map(
 export const holdText = (chars: string[]): Held => hold(chars, rightToLeft, [LTR_BLANK])
 
 export const holdEngine = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? hold(chars, engineLabel, [LRM, ' ']) : asIs(chars))
+
+export const holdVisual = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? hold(chars, visualLabel, [' ']) : asIs(chars))
 
 export const holdRow = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? holdText(chars) : asIs(chars))
 

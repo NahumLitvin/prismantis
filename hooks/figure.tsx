@@ -1,7 +1,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { graphemes, heldLtr, mirrored, remember, width } from './render'
-import { asIs, hasRtl, holdEngine, holdText, led } from './rtl'
+import { asIs, hasRtl, holdEngine, holdText, holdVisual, led } from './rtl'
 import type { Style, Theme } from './theme'
 
 export const FIGURE_ROLES = ['accent', 'warn', 'ok', 'note', 'dim', 'strong'] as const
@@ -195,7 +195,7 @@ const isBold = (style: Style, role: FigureRole | undefined): boolean => role ===
 
 const heldRuns = (style: Style, line: string): FigureRun[] => {
   const runs = figureRuns(line)
-  const hold = !hasRtl(line) ? null : mirrored(style) ? holdText : style.shape === 'engine' ? holdEngine : null
+  const hold = !hasRtl(line) ? null : mirrored(style) ? holdText : style.shape === 'engine' ? holdEngine : style.reorder && style.shape === 'visual' ? holdVisual : null
   const chars = runs.flatMap(run => [...run.text])
   const roles = runs.flatMap(run => [...run.text].map(() => run.role))
   const base = hold ? hold(chars) : asIs(chars)

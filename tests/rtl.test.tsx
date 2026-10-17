@@ -4,7 +4,7 @@ import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
 import { PRESETS } from '../hooks/presets'
-import { ROW_MARK, ROW_MARK_TEXT, TERMINALS, commentTail, flow, holdEngine, holdRow, terminalLine } from '../hooks/rtl'
+import { ROW_MARK, ROW_MARK_TEXT, TERMINALS, commentTail, flow, holdEngine, holdRow, holdVisual, terminalLine } from '../hooks/rtl'
 import { claudeAt, linksHttp } from './claude-version'
 
 const measure = (s: string) => [...s].length
@@ -576,4 +576,11 @@ test('iTerm marks the engine notice line when it holds Hebrew and opens with Eng
   const hebrewFirst = await $.ui.mount({ plugin: 'prismantis', component: 'InfoNotice' as const, props: { text: 'תיקנו את ה-RTL', command: '/config' }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
   expect(drawn).toBe('תיקנו את ה-RTL')
   await hebrewFirst.unmount()
+})
+
+test('a terminal without bidi gets each Hebrew diagram label in display order, in place', () => {
+  const drawn = (row: string) => holdVisual([...row]).cells.join('')
+  expect(drawn('│ בקשה חדשה │──►│ האם יש cache? │')).toBe('│ השדח השקב │──►│ ?cache שי םאה │')
+  expect(drawn('├─כן─►')).toBe('├─ןכ─►')
+  expect(drawn('│ plain │')).toBe('│ plain │')
 })

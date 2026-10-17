@@ -11,7 +11,7 @@ const html = join(dir, 'term.html')
 const data = readFileSync(bin).toString('base64')
 const js = readFileSync(join(xterm, 'lib/xterm.js'), 'utf8')
 const css = readFileSync(join(xterm, 'css/xterm.css'), 'utf8')
-writeFileSync(html, `<!doctype html><html><head><meta charset="utf-8"><style>${css} body{margin:0;background:#1e1e2e} #t{padding:12px;display:inline-block}</style></head><body><div id="t"></div><script>${js}</script><script>
+writeFileSync(html, `<!doctype html><html><head><meta charset="utf-8"><style>${css} body{margin:0;background:#1e1e2e} #t{padding:12px;display:inline-block} .xterm-rows span,.xterm-rows div{unicode-bidi:bidi-override;direction:ltr}</style></head><body><div id="t"></div><script>${js}</script><script>
 const term = new Terminal({ cols: ${cols}, rows: ${rows}, fontFamily: 'Menlo, monospace', fontSize: 14, theme: { background: '#1e1e2e' }, allowProposedApi: true })
 term.open(document.getElementById('t'))
 term.write(Uint8Array.from(atob('${data}'), c => c.charCodeAt(0)))
