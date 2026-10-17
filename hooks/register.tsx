@@ -12,7 +12,7 @@ import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { Fold } from './render'
 import { bashEdits, drawMath, editNotes, hasShellOutput, instanceKey, isReadOnlyCall, mirrored, noteTip, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
-import { HINT, ISSUE_HINT, SETUP_DONE, findSetup, helpText, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
+import { HINT, ISSUE_HINT, SETUP_DONE, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
@@ -380,6 +380,8 @@ const hintsFor = (style: Style, latex: LatexSession, nth: number): string[] => [
   ...(style.issueHint && nth % 10 === 0 ? [ISSUE_HINT] : []),
 ]
 
+const localeOf = async ($: EngineInterface, asked?: string): Promise<string> => asked ?? (await $.env.get('LC_ALL').catch(() => undefined)) ?? (await $.env.get('LANG').catch(() => undefined)) ?? ''
+
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
   if (options.enabled === false) return
@@ -470,7 +472,7 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'prismantis' }, async ($, e) => {
     const [first, second, third] = e.args.trim().split(/\s+/)
     const [sub, name] = THEME_ARGS.includes(first ?? '') ? ['theme', first] : [first, second]
-    if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) }
+    if (sub === 'demo') return { text: showcaseText(PRESET_NAMES) + languageShowcase(await localeOf($, name)) }
     if (sub === 'setup') return { text: await setup($, picked, name, third) }
     if (sub === 'copy') {
       const reply = (await $.session.messages()).findLast(m => m.role === 'assistant' && m.text.trim())

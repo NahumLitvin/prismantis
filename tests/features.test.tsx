@@ -1528,3 +1528,14 @@ test('with diagram hints off, the issue hint still goes out alone', { options: {
   await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
   expect(seen[0]).toEqual([ISSUE_HINT])
 })
+
+test('/prismantis demo adds a section in the language of LANG, and demo ko picks one', async ($, on) => {
+  mock.env(on, { LANG: 'ko_KR.UTF-8' })
+  expect((await setupRun($, 'demo')).text).toContain('## 한국어')
+  expect((await setupRun($, 'demo ko')).text).toContain('자연어로 정의')
+})
+
+test('/prismantis demo stays English when LANG names no showcase language', async ($, on) => {
+  mock.env(on, { LANG: 'en_US.UTF-8' })
+  expect((await setupRun($, 'demo')).text).not.toContain('한국어')
+})
