@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.28.0] - 2026-10-17
+
+### Added
+
+- `/prismantis demo` adds a Korean section when `LC_ALL` or `LANG` is Korean: a paragraph, a list, a table, a figure and a flowchart, all in Korean. `/prismantis demo ko` shows it anywhere ([#202](https://github.com/NahumLitvin/prismantis/pull/202)).
+- When you say a reply drew wrong, Claude may offer, after asking, to open a minimal repro issue on prismantis. A one-line note rides your first prompt and every tenth after it; `issueHint: false` turns it off ([#203](https://github.com/NahumLitvin/prismantis/pull/203)).
+
+### Fixed
+
+- Figures draw Korean, Japanese and Chinese text. They refused any two-column letter and fell back to source, so labels in those languages never drew; now each takes two columns and frames line up. Emoji are still refused, since terminals disagree on their width. Reported by @gobenpark ([#192](https://github.com/NahumLitvin/prismantis/issues/192), [#201](https://github.com/NahumLitvin/prismantis/pull/201)).
+
 ## [0.27.0] - 2026-10-17
 
 ### Added
