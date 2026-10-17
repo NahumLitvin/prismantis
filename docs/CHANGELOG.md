@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.26.0] - 2026-10-17
+
+### Changed
+
+- Hebrew draws right to left in iTerm2 with bidirectional text on. iTerm2 picks each row's direction from its first letter and ignores invisible marks, so a Hebrew row that opens with English now starts with a dim `׀`, and tables, quotes, alerts and banner headings draw their frame with `׀` walls that move with the text. Hebrew rows in mermaid diagrams and figures stay in place, and mixed labels like "האם יש cache?" read right to left. Contributed by @tomerbr1 ([#181](https://github.com/NahumLitvin/prismantis/pull/181)).
+
+### Fixed
+
+- A done task in Hebrew keeps its dim, struck look in every terminal ([#181](https://github.com/NahumLitvin/prismantis/pull/181)).
+- In Windows Terminal, Hebrew code rows keep their order, and text copied from the terminal comes out with plain spaces ([#181](https://github.com/NahumLitvin/prismantis/pull/181)).
+
 ## [0.25.2] - 2026-10-17
 
 ### Fixed
