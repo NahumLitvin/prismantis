@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- On terminals without bidi (VS Code, Warp, Ghostty, WezTerm), Hebrew labels in mermaid diagrams and figures read right to left. They came out in typing order, so they read backwards ([#194](https://github.com/NahumLitvin/prismantis/pull/194)).
 - A done task in Hebrew keeps its dim, struck look in every terminal ([#181](https://github.com/NahumLitvin/prismantis/pull/181)).
 - In Windows Terminal, Hebrew code rows keep their order, and text copied from the terminal comes out with plain spaces ([#181](https://github.com/NahumLitvin/prismantis/pull/181)).
 
