@@ -315,7 +315,7 @@ export const ISSUE_HINT = 'If the user says prismantis drew something wrong, off
 const KOREAN_SHOWCASE = `
 ## 한국어
 
-**안녕하세요**, 한국어 답변도 prismantis가 그대로 그립니다. 영어 용어 \`kubectl\`, 숫자 99.9%와 250ms, 경로 ~/src/app.ts도 함께 표시됩니다.
+**안녕하세요**, prismantis는 한국어 답변도 그대로 보여 줍니다. \`kubectl\` 같은 영문 명령어, 숫자 99.9%와 250ms, 경로 ~/src/app.ts도 함께 표시됩니다.
 
 - 서울 리전과 도쿄 리전에 배포
 - \`/prismantis theme nord\`로 테마 변경
@@ -327,7 +327,7 @@ const KOREAN_SHOWCASE = `
 
 \`\`\`figure
 {accent:┌─ 빌드 ─────────────┐}
-{accent:│} 자연어로 정의      {accent:│}
+{accent:│} 이미지 생성 완료   {accent:│}
 {accent:│} {ok:✓ 테스트 통과}      {accent:│}
 {accent:│} {warn:▲ 배포 대기}        {accent:│}
 {accent:└────────────────────┘}

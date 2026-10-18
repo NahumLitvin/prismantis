@@ -1532,7 +1532,7 @@ test('with diagram hints off, the issue hint still goes out alone', { options: {
 test('/prismantis demo adds a section in the language of LANG, and demo ko picks one', async ($, on) => {
   mock.env(on, { LANG: 'ko_KR.UTF-8' })
   expect((await setupRun($, 'demo')).text).toContain('## 한국어')
-  expect((await setupRun($, 'demo ko')).text).toContain('자연어로 정의')
+  expect((await setupRun($, 'demo ko')).text).toContain('이미지 생성 완료')
 })
 
 test('/prismantis demo stays English when LANG names no showcase language', async ($, on) => {
