@@ -5,7 +5,7 @@ import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
 import { displayText, inlineText, isWebLink, texText } from './markdown'
 import type { Flow } from './rtl'
-import { ROW_MARK, ROW_MARK_TEXT, WALL, commentTail, commentVisual, containsRtl, flow, hasRtl, terminalLine } from './rtl'
+import { ROW_MARK, ROW_MARK_TEXT, WALL, commentTail, commentVisual, containsRtl, flow, hasRtl, listMarker, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -731,7 +731,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         ) : rtl?.base === 'R' ? (
           <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
             <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k, look)}</Box>
-            <Text color={glyphColor}>{` ${glyph}`}</Text>
+            <Text color={glyphColor}>{` ${listMarker(glyph, style.shape)}`}</Text>
           </Box>
         ) : (
           <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>

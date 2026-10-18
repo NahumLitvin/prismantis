@@ -119,9 +119,23 @@ test('a Hebrew paragraph wraps into right aligned lines at the viewport width', 
 test('bullets move to the right end and ordered items keep their number', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mount('- שלום\n- עולם\n\n1. אחד\n2. שניים'))
   expect((await ui.findAll({ type: 'Text', text: /^ •$/ })).length).toBe(2)
-  expect(await ui.find({ type: 'Text', text: /^ 1\.$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^ 2\.$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ \.1$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ \.2$/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.justifyContent === 'flex-end')).toBe(true)
+  await ui.unmount()
+})
+
+for (const rtl of ['warp', 'windows-terminal'] as const) test(`a Hebrew ordered item draws its dot or bracket on the left of the number on ${rtl}`, { options: { rtl } }, async $ => {
+  const ui = await $.ui.mount(mount('1. אחד\n2. שניים\n\n9) תשע\n10) עשר'))
+  expect(await ui.find({ type: 'Text', text: /^ \.1$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ \(9$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ \(10$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a terminal that orders Hebrew itself gets the ordered marker as written', { options: { rtl: 'gnome' } }, async $ => {
+  const ui = await $.ui.mount(mount('1. אחד\n2. שניים'))
+  expect(await ui.find({ type: 'Text', text: /\.1/ })).toBeUndefined()
   await ui.unmount()
 })
 
@@ -418,6 +432,19 @@ test('Windows Terminal diagram labels that read right to left are sent so Claude
   expect(sent('│ יש עברית? │')).toBe('│‎ ?יש עברית‎ │')
   expect(sent('│ התחלה │──►│ סוף │')).toBe('│‎ התחלה‎ │──►│‎ סוף‎ │')
   expect(sent('│ ArgoCD sync │')).toBe('│ ArgoCD sync │')
+})
+
+test('Windows Terminal keeps the arrow of a diagram edge in place when its label is Hebrew', () => {
+  const sent = (row: string) => holdEngine([...row]).cells.join('')
+  expect(sent('├─כן─►')).toBe('├─כן─►')
+  expect(sent('◄──עם engine──┤')).toBe('◄──engine עם──┤')
+  expect(sent('│ גרסה+beta │')).toBe('│‎ beta+גרסה‎ │')
+})
+
+test('a symbol inside a Hebrew diagram label stays part of the label', () => {
+  const drawn = (row: string) => holdVisual([...row]).cells.join('')
+  expect(drawn('│ גרסה+beta │')).toBe('│ beta+הסרג │')
+  expect(drawn('├─כן─►')).toBe('├─ןכ─►')
 })
 
 test('a held diagram row says where each drawn cell came from, so colors and marks land on the same letters after a label is reordered', () => {

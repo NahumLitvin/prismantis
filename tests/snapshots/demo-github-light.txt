@@ -1072,14 +1072,14 @@
         <Text>
           " לכ תא םיחתומו םיררועתמ"
     <Text color=#cf222e>
-      " 1."
+      " .1"
   <Box row>
     <Box>
       <Text>
         <Text>
           "סלדונה ילאל םיללפתמ"
     <Text color=#cf222e>
-      " 2."
+      " .2"
 <Box row>
   <Box>
     <Box>

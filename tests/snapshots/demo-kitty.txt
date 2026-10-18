@@ -1074,14 +1074,14 @@
         <Text>
           " כל את ומותחים מתעוררים"
     <Text color=#cba6f7>
-      " 1."
+      " .1"
   <Box row>
     <Box>
       <Text>
         <Text>
           "הנודלס לאלי מתפללים"
     <Text color=#cba6f7>
-      " 2."
+      " .2"
 <Box row>
   <Box>
     <Box>

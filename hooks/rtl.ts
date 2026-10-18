@@ -279,6 +279,8 @@ export const LTR_BLANK = '⠀'
 
 const WORD = /[\p{L}\p{N}\p{P}]/u
 
+const DRAWN = /[←-⇿─-◿]/u
+
 const inLabel = (chars: string[], c: number) => {
   const [a = '', b = ''] = [chars[c - 1], chars[c + 1]]
   return WORD.test(a) && WORD.test(b) && (R.test(a) || R.test(b))
@@ -292,17 +294,15 @@ const PLAIN: Fmt = { wrap: [], leaf: 'text' }
 
 const rightToLeft = (all: Cell[]): Cell[] => (baseOf(all) === 'R' && all.some(u => bidiClass(u.ch) === 'L') ? terminalBidi(reorder(all, 'R')) : all)
 
-const engineLabel = (all: Cell[]): Cell[] => (all.some(u => R.test(u.ch)) && baseOf(all) === 'R' ? terminalBidi(reorder(all, 'R'), false) : all)
-
-const visualLabel = (all: Cell[]): Cell[] => {
+const byWords = (label: (words: Cell[]) => Cell[]) => (all: Cell[]): Cell[] => {
   const out: Cell[] = []
   let words: Cell[] = []
   const flush = () => {
-    out.push(...(words.some(u => R.test(u.ch)) ? reorder(words, baseOf(words)) : words))
+    out.push(...(words.some(u => R.test(u.ch)) ? label(words) : words))
     words = []
   }
   for (const u of all) {
-    if (WORD.test(u.ch) || u.ch === ' ') words.push(u)
+    if (!DRAWN.test(u.ch)) words.push(u)
     else {
       flush()
       out.push(u)
@@ -311,6 +311,10 @@ const visualLabel = (all: Cell[]): Cell[] => {
   flush()
   return out
 }
+
+const engineLabel = byWords(words => (baseOf(words) === 'R' ? terminalBidi(reorder(words, 'R'), false) : words))
+
+const visualLabel = byWords(words => reorder(words, baseOf(words)))
 
 const hold = (chars: string[], label: (all: Cell[]) => Cell[], blank: string[]): Held => {
   const held: Held = { cells: [], from: [] }
@@ -339,6 +343,8 @@ const hold = (chars: string[], label: (all: Cell[]) => Cell[], blank: string[]):
 export const asIs = (chars: string[]): Held => ({ cells: chars, from: chars.map((_, c) => c) })
 
 export const holdText = (chars: string[]): Held => hold(chars, rightToLeft, [LTR_BLANK])
+
+export const listMarker = (marker: string, shape: Shape): string => (shape === 'logical' ? marker : marker.replace(/^(\d+)([.)])$/, (_, n: string, p: string) => (MIRROR[p] ?? p) + n))
 
 export const holdEngine = (chars: string[]): Held => (chars.some(ch => R.test(ch)) ? hold(chars, engineLabel, [LRM, ' ']) : asIs(chars))
 
