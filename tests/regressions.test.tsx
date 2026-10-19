@@ -364,6 +364,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('diff card headed `+N −M`')
   expect(showcaseText([])).toContain('Files a shell command changes')
   expect(showcaseText([])).toContain('Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`')
+  expect(showcaseText([])).toContain('Set `pieStyle` to `bars` in `/config` for one bar per slice')
   expect(showcaseText([])).not.toContain('diffAddedColor')
 })
 
@@ -1000,6 +1001,40 @@ test('a pie chart draws one bar per slice, largest first, with its share', () =>
   expect(art[3]).toMatch(/<1%$/)
   expect(art[4]).not.toContain('█')
   expect(new Set(art.slice(1).map(l => width(l))).size).toBe(1)
+})
+
+test('a round pie draws a circle with a legend, largest slice first', () => {
+  const art = mermaidText('pie showData title Pets\n  "Cats" : 85\n  "Dogs" : 386\n  "Rats" : 15', false, 80, 'round')!.split('\n')
+  expect(art[0]).toBe('Pets')
+  expect(art).toHaveLength(13)
+  expect(art[1]).toMatch(/^ +▄▄▟█+▙▄▄$/)
+  expect(art[12]).toMatch(/^ +▀▀▜█+▛▀▀$/)
+  expect(art.slice(5, 8).map(l => l.split('   ██ ')[1])).toEqual(['Dogs 386  79%', 'Cats  85  17%', 'Rats  15   3%'])
+})
+
+test('a round pie falls back to bars in ascii mode, past seven slices and when the terminal is too narrow', () => {
+  const pie = 'pie\n  "Dogs" : 386\n  "Cats" : 85'
+  const many = `pie\n${[1, 2, 3, 4, 5, 6, 7, 8].map(n => `  "s${n}" : ${n}`).join('\n')}`
+  for (const [source, ascii, columns] of [[pie, true, 80], [many, false, 80], [pie, false, 30]] as const)
+    expect(mermaidText(source, ascii, columns, 'round')).toBe(mermaidText(source, ascii, columns, 'bars'))
+  expect(mermaidText(pie, false, 80, 'round')).toContain('▟')
+})
+
+test('each round pie slice and its legend swatch share one color', async $ => {
+  const source = '```mermaid\npie title Pets\n  "Dogs" : 386\n  "Cats" : 85\n  "Rats" : 15\n```'
+  const ui = await $.ui.mount(mount(source))
+  const texts = await ui.findAll({ type: 'Text' })
+  const swatches = [' Dogs 79%', ' Cats 17%', ' Rats  3%'].map(label => texts[texts.findIndex(n => n.text === label) - 1]?.props.color)
+  expect(new Set(swatches).size).toBe(3)
+  expect((await ui.find({ type: 'Text', text: /^▜█+▛$/ }))?.props.color).toBe(swatches[0])
+  await ui.unmount()
+})
+
+test('pieStyle bars draws one bar per slice', { options: { pieStyle: 'bars' } }, async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\npie title Pets\n  "Dogs" : 386\n  "Cats" : 85\n```'))
+  expect(await ui.find({ type: 'Text', text: /▟/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^Dogs  / })).toBeDefined()
+  await ui.unmount()
 })
 
 test('a gantt chart places each task on a shared time axis', () => {

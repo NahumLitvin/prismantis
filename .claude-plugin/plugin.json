@@ -293,6 +293,13 @@
       "default": "card",
       "options": ["card", "full", "marks", "bar"]
     },
+    "pieStyle": {
+      "type": "string",
+      "title": "Pie style",
+      "description": "How mermaid pie charts draw. round: a circle with a legend, falling back to bars in ascii mode, past 7 slices or in a narrow terminal. bars: one bar per slice, largest first, with its share.",
+      "default": "round",
+      "options": ["round", "bars"]
+    },
     "mermaid": {
       "type": "boolean",
       "title": "Mermaid diagrams",

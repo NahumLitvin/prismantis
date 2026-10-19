@@ -1,6 +1,6 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { ganttText, pieText } from './charts'
+import { ganttText, pieColors, pieText } from './charts'
 import { drawFigure, isFigureLang } from './figure'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
@@ -83,12 +83,12 @@ const fitted = new Map<string, string | null>()
 const artWidths = new Map<string, number>()
 const artWidth = (art: string) => remember(artWidths, art, () => Math.max(...art.split('\n').map(width)))
 
-export const mermaidText = (source: string, ascii: boolean, columns: number): string | null =>
-  remember(fitted, `${ascii}:${columns}:${source}`, () => {
+export const mermaidText = (source: string, ascii: boolean, columns: number, pie: 'round' | 'bars' = 'bars'): string | null =>
+  remember(fitted, `${ascii}:${columns}:${pie}:${source}`, () => {
     source = source.replace(INLINE_TAG, '')
     if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
     const own = OWN[kindOf(source).toLowerCase()]
-    if (own) return own(source, ascii, columns)
+    if (own) return own(source, ascii, columns, pie === 'round')
     const art = draw(source, ascii, columns)
     if (art === null || artWidth(art) <= columns - 2 || !SIDEWAYS.test(source)) return art
     return draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art
@@ -176,12 +176,21 @@ const paint = (art: string, style: Style): Painted => {
   return { grid, colors: color }
 }
 
+const paintPie = (art: string, slices: number[][], style: Style): Painted => {
+  const t = style.theme
+  const palette = [...new Set([t.link, t.number, t.heading, t.emphasis, t.path, t.codeFlag, t.accent])].filter((c): c is string => c !== undefined)
+  const grid = art.split('\n').map(cells)
+  const hue = (slice: number) => (slice < 0 ? t.diagramText : palette[slice % palette.length])
+  return { grid, colors: grid.map((row, r) => row.map((_, c) => hue(slices[r]?.[c] ?? -1))) }
+}
+
 const painted = new WeakMap<Theme, Map<string, Painted>>()
 
 export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string, marks: [string[], Mark][] = []): RenderElement => {
   const cache = painted.get(style.theme) ?? new Map<string, Painted>()
   painted.set(style.theme, cache)
-  const { grid, colors } = remember(cache, art, () => paint(art, style))
+  const slices = pieColors.get(art)
+  const { grid, colors } = remember(cache, art, () => (slices ? paintPie(art, slices, style) : paint(art, style)))
   const visual = style.reorder && style.shape === 'visual' && hasRtl(art)
   return (
     <Box key={key} flexDirection="column" paddingLeft={mirrored(style) ? 0 : 2}>
@@ -229,7 +238,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
       const source = block.lines.join('\n')
       let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
-        const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns)
+        const art = mermaidText(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns, style.pieStyle)
         const wide = art === null ? Infinity : artWidth(art)
         narrowest = Math.min(narrowest, wide)
         if (art === null || wide > columns - 2) continue

@@ -1429,7 +1429,7 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
     return { value: e.value }
   })
   const steps = setupSteps(PRESET_NAMES)
-  expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'promptStyle', 'toolStyle', 'toolOutput'])
+  expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'promptStyle', 'toolStyle', 'toolOutput', 'pieStyle'])
   for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
   expect(steps[0]!.options).toEqual(PRESET_NAMES)
   expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
@@ -1439,7 +1439,8 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
   expect((await setupRun($, 'setup tasks progress')).text?.startsWith('Tasks set to progress.')).toBe(true)
   expect((await setupRun($, 'setup prompts bar')).text?.startsWith('Your prompts set to bar.')).toBe(true)
   expect((await setupRun($, 'setup tools tree-bold')).text).toBe(`Tool rows set to tree-bold.\n\n${setupText(setupParts(PRESET_NAMES, 5))}`)
-  expect((await setupRun($, 'setup output 2')).text).toBe(`Tool output set to quiet.\n\n${SETUP_DONE}`)
+  expect((await setupRun($, 'setup output 2')).text).toBe(`Tool output set to quiet.\n\n${setupText(setupParts(PRESET_NAMES, 6))}`)
+  expect((await setupRun($, 'setup pies bars')).text).toBe(`Pie charts set to bars.\n\n${SETUP_DONE}`)
   expect(writes).toEqual([
     { key: 'prismantis.theme', value: 'nord' },
     { key: 'prismantis.tableStyle', value: 'grid' },
@@ -1447,11 +1448,12 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
     { key: 'prismantis.promptStyle', value: 'bar' },
     { key: 'prismantis.toolStyle', value: 'tree-bold' },
     { key: 'prismantis.toolOutput', value: 'quiet' },
+    { key: 'prismantis.pieStyle', value: 'bars' },
   ])
   expect((await setupRun($, 'setup tasks')).text).toBe(setupText(setupParts(PRESET_NAMES, 2)))
   expect((await setupRun($, 'setup tables 9')).text?.startsWith('Unknown tables pick "9".')).toBe(true)
   expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
-  expect(writes).toHaveLength(6)
+  expect(writes).toHaveLength(7)
   expect(setupText(setupParts(PRESET_NAMES, 4))).toContain('`tree-bold` or `classic`')
 })
 
@@ -1482,7 +1484,7 @@ test('/prismantis setup opens a pane in the terminal: arrows move through the st
   expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
   expect(panes).toEqual(['open prismantis-setup'])
   const pane = await setupPane($, 'terminal')
-  expect(await pane.find({ type: 'Text', text: /Setup 1\/6: Theme/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 1\/7: Theme/ })).toBeTruthy()
   expect(await pane.find({ type: 'Text', text: new RegExp(SETUP_PANE_KEYS.slice(0, 20)) })).toBeTruthy()
   expect((await pane.findAll({ type: 'Button' })).map(b => b.props.key)).toHaveLength(PRESET_NAMES.length + 1)
   expect(await pane.find({ type: 'Button', key: 'pick:theme:catppuccin-mocha' })).toMatchObject({ props: { autoFocus: true, variant: 'primary' } })
@@ -1492,11 +1494,13 @@ test('/prismantis setup opens a pane in the terminal: arrows move through the st
   expect(await pane.find({ type: 'Text', text: /^\d+\. nord/ })).toBeTruthy()
   expect(await pane.find({ type: 'Text', text: /^\d+\. catppuccin-mocha/ })).toBeUndefined()
   await pane.press({ key: 'pick:theme:nord' })
-  expect(await pane.find({ type: 'Text', text: /Setup 2\/6: Tables/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 2\/7: Tables/ })).toBeTruthy()
   for (const [step, value] of [['tables', 'grid'], ['tasks', 'progress'], ['prompts', 'bar'], ['tools', 'tree-bold']] as const) await pane.press({ key: `pick:${step}:${value}` })
-  expect(await pane.find({ type: 'Text', text: /Setup 6\/6: Tool output/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 6\/7: Tool output/ })).toBeTruthy()
   await pane.press({ key: 'pick:output:quiet' })
-  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.tableStyle=grid', 'prismantis.taskStyle=progress', 'prismantis.promptStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.toolOutput=quiet'])
+  expect(await pane.find({ type: 'Text', text: /Setup 7\/7: Pie charts/ })).toBeTruthy()
+  await pane.press({ key: 'pick:pies:bars' })
+  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.tableStyle=grid', 'prismantis.taskStyle=progress', 'prismantis.promptStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.toolOutput=quiet', 'prismantis.pieStyle=bars'])
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup'])
   await pane.unmount()
 })
@@ -1529,7 +1533,7 @@ test('/prismantis setup in the pane stays on the step and keeps the pane open wh
   await setupRun($, 'setup')
   const pane = await setupPane($, 'terminal')
   await pane.press({ key: 'pick:theme:nord' })
-  expect(await pane.find({ type: 'Text', text: /Setup 1\/6: Theme/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 1\/7: Theme/ })).toBeTruthy()
   expect(await pane.find({ type: 'Button', key: 'pick:theme:nord' })).toMatchObject({ props: { variant: 'primary' } })
   expect(panes).toEqual(['open prismantis-setup'])
   expect(toasts.at(-1)).toBe('Could not switch theme: managed')
@@ -1549,7 +1553,7 @@ test('/prismantis setup in the pane keeps to the rows it is given when the list 
 })
 
 test('/prismantis setup in the pane opens again on the last step when its save is refused', async ($, on) => {
-  on('config.set', (_, e) => (e.key === 'prismantis.toolOutput' ? { deny: 'managed' } : { value: e.value }))
+  on('config.set', (_, e) => (e.key === 'prismantis.pieStyle' ? { deny: 'managed' } : { value: e.value }))
   on('ui.focus', () => ({}))
   const toasts: string[] = []
   on('ui.toast', (_, e) => {
@@ -1560,10 +1564,10 @@ test('/prismantis setup in the pane opens again on the last step when its save i
   paneStandIn(on, panes)
   await setupRun($, 'setup')
   const pane = await setupPane($, 'terminal')
-  for (const [step, value] of [['theme', 'nord'], ['tables', 'grid'], ['tasks', 'progress'], ['prompts', 'bar'], ['tools', 'tree-bold'], ['output', 'quiet']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  for (const [step, value] of [['theme', 'nord'], ['tables', 'grid'], ['tasks', 'progress'], ['prompts', 'bar'], ['tools', 'tree-bold'], ['output', 'quiet'], ['pies', 'bars']] as const) await pane.press({ key: `pick:${step}:${value}` })
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup', 'open prismantis-setup'])
-  expect(await pane.find({ type: 'Text', text: /Setup 6\/6: Tool output/ })).toBeTruthy()
-  expect(toasts.at(-1)).toBe('Could not save toolOutput: managed')
+  expect(await pane.find({ type: 'Text', text: /Setup 7\/7: Pie charts/ })).toBeTruthy()
+  expect(toasts.at(-1)).toBe('Could not save pieStyle: managed')
   await pane.unmount()
 })
 
@@ -1579,7 +1583,7 @@ test('/prismantis setup in the pane shows the next step and its toast before the
   await setupRun($, 'setup')
   const pane = await setupPane($, 'terminal')
   await pane.press({ key: 'pick:theme:dracula' })
-  expect(await pane.find({ type: 'Text', text: /Setup 2\/6: Tables/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 2\/7: Tables/ })).toBeTruthy()
   expect(await pane.find({ type: 'Button', key: 'pick:tables:box' })).toMatchObject({ props: { variant: 'primary' } })
   expect(toasts).toEqual(['Theme set to dracula.'])
   await pane.unmount()

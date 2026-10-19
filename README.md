@@ -125,10 +125,17 @@ Code blocks tagged `mermaid` draw as colored text art:
 
 - flowcharts (`graph LR`, `graph TD`, decisions), sequence, state, class and ER diagrams
 - bar and line charts with `xychart-beta`, sized to the terminal width
-- `pie` charts as one bar per slice, largest first, with its share, and `gantt` schedules as bars on a shared date or time axis
+- `pie` charts as a circle with a colored legend, largest slice first, and `gantt` schedules as bars on a shared date or time axis
 - each box and participant gets its own theme color, the same at both ends of a sequence diagram
 - bars in a multi-series chart get their own colors; a single-series chart prints each value above its bar and colors the tallest one
 - gridlines stay dim, axis numbers use the number color
+
+`pieStyle` picks how a pie draws. `round` falls back to bars in ascii mode, past 7 slices or in a narrow terminal:
+
+| `round` (default) | `bars` |
+|---|---|
+| a circle, each slice in its own color, with a legend | one bar per slice, largest first, with its share |
+| ![round](docs/pies/round.png) | ![bars](docs/pies/bars.png) |
 
 Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii` swaps box-drawing characters for `+ - |`.
 
@@ -333,6 +340,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
+| `pieStyle` | `round` (a circle with a legend), `bars` (one bar per slice) | `round` |
 | `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
 | `diffStyle` | `card` (rounded box, tinted lines), `full` (no box, lines tinted across the width), `marks` (no tint, changed lines in the theme's diff colors), `bar` (no tint, a colored `▌` before each changed line) | `card` |

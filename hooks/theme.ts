@@ -27,6 +27,7 @@ export type Style = {
   inside?: 'quote' | 'alert'
   noteKey?: string
   diffStyle: 'card' | 'full' | 'marks' | 'bar'
+  pieStyle: 'round' | 'bars'
   highlightNumbers: boolean
   highlightPaths: boolean
   mermaid: boolean
@@ -79,6 +80,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     toolStyle: pick(options.toolStyle, ['chat', 'tree-dim', 'tree-bold', 'classic'] as const, 'chat'),
     toolOutput: pick(options.toolOutput, ['full', 'quiet'] as const, 'full'),
     diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),
+    pieStyle: pick(options.pieStyle, ['round', 'bars'] as const, 'round'),
     highlightNumbers: options.highlightNumbers !== false,
     highlightPaths: options.highlightPaths !== false,
     mermaid: options.mermaid !== false,

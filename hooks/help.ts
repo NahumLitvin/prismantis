@@ -190,6 +190,8 @@ xychart-beta
     bar [7, 3, 2, 6, 2]
 \`\`\`
 
+A pie draws round with a legend. Set \`pieStyle\` to \`bars\` in \`/config\` for one bar per slice:
+
 \`\`\`mermaid
 pie showData title Time per reply stage
     "Parse" : 3
@@ -343,7 +345,7 @@ flowchart LR
 
 export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
-export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'taskStyle' | 'promptStyle' | 'toolStyle' | 'toolOutput'; title: string; note: string; options: readonly string[]; sample: string }
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'taskStyle' | 'promptStyle' | 'toolStyle' | 'toolOutput' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
@@ -352,6 +354,7 @@ export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'prompts', key: 'promptStyle', title: 'Your prompts', note: 'How what you type draws in the transcript. `off` keeps Claude Code\'s own look.', options: ['bubble', 'bar', 'chevron', 'off'], sample: '' },
   { name: 'tools', key: 'toolStyle', title: 'Tool rows', note: 'How tool rows sit next to Claude\'s sentences. Sharing sessions as screenshots? `chat` and `tree-dim` draw tool rows in dim gray, the first thing to blur when an image gets resized, so pick `tree-bold` or `classic`.', options: ['chat', 'tree-dim', 'tree-bold', 'classic'], sample: '' },
   { name: 'output', key: 'toolOutput', title: 'Tool output', note: 'How much of a tool call shows. `full` keeps Claude Code\'s own results under each row. `quiet` names a shell call by what it does and shows a failure\'s last real line instead of its whole output; it also shows reads, searches and listings as their row only and drops approval lines. Edits keep their diff either way. Needs `toolRows` on.', options: ['full', 'quiet'], sample: '' },
+  { name: 'pies', key: 'pieStyle', title: 'Pie charts', note: 'How mermaid `pie` charts draw. `round` falls back to bars in ascii mode, past 7 slices or in a narrow terminal.', options: ['round', 'bars'], sample: '```mermaid\npie title Time per reply stage\n    "Draw" : 9\n    "Paint" : 5\n    "Parse" : 3\n```' },
 ]
 
 export type SetupParts = { head: string; options: { value: string; text: string }[]; tail: string }

@@ -22,14 +22,79 @@ const pad = (text: string, size: number) => text + ' '.repeat(Math.max(0, size -
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
-export const pieText = (source: string, ascii: boolean, columns: number): string | null => {
-  const [first = '', ...rest] = body(source)
-  const head = /^pie\b(\s+showData)?(?:\s+title\s+(.*))?$/i.exec(first)
-  if (!head) return null
-  let title = head[2]
-  let showData = !!head[1]
-  const slices: { label: string; text: string; value: number }[] = []
-  for (const line of rest) {
+export const pieColors = new Map<string, number[][]>()
+
+const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
+
+const SLICE_COLORS = 7
+
+type Slice = { label: string; text: string; value: number }
+
+const quadrantCell = (sliceAt: (x: number, y: number) => number, cx: number, cy: number): [string, number] => {
+  let mask = 0
+  const votes = new Map<number, number>()
+  for (const [bit, sx, sy] of [[1, 0, 0], [2, 1, 0], [4, 0, 1], [8, 1, 1]] as const) {
+    const slice = sliceAt(cx + (sx + 0.5) / 2, 2 * cy + sy + 0.5)
+    if (slice < 0) continue
+    mask |= bit
+    votes.set(slice, (votes.get(slice) ?? 0) + 1)
+  }
+  return [QUADRANTS[mask]!, mask ? [...votes].sort((a, b) => b[1] - a[1])[0]![0] : -1]
+}
+
+const roundPie = (wanted: boolean, title: string | undefined, slices: Slice[], legend: string[], columns: number): string | null => {
+  const radius = Math.min(6, Math.floor((columns - 10 - Math.max(...legend.map(width))) / 4))
+  if (!wanted || radius < 4 || slices.length > SLICE_COLORS) return null
+  const total = slices.reduce((sum, s) => sum + s.value, 0)
+  let seen = 0
+  const bounds = slices.map(s => (seen += s.value / total))
+  const sliceAt = (x: number, y: number) => {
+    const dx = x - 2 * radius
+    const dy = y - 2 * radius
+    if (dx * dx + dy * dy > 4 * radius * radius) return -1
+    const turn = (Math.atan2(dx, -dy) / (2 * Math.PI) + 1) % 1
+    return bounds.findIndex(b => turn < b)
+  }
+  const cells = Array.from({ length: 2 * radius }, (_, cy) => Array.from({ length: 4 * radius }, (_, cx) => quadrantCell(sliceAt, cx, cy)))
+  const rows = cells.map(row => row.map(([glyph]) => glyph).join(''))
+  const colors = cells.map(row => row.map(([, hue]) => hue))
+  const offset = Math.floor((rows.length - legend.length) / 2)
+  legend.forEach((line, i) => {
+    rows[offset + i] += `   ██ ${line}`
+    colors[offset + i]!.push(-1, -1, -1, i, i)
+  })
+  const art = [...(title ? [title.trim()] : []), ...rows.map(r => r.trimEnd())].join('\n')
+  pieColors.set(art, [...(title ? [[]] : []), ...colors])
+  if (pieColors.size > 64) pieColors.delete(pieColors.keys().next().value!)
+  return art
+}
+
+const shares = (slices: Slice[], showData: boolean): { label: string; tail: string }[] => {
+  const total = slices.reduce((sum, s) => sum + s.value, 0)
+  const labelWidth = Math.max(...slices.map(s => width(s.label)))
+  const percents = slices.map(s => {
+    const pct = Math.round((s.value / total) * 100)
+    return `${pct === 0 && s.value > 0 ? '<1' : pct}%`
+  })
+  const valueWidth = Math.max(...slices.map(s => s.text.length))
+  const pctWidth = Math.max(...percents.map(p => p.length))
+  return slices.map((s, i) => ({ label: pad(s.label, labelWidth), tail: `${showData ? `${s.text.padStart(valueWidth)}  ` : ''}${percents[i]!.padStart(pctWidth)}` }))
+}
+
+const barPie = (slices: Slice[], rows: { label: string; tail: string }[], ascii: boolean, columns: number): string[] => {
+  const max = slices[0]!.value
+  const bar = clamp(columns - 6 - width(rows[0]!.label) - width(rows[0]!.tail), 8, 40)
+  return slices.map((s, i) => {
+    const cells = s.value > 0 ? Math.max(1, Math.round((s.value / max) * bar)) : 0
+    return `${rows[i]!.label}  ${(ascii ? '#' : '█').repeat(cells).padEnd(bar)} ${rows[i]!.tail}`
+  })
+}
+
+const pieLines = (lines: string[], heading: string | undefined, data: boolean): { title?: string; showData: boolean; slices: Slice[] } | null => {
+  let title = heading
+  let showData = data
+  const slices: Slice[] = []
+  for (const line of lines) {
     const named = /^title\s+(.*)$/i.exec(line)
     if (named) title = named[1]
     else if (/^showData$/i.test(line)) showData = true
@@ -40,24 +105,19 @@ export const pieText = (source: string, ascii: boolean, columns: number): string
       slices.push({ label: fit(slice[1]!, 20), text: slice[2]!, value })
     }
   }
-  const total = slices.reduce((sum, s) => sum + s.value, 0)
-  if (total <= 0) return null
+  return slices.reduce((sum, s) => sum + s.value, 0) > 0 ? { title, showData, slices } : null
+}
+
+export const pieText = (source: string, ascii: boolean, columns: number, round = false): string | null => {
+  const [first = '', ...rest] = body(source)
+  const head = /^pie\b(\s+showData)?(?:\s+title\s+(.*))?$/i.exec(first)
+  if (!head) return null
+  const parsed = pieLines(rest, head[2], !!head[1])
+  if (!parsed) return null
+  const { title, showData, slices } = parsed
   slices.sort((a, b) => b.value - a.value)
-  const max = slices[0]!.value
-  const labelWidth = Math.max(...slices.map(s => width(s.label)))
-  const percents = slices.map(s => {
-    const pct = Math.round((s.value / total) * 100)
-    return `${pct === 0 && s.value > 0 ? '<1' : pct}%`
-  })
-  const valueWidth = showData ? Math.max(...slices.map(s => s.text.length)) + 2 : 0
-  const pctWidth = Math.max(...percents.map(p => p.length))
-  const bar = clamp(columns - 6 - labelWidth - valueWidth - pctWidth, 8, 40)
-  const rows = slices.map((s, i) => {
-    const cells = s.value > 0 ? Math.max(1, Math.round((s.value / max) * bar)) : 0
-    const value = showData ? s.text.padStart(valueWidth - 2) + '  ' : ''
-    return `${pad(s.label, labelWidth)}  ${(ascii ? '#' : '█').repeat(cells).padEnd(bar)} ${value}${percents[i]!.padStart(pctWidth)}`
-  })
-  return [...(title ? [title.trim()] : []), ...rows].join('\n')
+  const rows = shares(slices, showData)
+  return roundPie(round && !ascii, title, slices, rows.map(r => `${r.label} ${r.tail}`), columns) ?? [...(title ? [title.trim()] : []), ...barPie(slices, rows, ascii, columns)].join('\n')
 }
 
 const dateParser = (format: string) => {
