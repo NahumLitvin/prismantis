@@ -337,6 +337,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('<i>Reply</i>')
   expect(showcaseText([])).toContain('CopyQ')
   expect(showcaseText([])).toContain('plain text')
+  expect(showcaseText([])).toContain('line "east" [')
   expect(blocks.some(b => b.kind === 'table' && b.align.includes('right') && b.align.includes('center'))).toBe(true)
   const kinds = new Set(blocks.map(b => b.kind))
   for (const kind of ['heading', 'paragraph', 'list', 'code', 'quote', 'alert', 'rule', 'table']) expect(kinds.has(kind as never)).toBe(true)
@@ -411,7 +412,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(6)
+  expect(diagrams.length).toBe(7)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 

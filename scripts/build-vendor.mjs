@@ -123,6 +123,14 @@ const BAR_SCALE = [
 `,
   ],
 ]
+const XY_PARSER = /beautiful-mermaid\/src\/xychart\/parser\.ts$/
+const SERIES_NAMES = ['bar', 'line'].map(kind => [
+  `const ${kind}Match = line.match(/^${kind}\\s+\\[([^\\]]+)\\]/)`,
+  `series.push({ type: '${kind}', data: parseNumericArray(${kind}Match[1]!) })`,
+  `const ${kind}Match = line.match(/^${kind}\\s+(?:"([^"]*)"\\s*|([^\\s"[]+)\\s+)?\\[([^\\]]+)\\]/)`,
+  `series.push({ type: '${kind}', name: ${kind}Match[1] ?? ${kind}Match[2], data: parseNumericArray(${kind}Match[3]!) })`,
+])
+const LEGEND_NAMES = [['label: `Bar ${barIdx + 1}`', 'label: s.name || `Bar ${barIdx + 1}`'], ['label: `Line ${lineIdx + 1}`', 'label: s.name || `Line ${lineIdx + 1}`']]
 const CANVAS = /beautiful-mermaid\/src\/ascii\/canvas\.ts$/
 const CANVAS_ANCHOR = 'export function isJunctionChar('
 const CLEAR_LABEL_GAPS = `export function clearLabelGaps(canvas: Canvas, label: Canvas): void {
@@ -200,7 +208,19 @@ track(await build({
           if (!src.includes(from)) throw new Error(`xychart.ts no longer has "${from.trim().split('\n')[0]}"`)
           src = src.replace(from, to)
         }
+        for (const [from, to] of LEGEND_NAMES) {
+          if (!src.includes(from)) throw new Error(`xychart.ts no longer has "${from}"`)
+          src = src.replace(from, to)
+        }
         src += '\nexport const setChartSize = (width: number, height: number) => { PLOT_WIDTH = width; PLOT_HEIGHT = height }\n'
+        return { contents: src, loader: 'ts' }
+      })
+      api.onLoad({ filter: XY_PARSER }, args => {
+        let src = readFileSync(args.path, 'utf8')
+        for (const [match, push, named, namedPush] of SERIES_NAMES) {
+          if (!src.includes(match) || !src.includes(push)) throw new Error(`xychart/parser.ts no longer has "${match}"`)
+          src = src.replace(match, named).replace(push, namedPush)
+        }
         return { contents: src, loader: 'ts' }
       })
       api.onLoad({ filter: CANVAS }, args => {

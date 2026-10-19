@@ -3,7 +3,7 @@ import { RANDOM_THEMES } from './theme'
 export const HINT = [
   'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
   'Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:',
-  'flowcharts, sequence diagrams, xychart-beta bar or line charts, pie charts and gantt schedules.',
+  'flowcharts, sequence diagrams, xychart-beta bar or line charts (name each series for the legend: line "east" [..]), pie charts and gantt schedules.',
   'When a reply carries a numeric series or a flow that is easier to see than read, add a small diagram or chart with short labels, not a second picture of what a figure already shows.',
   'Skip diagrams and pictures for short or simple answers.',
   'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
@@ -188,6 +188,17 @@ xychart-beta
     x-axis [text, head, num, code, diag]
     y-axis "options" 0 --> 8
     bar [7, 3, 2, 6, 2]
+\`\`\`
+
+Name each series and the legend says which line is which:
+
+\`\`\`mermaid
+xychart-beta
+    title "Replies per hour"
+    x-axis [09, 10, 11, 12, 13]
+    y-axis 0 --> 40
+    line "east" [30, 34, 22, 26, 31]
+    line "west" [12, 18, 25, 20, 14]
 \`\`\`
 
 A pie draws round with a legend. Set \`pieStyle\` to \`bars\` in \`/config\` for one bar per slice:

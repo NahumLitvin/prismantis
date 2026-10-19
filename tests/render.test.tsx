@@ -190,6 +190,15 @@ test('each line of a multi-line chart and its legend swatch share one color, dis
   await ui.unmount()
 })
 
+test('a named series shows its name in the legend and a nameless one keeps Line N', async $ => {
+  const chart = '```mermaid\nxychart-beta\n  x-axis [a, b, c]\n  y-axis 0 --> 10\n  line "east" [8, 8, 8]\n  line [2, 2, 2]\n```'
+  const ui = await $.ui.mount({ ...draw(chart), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /east/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Line 2/ })).toBeDefined()
+  expect(new Set((await ui.findAll({ type: 'Text', text: /^─{3,}$/ })).map(l => l.props.color)).size).toBe(2)
+  await ui.unmount()
+})
+
 test('grouped bars take one color per series, not one per bar', async $ => {
   const chart = '```mermaid\nxychart-beta\n  x-axis [a, b, c]\n  y-axis 0 --> 10\n  bar [8, 8, 8]\n  bar [4, 4, 4]\n```'
   const ui = await $.ui.mount({ ...draw(chart), surface: 'terminal' })
