@@ -144,7 +144,7 @@ const NODE_ID_END = 'const CLASS_SHORTHAND_REGEX'
 const NODE_ID = '[\\w-]+'
 const NODE_ID_BEFORE_ARROW = '(?:\\w|-(?![-.>]))+'
 
-const PRISM_LANGUAGES = ['clike', 'markup', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'python', 'go', 'rust', 'java', 'kotlin', 'swift', 'c', 'cpp', 'csharp', 'ruby', 'json', 'yaml', 'toml', 'sql', 'diff', 'docker', 'hcl']
+const PRISM_LANGUAGES = ['clike', 'markup', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'python', 'go', 'rust', 'java', 'kotlin', 'swift', 'c', 'cpp', 'csharp', 'ruby', 'json', 'yaml', 'toml', 'sql', 'diff', 'docker', 'hcl', 'lua']
 
 track(await build({
   metafile: true,

@@ -334,6 +334,14 @@ test('Prism colors TypeScript keywords, strings and comments', async $ => {
   await ui.unmount()
 })
 
+test('Prism colors Lua keywords and comments', async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('```lua\nlocal name = "shop" -- app\n```'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^local$/ }))?.props.color).toBe(t.codeFlag)
+  expect((await ui.find({ type: 'Text', text: /^-- app$/ }))?.props.italic).toBe(true)
+  await ui.unmount()
+})
+
 test('fence languages that name Prism internals fall back to plain code', async $ => {
   for (const lang of ['extend', 'toString', 'constructor', '__proto__']) {
     const ui = await $.ui.mount({ ...draw(`\`\`\`${lang}\nhello\n\`\`\``), surface: 'terminal' })
