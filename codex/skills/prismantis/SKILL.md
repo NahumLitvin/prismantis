@@ -188,6 +188,17 @@ xychart-beta
     bar [7, 3, 2, 6, 2]
 ```
 
+Name each series and the legend says which line is which:
+
+```mermaid
+xychart-beta
+    title "Replies per hour"
+    x-axis [09, 10, 11, 12, 13]
+    y-axis 0 --> 40
+    line "east" [30, 34, 22, 26, 31]
+    line "west" [12, 18, 25, 20, 14]
+```
+
 A pie draws round with a legend. Set `pieStyle` to `bars` in `/config` for one bar per slice:
 
 ```mermaid

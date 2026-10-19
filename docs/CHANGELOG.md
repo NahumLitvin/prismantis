@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.31.0] - 2026-10-19
+
+### Added
+
+- xychart series can be named, `line "east" [..]` or `bar east [..]`, and the legend shows the name instead of `Line 1` or `Bar 1`. Series with no name keep the numbered label ([#225](https://github.com/NahumLitvin/prismantis/pull/225)).
+
+### Fixed
+
+- Each line and bar series of a multi-series xychart draws in its own theme color, and its legend swatch matches. Before, every line drew in one color and grouped bars got a color per bar ([#225](https://github.com/NahumLitvin/prismantis/pull/225)).
+- A named xychart series draws instead of vanishing from the chart ([#225](https://github.com/NahumLitvin/prismantis/pull/225)).
+
 ## [0.30.0] - 2026-10-19
 
 ### Added
