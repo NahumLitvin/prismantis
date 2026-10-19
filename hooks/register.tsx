@@ -686,7 +686,8 @@ export const register: Register = (on, options) => {
     const choices = step.key === 'theme' ? THEME_ARGS : step.options
     const focused = await read($, setupFocus)
     const at = choices.indexOf(choices.includes(focused) ? focused : currentOf(step))
-    const target = choices[Math.max(0, Math.min(choices.length - 1, at + e.by))]!
+    const target = choices[at + e.by]
+    if (target === undefined) return next(e)
     await $.ui.focus({ requestId: SETUP_PANE, key: pickKey(step, target) }).catch(() => undefined)
     return {}
   })
