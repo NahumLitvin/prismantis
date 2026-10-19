@@ -81,6 +81,10 @@ kungfu train --student "Po" --master shifu --dumplings 3 && echo "skadoosh"
 > - stretch all **6** legs
 > - then `kick`
 
+<tldr>
+Kick at ~/dojo/mat, then rest.
+</tldr>
+
 ## עברית
 
 **שלום חברים**, התוסף מצייר גם עברית עם מונחים באנגלית כמו `kubectl`, מספרים כמו 99.9% ו-250ms, וגם [קישור](https://github.com/NahumLitvin/prismantis).

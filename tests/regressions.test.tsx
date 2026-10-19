@@ -329,6 +329,15 @@ test('a half-streamed reply with an open fence and a cut table still draws', asy
   }
 })
 
+test('a line holding only a tag draws dim on its own, never as a path or joined to the paragraph next to it', () => {
+  const blocks = parse('Answer text.\n\n<tldr>\n- First point, see /tmp/example.\n\nA closing sentence.\n</tldr>', hl)
+  expect(blocks.map(b => b.kind)).toEqual(['paragraph', 'paragraph', 'list', 'paragraph', 'paragraph'])
+  expect(blocks[1]).toMatchObject({ inline: [{ kind: 'dim', text: '<tldr>' }], raw: '<tldr>' })
+  expect(blocks[3]?.raw).toBe('A closing sentence.')
+  expect(blocks[4]).toMatchObject({ inline: [{ kind: 'dim', text: '</tldr>' }], raw: '</tldr>' })
+  expect(parse('a <b>bold</b> word\n<br/>', hl).map(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'dim'))).toEqual([false])
+})
+
 test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
@@ -352,6 +361,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('f(*args, **kwargs)')
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(kinds.has('notes')).toBe(true)
+  expect(blocks.some(b => b.kind === 'paragraph' && b.inline.length === 1 && b.inline[0]?.kind === 'dim' && b.raw === '</summary>')).toBe(true)
   expect(blocks.some(b => b.kind === 'table' && b.header.some(h => h.some(n => n.kind === 'footnote')))).toBe(true)
   expect(showcaseText([])).toContain('Click a mark to see its note')
   expect(showcaseText([]).includes("toolStyle")).toBe(true)

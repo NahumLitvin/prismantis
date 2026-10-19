@@ -42,6 +42,7 @@ const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/
 const FENCE = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/
 const NOTE_DEF = /^\[\^([^\]\s]+)\]:\s*(.*)$/
+const TAG_LINE = /^\s*<\/?[a-z][\w-]*>\s*$/i
 const SUPERSCRIPT = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 
 const splitRow = (line: string): string[] => {
@@ -296,6 +297,14 @@ const closerOf = (run: string) => new RegExp(`^\\s*\\${run[0]}{${run.length},}\\
 export const nestedBlocks = (blocks: Block[]): Block[] =>
   blocks.flatMap(b => [b, ...nestedBlocks(b.kind === 'list' ? b.items.flatMap(it => it.blocks ?? []) : b.kind === 'quote' || b.kind === 'alert' ? b.blocks : [])])
 
+const tableRows = (lines: string[], width: number, hl: Highlight): Inline[][][] => {
+  const end = lines.findIndex(l => !l.includes('|') || l.trim() === '')
+  return lines.slice(0, end < 0 ? lines.length : end).map(l => {
+    const cells = splitRow(l)
+    return Array.from({ length: width }, (_, c) => parseInline(cells[c] ?? '', hl))
+  })
+}
+
 const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   const at = (n: number) => lines[n] ?? ''
@@ -339,6 +348,11 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       while (/^\s{2,}\S/.test(at(i + 1))) i++
       continue
     }
+    if (TAG_LINE.test(line)) {
+      flush(i)
+      add({ kind: 'paragraph', inline: [{ kind: 'dim', text: line.trim() }] }, i, i + 1)
+      continue
+    }
     const heading = /^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/.exec(line)
     if (heading) {
       flush(i)
@@ -357,12 +371,8 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       const align = splitRow(at(i + 1)).map(c =>
         c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left',
       )
-      i += 2
-      const rows: Inline[][][] = []
-      while (i < lines.length && at(i).includes('|') && at(i).trim() !== '') {
-        const cells = splitRow(at(i++))
-        rows.push(header.map((_, c) => parseInline(cells[c] ?? '', hl)))
-      }
+      const rows = tableRows(lines.slice(i + 2), header.length, hl)
+      i += 2 + rows.length
       add({ kind: 'table', header: header.map(c => parseInline(c, { numbers: false, paths: false })), align, rows }, start, i)
       i--
       continue

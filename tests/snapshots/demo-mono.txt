@@ -602,6 +602,19 @@
             "then "
           <Text>
             "kick"
+<Text>
+  <Text>
+    "<tldr>"
+<Text>
+  <Text>
+    "Kick at "
+  <Text>
+    "~/dojo/mat"
+  <Text>
+    ", then rest."
+<Text>
+  <Text>
+    "</tldr>"
 <Box>
   <Box>
     <Text bold>

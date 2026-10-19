@@ -1014,6 +1014,19 @@
             "then "
           <Text color=#0550ae>
             "kick"
+<Text>
+  <Text>
+    "<tldr>"
+<Text>
+  <Text>
+    "Kick at "
+  <Text color=#116329>
+    "~/dojo/mat"
+  <Text>
+    ", then rest."
+<Text>
+  <Text>
+    "</tldr>"
 <Box>
   <Box>
     <Text color=#0550ae bold>
