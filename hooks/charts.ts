@@ -22,11 +22,9 @@ const pad = (text: string, size: number) => text + ' '.repeat(Math.max(0, size -
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
-export const pieColors = new Map<string, number[][]>()
+export type ChartArt = { text: string; slices?: number[][] }
 
 const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
-
-const SLICE_COLORS = 7
 
 type Slice = { label: string; text: string; value: number }
 
@@ -42,9 +40,9 @@ const quadrantCell = (sliceAt: (x: number, y: number) => number, cx: number, cy:
   return [QUADRANTS[mask]!, mask ? [...votes].sort((a, b) => b[1] - a[1])[0]![0] : -1]
 }
 
-const roundPie = (wanted: boolean, title: string | undefined, slices: Slice[], legend: string[], columns: number): string | null => {
+const roundPie = (colors: number, title: string | undefined, slices: Slice[], legend: string[], columns: number): ChartArt | null => {
   const radius = Math.min(6, Math.floor((columns - 10 - Math.max(...legend.map(width))) / 4))
-  if (!wanted || radius < 4 || slices.length > SLICE_COLORS) return null
+  if (radius < 4 || slices.length > colors) return null
   const total = slices.reduce((sum, s) => sum + s.value, 0)
   let seen = 0
   const bounds = slices.map(s => (seen += s.value / total))
@@ -57,16 +55,13 @@ const roundPie = (wanted: boolean, title: string | undefined, slices: Slice[], l
   }
   const cells = Array.from({ length: 2 * radius }, (_, cy) => Array.from({ length: 4 * radius }, (_, cx) => quadrantCell(sliceAt, cx, cy)))
   const rows = cells.map(row => row.map(([glyph]) => glyph).join(''))
-  const colors = cells.map(row => row.map(([, hue]) => hue))
+  const hues = cells.map(row => row.map(([, hue]) => hue))
   const offset = Math.floor((rows.length - legend.length) / 2)
   legend.forEach((line, i) => {
     rows[offset + i] += `   ██ ${line}`
-    colors[offset + i]!.push(-1, -1, -1, i, i)
+    hues[offset + i]!.push(-1, -1, -1, i, i)
   })
-  const art = [...(title ? [title.trim()] : []), ...rows.map(r => r.trimEnd())].join('\n')
-  pieColors.set(art, [...(title ? [[]] : []), ...colors])
-  if (pieColors.size > 64) pieColors.delete(pieColors.keys().next().value!)
-  return art
+  return { text: [...(title ? [title.trim()] : []), ...rows.map(r => r.trimEnd())].join('\n'), slices: [...(title ? [[]] : []), ...hues] }
 }
 
 const shares = (slices: Slice[], showData: boolean): { label: string; tail: string }[] => {
@@ -108,7 +103,7 @@ const pieLines = (lines: string[], heading: string | undefined, data: boolean): 
   return slices.reduce((sum, s) => sum + s.value, 0) > 0 ? { title, showData, slices } : null
 }
 
-export const pieText = (source: string, ascii: boolean, columns: number, round = false): string | null => {
+export const pieText = (source: string, ascii: boolean, columns: number, colors = 0): ChartArt | null => {
   const [first = '', ...rest] = body(source)
   const head = /^pie\b(\s+showData)?(?:\s+title\s+(.*))?$/i.exec(first)
   if (!head) return null
@@ -117,7 +112,7 @@ export const pieText = (source: string, ascii: boolean, columns: number, round =
   const { title, showData, slices } = parsed
   slices.sort((a, b) => b.value - a.value)
   const rows = shares(slices, showData)
-  return roundPie(round && !ascii, title, slices, rows.map(r => `${r.label} ${r.tail}`), columns) ?? [...(title ? [title.trim()] : []), ...barPie(slices, rows, ascii, columns)].join('\n')
+  return roundPie(ascii ? 0 : colors, title, slices, rows.map(r => `${r.label} ${r.tail}`), columns) ?? { text: [...(title ? [title.trim()] : []), ...barPie(slices, rows, ascii, columns)].join('\n') }
 }
 
 const dateParser = (format: string) => {

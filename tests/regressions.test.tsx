@@ -1004,7 +1004,7 @@ test('a pie chart draws one bar per slice, largest first, with its share', () =>
 })
 
 test('a round pie draws a circle with a legend, largest slice first', () => {
-  const art = mermaidText('pie showData title Pets\n  "Cats" : 85\n  "Dogs" : 386\n  "Rats" : 15', false, 80, 'round')!.split('\n')
+  const art = mermaidText('pie showData title Pets\n  "Cats" : 85\n  "Dogs" : 386\n  "Rats" : 15', false, 80, 7)!.split('\n')
   expect(art[0]).toBe('Pets')
   expect(art).toHaveLength(13)
   expect(art[1]).toMatch(/^ +▄▄▟█+▙▄▄$/)
@@ -1016,8 +1016,8 @@ test('a round pie falls back to bars in ascii mode, past seven slices and when t
   const pie = 'pie\n  "Dogs" : 386\n  "Cats" : 85'
   const many = `pie\n${[1, 2, 3, 4, 5, 6, 7, 8].map(n => `  "s${n}" : ${n}`).join('\n')}`
   for (const [source, ascii, columns] of [[pie, true, 80], [many, false, 80], [pie, false, 30]] as const)
-    expect(mermaidText(source, ascii, columns, 'round')).toBe(mermaidText(source, ascii, columns, 'bars'))
-  expect(mermaidText(pie, false, 80, 'round')).toContain('▟')
+    expect(mermaidText(source, ascii, columns, 7)).toBe(mermaidText(source, ascii, columns, 0))
+  expect(mermaidText(pie, false, 80, 7)).toContain('▟')
 })
 
 test('each round pie slice and its legend swatch share one color', async $ => {
@@ -1028,6 +1028,30 @@ test('each round pie slice and its legend swatch share one color', async $ => {
   expect(new Set(swatches).size).toBe(3)
   expect((await ui.find({ type: 'Text', text: /^▜█+▛$/ }))?.props.color).toBe(swatches[0])
   await ui.unmount()
+})
+
+const runs = async (ui: { findAll: (q: { type: string }) => Promise<{ text?: string; props: { color?: string } }[]> }) => (await ui.findAll({ type: 'Text' })).map(n => `${n.text}|${n.props.color}`)
+
+const fiveSlices = '```mermaid\npie\n  "a" : 5\n  "b" : 4\n  "c" : 3\n  "d" : 2\n  "e" : 1\n```'
+const fourSlices = '```mermaid\npie\n  "a" : 4\n  "b" : 3\n  "c" : 2\n  "d" : 1\n```'
+
+for (const [theme, source, round] of [['dracula', fiveSlices, false], ['dracula', fourSlices, true], ['mono', fourSlices, false], ['catppuccin-mocha', fiveSlices, true]] as const)
+  test(`a round pie of ${source === fiveSlices ? 5 : 4} slices in ${theme} draws ${round ? 'round' : 'bars'}, since each slice needs its own theme color`, { options: { theme } }, async $ => {
+    const ui = await $.ui.mount(mount(source))
+    expect(!!(await ui.find({ type: 'Text', text: /▟/ }))).toBe(round)
+    await ui.unmount()
+  })
+
+test('two pies that draw the same art but split it differently each keep their own slice colors', async $ => {
+  const pie = (a: number, b: number) => '```mermaid\npie\n  "A" : ' + a + '\n  "B" : ' + b + '\n```'
+  const drawn: string[][] = []
+  for (const [a, b] of [[5103, 4897], [5104, 4896], [5103, 4897]] as const) {
+    const ui = await $.ui.mount(mount(pie(a, b)))
+    drawn.push(await runs(ui))
+    await ui.unmount()
+  }
+  expect(drawn[0]!.filter(r => !r.includes('|undefined')).join()).not.toBe(drawn[1]!.filter(r => !r.includes('|undefined')).join())
+  expect(drawn[2]).toEqual(drawn[0])
 })
 
 test('pieStyle bars draws one bar per slice', { options: { pieStyle: 'bars' } }, async $ => {
