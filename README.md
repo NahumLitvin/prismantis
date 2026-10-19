@@ -278,7 +278,12 @@ Footnotes draw as superscript marks, with the notes under a dim rule at the end 
 
 ![Headings, lists, quotes: plain Claude Code on the left, prismantis on the right](docs/compare/headings.png)
 
-`headingStyle` picks `banner` (the default: a box around H1, a heavy rule under H2), `bold`, `underline` or `uppercase`. Terminals have one font size, so headings stand out through style and color.
+Terminals have one font size, so headings stand out through style and color. `headingStyle` picks the look:
+
+| `banner` (default) | `bold` | `underline` | `uppercase` |
+|---|---|---|---|
+| a box around H1, a heavy rule under H2 | bold in the heading color | `bold` with H1 and H2 underlined | `bold` with H1 in capitals |
+| ![banner](docs/headings/banner.png) | ![bold](docs/headings/bold.png) | ![underline](docs/headings/underline.png) | ![uppercase](docs/headings/uppercase.png) |
 
 Lists keep their numbers and nest with `•` and `◦`. Quotes get an accent bar down every line and keep their paragraphs, lists, code, tables and nested quotes, and GitHub alerts (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) draw as colored boxes.
 
@@ -298,9 +303,10 @@ What you type, at the prompt or through Remote Control, draws in the theme's col
 
 `clock` adds the time: each prompt shows when you sent it, and the line that closes each turn when it finished (`✻ Baked for 1m 55s · 14:32`). It reads `24h` or `12h`, and a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. Off by default.
 
-| `clock: 24h` on a prompt | and on a turn's last line |
-|---|---|
-| ![a prompt bubble that starts with the time it was sent](docs/clock/prompt.png) | ![a turn line that ends with the time it finished](docs/clock/turn.png) |
+| `clock` | on a prompt | and on a turn's last line |
+|---|---|---|
+| `24h` | ![a prompt bubble that starts with the time it was sent](docs/clock/prompt.png) | ![a turn line that ends with the time it finished](docs/clock/turn.png) |
+| `12h` | ![a prompt bubble that starts with 5:45 PM](docs/clock/prompt-12h.png) | ![a turn line that ends with 5:45 PM](docs/clock/turn-12h.png) |
 
 ### Right to left
 
