@@ -94,6 +94,10 @@ Each edit or new file draws as a diff card headed `+N −M`: added and removed l
 >
 > > A nested quote draws inside the bar.
 
+<summary>
+A line that holds only a tag draws dim, so wrapper tags show the reply's structure.
+</summary>
+
 ---
 
 ### Code

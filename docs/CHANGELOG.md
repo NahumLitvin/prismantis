@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.31.1] - 2026-10-19
+
+### Fixed
+
+- A line holding only an HTML-like tag (`<tldr>`, `<summary>`) draws dim on its own row instead of joining the next line, and `/tldr` no longer gets the path colour. Inline tags (`a <b>bold</b> word`) are unchanged ([#228](https://github.com/NahumLitvin/prismantis/pull/228)).
+- Gantt bars line up with their real start and end dates more closely, so tasks of similar length no longer draw the same ([#224](https://github.com/NahumLitvin/prismantis/pull/224)).
+
 ## [0.31.0] - 2026-10-19
 
 ### Added
