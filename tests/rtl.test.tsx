@@ -136,6 +136,7 @@ for (const rtl of ['warp', 'windows-terminal'] as const) test(`a Hebrew ordered 
 test('a terminal that orders Hebrew itself gets the ordered marker as written', { options: { rtl: 'gnome' } }, async $ => {
   const ui = await $.ui.mount(mount('1. אחד\n2. שניים'))
   expect(await ui.find({ type: 'Text', text: /\.1/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /1\./ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -445,6 +446,12 @@ test('a symbol inside a Hebrew diagram label stays part of the label', () => {
   const drawn = (row: string) => holdVisual([...row]).cells.join('')
   expect(drawn('│ גרסה+beta │')).toBe('│ beta+הסרג │')
   expect(drawn('├─כן─►')).toBe('├─ןכ─►')
+})
+
+test('an ASCII diagram edge keeps its arrow in place when its label is Hebrew', () => {
+  expect(holdVisual([...'| start |כן->| end |']).cells.join('')).toBe('| start |ןכ->| end |')
+  expect(holdEngine([...'|כן->|']).cells.join('')).toBe('|כן->|')
+  expect(holdVisual([...'│ בית-ספר │']).cells.join('')).toBe('│ רפס-תיב │')
 })
 
 test('a held diagram row says where each drawn cell came from, so colors and marks land on the same letters after a label is reordered', () => {

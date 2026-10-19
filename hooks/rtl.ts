@@ -281,6 +281,15 @@ const WORD = /[\p{L}\p{N}\p{P}]/u
 
 const DRAWN = /[←-⇿─-◿]/u
 
+const ASCII_DRAWN = /[-+|<>]/
+
+const LETTER = /[\p{L}\p{N}]/u
+
+const drawnAt = (all: Cell[], i: number) => {
+  const ch = all[i]!.ch
+  return DRAWN.test(ch) || (ASCII_DRAWN.test(ch) && !(LETTER.test(all[i - 1]?.ch ?? '') && LETTER.test(all[i + 1]?.ch ?? '')))
+}
+
 const inLabel = (chars: string[], c: number) => {
   const [a = '', b = ''] = [chars[c - 1], chars[c + 1]]
   return WORD.test(a) && WORD.test(b) && (R.test(a) || R.test(b))
@@ -301,13 +310,13 @@ const byWords = (label: (words: Cell[]) => Cell[]) => (all: Cell[]): Cell[] => {
     out.push(...(words.some(u => R.test(u.ch)) ? label(words) : words))
     words = []
   }
-  for (const u of all) {
-    if (!DRAWN.test(u.ch)) words.push(u)
+  all.forEach((u, i) => {
+    if (!drawnAt(all, i)) words.push(u)
     else {
       flush()
       out.push(u)
     }
-  }
+  })
   flush()
   return out
 }
