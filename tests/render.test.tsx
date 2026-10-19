@@ -190,6 +190,14 @@ test('each line of a multi-line chart and its legend swatch share one color, dis
   await ui.unmount()
 })
 
+test('grouped bars take one color per series, not one per bar', async $ => {
+  const chart = '```mermaid\nxychart-beta\n  x-axis [a, b, c]\n  y-axis 0 --> 10\n  bar [8, 8, 8]\n  bar [4, 4, 4]\n```'
+  const ui = await $.ui.mount({ ...draw(chart), surface: 'terminal' })
+  const hues = new Set((await ui.findAll({ type: 'Text', text: /^[█▄▀]+$/ })).map(b => b.props.color))
+  expect(hues.size).toBe(2)
+  await ui.unmount()
+})
+
 test('a participant keeps one color at both ends of a sequence diagram', async $ => {
   const seq = '```mermaid\nsequenceDiagram\n  Browser->>App: GET /cart\n  App-->>Browser: 200\n```'
   const ui = await $.ui.mount({ ...draw(seq), surface: 'terminal' })
