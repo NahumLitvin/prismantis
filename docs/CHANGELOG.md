@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.30.0] - 2026-10-19
+
+### Added
+
+- Mermaid `pie` charts draw as a round circle with a legend: each slice in its own theme color, the legend's swatches matching, edges smoothed with quadrant blocks. `pieStyle: bars` in `/config` keeps one bar per slice. Round falls back to bars in ascii mode, in a terminal too narrow for it, and when the theme has fewer distinct colors than slices (Dracula, Nord and Rosé Pine have four, mono none) ([#221](https://github.com/NahumLitvin/prismantis/pull/221)).
+- `/prismantis setup` has a seventh step, Pie charts, drawing both styles ([#221](https://github.com/NahumLitvin/prismantis/pull/221)).
+
+### Fixed
+
+- The Codex README links the fenced-block proof of concept on the Codex fork instead of a closed PR ([#220](https://github.com/NahumLitvin/prismantis/pull/220)).
+
 ## [0.29.0] - 2026-10-19
 
 ### Added

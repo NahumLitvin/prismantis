@@ -188,6 +188,8 @@ xychart-beta
     bar [7, 3, 2, 6, 2]
 ```
 
+A pie draws round with a legend. Set `pieStyle` to `bars` in `/config` for one bar per slice:
+
 ```mermaid
 pie showData title Time per reply stage
     "Parse" : 3
