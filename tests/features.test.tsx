@@ -2474,6 +2474,24 @@ test('/prismantis setup in the pane stays on the step and keeps the pane open wh
   await pane.unmount()
 })
 
+test('/prismantis setup in the pane takes the arrows for the ring when its list is taller than the pane, and leaves the wheel to scroll', async ($, on) => {
+  on('ui.focus', () => ({}))
+  const scrolled: number[] = []
+  on('ui.scroll', (_, e) => {
+    scrolled.push(e.by)
+    return {}
+  })
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const scroll = (by: number, pointer?: { column: number; row: number }) => $.ui.scroll({ component: 'Pane', requestId: 'prismantis-setup', offset: 1, by, bodyRows: 10, contentRows: 30, origin: { kind: 'person' }, ...(pointer ? { pointer } : {}) })
+  await scroll(1)
+  await scroll(-1)
+  expect(scrolled).toEqual([])
+  await scroll(1, { column: 4, row: 2 })
+  await scroll(10)
+  expect(scrolled).toEqual([1, 10])
+})
+
 test('/prismantis setup in the pane keeps to the rows it is given when the list fits, so the arrows move the ring instead of scrolling', async ($, on) => {
   paneStandIn(on, [])
   await setupRun($, 'setup')
