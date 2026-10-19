@@ -7,6 +7,8 @@
   <a href="https://github.com/NahumLitvin/prismantis/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/NahumLitvin/prismantis/ci.yml?branch=main&style=flat-square&label=ci" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/NahumLitvin/prismantis?style=flat-square&color=cba6f7" alt="License"></a>
   <img src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-cba6f7?style=flat-square" alt="Claude Code 2.1.287 or later">
+  <a href="https://github.com/hesreallyhim/awesome-claude-code"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Claude Code"></a>
+  <a href="https://statuslin.es/mods/prismantis"><img src="https://img.shields.io/badge/listed%20on-statuslin.es-c96442?style=flat-square" alt="Listed on statuslin.es"></a>
 </p>
 
 <p align="center">
