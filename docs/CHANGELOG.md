@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.29.0] - 2026-10-19
+
+### Added
+
+- `/prismantis setup` typed in a terminal opens a pane. Each step lists its styles as buttons; the arrows or Tab move the focus and the pane draws a sample of the style in focus beside the list. Enter saves the pick and moves to the next step, Esc closes the pane and keeps the picks made so far. Sessions with no terminal, like the desktop app, keep the walk in the transcript. Contributed by @b33eep ([#206](https://github.com/NahumLitvin/prismantis/pull/206)).
+- Lua code blocks are highlighted. Requested by @emrearmagan ([#213](https://github.com/NahumLitvin/prismantis/issues/213), [#216](https://github.com/NahumLitvin/prismantis/pull/216)).
+
+### Changed
+
+- The Korean section of `/prismantis demo` reads more naturally. Contributed by @gobenpark ([#208](https://github.com/NahumLitvin/prismantis/pull/208)).
+
+### Fixed
+
+- Hebrew numbered items draw ".1" and "(1", number first, where prismantis orders the row itself: terminals without bidi, kitty and Windows Terminal. Terminal.app, GNOME, Konsole and iTerm2 are unchanged. Contributed by @tomerbr1 ([#210](https://github.com/NahumLitvin/prismantis/pull/210)).
+- Diagram edges with a Hebrew label keep their lines and arrowhead in place, in box-drawing and ASCII mode alike; before, the arrow could point back at the source. A label like "גרסה+beta" stays whole. Contributed by @tomerbr1 ([#210](https://github.com/NahumLitvin/prismantis/pull/210), [#217](https://github.com/NahumLitvin/prismantis/pull/217)).
+
 ## [0.28.0] - 2026-10-17
 
 ### Added
