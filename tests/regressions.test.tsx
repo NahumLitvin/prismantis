@@ -508,6 +508,15 @@ test('a table art button copies boxed text ready for Slack', async ($, on) => {
   await ui.unmount()
 })
 
+test('bidi marks take no column, so a table cell that holds one is not drawn a column too wide', async () => {
+  expect(width('\u200f13/10')).toBe(5)
+  expect(width('\u200ekubectl\u200e')).toBe(7)
+  expect(width('\u2067שלום\u2069')).toBe(4)
+  const [table] = parse('| day | result |\n|---|---|\n| \u200f13/10 | ok |', hl)
+  if (table?.kind !== 'table') throw new Error('not a table')
+  expect(tableArt(table).split('\n')[1]!.split('┬')[0]).toBe(`┌${'─'.repeat(7)}`)
+})
+
 test('wide table art wraps long cells to stay 100 columns wide', async () => {
   const long = 'Wrong. With no default, databag_config raises No config key is found, so the render fails and nothing is applied, which is the fail-closed behaviour we want.'
   const [table] = parse(`| Codebot says | Verdict |\n|---|---|\n| A missing x_seen_by renders an empty value | ${long} |`, hl)
