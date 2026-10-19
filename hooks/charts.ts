@@ -136,6 +136,17 @@ const stamp = (t: number, span: number, sameYear: boolean) => {
   return span < 2 * DAY ? iso.slice(11, 16) : sameYear ? iso.slice(5, 10) : iso.slice(0, 10)
 }
 
+const EIGHTHS = ' ▏▎▍▌▋▊▉'
+
+const fineBar = (from: number, to: number, fallback: number) => {
+  const half = from % 1 >= 0.25 && from % 1 < 0.75
+  const start = half ? Math.floor(from) + 1 : Math.round(from)
+  const eighths = Math.round(to * 8)
+  const whole = Math.floor(eighths / 8) - start
+  if (whole < 1) return ' '.repeat(fallback) + '█'
+  return ' '.repeat(start - (half ? 1 : 0)) + (half ? '▐' : '') + '█'.repeat(whole) + (eighths % 8 > 1 ? EIGHTHS[eighths % 8]! : '')
+}
+
 export const ganttText = (source: string, ascii: boolean, columns: number): string | null => {
   const [first = '', ...rest] = body(source)
   if (!/^gantt$/i.test(first)) return null
@@ -200,8 +211,8 @@ export const ganttText = (source: string, ascii: boolean, columns: number): stri
   const lines = rows.map(r => {
     if (!('name' in r)) return r.section
     const a = Math.min(col(r.start), chart - 1)
-    const cells = r.milestone ? (ascii ? '*' : '◆') : (ascii ? '#' : '█').repeat(Math.max(1, col(r.end) - a))
-    return `${pad(`  ${r.name}`, labelWidth)}  ${' '.repeat(a)}${cells}`
+    const cells = r.milestone ? (ascii ? '*' : '◆') : ascii ? '#'.repeat(Math.max(1, col(r.end) - a)) : null
+    return `${pad(`  ${r.name}`, labelWidth)}  ${cells === null ? fineBar(((r.start - min) / span) * chart, ((r.end - min) / span) * chart, a) : ' '.repeat(a) + cells}`
   })
   return [...(title ? [title.trim()] : []), lead + labels.join('').trimEnd(), lead + axis.join(''), ...lines].join('\n')
 }

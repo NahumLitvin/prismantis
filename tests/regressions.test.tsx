@@ -1084,6 +1084,25 @@ test('a gantt chart places each task on a shared time axis', () => {
   expect(art[2]).toBe('Build')
 })
 
+const FINE_GANTT = 'gantt\n  dateFormat YYYY-MM-DD\n  section Build\n  Two days :a, 2026-10-01, 2d\n  Two and a bit :b, 2026-10-01, 2.4d\n  Two and a half :c, 2026-10-01, 2.5d\n  Rest :d, after a, 5d'
+
+test('gantt bars end on an eighth of a cell and start on a half, so close durations draw apart', () => {
+  const art = mermaidText(FINE_GANTT, false, 80)!.split('\n')
+  const bar = (name: string) => art.find(l => l.trimStart().startsWith(name))!.slice(18)
+  expect(new Set(['Two days', 'Two and a bit', 'Two and a half'].map(bar)).size).toBe(3)
+  expect(bar('Two days')).toMatch(/^█+[▎▍▌▋▊▉]$/)
+  expect(bar('Rest').trimStart()).toMatch(/^▐█+$/)
+  expect(mermaidText('gantt\n  dateFormat YYYY-MM-DD\n  A :a, 2026-10-01, 2d', true, 80)).not.toMatch(/[▐▏▎▍▌▋▊▉]/)
+})
+
+test('a gantt bar end drawn in part of a cell takes its bar color, while axis ticks keep theirs', async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\n' + FINE_GANTT + '\n```', 80))
+  expect(await ui.find({ type: 'Text', text: /^█+[▎▍▌▋▊▉]$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^▐█+$/ })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: /^▏(─+▏)+─*$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].diagram)
+  await ui.unmount()
+})
+
 test('pie and gantt sources the chart cannot read show a failure note, not a broken chart', async $ => {
   for (const source of ['pie\n  "a" : -1', 'pie\n  "a" : 0', 'gantt\n  Task : 3d', 'gantt\n  dateFormat X\n  Task : 1, 2', 'gantt\n  Task : after nope, 1d']) {
     expect(mermaidText(source, false, 80)).toBeNull()

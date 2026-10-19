@@ -162,6 +162,16 @@ const draw = (source: string, ascii: boolean, columns: number): string | null =>
 
 const LINE = /[─-╿◇▏]/
 const ARROW = /[►◄▲▼]/
+const PART = /[▐▏▎▍▌▋▊▉]/
+
+const barStart = (row: string[], c: number): number => {
+  const ch = row[c] ?? ''
+  const solid = BLOCK.test(ch) ? ch : PART.test(ch) && row[c + 1] === '█' ? '█' : PART.test(ch) && row[c - 1] === '█' ? '█' : ''
+  if (!solid) return -1
+  let start = BLOCK.test(ch) ? c : row[c + 1] === '█' ? c + 1 : c - 1
+  while (row[start - 1] === solid) start--
+  return start
+}
 
 type Painted = { grid: string[][]; colors: (string | undefined)[][] }
 
@@ -215,11 +225,9 @@ const paint = (art: string, style: Style, series?: number[][]): Painted => {
   grid.forEach((row, r) =>
     row.forEach((ch, c) => {
       if (color[r]![c] !== undefined) return
-      if (BLOCK.test(ch)) {
-        let start = c
-        while (row[start - 1] === ch) start--
-        color[r]![c] = barColor(bars.indexOf(start))
-      } else if (ch === '·') color[r]![c] = t.rule
+      const start = barStart(row, c)
+      if (start >= 0) color[r]![c] = barColor(bars.indexOf(start))
+      else if (ch === '·') color[r]![c] = t.rule
       else if (ARROW.test(ch)) color[r]![c] = t.accent
       else if (LINE.test(ch)) color[r]![c] = t.diagram
       else if (/^\d+[┤┼]/.test(row.slice(c).join(''))) color[r]![c] = t.number
