@@ -137,6 +137,8 @@ Code blocks tagged `mermaid` draw as colored text art:
 | a circle, each slice in its own color, with a legend | one bar per slice, largest first, with its share |
 | ![round](docs/pies/round.png) | ![bars](docs/pies/bars.png) |
 
+![A round pie of visitors by referrer with a colored legend, beside a gantt chart of a week of releases on a shared date axis](docs/pies/pie-and-gantt.png)
+
 Diagrams too wide for the window, or over 80 lines, stay as code. `mermaidAscii` swaps box-drawing characters for `+ - |`.
 
 ### Figures
