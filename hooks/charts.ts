@@ -22,7 +22,7 @@ const pad = (text: string, size: number) => text + ' '.repeat(Math.max(0, size -
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
-export type ChartArt = { text: string; slices?: number[][] }
+export type ChartArt = { text: string; slices?: number[][]; series?: number[][] }
 
 const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
 

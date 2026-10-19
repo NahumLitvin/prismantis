@@ -180,6 +180,16 @@ test('a single-series bar chart highlights the tallest bar and mutes the rest', 
   await ui.unmount()
 })
 
+test('each line of a multi-line chart and its legend swatch share one color, distinct from the other lines', async $ => {
+  const chart = '```mermaid\nxychart-beta\n  x-axis [a, b, c, d]\n  y-axis 0 --> 10\n  line [9, 9, 9, 9]\n  line [5, 5, 5, 5]\n  line [1, 1, 1, 1]\n```'
+  const ui = await $.ui.mount({ ...draw(chart), surface: 'terminal' })
+  const lines = (await ui.findAll({ type: 'Text', text: /^─{4,}$/ })).map(l => l.props.color)
+  expect(new Set(lines).size).toBe(3)
+  const swatches = (await ui.findAll({ type: 'Text', text: /^─$/ })).map(s => s.props.color)
+  expect(new Set(swatches)).toEqual(new Set(lines))
+  await ui.unmount()
+})
+
 test('a participant keeps one color at both ends of a sequence diagram', async $ => {
   const seq = '```mermaid\nsequenceDiagram\n  Browser->>App: GET /cart\n  App-->>Browser: 200\n```'
   const ui = await $.ui.mount({ ...draw(seq), surface: 'terminal' })
