@@ -182,6 +182,7 @@ test('the figure hint names the opening line, every role, the width, one-column 
   expect(FIGURE_HINT).toContain('markup takes no columns')
   expect(FIGURE_HINT).toContain('CJK letters take two columns')
   expect(FIGURE_HINT).toContain('count them twice')
+  expect(FIGURE_HINT).toContain('pad box rows to the top border')
 })
 
 test('the figure hint says when to draw one and when not', () => {
