@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.32.0] - 2026-10-20
+
+### Added
+
+- On Claude Code 2.1.289 and later, in a terminal that draws hyperlinks and not over SSH, paths in replies (`/`, `~/`, `./`, `../`), the files in tool rows and `file://` links open their file or folder on click. Under WSL they open through `wsl.localhost`. The look is unchanged ([#238](https://github.com/NahumLitvin/prismantis/pull/238)).
+- Diff cards highlight code in the file's language and mark the words that changed on a deeper tint, as Claude Code's own diffs do. Removed lines stay plain, unchanged lines are no longer dimmed, `marks` keeps diff colors on the `+` and `−` only, and wrapped lines repeat their mark and tint ([#234](https://github.com/NahumLitvin/prismantis/pull/234)).
+- New, deleted and moved files draw as files instead of long green or red diffs: `Created <path> (N lines)` over a preview of the first 10 lines, `Deleted <path> (N lines)` that opens to what it held, and `Renamed <old> → <new>`. From 2.1.295 a click anywhere on a long card opens and closes it ([#236](https://github.com/NahumLitvin/prismantis/pull/236)).
+
+### Changed
+
+- A `file://` link stays clickable only when its label shows the path it opens. Other `file://` links draw as `label (target)` text ([#240](https://github.com/NahumLitvin/prismantis/pull/240)).
+- Programs and launchers never open on click: a path or `file://` link ending in an executable or launcher extension (`.exe`, `.app`, `.sh`, `.command`, `.lnk` and 71 more), or inside an `.app` bundle, draws as text ([#240](https://github.com/NahumLitvin/prismantis/pull/240)).
+
+### Fixed
+
+- A box in a figure whose rows slip a few columns off its frame draws closed. Boxes next to it keep their place, or move over in one piece when the box has to grow ([#171](https://github.com/NahumLitvin/prismantis/pull/171)).
+- Box figures come out with straight walls more often, especially with Hebrew rows of mixed length, because the figure hint asks the model to pad box rows to the top border ([#243](https://github.com/NahumLitvin/prismantis/pull/243)).
+
 ## [0.31.1] - 2026-10-19
 
 ### Fixed

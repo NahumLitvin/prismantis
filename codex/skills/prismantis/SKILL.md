@@ -12,6 +12,10 @@ START
 
 Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, `inline code`, a [link](https://github.com/NahumLitvin/prismantis) and a bare URL https://github.com/NahumLitvin/prismantis/issues, both clickable, numbers like 99.9% and 250ms, paths like ~/src/app.ts.
 
+Paths like ~/src/app.ts and ./README.md open on click in a terminal that draws hyperlinks, and so does a local link that shows its own path, like [/tmp/notes.md](file:///tmp/notes.md). A local link with any other name, like [notes](file:///tmp/notes.md), draws as its name and target, so it cannot hide where a click goes.
+
+Programs and launchers stay plain text, so a click never runs one: ./install.sh, ~/Desktop/setup.command and /Applications/Calculator.app keep the path color without a link.
+
 Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses [Foo_(bar)](https://en.wikipedia.org/wiki/Foo_(bar)), a file link [`render.tsx`](https://github.com/NahumLitvin/prismantis/blob/main/hooks/render.tsx) and **bold with *italic* inside**.
 
 ## Commands
@@ -80,9 +84,11 @@ Scroll up: what you typed draws in a bubble. `promptStyle` switches to `bar`, `c
 
 ### Tool rows
 
-Tool calls draw as one line, dimmed on the right by default. Set `toolStyle` in `/config` to `chat`, `tree-dim`, `tree-bold` or `classic`. `toolOutput: quiet` in `/config` hides what Claude only read and says in plain words what each call did: `Read src/app.ts lines 1–40`, `Searched src/ for "TODO"`.
+Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set `toolStyle` in `/config` to `chat`, `tree-dim`, `tree-bold` or `classic`. `toolOutput: quiet` in `/config` hides what Claude only read and says in plain words what each call did: `Read src/app.ts lines 1–40`, `Searched src/ for "TODO"`.
 
-Each edit or new file draws as a diff card headed `+N −M`: added and removed lines on a tint of the theme's own green and red, kept readable in every theme, long lines wrapped, the first 20 lines and a `+K more lines` button that opens the rest. Files a shell command changes (`sed -i`, a script) get the same card, one per file, headed by its path. Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`.
+Each edit draws as a diff card headed `+N −M`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a `+K more lines` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (`sed -i`, a script) get the same card, one per file, headed by its path. Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`.
+
+A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks, and a click on it or on `+K more lines` opens the rest. A file an Edit or a shell command creates shows its first 10 lines as added lines under `Created`. A file a shell command removes is one `Deleted` line that opens to its removed lines on a click, and a file moved unchanged is one `Renamed old → new` line.
 
 ### Quotes and rules
 
@@ -240,5 +246,14 @@ A figure draws as written, its markup colored by role:
 Provider  {accent:██████████████}{warn:✗} timeout               {accent:█} retry
 Handler   {ok:████████████████████} 200, nobody waits
 Bookings  0                   {ok:1}                 {warn:2 twice}
+```
+
+A box whose rows slip off its frame is lined up with its corner:
+
+```figure
+{accent:┌─ queue ──────────┐}
+{accent:│} {ok:● worker 1} {accent:│}
+{accent:│} {warn:▲ worker 2 slow}      {accent:│}
+{accent:└──────────────────┘}
 ```
 END
