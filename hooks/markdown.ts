@@ -35,6 +35,10 @@ const ALERT = /^\[!(note|tip|important|warning|caution)\]\s*(.*)$/i
 
 export type Highlight = { numbers: boolean; paths: boolean }
 
+export const FIGURE_ROLES = ['accent', 'warn', 'ok', 'note', 'dim', 'strong'] as const
+
+const ROLE_MARKUP = new RegExp(`\\{(?:${FIGURE_ROLES.join('|')}):([^{}]*)\\}`, 'g')
+
 const MAX_INLINE = 4000
 const MAX_QUOTE_DEPTH = 8
 const QUOTE = /^\s*>/
@@ -69,7 +73,8 @@ const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*
 const NUMBER = /(?<![\w.#/-])(v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/])/g
 const PATH = /(?<![\w/.:])((?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]*)*)/g
 
-const decorate = (text: string, hl: Highlight): Inline[] => {
+const decorate = (raw: string, hl: Highlight): Inline[] => {
+  const text = raw.replace(ROLE_MARKUP, '$1')
   if (!hl.numbers && !hl.paths) return [{ kind: 'text', text }]
   const marks: { start: number; end: number; kind: 'number' | 'path' }[] = []
   if (hl.paths) for (const m of text.matchAll(PATH)) marks.push({ start: m.index, end: m.index + m[0].length, kind: 'path' })

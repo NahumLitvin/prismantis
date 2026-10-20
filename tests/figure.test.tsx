@@ -1,7 +1,8 @@
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 
-import { FIGURE_GLYPHS, FIGURE_HINT, FIGURE_MAX_COLUMNS, FIGURE_MAX_LINES, FIGURE_ROLES, FIGURE_SAFE_COLUMNS, checkFigure, figureRoleColors, figureRuns, figureText, isFigureLang, reframe } from '../hooks/figure'
+import { FIGURE_GLYPHS, FIGURE_HINT, FIGURE_MAX_COLUMNS, FIGURE_MAX_LINES, FIGURE_SAFE_COLUMNS, checkFigure, figureRoleColors, figureRuns, figureText, isFigureLang, reframe } from '../hooks/figure'
+import { FIGURE_ROLES } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
 import { width } from '../hooks/render'
 
@@ -235,6 +236,7 @@ test('the figure hint names the opening line, every role, the width, one-column 
   expect(FIGURE_HINT).toContain('CJK letters take two columns')
   expect(FIGURE_HINT).toContain('count them twice')
   expect(FIGURE_HINT).toContain('pad box rows to the top border')
+  expect(FIGURE_HINT).toContain('Figures only: color with {role:text}')
 })
 
 test('the figure hint says when to draw one and when not', () => {

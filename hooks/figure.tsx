@@ -1,10 +1,9 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { cells, graphemes, heldLtr, mirrored, remember, width } from './render'
+import { FIGURE_ROLES } from './markdown'
 import { asIs, hasRtl, holdEngine, holdText, holdVisual, led } from './rtl'
 import type { Style, Theme } from './theme'
-
-export const FIGURE_ROLES = ['accent', 'warn', 'ok', 'note', 'dim', 'strong'] as const
 
 type FigureRole = (typeof FIGURE_ROLES)[number]
 
@@ -27,8 +26,8 @@ export const FIGURE_GLYPHS = '─│┌┐└┘├┤┬┴┼═║→←►�
 export const FIGURE_HINT = [
   'A fenced block whose opening line is exactly ```figure is drawn as a text picture, as written.',
   'Prefer one over mermaid when position carries meaning: durations racing on a time axis, a screen layout, phases, before/after; mermaid stays for plain flows and charts; none for short answers, code changes or reports. The prose never retells the picture.',
-  'When the user asks you to explain, compare or plan something and pictures would help, build the reply around them, with the core on the first screen as a picture or a sentence.',
-  'Color with {role:text}, not nested: accent for lines, warn for risk, ok for healthy, note for time, dim for asides, strong for emphasis.',
+  'When asked to explain, compare or plan something and pictures would help, build the reply around them, with the core on the first screen as a picture or a sentence.',
+  'Figures only: color with {role:text}, not nested: accent for lines, warn for risk, ok for healthy, note for time, dim for asides, strong for emphasis.',
   `At most ${FIGURE_SAFE_COLUMNS} columns, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji or tabs; markup takes no columns, so align on the drawn text and pad box rows to the top border. CJK letters take two columns, count them twice. Draw a time axis with edge ticks like ▏───▏───▏, not ├┼┤: █ fills its cell, ├┼┤ sit mid-cell.`,
 ].join(' ')
 

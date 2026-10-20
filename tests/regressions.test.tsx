@@ -341,6 +341,13 @@ test('a line holding only a tag draws dim on its own, never as a path or joined 
   expect(parse('a <b>bold</b> word\n<br/>', hl).map(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'dim'))).toEqual([false])
 })
 
+test('figure role markup outside a figure draws as its text in table cells and prose, and code keeps it', () => {
+  const [table] = parse('| Tool | Fits a sidecar? |\n|---|---|\n| A | {ok:✓} single binary |\n| B | {warn:✗} needs tinyproxy |', hl)
+  expect(table?.kind === 'table' && table.rows.map(row => inlineText(row[1]!))).toEqual(['✓ single binary', '✗ needs tinyproxy'])
+  const [prose] = parse('Also {ok:healthy} and **{strong:bold}**, but `{ok:1}`, {err:x} and {id:42} stay.', hl)
+  expect(prose?.kind === 'paragraph' && inlineText(prose.inline)).toBe('Also healthy and bold, but {ok:1}, {err:x} and {id:42} stay.')
+})
+
 test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
