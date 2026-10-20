@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.32.1] - 2026-10-20
+
+### Fixed
+
+- A `{role:text}` tag outside a figure, in a table cell or a sentence, draws as its text instead of printing raw. Inline code, unknown roles like `{err:x}` and look-alikes like `{id:42}` stay as written. The figure hint now says roles are for figures only ([#248](https://github.com/NahumLitvin/prismantis/pull/248)).
+
 ## [0.32.0] - 2026-10-20
 
 ### Added
