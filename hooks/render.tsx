@@ -5,7 +5,7 @@ import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
 import { CONTROL, displayText, inlineText, isWebLink, texText } from './markdown'
 import type { Flow } from './rtl'
-import { ROW_MARK, ROW_MARK_TEXT, WALL, commentTail, commentVisual, containsRtl, flow, hasRtl, listMarker, terminalLine } from './rtl'
+import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, commentTail, commentVisual, containsRtl, flow, hasRtl, listMarker, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -593,8 +593,10 @@ export const columnWidths = (natural: number[], available: number, gap: number, 
   return widths
 }
 
+const tableCells = (block: Extract<Block, { kind: 'table' }>) => [...block.header, ...block.rows.flat()]
+
 const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boolean => {
-  const cells = [...block.header, ...block.rows.flat()].filter(cell => displayText(cell).trim() !== '')
+  const cells = tableCells(block).filter(cell => displayText(cell).trim() !== '')
   return cells.filter(cell => flowOf(style, cell, Infinity)?.base === 'R').length * 2 > cells.length
 }
 
@@ -633,6 +635,16 @@ const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: stri
   </Box>
 )
 
+const tableEdges = (style: Style, block: Extract<Block, { kind: 'table' }>, rtl: boolean, mirror: boolean) => {
+  const held = !rtl && mirrored(style) && tableCells(block).some(containsRtl)
+  return {
+    opening: mirror ? ROW_MARK_TEXT : held ? LTR_BLANK : '',
+    wall: (text: string) => (mirror ? text.replace('│', WALL) : held ? text.replace(/ $/, LTR_BLANK) : text),
+    held,
+    marked: !mirror && !held,
+  }
+}
+
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string, rtl: boolean, tip?: Tip) => {
   const { Box, Text } = el
   const t = style.theme
@@ -643,27 +655,30 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
   const flip = rtl && !mirror
+  const { opening, wall, held, marked } = tableEdges(style, block, rtl, mirror)
   if (flip) order.reverse()
-  const lead = (k: string) => (mirror ? <Text key={`${k}.m`} color={t.rule}>{ROW_MARK_TEXT}</Text> : null)
+  const lead = (k: string) => (opening ? <Text key={`${k}.m`} color={t.rule}>{opening}</Text> : null)
+  const columnGap = held ? 0 : gap
+  const spacer = (k: string) => (held ? <Text key={k}>{LTR_BLANK + ' '.repeat(gap - 1)}</Text> : null)
   const ruleChar = style.tableStyle === 'grid' ? '━' : '─'
   const justify = (c: number) =>
     block.align[c] === 'right' ? 'flex-end' : block.align[c] === 'center' ? 'center' : 'flex-start'
 
   const rule = (k: string, heavy: boolean) => (
-    <Box key={k} flexDirection="row" columnGap={gap}>
+    <Box key={k} flexDirection="row" columnGap={columnGap}>
       {lead(k)}
-      {order.map(c => (
+      {order.map((c, i) => [
+        i > 0 && spacer(`${k}.${c}g`),
         <Text key={`${k}.${c}`} color={t.tableRule} dimColor={!heavy && !t.tableRule}>
           {(heavy ? ruleChar : '─').repeat(widths[c]!)}
-        </Text>
-      ))}
+        </Text>,
+      ])}
     </Box>
   )
 
   const bar = (k: string, text: string, lines = 1) => (
     <Text key={k} color={t.tableRule} dimColor={!t.tableRule}>{Array.from({ length: lines }, () => text).join('\n')}</Text>
   )
-  const wall = (text: string) => (mirror ? text.replace('│', WALL) : text)
   const clipped = (lines: number) => (k: string, text: string) => clip(el, width(text), bar(`${k}.b`, text, lines), k)
   const edge = (k: string, [left, fill, mid, right]: string) =>
     bar(k, (mirror ? WALL : left) + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + (mirror ? WALL : right))
@@ -684,12 +699,12 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   }
 
   const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar) => rtl && style.shape === 'inverse' ? terminalRow(cells, k, isHeader) : (
-    <Box key={k} flexDirection="row" columnGap={gap} alignItems="stretch">
+    <Box key={k} flexDirection="row" columnGap={columnGap} alignItems="stretch">
       {!box && lead(k)}
       {box && border(`${k}.l`, wall('│ '))}
       {order.map((c, i) => {
         const w = widths[c]!
-        const cell = flowOf(style, cells[c] ?? [], Infinity, !mirror)
+        const cell = flowOf(style, cells[c] ?? [], Infinity, marked)
         const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = mirror ? (block.align[c] === 'center' ? 'center' : 'flex-start') : cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
         const runs = isHeader ? headerRuns(content) : content
@@ -702,7 +717,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
                 : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>)}
           </Box>
         )
-        return box && i > 0 ? [border(`${k}.${c}s`, wall(' │ ')), cellBox] : cellBox
+        return [i > 0 && (box ? border(`${k}.${c}s`, wall(' │ ')) : spacer(`${k}.${c}g`)), cellBox]
       })}
       {box && border(`${k}.r`, wall(' │'))}
     </Box>

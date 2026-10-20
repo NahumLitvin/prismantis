@@ -4,7 +4,7 @@ import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
 import { rtlShowcaseText } from '../hooks/help'
 import { PRESETS } from '../hooks/presets'
-import { ROW_MARK, ROW_MARK_TEXT, TERMINALS, commentTail, flow, holdEngine, holdRow, holdVisual, terminalLine } from '../hooks/rtl'
+import { ROW_MARK, ROW_MARK_TEXT, TERMINALS, WALL, commentTail, flow, holdEngine, holdRow, holdVisual, terminalLine } from '../hooks/rtl'
 import { claudeAt, linksHttp } from './claude-version'
 
 const measure = (s: string) => [...s].length
@@ -510,6 +510,33 @@ test('iTerm draws a Hebrew table in reading order with a paseq wall on every row
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignSelf === 'flex-end' && b.props.key !== 'reply')).toBe(false)
   await ui.unmount()
 })
+
+const MIXED_TABLE = '| לילה | תוצאה | deploy |\n|---|---|---|\n| 13/10 | ✓ 8/8 | 86m |\n| 15/10 | ✗ נכשל | - |\n| ok אחרי 3m | ✓ | 51m |'
+
+test('iTerm holds a mostly English table left to right with a braille blank after every wall, so a row that opens in Hebrew keeps its column order', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const ui = await $.ui.mount(mount(MIXED_TABLE))
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  expect(texts.filter(t => t === '│⠀').length).toBe(4)
+  expect(texts.filter(t => t === ' │⠀').length).toBe(8)
+  expect(texts.some(t => t.includes(WALL))).toBe(false)
+  await ui.unmount()
+})
+
+test('iTerm holds every row of a mostly English rules table, the rules included, so the columns stay lined up', { options: { rtl: 'iterm', tableStyle: 'rules' } }, async $ => {
+  const ui = await $.ui.mount(mount(MIXED_TABLE))
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  expect(texts.filter(t => t === '⠀').length).toBe(7)
+  expect(texts.filter(t => t === '⠀ ').length).toBe(14)
+  await ui.unmount()
+})
+
+for (const tableStyle of ['box', 'rules'] as const) {
+  test(`iTerm leaves a ${tableStyle} table without Hebrew as it was`, { options: { rtl: 'iterm', tableStyle } }, async $ => {
+    const ui = await $.ui.mount(mount('| night | result |\n|---|---|\n| 13/10 | ok 8/8 |'))
+    expect((await ui.findAll({ type: 'Text' })).some(t => t.text.includes('⠀'))).toBe(false)
+    await ui.unmount()
+  })
+}
 
 test('iTerm adds no row mark inside a quote, an alert or a table cell, where a paseq wall already leads the row', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
   const rule = PRESETS['catppuccin-mocha'].rule
