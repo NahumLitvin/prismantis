@@ -502,6 +502,24 @@ test('under mirror any Hebrew makes the line right-to-left, so an English-majori
   expect(f?.lines[0]?.[0]).toEqual(ROW_MARK)
 })
 
+const mirrorLine = (nodes: Inline[]) => flow(nodes, 100, measure, 'mirror')?.lines[0] ?? []
+const texts = (line: Inline[]) => line.map(n => inlineText([n]))
+
+test('iTerm gets the neutral edges of a code span or path between Hebrew words swapped and turned, so its own bidi draws them where they were written', () => {
+  const line = mirrorLine([{ kind: 'text', text: 'תפתח את ' }, { kind: 'path', text: '~/.aws/credentials', href: 'file:///Users/me/.aws/credentials' }, { kind: 'text', text: ' ותוסיף ' }, { kind: 'code', text: '--profile nightly-rw' }, { kind: 'text', text: ' ואת ' }, { kind: 'code', text: '/team-code-review' }])
+  expect(texts(line)).toEqual(['תפתח את ', 'aws/credentials./~', ' ותוסיף ', 'profile nightly-rw--', ' ואת ', 'team-code-review/'])
+  expect(line[1]).toEqual({ kind: 'path', text: 'aws/credentials./~', href: 'file:///Users/me/.aws/credentials' })
+})
+
+test('iTerm keeps a code span as written when English sits beside it, since there its edges already read left to right', () => {
+  const line = mirrorLine([{ kind: 'text', text: 'run ' }, { kind: 'code', text: '--all' }, { kind: 'text', text: ' now ואז נבדוק' }])
+  expect(texts(line).join('')).toBe('׀ run --all now ואז נבדוק')
+})
+
+test('iTerm turns a code span with no letters whole, so an arrow between Hebrew words still points the way it was written', () => {
+  expect(texts(mirrorLine([{ kind: 'text', text: 'שלב ' }, { kind: 'code', text: '->' }, { kind: 'text', text: ' שלב' }]))).toEqual(['שלב ', '<-', ' שלב'])
+})
+
 test('iTerm draws a Hebrew table in reading order with a paseq wall on every row, frame included', { options: { rtl: 'iterm' } }, async $ => {
   const ui = await $.ui.mount(mount('| רכיב | Status | הערה |\n|---|---|---|\n| הבדיקה | passed | רצה אתמול |'))
   const marks = (await ui.findAll({ type: 'Text' })).filter(t => t.text.startsWith('׀'))

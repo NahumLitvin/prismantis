@@ -91,6 +91,8 @@ const baseOf = (all: Unit[]): Dir => {
   return all.map(u => classify(u.ch)).find(Boolean) ?? 'R'
 }
 
+const turn = <U extends Unit>(us: U[]): U[] => us.map(u => ({ ...u, ch: MIRROR[u.ch] ?? u.ch })).reverse()
+
 const reorder = <U extends Unit>(all: U[], base: Dir): U[] => {
   const strong = all.map((u, i) => {
     const own = classify(u.ch)
@@ -117,7 +119,7 @@ const reorder = <U extends Unit>(all: U[], base: Dir): U[] => {
     if (last && last.d === dir[i]) last.u.push(u)
     else runs.push({ d: dir[i]!, u: [u] })
   })
-  const out = runs.map(r => (r.d === 'R' ? r.u.map(u => ({ ...u, ch: MIRROR[u.ch] ?? u.ch })).reverse() : r.u))
+  const out = runs.map(r => (r.d === 'R' ? turn(r.u) : r.u))
   return (base === 'R' ? out.reverse() : out).flat()
 }
 
@@ -234,6 +236,34 @@ const isolate = (all: Unit[]): Unit[] =>
     return [...(opens ? [mark] : []), u, ...(closes ? [mark] : [])]
   })
 
+const strongFrom = (line: Unit[], i: number, step: 1 | -1): Dir => {
+  for (let j = i; j >= 0 && j < line.length; j += step) {
+    const c = bidiClass(line[j]!.ch)
+    if (c === 'L' || c === 'R') return c
+  }
+  return 'R'
+}
+
+const swapEdges = (span: Unit[]): Unit[] => {
+  let a = 0
+  while (a < span.length && !classify(span[a]!.ch)) a++
+  let b = span.length
+  while (b > a && !classify(span[b - 1]!.ch)) b--
+  return [...turn(span.slice(b)), ...span.slice(a, b), ...turn(span.slice(0, a))]
+}
+
+const holdEdges = (line: Unit[]): Unit[] => {
+  const out = [...line]
+  for (let i = 0, j = 0; i < line.length; i = j) {
+    j = i + 1
+    if (!ISOLATED.includes(line[i]!.fmt.leaf)) continue
+    while (j < line.length && sameFmt(line[j]!.fmt, line[i]!.fmt)) j++
+    const span = line.slice(i, j)
+    if (!span.some(u => classify(u.ch) === 'R') && strongFrom(line, i - 1, -1) !== 'L' && strongFrom(line, j, 1) !== 'L') out.splice(i, span.length, ...swapEdges(span))
+  }
+  return out
+}
+
 const forEngine = (line: Unit[], lead: boolean): Unit[] => {
   const all = isolate(line)
   const first = all.map(u => bidiClass(u.ch)).find(c => c === 'L' || c === 'R')
@@ -245,6 +275,9 @@ const startsLatin = (line: Unit[]): boolean => line.map(u => bidiClass(u.ch)).fi
 
 export const opensLatin = (text: string): boolean => startsLatin(units(text, { wrap: [], leaf: 'text' }))
 
+const ordered = (line: Unit[], shape: Shape, base: Dir, lead: boolean): Unit[] =>
+  shape === 'engine' ? forEngine(line, lead) : shape === 'mirror' ? holdEdges(line) : asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base)
+
 export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual', mark = true): Flow | null => {
   if (!containsRtl(nodes)) return null
   const all = flatten(nodes)
@@ -253,7 +286,7 @@ export const flow = (nodes: Inline[], columns: number, measure: (s: string) => n
   const logical = base === 'R' ? wrapUnits(all, columns - (marked ? measure(ROW_MARK_TEXT) : 0), measure) : [all]
   const lines = logical.map(line => {
     const lead = marked && startsLatin(line)
-    const built = rebuild(shape === 'engine' ? forEngine(line, lead) : asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base))
+    const built = rebuild(ordered(line, shape, base, lead))
     return lead ? [ROW_MARK, ...built] : built
   })
   return { base, lines: shape === 'words' ? lines.map(line => shapeNodes(line, shape)) : lines }
