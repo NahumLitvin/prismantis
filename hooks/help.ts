@@ -335,6 +335,10 @@ export const rtlShowcaseText = (): string => `
 ls -la # רשימת הקבצים בתיקייה
 \`\`\`
 
+\`\`\`text
+טיוטה להודעה: הגרסה עלתה ב-14:20
+\`\`\`
+
 \`\`\`mermaid
 flowchart LR
   A[בקשה חדשה] --> B{האם יש cache?}

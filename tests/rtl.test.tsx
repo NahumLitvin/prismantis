@@ -171,9 +171,29 @@ test('an English table with one Hebrew cell keeps its column order and side', { 
 })
 
 test('a code comment is reordered and the code itself is not', { options: { rtl: 'warp' } }, async $ => {
-  const ui = await $.ui.mount(mount('```bash\nls -la # שלום\n```\n\n```text\nשלום\n```'))
+  const ui = await $.ui.mount(mount('```bash\nls -la # שלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^ # םולש$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^ls$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('Hebrew lines in a plain text block draw in display order', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount('```text\nשלום\nהיי אורן!\nבheadline שים ex-8200\n```'))
+  expect(await ui.find({ type: 'Text', text: /^םולש$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^!ןרוא ייה$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^ex-8200 םיש headlineב$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a Hebrew string in highlighted code draws in display order and the code around it does not move', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount('```python\nprint("שלום עולם")\n```'))
+  expect(await ui.find({ type: 'Text', text: /^"םלוע םולש"$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^print$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a plain text block keeps Hebrew as written where the terminal orders it', { options: { rtl: 'gnome' } }, async $ => {
+  const ui = await $.ui.mount(mount('```text\nשלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^שלום$/ })).toBeDefined()
   await ui.unmount()
 })
@@ -318,6 +338,7 @@ test('detection also runs when a prompt is submitted, so a reload without sessio
 test('the demo-rtl screen has every element and draws right to left', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(mountDemo(rtlShowcaseText()))
   expect(await ui.find({ type: 'Text', text: /^לאמשל ןימימ תירבע$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Text' })).some(t => t.text.includes('הטויט'))).toBe(true)
   expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.alignItems === 'flex-end').length >= 3).toBe(true)
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.width === '100%')).toBe(true)
   await ui.unmount()

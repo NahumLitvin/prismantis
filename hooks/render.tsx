@@ -5,7 +5,7 @@ import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
 import { CONTROL, displayText, inlineText, isWebLink, texText } from './markdown'
 import type { Flow } from './rtl'
-import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, commentTail, commentVisual, containsRtl, flow, hasRtl, listMarker, terminalLine } from './rtl'
+import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, listMarker, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -473,9 +473,13 @@ export const PRISM_COLORS: Record<string, keyof Theme> = {
 
 type Segment = { text: string; color?: string; italic: boolean }
 
+const shownCode = (text: string, style: Style): string => (style.reorder ? codeVisual(text, style.shape) : text)
+
+const textSegment = (text: string, style: Style, color: string | undefined, italic: boolean): Segment => ({ text: italic ? text : shownCode(text, style), color, italic })
+
 const flatten = (tokens: PrismToken[], style: Style, color?: string, italic = false): Segment[] =>
   tokens.flatMap(token => {
-    if (typeof token === 'string') return [{ text: token, color, italic }]
+    if (typeof token === 'string') return [textSegment(token, style, color, italic)]
     const names = [token.type, ...(Array.isArray(token.alias) ? token.alias : token.alias ? [token.alias] : [])]
     const slot = names.map(n => PRISM_COLORS[n]).find(Boolean)
     const inner = Array.isArray(token.content) ? token.content : [token.type === 'comment' && typeof token.content === 'string' && style.reorder ? commentVisual(token.content, style.shape) : token.content]
@@ -547,7 +551,7 @@ export const codeLine = (el: ElementTable, style: Style, line: string, lang: str
       </Text>
     )
   }
-  if (!isShell) return <Text key={key} color={t.codeText}>{line || ' '}</Text>
+  if (!isShell) return <Text key={key} color={t.codeText}>{shownCode(line, style) || ' '}</Text>
   if (/^\s*#/.test(line)) return <Text key={key} color={t.codeComment}>{line}</Text>
   const parts = line.split(/("[^"]*"|'[^']*'|\s+)/).filter(p => p !== '')
   let seenCommand = false

@@ -309,6 +309,9 @@ export const commentVisual = (text: string, shape: Shape = 'visual'): string => 
   return c ? c.head + c.marker + c.tail : text
 }
 
+export const codeVisual = (text: string, shape: Shape = 'visual'): string =>
+  asWritten(shape) || !R.test(text) ? text : text.split('\n').map(line => shapeText(visualText(line), shape)).join('\n')
+
 export const hasRtl = (text: string): boolean => R.test(text)
 
 export const LTR_BLANK = '⠀'
