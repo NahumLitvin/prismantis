@@ -449,7 +449,7 @@ const pressInline = (el: ElementTable, style: Style, nodes: Inline[], columns: n
         for (const m of inside) {
           if (m.start > at) parts.push(run(at, m.start))
           parts.push(
-            <Button key={`${key}.n${m.start}`} plain {...noteHover(style, m.note)} onPress={m.press}>
+            <Button key={`${key}.n${m.start}`} plain label={m.text} {...noteHover(style, m.note)} onPress={m.press}>
               <Text color={style.theme.accent} bold={look.bold}>{m.text}</Text>
             </Button>,
           )
