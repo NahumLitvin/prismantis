@@ -482,6 +482,62 @@ test('iTerm mirrors a right-to-left row itself, so a Hebrew paragraph that opens
   await ui.unmount()
 })
 
+const MOSTLY_HEBREW_LIST = '1. הרצה של `/team-code-review` על השינוי\n2. בדיקה שנייה עם `/codex:review` אחרי התיקונים\n3. Codex adversarial review\n4. סיכום הממצאים ופתיחת PR'
+const MOSTLY_ENGLISH_LIST = '- run the unit tests\n- push the branch\n- בדיקה ידנית של המסך\n- open the PR'
+
+test('a mostly Hebrew list draws its English item right to left too, so the list stays one list', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount(MOSTLY_HEBREW_LIST))
+  expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.justifyContent === 'flex-end' && b.props.paddingRight !== undefined).length).toBe(4)
+  await ui.unmount()
+})
+
+test('iTerm marks the English item of a mostly Hebrew list, so the terminal mirrors it with the rest', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount(MOSTLY_HEBREW_LIST))
+  expect((await ui.findAll({ type: 'Text' })).filter(t => t.text === ROW_MARK_TEXT).length).toBe(1)
+  await ui.unmount()
+})
+
+test('a mostly English list draws its Hebrew item left to right with the rest', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount(MOSTLY_ENGLISH_LIST))
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.justifyContent === 'flex-end' && b.props.paddingRight !== undefined)).toBe(false)
+  await ui.unmount()
+})
+
+test('iTerm holds the Hebrew item of a mostly English list left to right with a braille blank after the bullet', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount(MOSTLY_ENGLISH_LIST))
+  const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+  expect(texts.filter(t => t === '• ').length).toBe(3)
+  expect(texts.filter(t => t === '•').length).toBe(1)
+  expect(texts.some(t => t === '⠀בדיקה ידנית של המסך')).toBe(true)
+  await ui.unmount()
+})
+
+test('a long Hebrew item in a mostly English list still wraps in reading order', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount('- run the unit tests\n- push the branch\n- בדיקה ידנית של המסך הראשי ושל כל החלונות שנפתחים ממנו\n- open the PR', 30))
+  const rows = (await ui.findAll({ type: 'Text' })).map(t => t.text).filter(t => /[א-ת]/.test(t) && !t.includes('\n'))
+  expect(rows.length >= 2).toBe(true)
+  for (const row of rows) expect(measure(row) <= 28).toBe(true)
+  expect(rows[0]!.endsWith('הקידב')).toBe(true)
+  await ui.unmount()
+})
+
+for (const rtl of ['warp', 'iterm'] as const)
+  test(`an English item with a named link in a mostly Hebrew list keeps its link label and no raw address on ${rtl}`, { options: { rtl } }, async $ => {
+    const ui = await $.ui.mount(mount('1. הרצה של הבדיקות\n2. בדיקה שנייה של התוצאות\n3. see [the docs](https://example.com/docs)'))
+    const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+    expect(texts.some(t => t.includes('(https://example.com/docs)'))).toBe(false)
+    expect(texts.some(t => t.includes('the docs'))).toBe(true)
+    await ui.unmount()
+  })
+
+for (const rtl of ['warp', 'iterm'] as const)
+  test(`an English item with a footnote in a mostly Hebrew list keeps its mark clickable on ${rtl}`, { options: { rtl } }, async ($, on) => {
+    claudeAt(on, '2.1.295')
+    const ui = await $.ui.mount(mount('1. הרצה של הבדיקות\n2. בדיקה שנייה של התוצאות\n3. see the note[^1]\n\n[^1]: the note'))
+    expect((await ui.findAll({ type: 'Button' })).filter(b => b.props.plain && b.props.label === '¹').length).toBe(1)
+    await ui.unmount()
+  })
+
 test('Apple Terminal keeps the right alignment and gets the mark too', { options: { rtl: 'apple-terminal' } }, async $ => {
   const ui = await $.ui.mount(mount('kubectl נכשל על ה-cluster'))
   expect(await ui.find({ type: 'Text', text: /^׀ $/ })).toBeDefined()

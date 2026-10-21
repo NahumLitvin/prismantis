@@ -599,10 +599,9 @@ export const columnWidths = (natural: number[], available: number, gap: number, 
 
 const tableCells = (block: Extract<Block, { kind: 'table' }>) => [...block.header, ...block.rows.flat()]
 
-const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boolean => {
-  const cells = tableCells(block).filter(cell => displayText(cell).trim() !== '')
-  return cells.filter(cell => flowOf(style, cell, Infinity)?.base === 'R').length * 2 > cells.length
-}
+const mostlyRtl = (style: Style, lines: Inline[][]): boolean => lines.filter(line => flowOf(style, line, Infinity)?.base === 'R').length * 2 > lines.length
+
+const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boolean => mostlyRtl(style, tableCells(block).filter(cell => displayText(cell).trim() !== ''))
 
 const ART_WIDTH = 100
 
@@ -873,6 +872,57 @@ const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kin
   )
 }
 
+const listSide = (style: Style, block: Extract<Block, { kind: 'list' }>): 'R' | 'L' | undefined => {
+  if (!style.reorder || !block.items.some(item => containsRtl(item.inline))) return undefined
+  return mostlyRtl(style, block.items.map(item => item.inline)) ? 'R' : 'L'
+}
+
+const leftItem = (el: ElementTable, style: Style, depth: number, lead: string, color: string | undefined, inline: Inline[], room: number, k: string, look: TextLook, tip?: Tip) => {
+  const { Box, Text } = el
+  return (
+    <Box key={k} flexDirection="row" paddingLeft={depth * 2}>
+      <Text color={color}>{lead}</Text>
+      {pressInline(el, style, inline, room, `${k}.i`, tip, look) ?? <Text {...look}>{renderInline(el, style, inline, k)}</Text>}
+    </Box>
+  )
+}
+
+const leadSide = (style: Style, block: Block, room: number) => (block.kind === 'list' ? listSide(style, block) : flowOf(style, leadInline([block]), room)?.base)
+
+const heldItem = (el: ElementTable, style: Style, item: Extract<Block, { kind: 'list' }>['items'][number], glyph: string, color: string | undefined, room: number, k: string, look: TextLook) => {
+  const { Box, Text } = el
+  const lines = mirrored(style) ? flowOf(style, item.inline, room - 1, false)!.lines.map(line => [{ kind: 'text' as const, text: LTR_BLANK }, ...line]) : flowOf(style, item.inline, room)!.lines
+  return (
+    <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
+      <Text color={color}>{mirrored(style) ? glyph : `${glyph} `}</Text>
+      <Box flexDirection="column">{renderFlow(el, style, lines, k, look)}</Box>
+    </Box>
+  )
+}
+
+const listRow = (el: ElementTable, style: Style, item: Extract<Block, { kind: 'list' }>['items'][number], glyph: string, glyphColor: string | undefined, side: 'R' | 'L' | undefined, room: number, k: string, look: TextLook, tip?: Tip) => {
+  const { Box, Text } = el
+  const rtl = flowOf(style, item.inline, room)
+  const right = side ? side === 'R' : rtl?.base === 'R'
+  const lines = rtl?.lines ?? [mirrored(style) ? [ROW_MARK, ...item.inline] : item.inline]
+  const drawn = () => (rtl ? null : pressInline(el, style, lines[0]!, room, `${k}.i`, tip, look, mirrored(style) ? {} : { justifyContent: 'flex-end' })) ?? renderFlow(el, style, lines, k, look)
+  return right && mirrored(style) ? (
+    <Box key={k} flexDirection="row">
+      <Text color={glyphColor}>{`${' '.repeat(item.depth * 2)}${glyph} `}</Text>
+      <Box flexDirection="column">{drawn()}</Box>
+    </Box>
+  ) : right ? (
+    <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
+      <Box flexDirection="column" alignItems="flex-end">{drawn()}</Box>
+      <Text color={glyphColor}>{` ${listMarker(glyph, style.shape)}`}</Text>
+    </Box>
+  ) : rtl?.base === 'R' ? (
+    heldItem(el, style, item, glyph, glyphColor, room, k, look)
+  ) : (
+    leftItem(el, style, item.depth, `${glyph} `, glyphColor, rtl ? rtl.lines[0]! : item.inline, room, k, look, tip)
+  )
+}
+
 const TASK_GLYPHS = { checks: ['[ ]', '[✓]'], ticks: ['○', '✓'], box: ['□', '✓'], progress: ['○', '✓'] } as const
 
 const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'list' }>, columns: number, key: string, copy?: CopyButton, fold?: Fold, tip?: Tip) => {
@@ -883,6 +933,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
   const filled = tasks.length ? Math.round((done / tasks.length) * 20) : 0
   const strike = style.taskStyle === 'checks' || style.taskStyle === 'box'
   const tick = style.taskStyle === 'ticks' || style.taskStyle === 'progress'
+  const side = listSide(style, block)
   return (
     <Box key={key} flexDirection="column">
       {style.taskStyle === 'progress' && tasks.length > 0 && (
@@ -897,24 +948,8 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
         const glyph = item.task !== undefined ? TASK_GLYPHS[style.taskStyle][item.task ? 1 : 0] : /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
         const glyphColor = item.task && tick ? t.accent : t.bullet
         const pad = item.depth * 2 + glyph.length + 1
-        const rtl = flowOf(style, item.inline, columns - pad)
         const look = { ...(item.task === true ? { dimColor: true, strikethrough: strike } : {}), ...prose(style) }
-        const row = rtl?.base === 'R' && mirrored(style) ? (
-          <Box key={k} flexDirection="row">
-            <Text color={glyphColor}>{`${' '.repeat(item.depth * 2)}${glyph} `}</Text>
-            <Box flexDirection="column">{renderFlow(el, style, rtl.lines, k, look)}</Box>
-          </Box>
-        ) : rtl?.base === 'R' ? (
-          <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
-            <Box flexDirection="column" alignItems="flex-end">{renderFlow(el, style, rtl.lines, k, look)}</Box>
-            <Text color={glyphColor}>{` ${listMarker(glyph, style.shape)}`}</Text>
-          </Box>
-        ) : (
-          <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
-            <Text color={glyphColor}>{`${glyph} `}</Text>
-            {pressInline(el, style, rtl ? rtl.lines[0]! : item.inline, columns - pad, `${k}.i`, tip, look) ?? <Text dimColor={item.task === true} strikethrough={item.task === true && strike} {...prose(style)}>{renderInline(el, style, rtl ? rtl.lines[0]! : item.inline, k)}</Text>}
-          </Box>
-        )
+        const row = listRow(el, style, item, glyph, glyphColor, side, columns - pad, k, look, tip)
         if (!item.blocks) return row
         return (
           <Box key={k} flexDirection="column">
@@ -1114,7 +1149,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const mirror = hebrew && mirrored(style)
     if (hover) {
       const wide = rtl && (block.kind === 'list' || block.kind === 'quote' || block.kind === 'alert' || rtlTables[b])
-      const start = !!wide && (!!rtlTables[b] || flowOf(style, leadInline([block]), room(b))?.base === 'R')
+      const start = !!wide && (!!rtlTables[b] || leadSide(style, block, room(b)) === 'R')
       return markedRow(el, `c${b}`, element, floating(fitted([first, second, html]), opensWithCopy(block), start), start)
     }
     const button = second ? (
