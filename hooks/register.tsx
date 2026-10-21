@@ -10,8 +10,8 @@ import type { ClipboardBackend } from './clipboard'
 import { clipboardCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
-import type { CopyButton, Fold, TerminalEnv } from './render'
-import { MARK, bashEdits, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
+import type { CopyButton, DrawPaste, Fold, TerminalEnv } from './render'
+import { MARK, bashEdits, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { HINT, ISSUE_HINT, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -745,7 +745,23 @@ export const register: Register = (on, options) => {
     const at = style.clock === 'off' ? undefined : sentAt(await read($, sent), e.props.text, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
     if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
-    return renderUserPrompt($.ui.resolve(e), fit(e.viewport), e.props.text, columnsOf(e.viewport), time)
+    const el = $.ui.resolve(e)
+    const drawn = forSurface(fit(e.viewport), e.surface, await linkReach($, probes, style))
+    const columns = columnsOf(e.viewport)
+    const open = await read($, unfolded)
+    const paste: DrawPaste = (body, key) => {
+      const lines = body.split('\n')
+      const title = `pasted text · ${lines.length} lines`
+      const toggle = folder($, el, open)(`${e.requestId}:${key}`, lines.length, key, { label: title })
+      const opened = toggle?.folded === false
+      return (
+        <el.Box key={key} borderStyle="double" borderColor={drawn.theme.codeComment} paddingX={1} flexDirection="column" alignSelf="flex-start">
+          {opened ? <el.Box key="head" flexDirection="row" justifyContent="space-between" columnGap={4}><el.Text color={drawn.theme.codeComment}>{title}</el.Text>{toggle.element}</el.Box> : toggle?.element ?? null}
+          {opened ? drawMarkdown($, el, drawn, [{ kind: 'code', lang: pasteLang(body), lines, raw: body }], columns - 8, undefined, undefined, undefined, open) : null}
+        </el.Box>
+      )
+    }
+    return renderUserPrompt(el, drawn, e.props.text, columns, time, paste)
   })
 
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {

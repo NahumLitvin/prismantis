@@ -1694,7 +1694,7 @@ const diffBox = (el: ElementTable, style: Style, rows: DiffLine[], fold: Fold, i
   const frame = style.diffStyle === 'card' ? { borderStyle: 'round', borderColor: t.rule, paddingX: 1 } : {}
   const head = (
     <Text key="head">
-      {title === undefined ? null : <Text color={t.path}>{drawPieces(el, style, [{ text: title, path }, { text: ' ' }])}</Text>}
+      {title === undefined ? null : <Text color={t.path}>{style.pressPreview === true && toggle?.around ? `${title} ` : drawPieces(el, style, [{ text: title, path }, { text: ' ' }])}</Text>}
       <Text color={marks['+']} dimColor={added === 0}>{`+${added}`}</Text>
       <Text> </Text>
       <Text color={marks['-']} dimColor={removed === 0}>{`−${removed}`}</Text>
@@ -2406,18 +2406,41 @@ export const renderTurnDuration = ({ Text }: ElementTable, style: Style, word: s
   </Text>
 )
 
-export const renderUserPrompt = (el: ElementTable, style: Style, text: string, columns: number, time?: string): RenderElement => {
+export const pasteLang = (body: string): string => {
+  const s = body.trim()
+  if (/^[[{]/.test(s)) {
+    try {
+      JSON.parse(s)
+      return 'json'
+    } catch {}
+  }
+  if (/^@@ /m.test(s) && /^(diff |--- |\+\+\+ )/m.test(s)) return 'diff'
+  return /^<[a-z!?]/i.test(s) && />$/.test(s) ? 'markup' : ''
+}
+
+const PASTE = /<pasted_content id="([^"]*)">\n?([\s\S]*?)\n?<\/pasted_content id="\1">/g
+
+export type DrawPaste = (body: string, key: string) => RenderElement
+
+export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, columns: number, time?: string, paste?: DrawPaste): RenderElement => {
   const { Box, Text } = el
+  const pastes: string[] = []
+  const text = typed.replace(PASTE, (_, _id, body: string) => `\0${pastes.push(body) - 1}\0`)
+  const own = (line: string) => paste && /^\0\d+\0$/.test(line) ? pastes[Number(line.slice(1, -1))]! : undefined
+  const told = (line: string) => line.replace(/\0(\d+)\0/g, (_, n) => `[Pasted text +${pastes[Number(n)]!.split('\n').length} lines]`)
   const t = style.theme
   const color = style.promptStyle === 'chevron' ? t.accent : t.heading
-  const lines = text.split('\n').map(line => flowOf(style, [{ kind: 'text', text: line }], columns - 4 - (time === undefined ? 0 : time.length + 1)))
+  const rows = text.split('\n')
+  const lines = rows.map(line => (own(line) === undefined ? flowOf(style, [{ kind: 'text', text: told(line) }], columns - 4 - (time === undefined ? 0 : time.length + 1)) : null))
   const hebrew = lines.some(l => l?.base === 'R')
   const rtl = hebrew && !mirrored(style)
   const body = (
     <Box flexDirection="column" {...(rtl ? { alignItems: 'flex-end' as const } : {})}>
-      {text.split('\n').map((line, i) => {
+      {rows.map((line, i) => {
+        const pasted = own(line)
+        if (pasted !== undefined) return paste!(pasted, `paste${i}`)
         const flow = lines[i]
-        return flow ? renderFlow(el, style, flow.lines, `p${i}`, { color, bold: style.promptStyle === 'chevron' }) : <Text key={`p${i}`} color={color} bold={style.promptStyle === 'chevron'}>{line}</Text>
+        return flow ? renderFlow(el, style, flow.lines, `p${i}`, { color, bold: style.promptStyle === 'chevron' }) : <Text key={`p${i}`} color={color} bold={style.promptStyle === 'chevron'}>{told(line)}</Text>
       })}
     </Box>
   )

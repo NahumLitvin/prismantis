@@ -848,6 +848,19 @@ test('your prompts draw in a rounded accent bubble by default', async $ => {
   }
 })
 
+test('a pasted block in your prompt is its own frame, folded to a button that opens it as highlighted code', async $ => {
+  const ui = await $.ui.mount(prompt('look\n<pasted_content id="9649">\n{\n  "on": true\n}\n</pasted_content id="9649">\nseems obvious!'))
+  const button = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === 'pasted text · 3 lines')
+  expect(button).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^seems obvious!$/ })).toBeDefined()
+  expect(JSON.stringify(await ui.drawn())).not.toMatch(/pasted_content|"on"/)
+  await ui.press({ key: button!.key! })
+  expect((await ui.find({ type: 'Text', text: /^true$/ }))?.props.color).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^── json$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Button' })).some(b => b.props.label === 'show less')).toBe(true)
+  await ui.unmount()
+})
+
 test('promptStyle bar draws an accent bar', { options: { promptStyle: 'bar' } }, async $ => {
   const ui = await $.ui.mount(prompt('hi'))
   expect((await ui.find({ type: 'Text', text: /^▌ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
