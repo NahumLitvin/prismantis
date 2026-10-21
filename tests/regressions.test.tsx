@@ -660,7 +660,7 @@ const PATH_TEXTS = ['/srv/app/main.ts', '~/notes/todo.md', './docs/guide.md.', '
 
 const pathColored = async (ui: { findAll: (query: { type: 'Text'; text: RegExp }) => Promise<{ props: { color?: unknown } }[]> }) => {
   for (const text of PATH_TEXTS) {
-    const found = await ui.findAll({ type: 'Text', text: new RegExp(`^${text.replace(/[.]/g, '\\.')}$`) })
+    const found = await ui.findAll({ type: 'Text', text: exact(text) })
     if (!found.some(n => n.props.color === PRESETS['catppuccin-mocha'].path)) return false
   }
   return true
@@ -2000,7 +2000,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
     const ui = await $.ui.mount({ ...mount([...PROGRAMS, ...DOCUMENTS].join(' and '), 1000), surface })
     expect((await ui.findAll({ type: 'Link' })).map(l => l.props.label)).toEqual(surface === 'terminal' ? DOCUMENTS : [])
-    for (const path of PROGRAMS) expect([path, (await ui.find({ type: 'Text', text: new RegExp(`^${path.replace(/[.]/g, '\\$&')}$`) }))?.props.color]).toEqual([path, PRESETS['catppuccin-mocha'].path])
+    for (const path of PROGRAMS) expect([path, (await ui.find({ type: 'Text', text: exact(path) }))?.props.color]).toEqual([path, PRESETS['catppuccin-mocha'].path])
     await ui.unmount()
   })
 
@@ -2011,7 +2011,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const documents = ['file:///tmp/a.html#x.exe', 'file:///tmp/report.md?open=x.exe', 'file:///tmp/x.exe.txt']
     const ui = await $.ui.mount({ ...mount([...programs, ...documents].map(href => `[${href}](${href})`).join(' and '), 1000), surface })
     expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(surface === 'terminal' ? documents : [])
-    for (const href of programs) expect([href, await ui.find({ type: 'Text', text: new RegExp(`^${href.replace(/[.?$]/g, '\\$&')}$`) }) !== undefined]).toEqual([href, true])
+    for (const href of programs) expect([href, await ui.find({ type: 'Text', text: exact(href) }) !== undefined]).toEqual([href, true])
     await ui.unmount()
   })
 
