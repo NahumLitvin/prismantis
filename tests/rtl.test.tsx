@@ -192,6 +192,22 @@ test('a Hebrew string in highlighted code draws in display order and the code ar
   await ui.unmount()
 })
 
+test('a Hebrew line wider than a plain text block wraps before it is reordered, so the first row opens the sentence', { options: { rtl: 'warp' } }, async $ => {
+  const words = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שביעי', 'שמיני', 'תשיעי', 'עשירי', 'אחד', 'עשר', 'שנים', 'עשר']
+  const ui = await $.ui.mount(mount(`\`\`\`text\n${words.join(' ')}\n\`\`\``, 60))
+  const rows = (await ui.find({ type: 'Text', text: /ןושאר/ }))!.text.split('\n')
+  expect(rows.length).toBe(2)
+  expect(rows[0]!.endsWith('ןושאר')).toBe(true)
+  await ui.unmount()
+})
+
+test('a Hebrew string in a bash block draws in display order and the command keeps its color', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount('```bash\necho "שלום עולם"\n```'))
+  expect(await ui.find({ type: 'Text', text: /^"םלוע םולש"$/ })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: /^echo$/ }))?.props.color).toBeDefined()
+  await ui.unmount()
+})
+
 test('a plain text block keeps Hebrew as written where the terminal orders it', { options: { rtl: 'gnome' } }, async $ => {
   const ui = await $.ui.mount(mount('```text\nשלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^שלום$/ })).toBeDefined()

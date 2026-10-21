@@ -309,8 +309,14 @@ export const commentVisual = (text: string, shape: Shape = 'visual'): string => 
   return c ? c.head + c.marker + c.tail : text
 }
 
-export const codeVisual = (text: string, shape: Shape = 'visual'): string =>
-  asWritten(shape) || !R.test(text) ? text : text.split('\n').map(line => shapeText(visualText(line), shape)).join('\n')
+export const codeVisual = (text: string, shape: Shape = 'visual', max = Infinity, measure: (s: string) => number = s => s.length): string =>
+  asWritten(shape) || !R.test(text)
+    ? text
+    : text
+        .split('\n')
+        .flatMap(line => (measure(line) > max ? wrapUnits(units(line, { wrap: [], leaf: 'text' }), max, measure).map(row => row.map(u => u.ch).join('')) : [line]))
+        .map(line => shapeText(visualText(line), shape))
+        .join('\n')
 
 export const hasRtl = (text: string): boolean => R.test(text)
 
