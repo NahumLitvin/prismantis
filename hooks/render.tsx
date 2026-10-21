@@ -473,7 +473,7 @@ export const PRISM_COLORS: Record<string, keyof Theme> = {
 
 type Segment = { text: string; color?: string; italic: boolean }
 
-const shownCode = (text: string, style: Style, room?: number): string => (style.reorder ? codeVisual(text, style.shape, room, width) : text)
+const shownCode = (text: string, style: Style, room?: number, command = false): string => (style.reorder ? codeVisual(text, style.shape, room, width, command) : text)
 
 const flatten = (tokens: PrismToken[], style: Style, color?: string, italic = false): Segment[] =>
   tokens.flatMap(token => {
@@ -555,7 +555,7 @@ export const codeLine = (el: ElementTable, style: Style, line: string, lang: str
   }
   if (!isShell) return <Text key={key} color={t.codeText}>{shownCode(line, style, room) || ' '}</Text>
   if (/^\s*#/.test(line)) return <Text key={key} color={t.codeComment}>{line}</Text>
-  const parts = shownCode(line, style, room).split(/("[^"]*"|'[^']*'|\s+)/).filter(p => p !== '')
+  const parts = shownCode(line, style, room, true).split(/("[^"]*"|'[^']*'|\s+)/).filter(p => p !== '')
   let seenCommand = false
   return (
     <Text key={key} color={t.codeText}>

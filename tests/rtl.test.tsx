@@ -208,6 +208,12 @@ test('a Hebrew string in a bash block draws in display order and the command kee
   await ui.unmount()
 })
 
+test('a shell line that opens with a command keeps the command first when most of its words are Hebrew', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount('```bash\necho "שלום עולם"\n```'))
+  expect(await ui.find({ type: 'Text', text: /^echo "םלוע םולש"$/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('a plain text block keeps Hebrew as written where the terminal orders it', { options: { rtl: 'gnome' } }, async $ => {
   const ui = await $.ui.mount(mount('```text\nשלום\n```'))
   expect(await ui.find({ type: 'Text', text: /^שלום$/ })).toBeDefined()

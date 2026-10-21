@@ -292,10 +292,10 @@ export const flow = (nodes: Inline[], columns: number, measure: (s: string) => n
   return { base, lines: shape === 'words' ? lines.map(line => shapeNodes(line, shape)) : lines }
 }
 
-const visualText = (text: string): string => {
+const visualText = (text: string, command = false): string => {
   if (!R.test(text)) return text
   const all = units(text, { wrap: [], leaf: 'text' })
-  return reorder(all, baseOf(all)).map(u => u.ch).join('')
+  return reorder(all, command && startsLatin(all) ? 'L' : baseOf(all)).map(u => u.ch).join('')
 }
 
 export const commentTail = (line: string, shape: Shape = 'visual'): { head: string; marker: string; tail: string } | null => {
@@ -309,13 +309,13 @@ export const commentVisual = (text: string, shape: Shape = 'visual'): string => 
   return c ? c.head + c.marker + c.tail : text
 }
 
-export const codeVisual = (text: string, shape: Shape = 'visual', max = Infinity, measure: (s: string) => number = s => s.length): string =>
+export const codeVisual = (text: string, shape: Shape = 'visual', max = Infinity, measure: (s: string) => number = s => s.length, command = false): string =>
   asWritten(shape) || !R.test(text)
     ? text
     : text
         .split('\n')
         .flatMap(line => (measure(line) > max ? wrapUnits(units(line, { wrap: [], leaf: 'text' }), max, measure).map(row => row.map(u => u.ch).join('')) : [line]))
-        .map(line => shapeText(visualText(line), shape))
+        .map(line => shapeText(visualText(line, command), shape))
         .join('\n')
 
 export const hasRtl = (text: string): boolean => R.test(text)
