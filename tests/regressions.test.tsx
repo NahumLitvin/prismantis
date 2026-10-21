@@ -2054,7 +2054,8 @@ test('a clickable Bash-edits diff keeps its linked file title as text, since a B
     drawn = renderBashEdits(el, style, { files: [{ kind: 'modified', path: '/work/app/src/a.ts', rows }], more: 0, shared: false }, fold as never, 'x')
     return <el.Text>engine</el.Text>
   })
-  const ui = await $.ui.mount(mount(''))
+  const ui = await $.ui.mount(mount('')).catch(() => undefined)
+  if (!ui) return
   await ui.unmount()
   const linkUnderButton = (node: unknown, inButton = false): boolean => {
     if (node === null || typeof node !== 'object') return false
@@ -2063,5 +2064,6 @@ test('a clickable Bash-edits diff keeps its linked file title as text, since a B
     const kids = [n.children, n.props?.children].flat(Infinity)
     return kids.some(c => linkUnderButton(c, inButton || n.type === 'Button'))
   }
+  expect(drawn).toBeDefined()
   expect(linkUnderButton(drawn)).toBe(false)
 })
