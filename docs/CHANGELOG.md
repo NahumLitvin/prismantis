@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.33.0] - 2026-10-21
+
+### Added
+
+- `/prismantis setup` has steps for headings, copy buttons, times and diffs, each drawn in every look, and in a short terminal the arrows move the focus instead of scrolling ([#253](https://github.com/NahumLitvin/prismantis/pull/253)).
+- A paste of 4 lines or more in your prompt draws in a double frame of its own, folded to one `pasted text · N lines` button that opens it as highlighted code, instead of Claude Code's raw `<pasted_content>` tags and every pasted line ([#260](https://github.com/NahumLitvin/prismantis/pull/260)).
+
+### Changed
+
+- With `copyButtonStyle` set to `hover`, each block keeps one dim ⧉ beside it and its buttons appear only while the pointer is on that ⧉, so moving across a reply no longer flashes buttons over the text. Blocks lay out two columns narrower in this mode to make room ([#254](https://github.com/NahumLitvin/prismantis/pull/254)).
+- A path that starts with `/` links only when another name follows, so slash commands like `/config` and top folders like `/tmp` stay path-colored text with no hyperlink ([#242](https://github.com/NahumLitvin/prismantis/pull/242)).
+
+### Fixed
+
+- On iTerm, a mostly English table with some Hebrew cells stays one table, every row left to right with its columns lined up ([#255](https://github.com/NahumLitvin/prismantis/pull/255)).
+- Copying a table with `art` keeps its borders in line when cells carry bidi marks, as Hebrew replies often do ([#256](https://github.com/NahumLitvin/prismantis/pull/256)).
+- A shell command's diff card with file links on no longer vanishes into a `ui.render call rejected` line ([#260](https://github.com/NahumLitvin/prismantis/pull/260)).
+
 ## [0.32.1] - 2026-10-20
 
 ### Fixed

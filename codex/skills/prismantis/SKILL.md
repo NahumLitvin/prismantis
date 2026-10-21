@@ -12,7 +12,7 @@ START
 
 Colored markdown for Claude Code replies: **bold**, *italic*, ~~struck~~, `inline code`, a [link](https://github.com/NahumLitvin/prismantis) and a bare URL https://github.com/NahumLitvin/prismantis/issues, both clickable, numbers like 99.9% and 250ms, paths like ~/src/app.ts.
 
-Paths like ~/src/app.ts and ./README.md open on click in a terminal that draws hyperlinks, and so does a local link that shows its own path, like [/tmp/notes.md](file:///tmp/notes.md). A local link with any other name, like [notes](file:///tmp/notes.md), draws as its name and target, so it cannot hide where a click goes.
+Paths like ~/src/app.ts, ./README.md and /tmp/app.ts open on click in a terminal that draws hyperlinks, and so does a local link that shows its own path, like [/tmp/notes.md](file:///tmp/notes.md), while slash commands like /config stay text. A local link with any other name, like [notes](file:///tmp/notes.md), draws as its name and target, so it cannot hide where a click goes.
 
 Programs and launchers stay plain text, so a click never runs one: ./install.sh, ~/Desktop/setup.command and /Applications/Calculator.app keep the path color without a link.
 
@@ -25,7 +25,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
-| `/prismantis setup` | Pick a theme, table, task, prompt, tool row and tool output style from drawn samples |
+| `/prismantis setup` | Pick a theme and how tables, tasks, headings, copy buttons, prompts, times, tool rows, tool output, diffs and pie charts look, from drawn samples |
 | `/config` | Edit any option |
 
 > [!NOTE]
@@ -51,7 +51,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 
 ### Copy tables
 
-Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted table. `⧉ html` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. Set `copyButtonStyle` to `hover` in `/config` and every copy button hides until the pointer is on its block.
+Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted table. `⧉ html` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. Set `copyButtonStyle` to `hover` in `/config` and each block shows a dim ⧉ instead: point at it for its buttons.
 
 | Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
@@ -80,7 +80,7 @@ Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted tab
 
 ### Your prompts
 
-Scroll up: what you typed draws in a bubble. `promptStyle` switches to `bar`, `chevron` or `off` in `/config`. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished.
+Scroll up: what you typed draws in a bubble. `promptStyle` switches to `bar`, `chevron` or `off` in `/config`. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
 
 ### Tool rows
 
