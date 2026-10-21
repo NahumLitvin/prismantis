@@ -533,6 +533,7 @@ for (const rtl of ['warp', 'iterm'] as const)
 for (const rtl of ['warp', 'iterm'] as const)
   test(`an English item with a footnote in a mostly Hebrew list keeps its mark clickable on ${rtl}`, { options: { rtl } }, async ($, on) => {
     claudeAt(on, '2.1.295')
+    if (!(await linksHttp($.ui.mount(mount('Fast[^a].\n\n[^a]: Measured twice.'))))) return
     const ui = await $.ui.mount(mount('1. הרצה של הבדיקות\n2. בדיקה שנייה של התוצאות\n3. see the note[^1]\n\n[^1]: the note'))
     expect((await ui.findAll({ type: 'Button' })).filter(b => b.props.plain && b.props.label === '¹').length).toBe(1)
     await ui.unmount()
