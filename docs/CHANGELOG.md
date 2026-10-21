@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.33.1] - 2026-10-21
+
+### Added
+
+- `/prismantis demo-rtl` shows a `text` code block in Hebrew ([#264](https://github.com/NahumLitvin/prismantis/pull/264)).
+
+### Fixed
+
+- On Warp, Ghostty, WezTerm, VS Code and Alacritty, Hebrew in plain text and shell code blocks, and Hebrew strings in highlighted code, read right to left while the code around them stays where it is. A Hebrew line wider than the block wraps first, so its first row opens the sentence ([#264](https://github.com/NahumLitvin/prismantis/pull/264)).
+- On iTerm, inline code and paths in a Hebrew reply draw exactly as written, also when they start or end with `/`, `~`, `.` or `-` ([#265](https://github.com/NahumLitvin/prismantis/pull/265)).
+- A Hebrew list with an English item reads as one list on the right, and an English list with one Hebrew item stays on the left ([#266](https://github.com/NahumLitvin/prismantis/pull/266)).
+
 ## [0.33.0] - 2026-10-21
 
 ### Added
