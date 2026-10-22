@@ -470,6 +470,15 @@ test('Windows Terminal mirrors brackets around English inside a Hebrew row and s
   expect(inlineText(f!.lines[0]!)).toBe('׀ kubectl נכשל )timeout( על ה-cluster')
 })
 
+test('Windows Terminal keeps a number next to the Hebrew word before it in a mostly English line, with a braille blank between them', async () => {
+  const sent = (text: string) => inlineText(flow([{ kind: 'text', text }], 100, measure, 'engine')!.lines[0]!)
+  expect(sent('ok אחרי 3m')).toBe('ok אחרי⠀3m')
+  expect(sent('ok אחרי 3.5m')).toBe('ok אחרי⠀3.5m')
+  expect(sent('done אחרי 3')).toBe('done אחרי⠀3')
+  expect(sent('ok now אחרי 3 ימים')).toBe('ok now אחרי 3 ימים')
+  expect(sent('הרצתי 3 בדיקות של kubectl')).not.toContain('⠀')
+})
+
 test('Windows Terminal diagram labels that read right to left are sent so Claude Code shows them in reading order, with blanks between labels held', async () => {
   const sent = (row: string) => holdEngine([...row]).cells.join('')
   expect(sent('│ עם engine │')).toBe('│‎ engine עם‎ │')
