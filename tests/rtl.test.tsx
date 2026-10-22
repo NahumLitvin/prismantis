@@ -611,6 +611,13 @@ test('iTerm gets the neutral edges of a code span or path between Hebrew words s
   expect(line[1]).toEqual({ kind: 'path', text: 'aws/credentials./~', href: 'file:///Users/me/.aws/credentials' })
 })
 
+test('iTerm leaves the period that ends a sentence after a path at the end of the sentence, outside the swapped path edges', () => {
+  const line = mirrorLine([{ kind: 'text', text: 'סיימתי את ה-' }, { kind: 'path', text: '/simplify.' }, { kind: 'text', text: ' שלושה שינויים' }])
+  expect(texts(line)).toEqual(['סיימתי את ה-', 'simplify/.', ' שלושה שינויים'])
+  expect(texts(mirrorLine([{ kind: 'text', text: 'תמחק את ' }, { kind: 'path', text: '/tmp/.' }, { kind: 'text', text: ' עכשיו' }]))[1]).toBe('./tmp/')
+  expect(texts(mirrorLine([{ kind: 'text', text: 'תוסיף את ' }, { kind: 'code', text: '--flag.' }, { kind: 'text', text: ' לפקודה' }]))[1]).toBe('.flag--')
+})
+
 test('iTerm keeps a code span as written when English sits beside it, since there its edges already read left to right', () => {
   const line = mirrorLine([{ kind: 'text', text: 'run ' }, { kind: 'code', text: '--all' }, { kind: 'text', text: ' now ואז נבדוק' }])
   expect(texts(line).join('')).toBe('׀ run --all now ואז נבדוק')

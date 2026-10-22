@@ -258,6 +258,7 @@ const holdEdges = (line: Unit[]): Unit[] => {
     j = i + 1
     if (!ISOLATED.includes(line[i]!.fmt.leaf)) continue
     while (j < line.length && sameFmt(line[j]!.fmt, line[i]!.fmt)) j++
+    if (line[i]!.fmt.leaf === 'path' && j - 1 > i && line[j - 1]!.ch === '.' && /\w/.test(line[j - 2]?.ch ?? '') && (j === line.length || line[j]!.ch === ' ')) j--
     const span = line.slice(i, j)
     if (!span.some(u => classify(u.ch) === 'R') && strongFrom(line, i - 1, -1) !== 'L' && strongFrom(line, j, 1) !== 'L') out.splice(i, span.length, ...swapEdges(span))
   }
