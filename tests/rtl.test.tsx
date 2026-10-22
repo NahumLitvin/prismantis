@@ -692,6 +692,8 @@ test('a diagram label that opens in Hebrew and holds English reads right to left
 
 test('a held diagram label that is mostly English puts a braille blank between a Hebrew word and the number after it', () => {
   expect(holdRow([...'│ ok אחרי 3m │']).cells.join('')).toBe('│⠀ok אחרי⠀3m⠀│')
+  expect(holdRow([...'│ ok بعد ٣m │']).cells.join('')).toBe('│⠀ok بعد⠀٣m⠀│')
+  expect(holdRow([...'│ ok بعد ۳m │']).cells.join('')).toBe('│⠀ok بعد⠀۳m⠀│')
 })
 
 const DIAGRAMS = ['```mermaid\nflowchart LR\n  A[בקשה נכנסת] --> B[ArgoCD sync]\n```', '```figure\n│ שלב א │──►│ שלב ב │\n```']

@@ -324,7 +324,7 @@ export const LTR_BLANK = '⠀'
 
 const bindNumber = <U extends Unit>(all: U[]): U[] =>
   all.map((u, i) => {
-    if (u.ch !== ' ' || !R.test(all[i - 1]?.ch ?? '') || !/[0-9]/.test(all[i + 1]?.ch ?? '')) return u
+    if (u.ch !== ' ' || !R.test(all[i - 1]?.ch ?? '') || !DIGIT.test(all[i + 1]?.ch ?? '')) return u
     const next = all.slice(i + 1).find(n => bidiClass(n.ch) === 'L' || R.test(n.ch))
     return next && R.test(next.ch) ? u : { ...u, ch: LTR_BLANK }
   })
