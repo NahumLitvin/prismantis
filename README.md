@@ -90,7 +90,7 @@ prismantis also runs in Codex, with themes for code, tables and diagrams and the
 
 ![Random theme: plain Claude Code on the left, prismantis with theme random on the right](docs/compare/random-theme.png)
 
-Dark: `catppuccin-mocha` (default), `dracula`, `nord`, `tokyo-night`, `gruvbox-dark`, `rose-pine`, `everforest`, `github-dark`, `one-dark`, `solarized-dark`.
+Dark: `catppuccin-mocha` (default), `dracula`, `nord`, `tokyo-night`, `gruvbox-dark`, `rose-pine`, `everforest`, `github-dark`, `one-dark`, `solarized-dark`, `neon`.
 
 Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `solarized-light`.
 

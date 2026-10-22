@@ -704,9 +704,9 @@ test('/prismantis rejects unknown themes and lists the real ones', async ($, on)
     writes.push(e.value)
     return { value: e.value }
   })
-  const bad = await $.command.run({ command: 'prismantis', args: 'theme neon', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
+  const bad = await $.command.run({ command: 'prismantis', args: 'theme vaporwave', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(writes).toEqual([])
-  expect(bad.text?.startsWith('Unknown theme "neon".')).toBe(true)
+  expect(bad.text?.startsWith('Unknown theme "vaporwave".')).toBe(true)
   const list = await $.command.run({ command: 'prismantis', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })
   expect(list.text?.includes('dracula')).toBe(true)
 })
@@ -719,7 +719,7 @@ test('theme random can pick every dark color preset, never mono or a light one, 
   expect(RANDOM_THEMES.some(t => /latte|light|dawn/.test(t))).toBe(false)
   expect(RANDOM_THEMES.length).toBeGreaterThan(5)
   expect(pickTheme('nord')).toBe('nord')
-  expect(pickTheme('neon')).toBe('catppuccin-mocha')
+  expect(pickTheme('vaporwave')).toBe('catppuccin-mocha')
 })
 
 test('/prismantis theme reports the random pick and how to keep it', { options: { theme: 'random' } }, async $ => {
