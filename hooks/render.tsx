@@ -3,7 +3,7 @@ import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'cl
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
-import { CONTROL, displayText, inlineText, isWebLink, texText } from './markdown'
+import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, texText } from './markdown'
 import type { Flow } from './rtl'
 import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, listMarker, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
@@ -112,7 +112,7 @@ export const fileRoot = (distro?: string): string => (distro ? `file://wsl.local
 
 export type TerminalEnv = Partial<Record<'FORCE_HYPERLINK' | 'TERM_PROGRAM' | 'TERM_PROGRAM_VERSION' | 'TERM' | 'WT_SESSION' | 'LC_TERMINAL' | 'VTE_VERSION' | 'TERMINAL_EMULATOR', string>>
 
-const HYPERLINK_TERMINALS = ['ghostty', 'Hyper', 'kitty', 'alacritty', 'iTerm.app', 'iTerm2', 'WarpTerminal']
+const HYPERLINK_TERMINALS = ['ghostty', 'Hyper', 'kitty', 'alacritty', 'iTerm.app', 'iTerm2', 'WarpTerminal', 'Orca']
 
 const versionOf = (value = ''): number[] => {
   const short = /^(\d{1,2})(\d{2})$/.exec(value)
@@ -142,7 +142,7 @@ export const drawsHyperlinks = (env: TerminalEnv): boolean => {
     || env.TERMINAL_EMULATOR === 'JetBrains-JediTerm'
 }
 
-type Reach = Pick<Style, 'httpLinks' | 'editorLinks' | 'fileLinks' | 'pathLinks' | 'cwd' | 'home'>
+type Reach = Pick<Style, 'httpLinks' | 'editorLinks' | 'fileLinks' | 'pathLinks' | 'cwd' | 'home' | 'found'>
 
 const LAUNCHERS = new Set([
   'app', 'command', 'tool', 'terminal', 'pkg', 'mpkg', 'mobileconfig', 'prefpane', 'workflow', 'action', 'fileloc', 'inetloc', 'webloc',
@@ -267,13 +267,97 @@ const drawnPath = (n: Extract<Inline, { kind: 'path' }>, reach: Reach): Inline =
   return href === undefined ? n : { ...n, href }
 }
 
+const PART = String.raw`[\p{L}\p{N}_@+-]+`
+const NAME = String.raw`\.?${PART}(?:\.${PART})*`
+const LOOSE_PATH = new RegExp(String.raw`(?<![\p{L}\p{N}_/\\.:~@+-])(?:[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?|${NAME}(?:\/${NAME})*\/(?:${NAME})?|${PART}(?:\.${PART})+)(?![\p{L}\p{N}_/\\@+-]|\.[\p{L}\p{N}])`, 'gu')
+
+type Probe = { key: string; href: string }
+
+const looseProbe = (reach: Reach, spelling: string): Probe | undefined => {
+  const drive = /^[a-z]:[\\/]/i.test(spelling)
+  if (!drive && !reach.cwd) return undefined
+  const href = toolHref(reach, spelling)
+  const key = drive ? spelling.replace(/\\/g, '/') : `${slashes(reach.cwd)}/${spelling}`
+  return href === undefined ? undefined : { key: key.replace(/(?<=[^/:])\/+$/, ''), href }
+}
+
+const looseSpellings = (text: string): RegExpExecArray[] => [...text.matchAll(LOOSE_PATH)]
+
+const foundProbe = (reach: Reach, spelling: string): Probe | undefined => {
+  const probe = looseProbe(reach, spelling)
+  return probe && reach.found?.has(probe.key) ? probe : undefined
+}
+
+const loosePaths = (n: Extract<Inline, { kind: 'text' }>, reach: Reach): Inline[] => {
+  const out: Inline[] = []
+  let at = 0
+  for (const m of looseSpellings(n.text)) {
+    const probe = foundProbe(reach, m[0])
+    if (!probe) continue
+    if (m.index > at) out.push({ kind: 'text', text: n.text.slice(at, m.index) })
+    out.push({ kind: 'path', text: m[0], href: probe.href })
+    at = m.index + m[0].length
+  }
+  if (at === 0) return [n]
+  if (at < n.text.length) out.push({ kind: 'text', text: n.text.slice(at) })
+  return out
+}
+
+const looseCode = (n: Extract<Inline, { kind: 'code' }>, reach: Reach): Inline => {
+  const probe = isWholePath(n.text) ? foundProbe(reach, n.text) : undefined
+  return probe ? { ...n, href: probe.href } : n
+}
+
+const isWholePath = (text: string): boolean => looseSpellings(text).some(m => m[0] === text)
+
+const looseNode = (n: Inline, reach: Reach): Inline | Inline[] => {
+  if (n.kind === 'text') return loosePaths(n, reach)
+  return n.kind === 'code' ? looseCode(n, reach) : n
+}
+
+const linked = (node: Inline, reach: Reach): Inline => {
+  const n: Inline = node.kind === 'image' && isWebLink(node.src) ? { kind: 'link', text: node.text, href: node.src } : node
+  if (n.kind === 'link') return drawnLink(n, reach)
+  if (n.kind === 'path') return drawnPath(n, reach)
+  return 'children' in n ? { ...n, children: hyperlinks(n.children, reach) } : n
+}
+
 const hyperlinks = (nodes: Inline[], reach: Reach): Inline[] =>
-  nodes.map(node => {
-    const n: Inline = node.kind === 'image' && isWebLink(node.src) ? { kind: 'link', text: node.text, href: node.src } : node
-    if (n.kind === 'link') return drawnLink(n, reach)
-    if (n.kind === 'path') return drawnPath(n, reach)
-    return 'children' in n ? { ...n, children: hyperlinks(n.children, reach) } : n
+  reach.found?.size ? nodes.flatMap(node => looseNode(linked(node, reach), reach)) : nodes.map(node => linked(node, reach))
+
+const spellingsIn = (nodes: Inline[]): string[] =>
+  nodes.flatMap(n => {
+    if ('children' in n) return spellingsIn(n.children)
+    if (n.kind === 'code') return isWholePath(n.text) ? [n.text] : []
+    return n.kind === 'text' ? looseSpellings(n.text).map(m => m[0]) : []
   })
+
+const inlinesOf = (block: Block): Inline[][] => {
+  switch (block.kind) {
+    case 'heading':
+    case 'paragraph':
+      return [block.inline]
+    case 'list':
+      return block.items.map(item => item.inline)
+    case 'table':
+      return [...block.header, ...block.rows.flat()]
+    case 'notes':
+      return block.notes.map(note => note.inline)
+    default:
+      return []
+  }
+}
+
+const spelled = new WeakMap<Block, string[]>()
+
+export const pathsToProbe = (blocks: Block[], reach: Reach): string[] => {
+  if (!reach.pathLinks || reach.fileLinks === null) return []
+  return nestedBlocks(blocks).flatMap(block => {
+    const spellings = spelled.get(block) ?? inlinesOf(block).flatMap(spellingsIn)
+    spelled.set(block, spellings)
+    return spellings.flatMap(spelling => looseProbe(reach, spelling)?.key ?? [])
+  })
+}
 
 const hyperlinkBlock = (block: Block, reach: Reach): Block => {
   const drawn = (nodes: Inline[]) => hyperlinks(nodes, reach)
@@ -297,7 +381,7 @@ const hyperlinked = new WeakMap<Block, Record<string, Block>>()
 const drawable = (block: Block, reach: Reach): Block => {
   const cached = hyperlinked.get(block) ?? {}
   hyperlinked.set(block, cached)
-  const key = `${+reach.httpLinks}${+reach.editorLinks}${reach.fileLinks ?? ''}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}` : ''}`
+  const key = `${+reach.httpLinks}${+reach.editorLinks}${reach.fileLinks ?? ''}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}\0${reach.found?.size ?? 0}` : ''}`
   return (cached[key] ??= hyperlinkBlock(block, reach))
 }
 
@@ -368,7 +452,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'strike':
         return <Text key={key} strikethrough dimColor>{renderInline(el, style, n.children, key)}</Text>
       case 'code':
-        return <Text key={key} color={t.inlineCode}>{n.text}</Text>
+        return <Text key={key} color={t.inlineCode}>{n.href === undefined ? n.text : <el.Link href={n.href} label={n.text} />}</Text>
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':

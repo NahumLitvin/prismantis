@@ -43,6 +43,7 @@ export type Style = {
   editorLinks: boolean
   fileLinks: string | null
   pathLinks: boolean
+  found?: ReadonlySet<string>
   diagramHints: boolean
   issueHint: boolean
   rtl: 'auto' | Terminal | 'off'
