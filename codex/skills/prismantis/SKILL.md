@@ -80,7 +80,7 @@ Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted tab
 
 ### Your prompts
 
-Scroll up: what you typed draws in a bubble. `promptStyle` switches to `bar`, `chevron` or `off` in `/config`. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
+Scroll up: what you typed draws in a bubble. `promptStyle` switches to `wide`, `bar`, `chevron` or `off` in `/config`. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
 
 ### Tool rows
 

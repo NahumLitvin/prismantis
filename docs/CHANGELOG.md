@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.34.0] - 2026-10-22
+
+### Added
+
+- `promptStyle: wide` draws your prompt in the rounded accent bubble across the full width, so each prompt marks a clear break between turns when you scroll back ([#272](https://github.com/NahumLitvin/prismantis/pull/272)).
+
+### Fixed
+
+- On Warp, Ghostty, WezTerm, VS Code and Alacritty, a shell command with a Hebrew argument keeps the command first, also when most of its words are Hebrew ([#271](https://github.com/NahumLitvin/prismantis/pull/271)).
+
 ## [0.33.1] - 2026-10-21
 
 ### Added
