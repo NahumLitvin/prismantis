@@ -807,7 +807,7 @@ const LOOSE = [
   'Scripts: run.bat and app.py.',
 ].join('\n\n')
 
-const NOT_PATHS = 'Not paths: and/or, 1/2/3, Ctrl+X/Tab, docs/missing/file.md.'
+const NOT_PATHS = 'Not paths: and/or, 1/2/3, Ctrl+X/Tab, docs/missing/file.md, C:\\work\\missing\\file.md.'
 
 const ON_DISK = ['/work/app/docs/guide', '/work/app/src/app.ts', '/work/app/notes.md', 'C:/work/notes/plan.md', 'C:/work/заметки/план.md', '/work/app/run.bat', '/work/app/app.py']
 
@@ -821,14 +821,22 @@ const LOOSE_HREFS = [
   'file:///C:/work/%D0%B7%D0%B0%D0%BC%D0%B5%D1%82%D0%BA%D0%B8/%D0%BF%D0%BB%D0%B0%D0%BD.md',
 ]
 
-const onDisk = (on: On) => {
+const onDisk = async ($: Engine, on: On) => {
   const stats: string[] = []
+  let folder: string | undefined
+  on('classic.SessionStart', (_, e) => {
+    folder = e.cwd.replace(/\\/g, '/')
+    return {}
+  })
   on('fs.stat', (_, e, next) => {
-    const path = e.path.replace(/\\/g, '/').replace(/^(?!\/work\/)[^:]*\/(?=[A-Za-z]:\/)/, '').replace(/^[A-Za-z]:(?=\/work\/app\/)/, '')
+    const seen = e.path.replace(/\\/g, '/')
+    const relative = folder !== undefined && seen.startsWith(`${folder}/`) ? seen.slice(folder.length + 1) : undefined
+    const path = relative !== undefined && /^[A-Za-z]:\//.test(relative) ? relative : seen.replace(/^[A-Za-z]:(?=\/work\/app\/)/, '')
     if (!path.startsWith('/work/') && !path.startsWith('C:/work/')) return next(e)
     stats.push(path)
     return ON_DISK.includes(path) ? { value: { kind: path.endsWith('guide') ? 'dir' as const : 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${path}` }
   })
+  await $.classic.SessionStart({ source: 'startup' })
   return stats
 }
 
@@ -838,7 +846,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   test(`paths without ./ and Windows paths link once a stat finds them, not before, on ${surface}`, async ($, on) => {
     filesAt(on, '2.1.289')
     const clock = mock.clock(on)
-    const stats = onDisk(on)
+    const stats = await onDisk($, on)
     if (surface === 'terminal' && !(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
     const ui = await $.ui.mount({ ...mount(LOOSE, 400), surface })
     expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual([])
@@ -854,23 +862,24 @@ for (const surface of ['terminal', 'desktop'] as const) {
 test('prose with slashes and missing paths draws as before once their stats land', async ($, on) => {
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)
-  const stats = onDisk(on)
+  const stats = await onDisk($, on)
   if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
   const ui = await $.ui.mount(mount(`${LOOSE}\n\n${NOT_PATHS}`, 400))
   const before = shape(await ui.find({ type: 'Text', text: /^Not paths/ }))
   await clock.settle()
   expect(stats).toContain('/work/app/and/or')
   expect(stats).toContain('/work/app/docs/missing/file.md')
+  expect(stats).toContain('C:/work/missing/file.md')
   expect(await ui.findAll({ type: 'Link' })).toHaveLength(LOOSE_HREFS.length)
   expect(shape(await ui.find({ type: 'Text', text: /^Not paths/ }))).toBe(before)
-  for (const text of ['and/or', '1/2/3', 'Ctrl+X/Tab', 'docs/missing/file.md']) expect(await pathTexts(ui, exact(text))).toBe(0)
+  for (const text of ['and/or', '1/2/3', 'Ctrl+X/Tab', 'docs/missing/file.md', 'C:\\work\\missing\\file.md']) expect(await pathTexts(ui, exact(text))).toBe(0)
   await ui.unmount()
 })
 
 test('each path is stat-ed once a session however many times a streaming reply redraws', async ($, on) => {
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)
-  const stats = onDisk(on)
+  const stats = await onDisk($, on)
   if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
   const text = `${LOOSE}\n\n${NOT_PATHS}`
   for (let end = 8; end <= text.length; end += 8) {
@@ -892,7 +901,7 @@ test('each path is stat-ed once a session however many times a streaming reply r
 test('a line number after a path stays out of its link with number colors off', { options: { highlightNumbers: false } }, async ($, on) => {
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)
-  onDisk(on)
+  await onDisk($, on)
   if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
   const ui = await $.ui.mount(mount('See src/app.ts:42 and C:\\work\\notes\\plan.md:7.'))
   await clock.settle()
