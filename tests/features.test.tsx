@@ -861,6 +861,18 @@ test('a pasted block in your prompt is its own frame, folded to a button that op
   await ui.unmount()
 })
 
+test('promptStyle wide draws the bubble across the full width', { options: { promptStyle: 'wide' } }, async $ => {
+  const ui = await $.ui.mount(prompt('hi'))
+  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBe('100%')
+  await ui.unmount()
+})
+
+test('the default bubble fits its text', async $ => {
+  const ui = await $.ui.mount(prompt('hi'))
+  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBeUndefined()
+  await ui.unmount()
+})
+
 test('promptStyle bar draws an accent bar', { options: { promptStyle: 'bar' } }, async $ => {
   const ui = await $.ui.mount(prompt('hi'))
   expect((await ui.find({ type: 'Text', text: /^▌ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
@@ -2619,7 +2631,7 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   expect(await copy.findAll({ type: 'Button' })).toHaveLength(0)
   await copy.unmount()
   const prompts = await mount(5)
-  expect(await prompts.findAll({ type: 'Text', text: /fix the failing test/ })).toHaveLength(4)
+  expect(await prompts.findAll({ type: 'Text', text: /fix the failing test/ })).toHaveLength(5)
   await prompts.unmount()
   const clock = await mount(6)
   expect(await clock.findAll({ type: 'Text', text: /^14:32 ?$/ })).toHaveLength(2)

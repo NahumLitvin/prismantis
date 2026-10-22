@@ -2464,6 +2464,10 @@ const PASTE = /<pasted_content id="([^"]*)">\n?([\s\S]*?)\n?<\/pasted_content id
 
 export type DrawPaste = (body: string, key: string) => RenderElement
 
+const boxedPrompt = (style: Style) => style.promptStyle === 'bubble' || style.promptStyle === 'wide'
+
+const widePrompt = (style: Style, hebrew: boolean) => style.promptStyle === 'wide' || (hebrew && mirrored(style))
+
 export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, columns: number, time?: string, paste?: DrawPaste): RenderElement => {
   const { Box, Text } = el
   const pastes: string[] = []
@@ -2488,8 +2492,8 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   )
   const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
-  if (style.promptStyle === 'bubble') {
-    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} {...(hebrew && mirrored(style) ? { width: '100%' } : {})}>{content}</Box>
+  if (boxedPrompt(style)) {
+    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} {...(widePrompt(style, hebrew) ? { width: '100%' } : {})}>{content}</Box>
   }
   const mark = <Text color={t.accent} bold>{style.promptStyle === 'bar' ? (rtl ? ' ▐' : '▌ ') : rtl ? ' ‹' : '› '}</Text>
   return <Box flexDirection="row" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>
