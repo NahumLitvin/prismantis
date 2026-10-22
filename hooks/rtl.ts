@@ -322,6 +322,13 @@ export const hasRtl = (text: string): boolean => R.test(text)
 
 export const LTR_BLANK = '⠀'
 
+const bindNumber = <U extends Unit>(all: U[]): U[] =>
+  all.map((u, i) => {
+    if (u.ch !== ' ' || !R.test(all[i - 1]?.ch ?? '') || !/[0-9]/.test(all[i + 1]?.ch ?? '')) return u
+    const next = all.slice(i + 1).find(n => bidiClass(n.ch) === 'L' || R.test(n.ch))
+    return next && R.test(next.ch) ? u : { ...u, ch: LTR_BLANK }
+  })
+
 const WORD = /[\p{L}\p{N}\p{P}]/u
 
 const DRAWN = /[←-⇿─-◿]/u
@@ -346,7 +353,13 @@ export type Held = { cells: string[]; from: number[] }
 
 const PLAIN: Fmt = { wrap: [], leaf: 'text' }
 
-const rightToLeft = (all: Cell[]): Cell[] => (baseOf(all) === 'R' && all.some(u => bidiClass(u.ch) === 'L') ? terminalBidi(reorder(all, 'R')) : all)
+const rightToLeft = <U extends Unit>(all: U[]): U[] => (baseOf(all) !== 'R' ? bindNumber(all) : all.some(u => bidiClass(u.ch) === 'L') ? terminalBidi(reorder(all, 'R')) : all)
+
+export const heldCell = (nodes: Inline[]): Flow | null => {
+  if (!containsRtl(nodes)) return null
+  const all = flatten(nodes)
+  return { base: baseOf(all), lines: [rebuild(rightToLeft(all))] }
+}
 
 const byWords = (label: (words: Cell[]) => Cell[]) => (all: Cell[]): Cell[] => {
   const out: Cell[] = []

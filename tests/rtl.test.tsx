@@ -640,6 +640,24 @@ test('iTerm holds a mostly English table left to right with a braille blank afte
   await ui.unmount()
 })
 
+test('iTerm keeps a number next to the Hebrew word before it in a mostly English held table cell, with a braille blank between them', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const ui = await $.ui.mount(mount('| night | result | deploy |\n|---|---|---|\n| ok אחרי 3m | ok אחרי 3.5m | done אחרי 3 |\n| ok now אחרי 3 ימים | 86m | 51m |'))
+  for (const text of [/^ok אחרי⠀3m$/, /^ok אחרי⠀3.5m$/, /^done אחרי⠀3$/, /^ok now אחרי 3 ימים$/]) expect(await ui.find({ type: 'Text', text })).toBeDefined()
+  await ui.unmount()
+})
+
+test('iTerm keeps inline code and a path in written order inside a mostly Hebrew cell of a held table', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const ui = await $.ui.mount(mount('| night | result | deploy |\n|---|---|---|\n| run `--all` now | תריץ את `--all` | ok |\n| see `~/.aws/credentials` file | הקובץ `~/.aws/credentials` חסר | ok |'))
+  for (const text of [/^--all תריץ את$/, /^חסר ~\/\.aws\/credentials הקובץ$/]) expect(await ui.find({ type: 'Text', text })).toBeDefined()
+  await ui.unmount()
+})
+
+test('iTerm draws a mostly Hebrew cell of a held table in the order the terminal flips back', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const ui = await $.ui.mount(mount('| night | result | deploy |\n|---|---|---|\n| ok | ✗ אחרי 14m | 86m |'))
+  expect(await ui.find({ type: 'Text', text: /^14m אחרי ✗$/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('iTerm holds every row of a mostly English rules table, the rules included, so the columns stay lined up', { options: { rtl: 'iterm', tableStyle: 'rules' } }, async $ => {
   const ui = await $.ui.mount(mount(MIXED_TABLE))
   const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
@@ -670,6 +688,10 @@ test('a diagram label that opens in Hebrew and holds English reads right to left
   expect(held.startsWith('│⠀') && held.endsWith('⠀│')).toBe(true)
   expect(inlineText(terminalLine([{ kind: 'text', text: held }]))).toBe(`│⠀${visual('האם יש token?')}⠀│`)
   expect(holdRow([...'│ ArgoCD sync │']).cells.join('')).toBe('│ ArgoCD sync │')
+})
+
+test('a held diagram label that is mostly English puts a braille blank between a Hebrew word and the number after it', () => {
+  expect(holdRow([...'│ ok אחרי 3m │']).cells.join('')).toBe('│⠀ok אחרי⠀3m⠀│')
 })
 
 const DIAGRAMS = ['```mermaid\nflowchart LR\n  A[בקשה נכנסת] --> B[ArgoCD sync]\n```', '```figure\n│ שלב א │──►│ שלב ב │\n```']
