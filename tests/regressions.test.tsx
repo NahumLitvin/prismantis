@@ -2068,3 +2068,58 @@ test('a clickable Bash-edits diff keeps its linked file title as text, since a B
   expect(drawn).toBeDefined()
   expect(linkUnderButton(drawn)).toBe(false)
 })
+
+test('a <br> in a table cell parses as a line break, but not inside a code span', async () => {
+  const table = tableOf('| a |\n|---|\n| Then:<br/>• one<BR>• two `x<br>y` |')
+  expect(inlineText(table.rows[0]![0]!)).toBe('Then:\n• one\n• two x<br>y')
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`a <br> in a table cell starts a new row of the cell on ${surface}`, async $ => {
+  const ui = await $.ui.mount({ ...mount('| Step | Detail |\n|---|---|\n| Prevent | Then:<br/>• Run `brew install gnu-sed` |'), surface })
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0)
+  expect(cells.map(b => b.text).filter(t => /Detail|Then:|brew/.test(t))).toEqual(['Detail', 'Then:', '• Run brew install gnu-sed'])
+  expect(await ui.find({ type: 'Text', text: /<br/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('table art breaks a cell at <br> and sizes the column by its widest line', async () => {
+  const lines = tableArt(tableOf('| a |\n|---|\n| short<br>a longer line |')).split('\n')
+  expect(lines.filter(l => l.startsWith('│ ')).map(l => l.slice(2, -2).trim())).toEqual(['a', 'short', 'a longer line'])
+  expect(lines[1]).toBe('┌───────────────┐')
+})
+
+test('a long unbroken word after a <br> wraps on its own line', async () => {
+  const lines = tableArt(tableOf(`| h |\n|-|\n| short<br>${'x'.repeat(250)} |`)).split('\n').filter(l => l.startsWith('│ ')).map(l => l.slice(2, -2).trim())
+  expect(lines[1]).toBe('short')
+  expect(lines.slice(2).join('')).toBe('x'.repeat(250))
+})
+
+test('control characters inside a <br> cell are dropped and the break still applies', async () => {
+  expect(inlineText(tableOf('| a |\n|-|\n| one\x1b[31m<br>two\x07 |').rows[0]![0]!)).toBe('one\ntwo')
+})
+
+test('a quote bar counts every line of a short <br> cell in a wide column', { options: { copyButtons: false } }, async $ => {
+  const rows = Array.from({ length: 6 }, (_, i) => `> | ${i} | a<br>b<br>c<br>d |`).join('\n')
+  const ui = await $.ui.mount(mount(`> | n | a rather wide header |\n> |-|-|\n${rows}`, 80))
+  const bars = (await ui.findAll({ type: 'Text', text: /^(│ \n)*│ $/ })).map(bar => bar.text.split('\n').length)
+  expect(Math.max(...bars) >= 6 * 4 + 5 + 4).toBe(true)
+  await ui.unmount()
+})
+
+test('a footnote mark and a clickable path inside a <br> cell keep working on their own line', async ($, on) => {
+  claudeAt(on, '2.1.295')
+  mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
+  on('session.root', () => ({ value: '/work/app' }))
+  const ui = await $.ui.mount(mount('| Step | Detail |\n|---|---|\n| Fix | Edit ~/notes/todo.md<br>then rerun[^r] |\n\n[^r]: Twice.'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///home/me/notes/todo.md'])
+  expect(await ui.find({ type: 'Text', text: /^¹ Twice\.$/ })).toBeDefined()
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).map(b => b.text)
+  expect(cells).toContain('then rerun¹')
+  await ui.unmount()
+})
+
+test('copying a table keeps a <br> cell as one cell: a <br> in HTML, a quoted multi-line cell in TSV', async () => {
+  const table = tableOf('| a | b |\n|-|-|\n| one<br>**two** | x |')
+  expect(tableHtml(table)).toContain('<td style="text-align: left">one<br><strong>two</strong></td>')
+  expect(tableText(table)).toBe('a\tb\n"one\ntwo"\tx')
+})

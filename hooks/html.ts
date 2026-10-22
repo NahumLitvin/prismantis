@@ -23,7 +23,7 @@ const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
     case 'link': return isWebLink(node.href)
       ? `<a href="${escapeHtml(node.href)}">${escapeHtml(node.text)}</a>`
       : escapeHtml(node.text)
-    default: return escapeHtml(node.text)
+    default: return escapeHtml(node.text).replace(/\n/g, '<br>')
   }
 }).join('')
 

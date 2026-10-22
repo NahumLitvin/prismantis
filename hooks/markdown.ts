@@ -69,6 +69,19 @@ const splitRow = (line: string): string[] => {
   return cells
 }
 
+const CELL_BREAK = /(`+)(?!`).+?(?<!`)\1(?!`)|<br\s*\/?>/gi
+
+const parseCell = (text: string, hl: Highlight): Inline[] => {
+  const out: Inline[] = []
+  let at = 0
+  for (const m of text.matchAll(CELL_BREAK)) {
+    if (m[1] !== undefined) continue
+    out.push(...parseInline(text.slice(at, m.index).trim(), hl), { kind: 'text', text: '\n' })
+    at = m.index + m[0].length
+  }
+  return at ? [...out, ...parseInline(text.slice(at).trim(), hl)] : parseInline(text, hl)
+}
+
 const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|\*\*(?!\s)((?:[^*]|\*[^*\s][^*]*?(?<!\s)\*)+?)(?<!\s)\*\*|(?<![\w_])__(?!\s)([^_]+?)(?<!\s)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)(?<!\s)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)(?<!\s)_(?!\w)|(https?:\/\/(?:[^\s<>()]|\([^\s<>()]*\))*(?:[^\s<>().,;:!?'"]|\([^\s<>()]*\)))|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])|\[\^([^\]\s]+)\]|!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g
 const NUMBER = /(?<![\w.#/-])(v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/])/g
 const PATH = /(?<![\w/.:])((?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]*)*)/g
@@ -306,7 +319,7 @@ const tableRows = (lines: string[], width: number, hl: Highlight): Inline[][][] 
   const end = lines.findIndex(l => !l.includes('|') || l.trim() === '')
   return lines.slice(0, end < 0 ? lines.length : end).map(l => {
     const cells = splitRow(l)
-    return Array.from({ length: width }, (_, c) => parseInline(cells[c] ?? '', hl))
+    return Array.from({ length: width }, (_, c) => parseCell(cells[c] ?? '', hl))
   })
 }
 
@@ -378,7 +391,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       )
       const rows = tableRows(lines.slice(i + 2), header.length, hl)
       i += 2 + rows.length
-      add({ kind: 'table', header: header.map(c => parseInline(c, { numbers: false, paths: false })), align, rows }, start, i)
+      add({ kind: 'table', header: header.map(c => parseCell(c, { numbers: false, paths: false })), align, rows }, start, i)
       i--
       continue
     }

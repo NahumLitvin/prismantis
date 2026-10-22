@@ -24,7 +24,11 @@ export const width = (s: string): number =>
   : s.length === 1 ? (ZERO.test(s) ? 0 : WIDE.test(s) ? 2 : 1)
   : graphemes(s).reduce((w, g) => (ZERO.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
 
+const widestLine = (text: string): number => Math.max(...text.split('\n').map(width))
+
 const wrapRanges = (text: string, w: number): [number, number][] => {
+  const br = text.indexOf('\n')
+  if (br >= 0) return [...wrapRanges(text.slice(0, br), w), ...wrapRanges(text.slice(br + 1), w).map(([a, b]): [number, number] => [a + br + 1, b + br + 1])]
   if (width(text) <= w) return [[0, text.length]]
   const out: [number, number][] = []
   let line: [number, number] | undefined
@@ -303,7 +307,8 @@ const drawable = (block: Block, reach: Reach): Block => {
 
 const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
 
-const textRows = (text: string, w: number): number => (width(text) <= w ? 1 : mostLines(text, Math.max(1, w)))
+const textRows = (text: string, w: number): number =>
+  text.split('\n').reduce((sum, line) => sum + (width(line) <= w ? 1 : mostLines(line, Math.max(1, w))), 0)
 
 const heightOf = (blocks: Block[], w: number): number => blocks.reduce((sum, block, b) => sum + (b ? 1 : 0) + blockHeight(block, w), 0)
 
@@ -339,7 +344,7 @@ const blockHeight = (block: Block, w: number): number => {
 
 const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   const text = inlineText(nodes)
-  return width(text) <= w ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
+  return width(text) <= w && !text.includes('\n') ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
 }
 
 export const mirrored = (style: Style) => style.shape === 'mirror'
@@ -614,7 +619,7 @@ const ART_WIDTH = 100
 const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
   const column = (measure: (s: string) => number) => block.header.map((_, c) => Math.max(...cells.map(r => measure(r[c]!))))
-  return { natural: column(width), words: column(longestWord) }
+  return { natural: column(widestLine), words: column(longestWord) }
 }
 
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
@@ -736,7 +741,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(displayText(cells[c] ?? []), w)))))]
     const wrapped = widths.map((w, c) => {
       const content = cells[c] ?? []
-      if (natural[c]! <= w) return [content]
+      if (natural[c]! <= w && !inlineText(content).includes('\n')) return [content]
       return wrapInline(isHeader ? headerRuns(content) : content, w)
     })
     return Array.from({ length: Math.max(...wrapped.map(l => l.length)) }, (_, i) =>
