@@ -824,7 +824,7 @@ const LOOSE_HREFS = [
 const onDisk = (on: On) => {
   const stats: string[] = []
   on('fs.stat', (_, e, next) => {
-    const path = e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/work\/app\/)/, '')
+    const path = e.path.replace(/\\/g, '/').replace(/^.*\/(?=[A-Za-z]:\/)/, '').replace(/^[A-Za-z]:(?=\/work\/app\/)/, '')
     if (!path.startsWith('/work/') && !path.startsWith('C:/work/')) return next(e)
     stats.push(path)
     return ON_DISK.includes(path) ? { value: { kind: path.endsWith('guide') ? 'dir' as const : 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${path}` }
