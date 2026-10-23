@@ -902,7 +902,7 @@ test('a path named before a tool creates it links once the tool ran', async ($, 
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)
   let made = false
-  on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/') !== '/work/app/src/new.ts' ? next(e) : made ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: 'no such file' }))
+  on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/work\/app\/)/, '') !== '/work/app/src/new.ts' ? next(e) : made ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: 'no such file' }))
   on('tool.call', () => {
     made = true
     return { result: 'ok', text: 'ok' }
