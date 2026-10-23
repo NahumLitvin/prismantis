@@ -631,7 +631,7 @@ export const register: Register = (on, options) => {
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
       if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), forSurface(fit(e.viewport), e.surface, await linkReach($, probes, style)), e.props, e.viewport?.columns)
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
-      return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props) : next(e)
+      return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), fit(e.viewport), e.props, e.viewport?.columns) : next(e)
     })
     on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
       const cards = (): Style => ({ ...fit(e.viewport), pressPreview: e.surface === 'terminal' })

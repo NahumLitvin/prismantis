@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
+import type { TestBody } from 'claude-code/testing'
 
 import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
@@ -912,6 +913,62 @@ for (const rtl of ['iterm', 'warp'] as const)
     if (rtl === 'iterm') expect(await expanded.find({ type: 'Box', text: /^ ⠀שלום$/ })).toBeDefined()
     await expanded.unmount()
   })
+
+const expandShell = async ($: Parameters<TestBody>[0], id: string, command: string, stdout: string) => {
+  const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [shellCall(id, 'ls')], isActive: false, isExpanded: true } })
+  await group.unmount()
+  return $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...shellCall(id, command), output: { stdout, stderr: '' } }, viewport: { columns: 30, rows: 40 } })
+}
+
+const longHebrew = Array(6).fill('שלום עולם').join(' ')
+
+test('on iTerm a long Hebrew command and output line in an expanded shell call wrap into rows that fit the box and each open with a braille blank', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'wi', `echo '${longHebrew}'`, `${longHebrew}\nשם\tגיל`)
+  const command = (await expanded.findAll({ type: 'Box', text: /^(●Bash\(| ⠀)/ })).filter(r => r.props.flexDirection === 'row' && !/[│╭╰]/.test(r.text)).map(r => r.text)
+  expect(command.length).toBeGreaterThan(1)
+  expect(command[0]).toMatch(/^●Bash\(echo '/)
+  expect(command.slice(1).every(r => /^ ⠀\S/.test(r))).toBe(true)
+  expect(command.every(r => r.length <= 30)).toBe(true)
+  expect([command[0]!.slice(1), ...command.slice(1).map(r => r.slice(2))].map(r => r.trimEnd()).join(' ')).toBe(`Bash(echo '${longHebrew}')`)
+  expect((await expanded.find({ type: 'Text', text: /^Bash\($/ }))?.props.bold).toBe(true)
+  const quoted = (await expanded.find({ type: 'Text', text: /^'שלום/ }))?.props.color
+  expect(quoted).toBeDefined()
+  expect((await expanded.findAll({ type: 'Text', text: /^(שלום|עולם).*'$/ })).some(t => t.props.color === quoted)).toBe(true)
+  const rows = (await expanded.findAll({ type: 'Box', text: /^⠀(שלום|עולם)/ })).filter(r => r.props.flexDirection === 'row').map(r => r.text)
+  expect(rows.length).toBeGreaterThan(1)
+  expect(rows.every(r => r.length <= 30 - 4)).toBe(true)
+  expect(rows.map(r => r.slice(1).trimEnd()).join(' ')).toBe(longHebrew)
+  expect(await expanded.find({ type: 'Box', text: /^⠀שם\tגיל$/ })).toBeDefined()
+  await expanded.unmount()
+})
+
+test('on warp a long Hebrew command and output line in an expanded shell call stay one row each, left to the terminal', { options: { rtl: 'warp' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'ww', `echo '${longHebrew}'`, longHebrew)
+  const command = (await expanded.findAll({ type: 'Box', text: /^(●Bash\(| [ ⠀])/ })).filter(r => r.props.flexDirection === 'row' && !/[│╭╰]/.test(r.text)).map(r => r.text)
+  expect(command).toHaveLength(1)
+  expect(command[0]).toMatch(/^●Bash\(echo '[^⠀]+'\)$/)
+  expect((await expanded.findAll({ type: 'Box', text: /^ (שלום|עולם)/ })).filter(r => r.props.flexDirection === 'row').map(r => r.text)).toEqual([` ${longHebrew}`])
+  await expanded.unmount()
+})
+
+test('on iTerm a single Hebrew output line too long for 120 rows is cut there and says so', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'big', 'ls', Array(2000).fill('שלום עולם').join(' '))
+  expect((await expanded.findAll({ type: 'Box', text: /^⠀\S/ })).filter(r => r.props.flexDirection === 'row')).toHaveLength(120)
+  expect(await expanded.find({ type: 'Box', text: /^ … \+1 lines$/ })).toBeDefined()
+  await expanded.unmount()
+})
 
 for (const rtl of ['iterm', 'warp'] as const)
   test(`a failed tool's Hebrew reason stays after its ⎿ on ${rtl}: the gutter ends in a braille blank on iTerm`, { options: { rtl, toolStyle: 'tree-dim', toolOutput: 'quiet' } }, async ($, on) => {
