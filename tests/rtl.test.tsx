@@ -479,6 +479,11 @@ test('Windows Terminal keeps a number next to the Hebrew word before it in a mos
   expect(sent('הרצתי 3 בדיקות של kubectl')).not.toContain('⠀')
 })
 
+test('Windows Terminal mirrors brackets for the left-to-right base its opening LRM sets when a line starts with a symbol-only code span', async () => {
+  const f = flow([{ kind: 'code', text: '(1)' }, { kind: 'text', text: ' הוא הצעד (הראשון)' }], 100, measure, 'engine')
+  expect(inlineText(f!.lines[0]!)).toBe('\u200E(1)\u200E הוא הצעד )הראשון)')
+})
+
 test('Windows Terminal diagram labels that read right to left are sent so Claude Code shows them in reading order, with blanks between labels held', async () => {
   const sent = (row: string) => holdEngine([...row]).cells.join('')
   expect(sent('│ עם engine │')).toBe('│‎ engine עם‎ │')

@@ -265,7 +265,7 @@ const holdEdges = (line: Unit[]): Unit[] => {
 }
 
 const forEngine = (line: Unit[], lead: boolean): Unit[] => {
-  const first = line.map(u => bidiClass(u.ch)).find(c => c === 'L' || c === 'R')
+  const first = isolate(line).map(u => bidiClass(u.ch)).find(c => c === 'L' || c === 'R')
   const base = lead || first === 'R' ? 'R' : 'L'
   const all = isolate(base === 'L' ? bindNumber(line) : line)
   const levels = levelsOf(all, base)
