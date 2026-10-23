@@ -29,10 +29,12 @@ const LATIN = /[A-Za-zÀ-ɏ]/
 const MARK = /\p{M}/u
 const MIRROR: Record<string, string> = { '(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{', '<': '>', '>': '<' }
 const DIGIT = /[0-9\u0660-\u0669\u06F0-\u06F9]/
-const TERMINATOR = /[%\u2030\u00B0$\u20AC\u00A3\u00A5\u20AA]/
+const TERMINATOR = /[#%\u2030\u00B0$\u20AC\u00A3\u00A5\u20AA]/
 const COMMENT = /^(.*?)((?:^|\s)(?:#|\/\/)\s+)(.*)$/
 
 const classify = (ch: string): Dir | null => (R.test(ch) ? 'R' : L.test(ch) ? 'L' : null)
+
+const byDigit = (us: Unit[], i: number): boolean => TERMINATOR.test(us[i]!.ch) && (DIGIT.test(us[i - 1]?.ch ?? '') || DIGIT.test(us[i + 1]?.ch ?? ''))
 
 const units = (text: string, fmt: Fmt): Unit[] => {
   const out: Unit[] = []
@@ -96,7 +98,7 @@ const reorder = <U extends Unit>(all: U[], base: Dir): U[] => {
     const own = classify(u.ch)
     if (own) return own
     if (u.fmt.leaf === 'code' || u.fmt.leaf === 'math' || u.fmt.leaf === 'path' || (u.fmt.leaf === 'link' && /^file:/i.test(u.fmt.href ?? ''))) return 'L'
-    return TERMINATOR.test(u.ch) && (DIGIT.test(all[i - 1]?.ch ?? '') || DIGIT.test(all[i + 1]?.ch ?? '')) ? 'L' : null
+    return byDigit(all, i) ? 'L' : null
   })
   const prev: (Dir | null)[] = []
   let seen: Dir | null = null
@@ -245,7 +247,7 @@ const strongFrom = (line: Unit[], i: number, step: 1 | -1): Dir => {
 }
 
 const anchored = (span: Unit[], i: number): boolean =>
-  classify(span[i]!.ch) !== null || (bidiClass(span[i]!.ch) === 'ET' && (DIGIT.test(span[i - 1]?.ch ?? '') || DIGIT.test(span[i + 1]?.ch ?? '')))
+  classify(span[i]!.ch) !== null || byDigit(span, i)
 
 const swapEdges = (span: Unit[]): Unit[] => {
   let a = 0

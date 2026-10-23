@@ -433,6 +433,13 @@ test('a file link whose label is its path reads as written when the line is reor
   }
 })
 
+test('a link labelled with an issue number reads #181 in a Hebrew line on every terminal', () => {
+  for (const [terminal, shape] of Object.entries(TERMINALS)) {
+    const lines = flow([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: '#181', href: 'https://example.com/pull/181' }, { kind: 'text', text: ' עכשיו' }], 100, measure, shape)?.lines ?? []
+    expect([terminal, lines.flat().filter(n => n.kind === 'link').map(n => inlineText([n])).join('')]).toEqual([terminal, '#181'])
+  }
+})
+
 test('a named link keeps its target when a Hebrew line reorders', async () => {
   const lines = flow([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: 'המדריך', href: 'https://example.com/guide' }, { kind: 'text', text: ' עכשיו' }], 100, measure)?.lines ?? []
   const links = lines.flat().filter(n => n.kind === 'link')
