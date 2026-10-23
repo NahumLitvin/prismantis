@@ -898,6 +898,27 @@ test('each path is stat-ed once a session however many times a streaming reply r
   for (const path of ON_DISK.filter(path => !/\.(bat|py)$/.test(path))) expect(counts.get(path)).toBe(1)
 })
 
+test('a path named before a tool creates it links once the tool ran', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  let made = false
+  on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/') !== '/work/app/src/new.ts' ? next(e) : made ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: 'no such file' }))
+  on('tool.call', () => {
+    made = true
+    return { result: 'ok', text: 'ok' }
+  })
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  const plan = await $.ui.mount(mount("I'll create src/new.ts."))
+  await clock.settle()
+  expect(await plan.findAll({ type: 'Link' })).toEqual([])
+  await plan.unmount()
+  await $.tool.call({ tool: 'Write', file_path: '/work/app/src/new.ts', content: 'x' })
+  const done = await $.ui.mount(mount('Created src/new.ts.'))
+  await clock.settle()
+  expect((await done.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['file:///work/app/src/new.ts'])
+  await done.unmount()
+})
+
 test('a line number after a path stays out of its link with number colors off', { options: { highlightNumbers: false } }, async ($, on) => {
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)

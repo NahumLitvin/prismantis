@@ -659,6 +659,12 @@ export const register: Register = (on, options) => {
     })
   }
 
+  on('tool.call', async (_$, e, next) => {
+    const done = await next(e)
+    pathChecks.asked = new Set(pathChecks.found)
+    return done
+  })
+
   on('session.start', async ($, e, next) => {
     terminal = await probe($, style, probes)
     void latexEngine($, latex)
