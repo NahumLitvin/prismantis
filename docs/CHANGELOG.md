@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.35.0] - 2026-10-23
+
+### Added
+
+- Paths written without `./` link to their file when it exists in the session folder: `docs/guide/`, `src/app.ts:42` (the `:42` stays out of the URL), `` `src/app.ts` `` in inline code and a bare `notes.md`. Windows paths like `C:\work\notes\plan.md` link too, and a file Claude creates links the next time it is named. Words with slashes like `and/or` and paths that don't exist draw as before ([#275](https://github.com/NahumLitvin/prismantis/pull/275)).
+- In Orca, paths link without `FORCE_HYPERLINK` ([#275](https://github.com/NahumLitvin/prismantis/pull/275)).
+- A `<br>` in a table cell, also written `<br/>` or `<BR>`, starts a new line in the cell instead of printing as written. `⧉ art` and `⧉ html` keep the break, and inside a code span `<br>` stays literal ([#283](https://github.com/NahumLitvin/prismantis/pull/283)).
+- New dark color preset `neon`, from neon-hud: `/prismantis theme neon`, the `theme` picker in `/config`, and `theme random` ([#277](https://github.com/NahumLitvin/prismantis/pull/277)).
+
+### Fixed
+
+- In Hebrew replies, clickable links show only their name, like in English replies, and a link named after a path, a PR number like `#181` or a percentage reads as written ([#285](https://github.com/NahumLitvin/prismantis/pull/285)).
+- On iTerm, table cells that mix Hebrew and English keep a number next to its unit (`3m`, `3.5m`), and inline code or a path in a mostly Hebrew cell keeps its written order ([#281](https://github.com/NahumLitvin/prismantis/pull/281)).
+- On Windows Terminal, a number stays next to its word in Hebrew tables, paragraphs and lists ([#282](https://github.com/NahumLitvin/prismantis/pull/282)).
+- A Hebrew sentence that ends with a path and a period reads in order on every terminal: the period sits after the path ([#284](https://github.com/NahumLitvin/prismantis/pull/284)).
+- In the Claude desktop app, the rule under a level 2 heading is as wide as the heading instead of about twice as wide ([#280](https://github.com/NahumLitvin/prismantis/pull/280)).
+- The quote bar beside a quoted table reaches the bottom of the table when its cells hold `<br>` lines ([#283](https://github.com/NahumLitvin/prismantis/pull/283)).
+
 ## [0.34.0] - 2026-10-22
 
 ### Added

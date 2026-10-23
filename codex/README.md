@@ -1,6 +1,6 @@
 # prismantis for Codex
 
-Codex has no way for a plugin to redraw replies, so prismantis in Codex does two things: it gives Codex the same session note as Claude Code, so replies come back with tables, diagrams and figures, and it ships the 16 prismantis themes as Codex syntax themes.
+Codex has no way for a plugin to redraw replies, so prismantis in Codex does two things: it gives Codex the same session note as Claude Code, so replies come back with tables, diagrams and figures, and it ships the 17 prismantis themes as Codex syntax themes.
 
 | Codex alone | With prismantis |
 |---|---|

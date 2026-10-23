@@ -1,7 +1,7 @@
 {
   "name": "prismantis",
-  "version": "0.34.0",
-  "description": "Themeable Codex replies: 16 prismantis syntax themes for code, inline code, table headers and mermaid, and a session note that gets tables, diagrams and figures into replies.",
+  "version": "0.35.0",
+  "description": "Themeable Codex replies: 17 prismantis syntax themes for code, inline code, table headers and mermaid, and a session note that gets tables, diagrams and figures into replies.",
   "hooks": "./codex/hooks.json",
   "skills": "./codex/skills"
 }
