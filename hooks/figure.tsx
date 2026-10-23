@@ -1,6 +1,6 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { cells, graphemes, heldLtr, mirrored, remember, width } from './render'
+import { cells, graphemes, gridFace, heldLtr, mirrored, remember, width } from './render'
 import { FIGURE_ROLES } from './markdown'
 import { asIs, hasRtl, holdEngine, holdText, holdVisual, led } from './rtl'
 import type { Style, Theme } from './theme'
@@ -211,7 +211,7 @@ const figureElement = ({ Box, Text }: ElementTable, style: Style, rows: readonly
     {rows.map((row, i) => {
       const runs = heldRuns(style, row)
       return (
-        <Text key={`${key}.${i}`} {...heldLtr(style)}>
+        <Text key={`${key}.${i}`} {...heldLtr(style)} {...gridFace(style)}>
           {runs.length
             ? runs.map((run, r) => (
                 <Text key={`r${r}`} color={runColor(style, run.role)} bold={isBold(style, run.role)} dimColor={run.role === 'dim' && !style.theme.codeComment}>

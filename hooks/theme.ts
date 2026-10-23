@@ -40,6 +40,7 @@ export type Style = {
   htmlCopy: ClipboardBackend | null
   nativeCode?: boolean
   gridFace?: boolean
+  desktop?: boolean
   httpLinks: boolean
   editorLinks: boolean
   fileLinks: string | null

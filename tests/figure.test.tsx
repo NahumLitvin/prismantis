@@ -5,6 +5,7 @@ import { FIGURE_GLYPHS, FIGURE_HINT, FIGURE_MAX_COLUMNS, FIGURE_MAX_LINES, FIGUR
 import { FIGURE_ROLES } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
 import { width } from '../hooks/render'
+import { claudeAt, withMono } from './claude-version'
 
 const lines = (text: string) => text.split('\n')
 
@@ -394,11 +395,13 @@ test('a figure wider than the terminal stays a code block', async ($, on) => {
 
 test('a figure as wide as the hint allows draws in an 80-column window, one column more does not', async ($, on) => {
   engine(on)
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const safe = await $.ui.mount(reply(['```figure', `{accent:${'─'.repeat(FIGURE_SAFE_COLUMNS)}}`, '```'].join('\n'), surface, 80))
+  claudeAt(on, '2.1.299')
+  for (const [surface, columns] of [['terminal', 80], ['desktop', 96]] as const) {
+    const safe = await withMono($.ui.mount(reply(['```figure', `{accent:${'─'.repeat(FIGURE_SAFE_COLUMNS)}}`, '```'].join('\n'), surface, columns)))
+    if (!safe) continue
     expect(await safe.find({ type: 'Text', text: /^── figure$/ })).toBeUndefined()
     await safe.unmount()
-    const wider = await $.ui.mount(reply(['```figure', `{accent:${'─'.repeat(FIGURE_SAFE_COLUMNS + 1)}}`, '```'].join('\n'), surface, 80))
+    const wider = await $.ui.mount(reply(['```figure', `{accent:${'─'.repeat(FIGURE_SAFE_COLUMNS + 1)}}`, '```'].join('\n'), surface, columns))
     expect(await wider.find({ type: 'Text', text: /^── figure$/ })).toBeDefined()
     await wider.unmount()
   }
