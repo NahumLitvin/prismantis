@@ -875,3 +875,10 @@ test('on iTerm a long Hebrew line in a code block wraps into rows that each open
   expect(rows.every(r => r.length <= 40)).toBe(true)
   await ui.unmount()
 })
+
+test('on iTerm a shell block whose Hebrew comes after the command keeps its shell colors and gets no braille blank, since the row already opens with English', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount('```bash\nls -la # רשימת הקבצים\n```'))
+  expect((await ui.findAll({ type: 'Text' })).some(t => t.text.includes('⠀'))).toBe(false)
+  expect((await ui.find({ type: 'Text', text: /^ls$/ }))?.props.color).toBeDefined()
+  await ui.unmount()
+})
