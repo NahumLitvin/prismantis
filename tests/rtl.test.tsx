@@ -892,6 +892,21 @@ test('on iTerm a shell block whose Hebrew comes after the command keeps its shel
   await ui.unmount()
 })
 
+test('on iTerm a shell block with a line that opens with Hebrew keeps the shell colors the block has without Hebrew', { options: { rtl: 'iterm' } }, async $ => {
+  const colors = async (source: string, texts: RegExp[]) => {
+    const ui = await $.ui.mount(mount(source))
+    const found = await Promise.all(texts.map(async text => (await ui.findAll({ type: 'Text', text })).map(t => t.props.color)))
+    await ui.unmount()
+    return found
+  }
+  const words = [/^npm$/, /^--save$/, /^"x"$/]
+  const plain = (await colors('```bash\n# note\nnpm install --save "x"\n```', [/^# note$/, ...words])).map(c => c[0])
+  const held = await colors('```bash\n# התקנת החבילות\nnpm install --save "x"\n```', [/^# התקנת החבילות$/, ...words, /^ ⠀$/])
+  expect(new Set(plain).size).toBe(4)
+  plain.forEach((color, i) => expect(held[i]).toContain(color))
+  expect(held[4]!.length).toBeGreaterThan(0)
+})
+
 const shellCall = (id: string, command: string) => ({ tool_use_id: id, tool: 'Bash', input: { command }, isRunning: false, isErrored: false, isInterrupted: false })
 
 for (const rtl of ['iterm', 'warp'] as const)

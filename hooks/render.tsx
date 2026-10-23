@@ -638,8 +638,11 @@ export const highlightBlock = ({ Text }: ElementTable, style: Style, lines: stri
 
 const gutterOf = (lines: string[], numbered: boolean) => (numbered ? String(lines.length).length + 2 : 0)
 
+const heldSegments = (style: Style, lines: string[], lang: string): Segment[][] =>
+  (isShellLang(lang) ? lines.map(line => shellLine(style, line)) : segmentRows(style, lines, lang)) ?? lines.map(text => (text ? [{ text, italic: false }] : []))
+
 const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, gutter: number, room: number, key: string): RenderElement[] =>
-  (segmentRows(style, lines, lang) ?? lines.map(text => (text ? [{ text, italic: false }] : []))).slice(0, shown).flatMap((segs, i) =>
+  heldSegments(style, lines, lang).slice(0, shown).flatMap((segs, i) =>
     visualRows(tabbed(wordPieces(segs, null)), room).map((part, k) => (
       <el.Box key={`${key}.h${i}.${k}`} flexDirection="row">
         {numberedLine(el, style, `  ${gutter ? (k ? ' '.repeat(gutter + 2) : `${String(i + 1).padStart(gutter)}  `) : ''}`, part, `${key}.h${i}.${k}`)}
@@ -685,6 +688,13 @@ export const codeLine = (el: ElementTable, style: Style, line: string, lang: str
   if (!isShell) return <Text key={key} color={t.codeText}>{shownCode(line, style, room) || ' '}</Text>
   if (SHELL_COMMENT.test(line)) return <Text key={key} color={t.codeComment}>{line}</Text>
   return <Text key={key} color={t.codeText}>{shellSegments(style, line, room).map((s, i) => <Text key={`${key}.${i}`} color={s.color}>{s.text}</Text>)}</Text>
+}
+
+const shellLine = (style: Style, line: string): Segment[] => {
+  if (!line) return []
+  if (BOX_DRAWING.test(line)) return [{ text: line, color: style.theme.codeText, italic: false }]
+  if (SHELL_COMMENT.test(line)) return [{ text: line, color: style.theme.codeComment, italic: false }]
+  return shellSegments(style, line)
 }
 
 const shellSegments = (style: Style, line: string, room?: number): Segment[] => {
