@@ -611,9 +611,10 @@ test('iTerm gets the neutral edges of a code span or path between Hebrew words s
   expect(line[1]).toEqual({ kind: 'path', text: 'aws/credentials./~', href: 'file:///Users/me/.aws/credentials' })
 })
 
-test('iTerm leaves the period that ends a sentence after a path at the end of the sentence, outside the swapped path edges', () => {
-  const line = mirrorLine([{ kind: 'text', text: 'סיימתי את ה-' }, { kind: 'path', text: '/simplify.' }, { kind: 'text', text: ' שלושה שינויים' }])
-  expect(texts(line)).toEqual(['סיימתי את ה-', 'simplify/.', ' שלושה שינויים'])
+test('every terminal leaves the period that ends a sentence after a path outside the path', () => {
+  const nodes: Inline[] = [{ kind: 'text', text: 'סיימתי את ה-' }, { kind: 'path', text: '/simplify.' }, { kind: 'text', text: ' שלושה שינויים' }]
+  for (const shape of Object.values(TERMINALS)) expect(flow(nodes, 100, measure, shape)?.lines[0]?.filter(n => n.kind === 'path').map(n => inlineText([n]).replace(/\u200E/g, ''))).toEqual([shape === 'mirror' ? 'simplify/' : '/simplify'])
+  expect(texts(mirrorLine(nodes))).toEqual(['סיימתי את ה-', 'simplify/', '. שלושה שינויים'])
   expect(texts(mirrorLine([{ kind: 'text', text: 'תמחק את ' }, { kind: 'path', text: '/tmp/.' }, { kind: 'text', text: ' עכשיו' }]))[1]).toBe('./tmp/')
   expect(texts(mirrorLine([{ kind: 'text', text: 'תוסיף את ' }, { kind: 'code', text: '--flag.' }, { kind: 'text', text: ' לפקודה' }]))[1]).toBe('.flag--')
 })

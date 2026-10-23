@@ -57,8 +57,10 @@ const flatten = (nodes: Inline[], wrap: Fmt['wrap'] = []): Unit[] =>
           : [...units(n.text, { wrap, leaf: 'link', href: n.href }), ...units(` (${n.href})`, { wrap, leaf: 'dim' })]
       case 'image':
         return units(n.text, { wrap, leaf: 'text' })
-      case 'path':
-        return units(n.text, { wrap, leaf: 'path', href: n.href })
+      case 'path': {
+        const [, body = n.text, dot = ''] = /^(.*\w)(\.)$/.exec(n.text) ?? []
+        return [...units(body, { wrap, leaf: 'path', href: n.href }), ...units(dot, { wrap, leaf: 'text' })]
+      }
       default:
         return units(n.text, { wrap, leaf: n.kind })
     }
@@ -258,7 +260,6 @@ const holdEdges = (line: Unit[]): Unit[] => {
     j = i + 1
     if (!ISOLATED.includes(line[i]!.fmt.leaf)) continue
     while (j < line.length && sameFmt(line[j]!.fmt, line[i]!.fmt)) j++
-    if (line[i]!.fmt.leaf === 'path' && j - 1 > i && line[j - 1]!.ch === '.' && /\w/.test(line[j - 2]?.ch ?? '') && (j === line.length || line[j]!.ch === ' ')) j--
     const span = line.slice(i, j)
     if (!span.some(u => classify(u.ch) === 'R') && strongFrom(line, i - 1, -1) !== 'L' && strongFrom(line, j, 1) !== 'L') out.splice(i, span.length, ...swapEdges(span))
   }
