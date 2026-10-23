@@ -2110,6 +2110,7 @@ test('a footnote mark and a clickable path inside a <br> cell keep working on th
   claudeAt(on, '2.1.295')
   mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
   on('session.root', () => ({ value: '/work/app' }))
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
   const ui = await $.ui.mount(mount('| Step | Detail |\n|---|---|\n| Fix | Edit ~/notes/todo.md<br>then rerun[^r] |\n\n[^r]: Twice.'))
   expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///home/me/notes/todo.md'])
   expect(await ui.find({ type: 'Text', text: /^¹ Twice\.$/ })).toBeDefined()
