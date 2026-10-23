@@ -3,9 +3,9 @@ import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'cl
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
-import { CONTROL, displayText, inlineText, isWebLink, texText } from './markdown'
+import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, texText } from './markdown'
 import type { Flow } from './rtl'
-import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, listMarker, terminalLine } from './rtl'
+import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, heldCell, listMarker, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -24,7 +24,11 @@ export const width = (s: string): number =>
   : s.length === 1 ? (ZERO.test(s) ? 0 : WIDE.test(s) ? 2 : 1)
   : graphemes(s).reduce((w, g) => (ZERO.test(g) ? w : w + (WIDE.test(g) ? 2 : 1)), 0)
 
+const widestLine = (text: string): number => Math.max(...text.split('\n').map(width))
+
 const wrapRanges = (text: string, w: number): [number, number][] => {
+  const br = text.indexOf('\n')
+  if (br >= 0) return [...wrapRanges(text.slice(0, br), w), ...wrapRanges(text.slice(br + 1), w).map(([a, b]): [number, number] => [a + br + 1, b + br + 1])]
   if (width(text) <= w) return [[0, text.length]]
   const out: [number, number][] = []
   let line: [number, number] | undefined
@@ -112,7 +116,7 @@ export const fileRoot = (distro?: string): string => (distro ? `file://wsl.local
 
 export type TerminalEnv = Partial<Record<'FORCE_HYPERLINK' | 'TERM_PROGRAM' | 'TERM_PROGRAM_VERSION' | 'TERM' | 'WT_SESSION' | 'LC_TERMINAL' | 'VTE_VERSION' | 'TERMINAL_EMULATOR', string>>
 
-const HYPERLINK_TERMINALS = ['ghostty', 'Hyper', 'kitty', 'alacritty', 'iTerm.app', 'iTerm2', 'WarpTerminal']
+const HYPERLINK_TERMINALS = ['ghostty', 'Hyper', 'kitty', 'alacritty', 'iTerm.app', 'iTerm2', 'WarpTerminal', 'Orca']
 
 const versionOf = (value = ''): number[] => {
   const short = /^(\d{1,2})(\d{2})$/.exec(value)
@@ -142,7 +146,7 @@ export const drawsHyperlinks = (env: TerminalEnv): boolean => {
     || env.TERMINAL_EMULATOR === 'JetBrains-JediTerm'
 }
 
-type Reach = Pick<Style, 'httpLinks' | 'editorLinks' | 'fileLinks' | 'pathLinks' | 'cwd' | 'home'>
+type Reach = Pick<Style, 'httpLinks' | 'editorLinks' | 'fileLinks' | 'pathLinks' | 'cwd' | 'home' | 'found'>
 
 const LAUNCHERS = new Set([
   'app', 'command', 'tool', 'terminal', 'pkg', 'mpkg', 'mobileconfig', 'prefpane', 'workflow', 'action', 'fileloc', 'inetloc', 'webloc',
@@ -267,13 +271,97 @@ const drawnPath = (n: Extract<Inline, { kind: 'path' }>, reach: Reach): Inline =
   return href === undefined ? n : { ...n, href }
 }
 
+const PART = String.raw`[\p{L}\p{N}_@+-]+`
+const NAME = String.raw`\.?${PART}(?:\.${PART})*`
+const LOOSE_PATH = new RegExp(String.raw`(?<![\p{L}\p{N}_/\\.:~@+-])(?:[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?|${NAME}(?:\/${NAME})*\/(?:${NAME})?|${PART}(?:\.${PART})+)(?![\p{L}\p{N}_/\\@+-]|\.[\p{L}\p{N}])`, 'gu')
+
+type Probe = { key: string; href: string }
+
+const looseProbe = (reach: Reach, spelling: string): Probe | undefined => {
+  const drive = /^[a-z]:[\\/]/i.test(spelling)
+  if (!drive && !reach.cwd) return undefined
+  const href = toolHref(reach, spelling)
+  const key = drive ? spelling.replace(/\\/g, '/') : `${slashes(reach.cwd)}/${spelling}`
+  return href === undefined ? undefined : { key: key.replace(/(?<=[^/:])\/+$/, ''), href }
+}
+
+const looseSpellings = (text: string): RegExpExecArray[] => [...text.matchAll(LOOSE_PATH)]
+
+const foundProbe = (reach: Reach, spelling: string): Probe | undefined => {
+  const probe = looseProbe(reach, spelling)
+  return probe && reach.found?.has(probe.key) ? probe : undefined
+}
+
+const loosePaths = (n: Extract<Inline, { kind: 'text' }>, reach: Reach): Inline[] => {
+  const out: Inline[] = []
+  let at = 0
+  for (const m of looseSpellings(n.text)) {
+    const probe = foundProbe(reach, m[0])
+    if (!probe) continue
+    if (m.index > at) out.push({ kind: 'text', text: n.text.slice(at, m.index) })
+    out.push({ kind: 'path', text: m[0], href: probe.href })
+    at = m.index + m[0].length
+  }
+  if (at === 0) return [n]
+  if (at < n.text.length) out.push({ kind: 'text', text: n.text.slice(at) })
+  return out
+}
+
+const looseCode = (n: Extract<Inline, { kind: 'code' }>, reach: Reach): Inline => {
+  const probe = isWholePath(n.text) ? foundProbe(reach, n.text) : undefined
+  return probe ? { ...n, href: probe.href } : n
+}
+
+const isWholePath = (text: string): boolean => looseSpellings(text).some(m => m[0] === text)
+
+const looseNode = (n: Inline, reach: Reach): Inline | Inline[] => {
+  if (n.kind === 'text') return loosePaths(n, reach)
+  return n.kind === 'code' ? looseCode(n, reach) : n
+}
+
+const linked = (node: Inline, reach: Reach): Inline => {
+  const n: Inline = node.kind === 'image' && isWebLink(node.src) ? { kind: 'link', text: node.text, href: node.src } : node
+  if (n.kind === 'link') return drawnLink(n, reach)
+  if (n.kind === 'path') return drawnPath(n, reach)
+  return 'children' in n ? { ...n, children: hyperlinks(n.children, reach) } : n
+}
+
 const hyperlinks = (nodes: Inline[], reach: Reach): Inline[] =>
-  nodes.map(node => {
-    const n: Inline = node.kind === 'image' && isWebLink(node.src) ? { kind: 'link', text: node.text, href: node.src } : node
-    if (n.kind === 'link') return drawnLink(n, reach)
-    if (n.kind === 'path') return drawnPath(n, reach)
-    return 'children' in n ? { ...n, children: hyperlinks(n.children, reach) } : n
+  reach.found?.size ? nodes.flatMap(node => looseNode(linked(node, reach), reach)) : nodes.map(node => linked(node, reach))
+
+const spellingsIn = (nodes: Inline[]): string[] =>
+  nodes.flatMap(n => {
+    if ('children' in n) return spellingsIn(n.children)
+    if (n.kind === 'code') return isWholePath(n.text) ? [n.text] : []
+    return n.kind === 'text' ? looseSpellings(n.text).map(m => m[0]) : []
   })
+
+const inlinesOf = (block: Block): Inline[][] => {
+  switch (block.kind) {
+    case 'heading':
+    case 'paragraph':
+      return [block.inline]
+    case 'list':
+      return block.items.map(item => item.inline)
+    case 'table':
+      return [...block.header, ...block.rows.flat()]
+    case 'notes':
+      return block.notes.map(note => note.inline)
+    default:
+      return []
+  }
+}
+
+const spelled = new WeakMap<Block, string[]>()
+
+export const pathsToProbe = (blocks: Block[], reach: Reach): string[] => {
+  if (!reach.pathLinks || reach.fileLinks === null) return []
+  return nestedBlocks(blocks).flatMap(block => {
+    const spellings = spelled.get(block) ?? inlinesOf(block).flatMap(spellingsIn)
+    spelled.set(block, spellings)
+    return spellings.flatMap(spelling => looseProbe(reach, spelling)?.key ?? [])
+  })
+}
 
 const hyperlinkBlock = (block: Block, reach: Reach): Block => {
   const drawn = (nodes: Inline[]) => hyperlinks(nodes, reach)
@@ -297,13 +385,14 @@ const hyperlinked = new WeakMap<Block, Record<string, Block>>()
 const drawable = (block: Block, reach: Reach): Block => {
   const cached = hyperlinked.get(block) ?? {}
   hyperlinked.set(block, cached)
-  const key = `${+reach.httpLinks}${+reach.editorLinks}${reach.fileLinks ?? ''}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}` : ''}`
+  const key = `${+reach.httpLinks}${+reach.editorLinks}${reach.fileLinks ?? ''}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}\0${reach.found?.size ?? 0}` : ''}`
   return (cached[key] ??= hyperlinkBlock(block, reach))
 }
 
 const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
 
-const textRows = (text: string, w: number): number => (width(text) <= w ? 1 : mostLines(text, Math.max(1, w)))
+const textRows = (text: string, w: number): number =>
+  text.split('\n').reduce((sum, line) => sum + (width(line) <= w ? 1 : mostLines(line, Math.max(1, w))), 0)
 
 const heightOf = (blocks: Block[], w: number): number => blocks.reduce((sum, block, b) => sum + (b ? 1 : 0) + blockHeight(block, w), 0)
 
@@ -339,7 +428,7 @@ const blockHeight = (block: Block, w: number): number => {
 
 const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   const text = inlineText(nodes)
-  return width(text) <= w ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
+  return width(text) <= w && !text.includes('\n') ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
 }
 
 export const mirrored = (style: Style) => style.shape === 'mirror'
@@ -349,6 +438,9 @@ export const heldLtr = (style: Style) => (style.shape === 'engine' ? { dir: 'ltr
 const flows = new Map<string, Flow | null>()
 const flowOf = (style: Style, nodes: Inline[], columns: number, mark = !(style.inside && mirrored(style))) =>
   style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${mark}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape, mark), 2000) : null
+
+const cellFlow = (style: Style, nodes: Inline[], held: boolean, mark: boolean) =>
+  held && style.reorder && containsRtl(nodes) ? remember(flows, `held\0${JSON.stringify(nodes)}`, () => heldCell(nodes), 2000) : flowOf(style, nodes, Infinity, mark)
 
 const noteHover = (style: Style, note: number | undefined) =>
   note === undefined || style.noteKey === undefined ? {} : { hover: { scope: `fn:${style.noteKey}:${note}`, inverse: true } }
@@ -368,7 +460,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'strike':
         return <Text key={key} strikethrough dimColor>{renderInline(el, style, n.children, key)}</Text>
       case 'code':
-        return <Text key={key} color={t.inlineCode}>{n.text}</Text>
+        return <Text key={key} color={t.inlineCode}>{n.href === undefined ? n.text : <el.Link href={n.href} label={n.text} />}</Text>
       case 'math':
         return <Text key={key} italic color={t.emphasis}>{n.text}</Text>
       case 'link':
@@ -614,7 +706,7 @@ const ART_WIDTH = 100
 const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
   const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
   const column = (measure: (s: string) => number) => block.header.map((_, c) => Math.max(...cells.map(r => measure(r[c]!))))
-  return { natural: column(width), words: column(longestWord) }
+  return { natural: column(widestLine), words: column(longestWord) }
 }
 
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => {
@@ -713,7 +805,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       {box && border(`${k}.l`, wall('│ '))}
       {order.map((c, i) => {
         const w = widths[c]!
-        const cell = flowOf(style, cells[c] ?? [], Infinity, marked)
+        const cell = cellFlow(style, cells[c] ?? [], held, marked)
         const content = cell ? cell.lines[0]! : (cells[c] ?? [])
         const side = mirror ? (block.align[c] === 'center' ? 'center' : 'flex-start') : cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
         const runs = isHeader ? headerRuns(content) : content
@@ -736,7 +828,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(displayText(cells[c] ?? []), w)))))]
     const wrapped = widths.map((w, c) => {
       const content = cells[c] ?? []
-      if (natural[c]! <= w) return [content]
+      if (natural[c]! <= w && !inlineText(content).includes('\n')) return [content]
       return wrapInline(isHeader ? headerRuns(content) : content, w)
     })
     return Array.from({ length: Math.max(...wrapped.map(l => l.length)) }, (_, i) =>

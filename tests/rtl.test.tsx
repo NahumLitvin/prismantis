@@ -80,7 +80,7 @@ test('bold, code and links keep their style through reordering', async () => {
     { kind: 'link', text: 'תיעוד', href: 'https://x.dev' },
   ]
   const line = flow(nodes, 100, measure)?.lines[0]
-  expect(line?.map(n => n.kind)).toEqual(['dim', 'link', 'text', 'code', 'text', 'strong'])
+  expect(line?.map(n => n.kind)).toEqual(['link', 'text', 'code', 'text', 'strong'])
   const strong = line?.find(n => n.kind === 'strong')
   expect(strong?.kind === 'strong' && inlineText(strong.children)).toBe('םולש')
   expect(line?.find(n => n.kind === 'code')).toEqual({ kind: 'code', text: 'kubectl' })
@@ -411,6 +411,35 @@ test('links in a Hebrew paragraph are hyperlinks in the link color, or plain tex
   }
 })
 
+for (const rtl of ['warp', 'iterm'] as const) {
+  test(`a Hebrew line draws a clickable named link and a file link that shows its path once, like an English line, ${rtl}`, { options: { rtl } }, async ($, on) => {
+    claudeAt(on, '2.1.289')
+    mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
+    if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+    const ui = await $.ui.mount(mount('שלום [קישור להודעה](https://x.dev/archives/p1) ו [/tmp/notes.md](file:///tmp/notes.md) ו [המסמך](file:///tmp/setup.command) עולם'))
+    const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+    expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href)).sort()).toEqual(['file:///tmp/notes.md', 'https://x.dev/archives/p1'])
+    expect(texts.some(t => t.includes('(https://x.dev/archives/p1)'))).toBe(false)
+    expect(texts.some(t => t.includes('(file:///tmp/notes.md)'))).toBe(false)
+    expect(texts.some(t => t.includes('(file:///tmp/setup.command)'))).toBe(true)
+    await ui.unmount()
+  })
+}
+
+test('a file link whose label is its path reads as written when the line is reordered for the terminal', () => {
+  for (const shape of ['visual', 'words', 'inverse'] as const) {
+    const lines = flow([{ kind: 'text', text: 'הקובץ נמצא ב-' }, { kind: 'link', text: '/tmp/notes.md', href: 'file:///tmp/notes.md' }, { kind: 'text', text: ' ו-' }, { kind: 'link', text: '../etc/x', href: 'file:///etc/x' }, { kind: 'text', text: ' עכשיו' }], 100, measure, shape)?.lines ?? []
+    expect(lines.flat().filter(n => n.kind === 'link').map(n => inlineText([n])).sort()).toEqual(['../etc/x', '/tmp/notes.md'])
+  }
+})
+
+test('a link labelled with an issue number reads #181 in a Hebrew line on every terminal', () => {
+  for (const [terminal, shape] of Object.entries(TERMINALS)) {
+    const lines = flow([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: '#181', href: 'https://example.com/pull/181' }, { kind: 'text', text: ' עכשיו' }], 100, measure, shape)?.lines ?? []
+    expect([terminal, lines.flat().filter(n => n.kind === 'link').map(n => inlineText([n])).join('')]).toEqual([terminal, '#181'])
+  }
+})
+
 test('a named link keeps its target when a Hebrew line reorders', async () => {
   const lines = flow([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: 'המדריך', href: 'https://example.com/guide' }, { kind: 'text', text: ' עכשיו' }], 100, measure)?.lines ?? []
   const links = lines.flat().filter(n => n.kind === 'link')
@@ -468,6 +497,20 @@ test('Windows Terminal mirrors brackets around English inside a Hebrew row and s
   const f = flow([{ kind: 'text', text: 'kubectl נכשל (timeout) על ה-cluster' }], 100, measure, 'engine')
   expect(f?.lines[0]?.[0]).toEqual(ROW_MARK)
   expect(inlineText(f!.lines[0]!)).toBe('׀ kubectl נכשל )timeout( על ה-cluster')
+})
+
+test('Windows Terminal keeps a number next to the Hebrew word before it in a mostly English line, with a braille blank between them', async () => {
+  const sent = (text: string) => inlineText(flow([{ kind: 'text', text }], 100, measure, 'engine')!.lines[0]!)
+  expect(sent('ok אחרי 3m')).toBe('ok אחרי⠀3m')
+  expect(sent('ok אחרי 3.5m')).toBe('ok אחרי⠀3.5m')
+  expect(sent('done אחרי 3')).toBe('done אחרי⠀3')
+  expect(sent('ok now אחרי 3 ימים')).toBe('ok now אחרי 3 ימים')
+  expect(sent('הרצתי 3 בדיקות של kubectl')).not.toContain('⠀')
+})
+
+test('Windows Terminal mirrors brackets for the left-to-right base its opening LRM sets when a line starts with a symbol-only code span', async () => {
+  const f = flow([{ kind: 'code', text: '(1)' }, { kind: 'text', text: ' הוא הצעד (הראשון)' }], 100, measure, 'engine')
+  expect(inlineText(f!.lines[0]!)).toBe('\u200E(1)\u200E הוא הצעד )הראשון)')
 })
 
 test('Windows Terminal diagram labels that read right to left are sent so Claude Code shows them in reading order, with blanks between labels held', async () => {
@@ -619,6 +662,15 @@ test('every terminal leaves the period that ends a sentence after a path outside
   expect(texts(mirrorLine([{ kind: 'text', text: 'תוסיף את ' }, { kind: 'code', text: '--flag.' }, { kind: 'text', text: ' לפקודה' }]))[1]).toBe('.flag--')
 })
 
+test('iTerm gets the neutral edges of a link whose label is a path swapped too, so the slash stays at the start of the path', () => {
+  const line = mirrorLine([{ kind: 'text', text: 'הקובץ נמצא ב-' }, { kind: 'link', text: '/tmp/notes.md', href: 'file:///tmp/notes.md' }, { kind: 'text', text: ' ומוכן' }, { kind: 'text', text: ' וגם ' }, { kind: 'link', text: 'ההודעה', href: 'https://example.com' }])
+  expect(texts(line)).toEqual(['הקובץ נמצא ב-', 'tmp/notes.md/', ' ומוכן וגם ', 'ההודעה'])
+  expect(line[1]).toEqual({ kind: 'link', text: 'tmp/notes.md/', href: 'file:///tmp/notes.md' })
+
+  const signs = mirrorLine([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: '#181', href: 'https://example.com/pull/181' }, { kind: 'text', text: ' ועוד ' }, { kind: 'link', text: '100%', href: 'https://example.com/a' }, { kind: 'text', text: ' ו-' }, { kind: 'code', text: '$5' }, { kind: 'text', text: ' עכשיו' }])
+  expect(texts(signs)).toEqual(['ראה ', '#181', ' ועוד ', '100%', ' ו-', '$5', ' עכשיו'])
+})
+
 test('iTerm keeps a code span as written when English sits beside it, since there its edges already read left to right', () => {
   const line = mirrorLine([{ kind: 'text', text: 'run ' }, { kind: 'code', text: '--all' }, { kind: 'text', text: ' now ואז נבדוק' }])
   expect(texts(line).join('')).toBe('׀ run --all now ואז נבדוק')
@@ -645,6 +697,24 @@ test('iTerm holds a mostly English table left to right with a braille blank afte
   expect(texts.filter(t => t === '│⠀').length).toBe(4)
   expect(texts.filter(t => t === ' │⠀').length).toBe(8)
   expect(texts.some(t => t.includes(WALL))).toBe(false)
+  await ui.unmount()
+})
+
+test('iTerm keeps a number next to the Hebrew word before it in a mostly English held table cell, with a braille blank between them', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const ui = await $.ui.mount(mount('| night | result | deploy |\n|---|---|---|\n| ok אחרי 3m | ok אחרי 3.5m | done אחרי 3 |\n| ok now אחרי 3 ימים | 86m | 51m |'))
+  for (const text of [/^ok אחרי⠀3m$/, /^ok אחרי⠀3.5m$/, /^done אחרי⠀3$/, /^ok now אחרי 3 ימים$/]) expect(await ui.find({ type: 'Text', text })).toBeDefined()
+  await ui.unmount()
+})
+
+test('iTerm keeps inline code and a path in written order inside a mostly Hebrew cell of a held table', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const ui = await $.ui.mount(mount('| night | result | deploy |\n|---|---|---|\n| run `--all` now | תריץ את `--all` | ok |\n| see `~/.aws/credentials` file | הקובץ `~/.aws/credentials` חסר | ok |'))
+  for (const text of [/^--all תריץ את$/, /^חסר ~\/\.aws\/credentials הקובץ$/]) expect(await ui.find({ type: 'Text', text })).toBeDefined()
+  await ui.unmount()
+})
+
+test('iTerm draws a mostly Hebrew cell of a held table in the order the terminal flips back', { options: { rtl: 'iterm', tableStyle: 'box' } }, async $ => {
+  const ui = await $.ui.mount(mount('| night | result | deploy |\n|---|---|---|\n| ok | ✗ אחרי 14m | 86m |'))
+  expect(await ui.find({ type: 'Text', text: /^14m אחרי ✗$/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -678,6 +748,12 @@ test('a diagram label that opens in Hebrew and holds English reads right to left
   expect(held.startsWith('│⠀') && held.endsWith('⠀│')).toBe(true)
   expect(inlineText(terminalLine([{ kind: 'text', text: held }]))).toBe(`│⠀${visual('האם יש token?')}⠀│`)
   expect(holdRow([...'│ ArgoCD sync │']).cells.join('')).toBe('│ ArgoCD sync │')
+})
+
+test('a held diagram label that is mostly English puts a braille blank between a Hebrew word and the number after it', () => {
+  expect(holdRow([...'│ ok אחרי 3m │']).cells.join('')).toBe('│⠀ok אחרי⠀3m⠀│')
+  expect(holdRow([...'│ ok بعد ٣m │']).cells.join('')).toBe('│⠀ok بعد⠀٣m⠀│')
+  expect(holdRow([...'│ ok بعد ۳m │']).cells.join('')).toBe('│⠀ok بعد⠀۳m⠀│')
 })
 
 const DIAGRAMS = ['```mermaid\nflowchart LR\n  A[בקשה נכנסת] --> B[ArgoCD sync]\n```', '```figure\n│ שלב א │──►│ שלב ב │\n```']

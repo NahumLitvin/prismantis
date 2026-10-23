@@ -355,6 +355,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('A paste of 4 lines or more')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`clock`')
   expect(showcaseText([])).toContain('⧉ html')
+  expect(showcaseText([])).toContain('src/app.ts:42, and Windows paths like C:\\work\\plan.md')
   expect(showcaseText([])).toContain('<i>Reply</i>')
   expect(showcaseText([])).toContain('CopyQ')
   expect(showcaseText([])).toContain('plain text')
@@ -801,6 +802,143 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
+const LOOSE = [
+  'The guide is in docs/guide/ and the entry point is src/app.ts:42 (see `src/app.ts`).',
+  'Release notes: notes.md. The plan is at C:\\work\\notes\\plan.md, also written C:/work/notes/plan.md, and C:\\work\\заметки\\план.md.',
+  'Scripts: run.bat and app.py.',
+].join('\n\n')
+
+const NOT_PATHS = 'Not paths: and/or, 1/2/3, Ctrl+X/Tab, docs/missing/file.md, C:\\work\\missing\\file.md.'
+
+const ON_DISK = ['/work/app/docs/guide', '/work/app/src/app.ts', '/work/app/notes.md', 'C:/work/notes/plan.md', 'C:/work/заметки/план.md', '/work/app/run.bat', '/work/app/app.py']
+
+const LOOSE_HREFS = [
+  'file:///work/app/docs/guide/',
+  'file:///work/app/src/app.ts',
+  'file:///work/app/src/app.ts',
+  'file:///work/app/notes.md',
+  'file:///C:/work/notes/plan.md',
+  'file:///C:/work/notes/plan.md',
+  'file:///C:/work/%D0%B7%D0%B0%D0%BC%D0%B5%D1%82%D0%BA%D0%B8/%D0%BF%D0%BB%D0%B0%D0%BD.md',
+]
+
+const onDisk = async ($: Engine, on: On) => {
+  const stats: string[] = []
+  let folder: string | undefined
+  on('classic.SessionStart', (_, e) => {
+    folder = e.cwd.replace(/\\/g, '/')
+    return {}
+  })
+  on('fs.stat', (_, e, next) => {
+    const seen = e.path.replace(/\\/g, '/')
+    const relative = folder !== undefined && seen.startsWith(`${folder}/`) ? seen.slice(folder.length + 1) : undefined
+    const path = relative !== undefined && /^[A-Za-z]:\//.test(relative) ? relative : seen.replace(/^[A-Za-z]:(?=\/work\/app\/)/, '')
+    if (!path.startsWith('/work/') && !path.startsWith('C:/work/')) return next(e)
+    stats.push(path)
+    return ON_DISK.includes(path) ? { value: { kind: path.endsWith('guide') ? 'dir' as const : 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${path}` }
+  })
+  await $.classic.SessionStart({ source: 'startup' })
+  return stats
+}
+
+const shape = (node: unknown): string => JSON.stringify(withoutLinks(node))
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`paths without ./ and Windows paths link once a stat finds them, not before, on ${surface}`, async ($, on) => {
+    filesAt(on, '2.1.289')
+    const clock = mock.clock(on)
+    const stats = await onDisk($, on)
+    if (surface === 'terminal' && !(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+    const ui = await $.ui.mount({ ...mount(LOOSE, 400), surface })
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual([])
+    await clock.settle()
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(surface === 'terminal' ? LOOSE_HREFS : [])
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.label)).toEqual(surface === 'terminal' ? ['docs/guide/', 'src/app.ts', 'src/app.ts', 'notes.md', 'C:\\work\\notes\\plan.md', 'C:/work/notes/plan.md', 'C:\\work\\заметки\\план.md'] : [])
+    if (surface === 'terminal') expect((await ui.find({ type: 'Text', text: /^docs\/guide\/$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].path)
+    expect(stats.filter(path => /\.(bat|py)$/.test(path))).toEqual([])
+    await ui.unmount()
+  })
+}
+
+test('prose with slashes and missing paths draws as before once their stats land', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  const stats = await onDisk($, on)
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  const ui = await $.ui.mount(mount(`${LOOSE}\n\n${NOT_PATHS}`, 400))
+  const before = shape(await ui.find({ type: 'Text', text: /^Not paths/ }))
+  await clock.settle()
+  expect(stats).toContain('/work/app/and/or')
+  expect(stats).toContain('/work/app/docs/missing/file.md')
+  expect(stats).toContain('C:/work/missing/file.md')
+  expect(await ui.findAll({ type: 'Link' })).toHaveLength(LOOSE_HREFS.length)
+  expect(shape(await ui.find({ type: 'Text', text: /^Not paths/ }))).toBe(before)
+  for (const text of ['and/or', '1/2/3', 'Ctrl+X/Tab', 'docs/missing/file.md', 'C:\\work\\missing\\file.md']) expect(await pathTexts(ui, exact(text))).toBe(0)
+  await ui.unmount()
+})
+
+test('each path is stat-ed once a session however many times a streaming reply redraws', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  const stats = await onDisk($, on)
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  const text = `${LOOSE}\n\n${NOT_PATHS}`
+  for (let end = 8; end <= text.length; end += 8) {
+    const ui = await $.ui.mount(mount(text.slice(0, end), 400))
+    if (end % 64 === 0) await clock.settle()
+    await ui.unmount()
+  }
+  for (let i = 0; i < 20; i++) {
+    const ui = await $.ui.mount(mount(text, 400))
+    await clock.settle()
+    await ui.unmount()
+  }
+  const counts = new Map<string, number>()
+  for (const path of stats) counts.set(path, (counts.get(path) ?? 0) + 1)
+  expect([...counts].filter(([, n]) => n > 1)).toEqual([])
+  for (const path of ON_DISK.filter(path => !/\.(bat|py)$/.test(path))) expect(counts.get(path)).toBe(1)
+})
+
+test('a path named before a tool creates it links once the tool ran', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  let made = false
+  on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/work\/app\/)/, '') !== '/work/app/src/new.ts' ? next(e) : made ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: 'no such file' }))
+  on('tool.call', () => {
+    made = true
+    return { result: 'ok', text: 'ok' }
+  })
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  const plan = await $.ui.mount(mount("I'll create src/new.ts."))
+  await clock.settle()
+  expect(await plan.findAll({ type: 'Link' })).toEqual([])
+  await plan.unmount()
+  await $.tool.call({ tool: 'Write', file_path: '/work/app/src/new.ts', content: 'x' })
+  const done = await $.ui.mount(mount('Created src/new.ts.'))
+  await clock.settle()
+  expect((await done.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['file:///work/app/src/new.ts'])
+  await done.unmount()
+})
+
+test('a line number after a path stays out of its link with number colors off', { options: { highlightNumbers: false } }, async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  await onDisk($, on)
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  const ui = await $.ui.mount(mount('See src/app.ts:42 and C:\\work\\notes\\plan.md:7.'))
+  await clock.settle()
+  expect((await ui.findAll({ type: 'Link' })).map(l => [l.props.label, l.props.href])).toEqual([['src/app.ts', 'file:///work/app/src/app.ts'], ['C:\\work\\notes\\plan.md', 'file:///C:/work/notes/plan.md']])
+  await ui.unmount()
+})
+
+test('in Orca paths link without FORCE_HYPERLINK', async ($, on) => {
+  filesAt(on, '2.1.289', { FORCE_HYPERLINK: '', TERM_PROGRAM: 'Orca', TERM_PROGRAM_VERSION: '1.4.230' })
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  const ui = await $.ui.mount(mount('Open ~/notes/todo.md'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['file:///home/me/notes/todo.md'])
+  await ui.unmount()
+})
+
 for (const [where, surface, base, env] of [
   ['on Claude Code 2.1.288, which refuses file hyperlinks', 'terminal', '2.1.288', {}],
   ['when the Claude Code version is unknown', 'terminal', undefined, {}],
@@ -914,6 +1052,7 @@ test('paths link in the terminals Claude Code draws hyperlinks in, and only thos
     [{ TERM_PROGRAM: 'WezTerm', TERM_PROGRAM_VERSION: '20200101-000000-0' }, false],
     [{ TERM_PROGRAM: 'iTerm.app', TERM_PROGRAM_VERSION: '3.0.0' }, true],
     [{ TERM_PROGRAM: 'ghostty' }, true],
+    [{ TERM_PROGRAM: 'Orca', TERM_PROGRAM_VERSION: '1.4.230' }, true],
     [{ TERM_PROGRAM: 'Apple_Terminal' }, false],
     [{ VTE_VERSION: '7600' }, true],
     [{ VTE_VERSION: '4600' }, false],
@@ -2067,4 +2206,60 @@ test('a clickable Bash-edits diff keeps its linked file title as text, since a B
   }
   expect(drawn).toBeDefined()
   expect(linkUnderButton(drawn)).toBe(false)
+})
+
+test('a <br> in a table cell parses as a line break, but not inside a code span', async () => {
+  const table = tableOf('| a |\n|---|\n| Then:<br/>• one<BR>• two `x<br>y` |')
+  expect(inlineText(table.rows[0]![0]!)).toBe('Then:\n• one\n• two x<br>y')
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`a <br> in a table cell starts a new row of the cell on ${surface}`, async $ => {
+  const ui = await $.ui.mount({ ...mount('| Step | Detail |\n|---|---|\n| Prevent | Then:<br/>• Run `brew install gnu-sed` |'), surface })
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0)
+  expect(cells.map(b => b.text).filter(t => /Detail|Then:|brew/.test(t))).toEqual(['Detail', 'Then:', '• Run brew install gnu-sed'])
+  expect(await ui.find({ type: 'Text', text: /<br/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('table art breaks a cell at <br> and sizes the column by its widest line', async () => {
+  const lines = tableArt(tableOf('| a |\n|---|\n| short<br>a longer line |')).split('\n')
+  expect(lines.filter(l => l.startsWith('│ ')).map(l => l.slice(2, -2).trim())).toEqual(['a', 'short', 'a longer line'])
+  expect(lines[1]).toBe('┌───────────────┐')
+})
+
+test('a long unbroken word after a <br> wraps on its own line', async () => {
+  const lines = tableArt(tableOf(`| h |\n|-|\n| short<br>${'x'.repeat(250)} |`)).split('\n').filter(l => l.startsWith('│ ')).map(l => l.slice(2, -2).trim())
+  expect(lines[1]).toBe('short')
+  expect(lines.slice(2).join('')).toBe('x'.repeat(250))
+})
+
+test('control characters inside a <br> cell are dropped and the break still applies', async () => {
+  expect(inlineText(tableOf('| a |\n|-|\n| one\x1b[31m<br>two\x07 |').rows[0]![0]!)).toBe('one\ntwo')
+})
+
+test('a quote bar counts every line of a short <br> cell in a wide column', { options: { copyButtons: false } }, async $ => {
+  const rows = Array.from({ length: 6 }, (_, i) => `> | ${i} | a<br>b<br>c<br>d |`).join('\n')
+  const ui = await $.ui.mount(mount(`> | n | a rather wide header |\n> |-|-|\n${rows}`, 80))
+  const bars = (await ui.findAll({ type: 'Text', text: /^(│ \n)*│ $/ })).map(bar => bar.text.split('\n').length)
+  expect(Math.max(...bars) >= 6 * 4 + 5 + 4).toBe(true)
+  await ui.unmount()
+})
+
+test('a footnote mark and a clickable path inside a <br> cell keep working on their own line', async ($, on) => {
+  claudeAt(on, '2.1.295')
+  mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
+  on('session.root', () => ({ value: '/work/app' }))
+  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  const ui = await $.ui.mount(mount('| Step | Detail |\n|---|---|\n| Fix | Edit ~/notes/todo.md<br>then rerun[^r] |\n\n[^r]: Twice.'))
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///home/me/notes/todo.md'])
+  expect(await ui.find({ type: 'Text', text: /^¹ Twice\.$/ })).toBeDefined()
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).map(b => b.text)
+  expect(cells).toContain('then rerun¹')
+  await ui.unmount()
+})
+
+test('copying a table keeps a <br> cell as one cell: a <br> in HTML, a quoted multi-line cell in TSV', async () => {
+  const table = tableOf('| a | b |\n|-|-|\n| one<br>**two** | x |')
+  expect(tableHtml(table)).toContain('<td style="text-align: left">one<br><strong>two</strong></td>')
+  expect(tableText(table)).toBe('a\tb\n"one\ntwo"\tx')
 })

@@ -1049,6 +1049,8 @@
       "━━━━━"
 <Box>
   <Text>
+    <Text>
+      "."
     <Link>
       <Text color=#89b4fa>
         "קישור"
@@ -1065,11 +1067,6 @@
     <Text color=#ffffff bold>
       <Text>
         "חברים שלום"
-  <Text>
-    <Text>
-      "."
-    <Text>
-      "(https://github.com/NahumLitvin/prismantis)"
 <Box>
   <Box row>
     <Box>

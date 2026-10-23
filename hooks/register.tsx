@@ -11,7 +11,7 @@ import { clipboardCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { CopyButton, DrawPaste, Fold, TerminalEnv } from './render'
-import { MARK, bashEdits, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
+import { MARK, bashEdits, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, takesClickableMarks, takesEditorLinks, takesHttpLinks, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { HINT, ISSUE_HINT, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -65,6 +65,7 @@ const turnEnds = atom({ plugin: 'prismantis', key: 'turnEnds' } as const, [])
 const setupAt = atom({ plugin: 'prismantis', key: 'setupAt' } as const, 0)
 const setupFocus = atom({ plugin: 'prismantis', key: 'setupFocus' } as const, '')
 const setupLand = atom({ plugin: 'prismantis', key: 'setupLand' } as const, '')
+const foundPaths = atom({ plugin: 'prismantis', key: 'foundPaths' } as const, [])
 
 const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
   const ref = { plugin: 'prismantis', key: 'drawn', id } as const
@@ -256,6 +257,43 @@ const readLinkReach = async ($: EngineInterface, style: Style): Promise<LinkReac
 }
 
 const linkReach = ($: EngineInterface, probes: Probes, style: Style): Promise<LinkReach> => (probes.links ??= readLinkReach($, style))
+
+type PathChecks = { asked: Set<string>; batch: string[]; list?: readonly string[]; found: ReadonlySet<string> }
+
+const MAX_FOUND = 2000
+
+const statPaths = async ($: EngineInterface, paths: string[]): Promise<void> => {
+  const kinds = await Promise.all(paths.map(path => $.fs.stat(path).then(stat => stat.kind, () => 'other')))
+  const hits = paths.filter((_, i) => kinds[i] !== 'other')
+  if (hits.length) await update($, foundPaths, list => [...list, ...hits].slice(-MAX_FOUND))
+}
+
+const askPaths = ($: EngineInterface, checks: PathChecks, paths: string[]) => {
+  for (const path of paths) {
+    if (checks.asked.has(path)) continue
+    if (checks.batch.length === 0) {
+      $.clock.after(0, () => {
+        const batch = checks.batch
+        checks.batch = []
+        void statPaths($, batch).catch(() => undefined)
+      })
+    }
+    checks.asked.add(path)
+    checks.batch.push(path)
+  }
+}
+
+const withFoundPaths = async ($: EngineInterface, checks: PathChecks, style: Style, blocks: Block[]): Promise<Style> => {
+  const paths = pathsToProbe(blocks, style)
+  if (paths.length === 0) return style
+  askPaths($, checks, paths)
+  const list = await read($, foundPaths)
+  if (list !== checks.list) {
+    checks.list = list
+    checks.found = new Set(list)
+  }
+  return { ...style, found: checks.found }
+}
 
 const fileCard = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, output: unknown, id: string, style: Style, probes: Probes, drawn: () => Style, columns?: number): Promise<RenderElement | undefined> => {
   const press = (await linkReach($, probes, style)).marks
@@ -559,6 +597,7 @@ export const register: Register = (on, options) => {
   const latex: LatexSession = { style, color: ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080'), pending: new Set(), wanted: new Set(), batch: [], queue: Promise.resolve() }
   const picked: Picked = { theme: firstTheme, options, latex }
   const probes: Probes = {}
+  const pathChecks: PathChecks = { asked: new Set(), batch: [], found: new Set() }
   const forSurface = (base: Style, surface: RenderSurface, links: LinkReach): Style => {
     const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor, fileLinks: links.files, pathLinks: links.paths } : base) : { ...base, htmlCopy: null, nativeCode: true }
     return surface === 'mobile' && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
@@ -619,6 +658,12 @@ export const register: Register = (on, options) => {
       return shell ? renderShellResult(el, fit(e.viewport), e.props.output) : next(e)
     })
   }
+
+  on('tool.call', async (_$, e, next) => {
+    const done = await next(e)
+    pathChecks.asked = new Set(pathChecks.found)
+    return done
+  })
 
   on('session.start', async ($, e, next) => {
     terminal = await probe($, style, probes)
@@ -734,7 +779,7 @@ export const register: Register = (on, options) => {
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const pictures = await picturesOf($, style, probes, e.surface, blocks)
     const open = await read($, unfolded)
-    const surfaceStyle = forSurface(fit(e.viewport), e.surface, reach)
+    const surfaceStyle = await withFoundPaths($, pathChecks, forSurface(fit(e.viewport), e.surface, reach), blocks)
     return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, pictures, undefined, open, { id: e.requestId, press: reach.marks })}</Box>
   })
 
@@ -773,7 +818,7 @@ export const register: Register = (on, options) => {
     const reach = await linkReach($, probes, style)
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const pictures = await picturesOf($, style, probes, e.surface, blocks)
-    const surfaceStyle = forSurface(fit(e.viewport), e.surface, reach)
+    const surfaceStyle = await withFoundPaths($, pathChecks, forSurface(fit(e.viewport), e.surface, reach), blocks)
     const open = await read($, unfolded)
     const reply = blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined
     const corner = reply !== undefined && markerRoom(surfaceStyle) > 0
