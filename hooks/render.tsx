@@ -435,6 +435,8 @@ export const mirrored = (style: Style) => style.shape === 'mirror'
 
 export const heldLtr = (style: Style) => (style.shape === 'engine' ? { dir: 'ltr' as const } : {})
 
+const heldLabel = (style: Style, label: string, text: string): string => (mirrored(style) && hasRtl(text) ? label.replace(/ $/, LTR_BLANK) : label)
+
 const flows = new Map<string, Flow | null>()
 const flowOf = (style: Style, nodes: Inline[], columns: number, mark = !(style.inside && mirrored(style))) =>
   style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${mark}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape, mark), 2000) : null
@@ -628,6 +630,30 @@ export const highlightBlock = ({ Text }: ElementTable, style: Style, lines: stri
 }
 
 const gutterOf = (lines: string[], numbered: boolean) => (numbered ? String(lines.length).length + 2 : 0)
+
+const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, gutter: number, room: number, key: string): RenderElement[] =>
+  (segmentRows(style, lines, lang) ?? lines.map(text => (text ? [{ text, italic: false }] : []))).slice(0, shown).flatMap((segs, i) =>
+    visualRows(tabbed(wordPieces(segs, null)), room).map((part, k) => (
+      <el.Box key={`${key}.h${i}.${k}`} flexDirection="row">
+        {numberedLine(el, style, `  ${gutter ? (k ? ' '.repeat(gutter + 2) : `${String(i + 1).padStart(gutter)}  `) : ''}`, part, `${key}.h${i}.${k}`)}
+      </el.Box>
+    )))
+
+const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string): RenderElement[] => {
+  if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
+  const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room))
+  return style.shape === 'engine' ? rows.map((row, i) => <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</el.Text>) : rows
+}
+
+const codeBody = (el: ElementTable, style: Style, rows: RenderElement[], gutter: number, held: boolean, more: RenderNode | null): RenderElement => {
+  const { Box, Text } = el
+  return (
+    <Box flexDirection="column" paddingLeft={held ? 0 : 2}>
+      {held || !gutter || style.nativeCode ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={style.theme.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
+      {held && more ? <Box paddingLeft={2}>{more}</Box> : more}
+    </Box>
+  )
+}
 
 const isShellLang = (lang: string) => lang === '' || /^(sh|bash|zsh|shell|console|fish|powershell|ps1)$/i.test(lang)
 
@@ -1203,10 +1229,9 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
         const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
         const room = columns - 2 - gutterOf(lines, numbered)
-        const drawnRows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`, room))
-        const rows = style.nativeCode ? [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(block.lang ? { language: block.lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
-          : style.shape === 'engine' ? drawnRows.map((row, i) => <Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</Text>) : drawnRows
-        const gutter = String(lines.length).length
+        const gutter = numbered ? String(lines.length).length : 0
+        const held = !style.nativeCode && mirrored(style) && lines.some(hasRtl)
+        const rows = held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key) : codeRows(el, style, lines, shown, block.lang, numbered, room, key)
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
         const head = codeHead(label, button)
@@ -1218,10 +1243,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
               {head ? head.marker : button}
               {head?.element}
             </Box>
-            <Box flexDirection="column" paddingLeft={2}>
-              {!numbered || style.nativeCode ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
-              {toggle?.element ?? null}
-            </Box>
+            {codeBody(el, style, rows, gutter, held, toggle?.element ?? null)}
           </Box>
         )
       }
@@ -1705,7 +1727,7 @@ const onBand = (color: string | undefined, band: string | undefined) => {
 const muted = (style: Style, band: string | undefined) => onBand(style.theme.codeComment ?? style.theme.codeText, band)
 
 const numberedLine = (el: ElementTable, style: Style, label: string, pieces: Piece[], key: string, band?: string): RenderElement[] => [
-  <el.Text key={`${key}.g`} color={style.theme.codeComment} dimColor {...muted(style, band)}>{label}</el.Text>,
+  <el.Text key={`${key}.g`} color={style.theme.codeComment} dimColor {...muted(style, band)}>{heldLabel(style, label, pieceText(pieces))}</el.Text>,
   <el.Text key={`${key}.c`} color={style.theme.codeText} {...lift(style.theme.codeText, band)}>{drawCode(el, style, pieces, undefined, undefined, `${key}.c`, band)}</el.Text>,
 ]
 
@@ -1794,7 +1816,7 @@ const lineText = (el: ElementTable, style: Style, paint: DiffPaint, r: DiffLine,
   const code = style.theme.codeText
   return [
     ...(paint.look === 'bar' ? [<Text key={`${key}.b`} color={paint.marks[r.mark]} {...on}>{barOf(r.mark)}</Text>] : []),
-    <Text key={`${key}.n`} dimColor {...on}>{numberOf(paint, r, k)}</Text>,
+    <Text key={`${key}.n`} dimColor {...on}>{heldLabel(style, numberOf(paint, r, k), r.text)}</Text>,
     <Text key={`${key}.m`} color={paint.marks[r.mark]} dimColor={r.mark === ' '} {...on}>{markOf(r.mark)}</Text>,
     <Text key={`${key}.c`} color={bg ? onTint(code, bg) : code} {...on}>{drawCode(el, style, part, bg, paint.words[r.mark], key)}</Text>,
     ...(bg && pad > 0 ? [<Text key={`${key}.p`} {...on}>{' '.repeat(pad)}</Text>] : []),

@@ -839,3 +839,39 @@ test('a terminal without bidi gets each Hebrew diagram label in display order, i
   expect(drawn('├─כן─►')).toBe('├─ןכ─►')
   expect(drawn('│ plain │')).toBe('│ plain │')
 })
+
+const toolCard = (tool: string, output: unknown) => ({ plugin: 'prismantis', surface: 'terminal' as const, component: 'ToolResult' as const, props: { tool_use_id: `t-${tool}`, tool, output, isErrored: false } })
+
+for (const rtl of ['iterm', 'warp'] as const)
+  test(`a code row with only Hebrew in it stays in its column on ${rtl}: the gutter ends in a braille blank on iTerm, so the terminal does not mirror the row`, { options: { rtl } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    claudeAt(on, '2.1.295')
+    const blank = rtl === 'iterm' ? '⠀' : ' '
+    const edit = await $.ui.mount(toolCard('Edit', { filePath: '/tmp/notes.md', structuredPatch: [{ oldStart: 4, newStart: 4, lines: [' keep this', '-שלום עולם', '+שלום עולם חדש'] }] }))
+    expect(await edit.find({ type: 'Box', text: new RegExp(`^5${blank}- שלום עולם$`) })).toBeDefined()
+    expect(await edit.find({ type: 'Box', text: new RegExp(`^5${blank}\\+ שלום עולם חדש$`) })).toBeDefined()
+    expect(await edit.find({ type: 'Box', text: /^4 {3}keep this$/ })).toBeDefined()
+    await edit.unmount()
+    const write = await $.ui.mount(toolCard('Write', { type: 'create', filePath: '/tmp/notes.md', content: 'keep this\nשלום עולם\n', structuredPatch: [], originalFile: null }))
+    const written = (await write.findAll({ type: 'Text' })).map(t => t.text)
+    expect(written).toContain(`2 ${blank}`)
+    expect(written).toContain('1  ')
+    await write.unmount()
+    const fence = await $.ui.mount(mount('```ts\nkeep this\nשלום עולם\n```'))
+    if (rtl === 'iterm') expect(await fence.find({ type: 'Box', text: /^ ⠀שלום עולם$/ })).toBeDefined()
+    expect((await fence.findAll({ type: 'Text' })).some(t => t.text.includes('⠀'))).toBe(rtl === 'iterm')
+    await fence.unmount()
+  })
+
+test('on iTerm a long Hebrew line in a code block wraps into rows that each open with a braille blank, so no continuation is mirrored away from the gutter', { options: { rtl: 'iterm' } }, async $ => {
+  const words = 'שורה ארוכה מאוד בעברית שעוברת את רוחב המסך הצר ולכן נשברת לכמה שורות'
+  const ui = await $.ui.mount(mount(`\`\`\`ts\nconst a = 1\n${words}\n\`\`\``, 40))
+  const rows = (await ui.findAll({ type: 'Box' })).map(b => b.text).filter(t => /^ ⠀[א-ת]/.test(t))
+  expect(rows.length).toBeGreaterThan(1)
+  expect(rows.map(r => r.slice(2).trim()).join(' ')).toBe(words)
+  expect(rows.every(r => r.length <= 40)).toBe(true)
+  await ui.unmount()
+})
