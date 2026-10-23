@@ -426,6 +426,13 @@ for (const rtl of ['warp', 'iterm'] as const) {
   })
 }
 
+test('a file link whose label is its path reads as written when the line is reordered for the terminal', () => {
+  for (const shape of ['visual', 'words', 'inverse'] as const) {
+    const lines = flow([{ kind: 'text', text: 'הקובץ נמצא ב-' }, { kind: 'link', text: '/tmp/notes.md', href: 'file:///tmp/notes.md' }, { kind: 'text', text: ' ו-' }, { kind: 'link', text: '../etc/x', href: 'file:///etc/x' }, { kind: 'text', text: ' עכשיו' }], 100, measure, shape)?.lines ?? []
+    expect(lines.flat().filter(n => n.kind === 'link').map(n => inlineText([n])).sort()).toEqual(['../etc/x', '/tmp/notes.md'])
+  }
+})
+
 test('a named link keeps its target when a Hebrew line reorders', async () => {
   const lines = flow([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: 'המדריך', href: 'https://example.com/guide' }, { kind: 'text', text: ' עכשיו' }], 100, measure)?.lines ?? []
   const links = lines.flat().filter(n => n.kind === 'link')
@@ -624,6 +631,15 @@ test('iTerm gets the neutral edges of a code span or path between Hebrew words s
   const line = mirrorLine([{ kind: 'text', text: 'תפתח את ' }, { kind: 'path', text: '~/.aws/credentials', href: 'file:///Users/me/.aws/credentials' }, { kind: 'text', text: ' ותוסיף ' }, { kind: 'code', text: '--profile nightly-rw' }, { kind: 'text', text: ' ואת ' }, { kind: 'code', text: '/team-code-review' }])
   expect(texts(line)).toEqual(['תפתח את ', 'aws/credentials./~', ' ותוסיף ', 'profile nightly-rw--', ' ואת ', 'team-code-review/'])
   expect(line[1]).toEqual({ kind: 'path', text: 'aws/credentials./~', href: 'file:///Users/me/.aws/credentials' })
+})
+
+test('iTerm gets the neutral edges of a link whose label is a path swapped too, so the slash stays at the start of the path', () => {
+  const line = mirrorLine([{ kind: 'text', text: 'הקובץ נמצא ב-' }, { kind: 'link', text: '/tmp/notes.md', href: 'file:///tmp/notes.md' }, { kind: 'text', text: ' ומוכן' }, { kind: 'text', text: ' וגם ' }, { kind: 'link', text: 'ההודעה', href: 'https://example.com' }])
+  expect(texts(line)).toEqual(['הקובץ נמצא ב-', 'tmp/notes.md/', ' ומוכן וגם ', 'ההודעה'])
+  expect(line[1]).toEqual({ kind: 'link', text: 'tmp/notes.md/', href: 'file:///tmp/notes.md' })
+
+  const signs = mirrorLine([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: '#181', href: 'https://example.com/pull/181' }, { kind: 'text', text: ' ועוד ' }, { kind: 'link', text: '100%', href: 'https://example.com/a' }, { kind: 'text', text: ' ו-' }, { kind: 'code', text: '$5' }, { kind: 'text', text: ' עכשיו' }])
+  expect(texts(signs)).toEqual(['ראה ', '#181', ' ועוד ', '100%', ' ו-', '$5', ' עכשיו'])
 })
 
 test('iTerm keeps a code span as written when English sits beside it, since there its edges already read left to right', () => {
