@@ -437,6 +437,13 @@ export const heldLtr = (style: Style) => (style.shape === 'engine' ? { dir: 'ltr
 
 const heldLabel = (style: Style, label: string, text: string): string => (mirrored(style) && hasRtl(text) ? label.replace(/ $/, LTR_BLANK) : label)
 
+const heldRow = (el: ElementTable, style: Style, key: string, label: string, text: string, cell: RenderNode): RenderElement => (
+  <el.Box key={key} flexDirection="row">
+    <el.Text dimColor>{heldLabel(style, label, text)}</el.Text>
+    {cell}
+  </el.Box>
+)
+
 const flows = new Map<string, Flow | null>()
 const flowOf = (style: Style, nodes: Inline[], columns: number, mark = !(style.inside && mirrored(style))) =>
   style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${mark}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape, mark), 2000) : null
@@ -1397,12 +1404,9 @@ export const renderShellResult = (el: ElementTable, style: Style, output: unknow
   const shown = [...lines(out.stdout), ...lines(out.stderr)]
   const head = shown.slice(0, RESULT_LINES).map(l => shortenPaths(l, style))
   return (
-    <Box flexDirection="row">
-      <Text dimColor>{'  ⎿  '}</Text>
-      <Box flexDirection="column">
-        {head.length === 0 ? <Text dimColor>(No output)</Text> : head.map((l, i) => <Text key={`l${i}`} wrap="truncate-end">{l === '' ? ' ' : l}</Text>)}
-        {shown.length > head.length ? <Text dimColor>{`… +${shown.length - head.length} lines`}</Text> : null}
-      </Box>
+    <Box flexDirection="column">
+      {head.length === 0 ? heldRow(el, style, 'l0', '  ⎿  ', '', <Text dimColor>(No output)</Text>) : head.map((l, i) => heldRow(el, style, `l${i}`, i ? '     ' : '  ⎿  ', l, <Text wrap="truncate-end">{l === '' ? ' ' : l}</Text>))}
+      {shown.length > head.length ? heldRow(el, style, 'more', '     ', '', <Text dimColor>{`… +${shown.length - head.length} lines`}</Text>) : null}
     </Box>
   )
 }
@@ -2135,9 +2139,10 @@ export const renderFailure = (el: ElementTable, style: Style, output: unknown, k
   const reason = refusal ?? errorReason(output)
   if (reason === undefined) return undefined
   const chat = style.toolStyle === 'chat'
+  const shown = refusal ?? shortenPaths(reason, style)
   return (
     <el.Box key={key} flexDirection="row" width="100%" justifyContent={chat ? 'flex-end' : 'flex-start'}>
-      <el.Text color={style.theme.codeFlag} wrap={refusal === undefined ? 'truncate-middle' : 'wrap'}>{`${chat ? '' : '  ⎿ '}${refusal ?? shortenPaths(reason, style)}`}</el.Text>
+      <el.Text color={style.theme.codeFlag} wrap={refusal === undefined ? 'truncate-middle' : 'wrap'}>{`${chat ? '' : heldLabel(style, '  ⎿ ', shown)}${shown}`}</el.Text>
     </el.Box>
   )
 }
@@ -2453,25 +2458,23 @@ export const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow
   const dot = statusColor(t, row)
   return (
     <Box flexDirection="column">
-      <Box flexDirection="row">
-        <Box width={2} flexShrink={0}>
-          <Text color={dot}>{row.isRunning ? '◌' : '●'}</Text>
+      {command.map((line, i) => (
+        <Box key={`c${i}`} flexDirection="row">
+          <Box width={2} flexShrink={0}>
+            {i === 0 ? <Text color={dot}>{row.isRunning ? '◌' : '●'}</Text> : <Text>{heldLabel(style, '  ', line)}</Text>}
+          </Box>
+          <Text>
+            {i === 0 ? <Text bold>{`${row.tool}(`}</Text> : null}
+            {codeLine(el, style, line, 'bash', `cmd${i}`)}
+            {i === command.length - 1 ? <Text bold>)</Text> : null}
+          </Text>
         </Box>
-        <Box flexDirection="column">
-          {command.map((line, i) => (
-            <Text key={`c${i}`}>
-              {i === 0 ? <Text bold>{`${row.tool}(`}</Text> : null}
-              {codeLine(el, style, line, 'bash', `cmd${i}`)}
-              {i === command.length - 1 ? <Text bold>)</Text> : null}
-            </Text>
-          ))}
-        </Box>
-      </Box>
+      ))}
       {row.isRunning ? null : (
         <Box paddingLeft={2}>
-          <Box flexDirection="column" alignSelf="flex-start" borderStyle="round" borderColor={t.codeComment} paddingX={1}>
-            {visible.length === 0 ? <Text dimColor>(No output)</Text> : visible.map((l, i) => <Text key={`o${i}`} color={l.color}>{l.text === '' ? ' ' : l.text}</Text>)}
-            {shown.length > visible.length ? <Text dimColor>{`\u2026 +${shown.length - visible.length} lines`}</Text> : null}
+          <Box flexDirection="column" alignSelf="flex-start" borderStyle="round" borderColor={t.codeComment} paddingRight={1}>
+            {visible.length === 0 ? heldRow(el, style, 'o0', ' ', '', <Text dimColor>(No output)</Text>) : visible.map((l, i) => heldRow(el, style, `o${i}`, ' ', l.text, <Text color={l.color}>{l.text === '' ? ' ' : l.text}</Text>))}
+            {shown.length > visible.length ? heldRow(el, style, 'more', ' ', '', <Text dimColor>{`\u2026 +${shown.length - visible.length} lines`}</Text>) : null}
           </Box>
         </Box>
       )}

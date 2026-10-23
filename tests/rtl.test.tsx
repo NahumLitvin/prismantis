@@ -890,3 +890,37 @@ test('on iTerm a shell block whose Hebrew comes after the command keeps its shel
   expect((await ui.find({ type: 'Text', text: /^ls$/ }))?.props.color).toBeDefined()
   await ui.unmount()
 })
+
+const shellCall = (id: string, command: string) => ({ tool_use_id: id, tool: 'Bash', input: { command }, isRunning: false, isErrored: false, isInterrupted: false })
+
+for (const rtl of ['iterm', 'warp'] as const)
+  test(`a shell output line with only Hebrew in it stays after its gutter on ${rtl}: the gutter ends in a braille blank on iTerm`, { options: { rtl, toolOutput: 'quiet' } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    const blank = rtl === 'iterm' ? '⠀' : ' '
+    const quiet = await $.ui.mount({ ...toolCard('Bash', { stdout: 'שלום עולם\nend\n', stderr: '' }), props: { tool_use_id: `q-${rtl}`, tool: 'Bash', output: { stdout: 'שלום עולם\nend\n', stderr: '' }, isErrored: false } })
+    expect(await quiet.find({ type: 'Box', text: new RegExp(`^  ⎿ ${blank}שלום עולם$`) })).toBeDefined()
+    expect(await quiet.find({ type: 'Box', text: /^ {5}end$/ })).toBeDefined()
+    await quiet.unmount()
+    const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [shellCall(`x-${rtl}`, 'ls')], isActive: false, isExpanded: true } })
+    await group.unmount()
+    const expanded = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...shellCall(`x-${rtl}`, "cat <<'EOF'\nשלום\nEOF"), output: { stdout: 'שלום עולם\nend', stderr: '' } } })
+    expect(await expanded.find({ type: 'Box', text: new RegExp(`^${blank}שלום עולם$`) })).toBeDefined()
+    expect(await expanded.find({ type: 'Box', text: /^ end$/ })).toBeDefined()
+    if (rtl === 'iterm') expect(await expanded.find({ type: 'Box', text: /^ ⠀שלום$/ })).toBeDefined()
+    await expanded.unmount()
+  })
+
+for (const rtl of ['iterm', 'warp'] as const)
+  test(`a failed tool's Hebrew reason stays after its ⎿ on ${rtl}: the gutter ends in a braille blank on iTerm`, { options: { rtl, toolStyle: 'tree-dim', toolOutput: 'quiet' } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    const blank = rtl === 'iterm' ? '⠀' : ' '
+    const failed = await $.ui.mount({ ...toolCard('Bash', 'Exit code 1\nהקובץ לא נמצא'), props: { tool_use_id: `f-${rtl}`, tool: 'Bash', output: 'Exit code 1\nהקובץ לא נמצא', isErrored: true } })
+    expect(await failed.find({ type: 'Text', text: new RegExp(`^  ⎿${blank}הקובץ לא נמצא$`) })).toBeDefined()
+    await failed.unmount()
+  })
