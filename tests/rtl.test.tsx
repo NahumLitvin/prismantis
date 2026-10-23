@@ -80,7 +80,7 @@ test('bold, code and links keep their style through reordering', async () => {
     { kind: 'link', text: 'תיעוד', href: 'https://x.dev' },
   ]
   const line = flow(nodes, 100, measure)?.lines[0]
-  expect(line?.map(n => n.kind)).toEqual(['dim', 'link', 'text', 'code', 'text', 'strong'])
+  expect(line?.map(n => n.kind)).toEqual(['link', 'text', 'code', 'text', 'strong'])
   const strong = line?.find(n => n.kind === 'strong')
   expect(strong?.kind === 'strong' && inlineText(strong.children)).toBe('םולש')
   expect(line?.find(n => n.kind === 'code')).toEqual({ kind: 'code', text: 'kubectl' })
@@ -410,6 +410,21 @@ test('links in a Hebrew paragraph are hyperlinks in the link color, or plain tex
     await ui.unmount()
   }
 })
+
+for (const rtl of ['warp', 'iterm'] as const) {
+  test(`a Hebrew line draws a clickable named link and a file link that shows its path once, like an English line, ${rtl}`, { options: { rtl } }, async ($, on) => {
+    claudeAt(on, '2.1.289')
+    mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
+    if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+    const ui = await $.ui.mount(mount('שלום [קישור להודעה](https://x.dev/archives/p1) ו [/tmp/notes.md](file:///tmp/notes.md) ו [המסמך](file:///tmp/setup.command) עולם'))
+    const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+    expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href)).sort()).toEqual(['file:///tmp/notes.md', 'https://x.dev/archives/p1'])
+    expect(texts.some(t => t.includes('(https://x.dev/archives/p1)'))).toBe(false)
+    expect(texts.some(t => t.includes('(file:///tmp/notes.md)'))).toBe(false)
+    expect(texts.some(t => t.includes('(file:///tmp/setup.command)'))).toBe(true)
+    await ui.unmount()
+  })
+}
 
 test('a named link keeps its target when a Hebrew line reorders', async () => {
   const lines = flow([{ kind: 'text', text: 'ראה ' }, { kind: 'link', text: 'המדריך', href: 'https://example.com/guide' }, { kind: 'text', text: ' עכשיו' }], 100, measure)?.lines ?? []
