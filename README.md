@@ -26,7 +26,7 @@
 ## TL;DR
 
 - Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, typeset LaTeX math in kitty and Ghostty, colored tables and code, and quiet tool rows.
-- 15 palettes plus `mono`, and copy buttons on everything.
+- 16 palettes plus `mono`, and copy buttons on everything.
 - Two commands to install, `/plugin` to turn it off. Claude Code's own renderer comes back the moment you do.
 - No network calls. It runs a program only when you click `⧉ html` (the clipboard helper) or turn on LaTeX (RaTeX's renderer).
 
@@ -66,7 +66,7 @@ prismantis also runs in Codex, with themes for code, tables and diagrams and the
 
 | Feature | What you get |
 | --- | --- |
-| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 16 themes and 20 color slots you can override |
+| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 17 themes and 20 color slots you can override |
 | [Tables](#tables) | colored headers, rules, column alignment, colored numbers, sized to the terminal |
 | [Code](#code) | a language header and copy button, Prism highlighting in two dozen languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
@@ -86,7 +86,7 @@ prismantis also runs in Codex, with themes for code, tables and diagrams and the
 
 ### Themes
 
-![The same reply in all 15 color themes, ten dark and five light: a tip box, a task list, a flowchart and a bar chart](docs/themes.png)
+![The same reply in all 16 color themes, eleven dark and five light: a tip box, a task list, a flowchart and a bar chart](docs/themes.png)
 
 ![Random theme: plain Claude Code on the left, prismantis with theme random on the right](docs/compare/random-theme.png)
 
