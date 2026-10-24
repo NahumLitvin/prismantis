@@ -15,6 +15,14 @@ const segmenter = new Intl.Segmenter()
 
 export const graphemes = (s: string): string[] => [...segmenter.segment(s)].map(g => g.segment)
 
+const CLUSTER_UNITS = 32
+
+const clusters = (s: string, count: number): string => {
+  let n = 0
+  for (const { index, segment } of segmenter.segment(s)) if (n++ === count || index + segment.length > count * CLUSTER_UNITS) return s.slice(0, index)
+  return s
+}
+
 export const cells = (s: string): string[] => (/^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap(g => (WIDE.test(g) ? [g, ''] : [g])))
 
 const ZERO = /^[\p{M}\p{Default_Ignorable_Code_Point}]+$/u
@@ -2459,8 +2467,6 @@ export const describeShell = (command: string, places: Places = { cwd: '', home:
 
 const OUTPUT_LINES = 120
 
-const UNITS_PER_CELL = 4
-
 const lines = (value: unknown): string[] => (typeof value === 'string' && value !== '' ? value.replace(CONTROL, '').replace(/\n$/, '').split('\n') : [])
 
 const BOX_INDENT = 2
@@ -2494,10 +2500,10 @@ const outputRows = (style: Style, shown: OutputLine[], room: number | undefined)
   for (const l of shown) {
     const left = OUTPUT_LINES - rows.length
     if (left <= 0) break
-    const cap = room !== undefined && mirrored(style) && hasRtl(l.text) ? left * room * UNITS_PER_CELL : Infinity
-    const split = outputLineRows(style, l.text.slice(0, cap), room)
+    const head = room !== undefined && mirrored(style) && hasRtl(l.text) ? clusters(l.text, left * room) : l.text
+    const split = outputLineRows(style, head, room)
     rows.push(...split.slice(0, left).map(text => ({ text, color: l.color })))
-    if (split.length > left || l.text.length > cap) break
+    if (split.length > left || head.length < l.text.length) break
     whole++
   }
   return { rows, hidden: shown.length - whole }

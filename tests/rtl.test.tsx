@@ -985,6 +985,29 @@ test('on iTerm a single Hebrew output line too long for 120 rows is cut there an
   await expanded.unmount()
 })
 
+test('on iTerm the last of the 120 rows shows a cantillated Hebrew line whole when it fits, never a broken letter', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const line = 'שָּׁ֑'.repeat(20)
+  const expanded = await expandShell($, 'pts', 'ls', `${Array(119).fill('x').join('\n')}\n${line}`)
+  expect(await expanded.find({ type: 'Box', text: new RegExp(`^⠀${line}$`) })).toBeDefined()
+  expect(await expanded.find({ type: 'Box', text: /^ … \+\d+ lines$/ })).toBeUndefined()
+  await expanded.unmount()
+})
+
+test('on iTerm a Hebrew output line that is one letter with a huge run of points is cut and says so', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'marks', 'ls', `ש${'\u05B8'.repeat(200000)}`)
+  expect(await expanded.find({ type: 'Box', text: /^ … \+1 lines$/ })).toBeDefined()
+  expect((await expanded.findAll({ type: 'Text' })).every(t => t.text.length < 1000)).toBe(true)
+  await expanded.unmount()
+})
+
 for (const rtl of ['iterm', 'warp'] as const)
   test(`a failed tool's Hebrew reason stays after its ⎿ on ${rtl}: the gutter ends in a braille blank on iTerm`, { options: { rtl, toolStyle: 'tree-dim', toolOutput: 'quiet' } }, async ($, on) => {
     on('ui.render', ($, e) => {
