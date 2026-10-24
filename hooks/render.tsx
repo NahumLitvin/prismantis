@@ -2459,6 +2459,8 @@ export const describeShell = (command: string, places: Places = { cwd: '', home:
 
 const OUTPUT_LINES = 120
 
+const UNITS_PER_CELL = 4
+
 const lines = (value: unknown): string[] => (typeof value === 'string' && value !== '' ? value.replace(CONTROL, '').replace(/\n$/, '').split('\n') : [])
 
 const BOX_INDENT = 2
@@ -2492,7 +2494,7 @@ const outputRows = (style: Style, shown: OutputLine[], room: number | undefined)
   for (const l of shown) {
     const left = OUTPUT_LINES - rows.length
     if (left <= 0) break
-    const cap = room !== undefined && mirrored(style) && hasRtl(l.text) ? left * room * 4 : Infinity
+    const cap = room !== undefined && mirrored(style) && hasRtl(l.text) ? left * room * UNITS_PER_CELL : Infinity
     const split = outputLineRows(style, l.text.slice(0, cap), room)
     rows.push(...split.slice(0, left).map(text => ({ text, color: l.color })))
     if (split.length > left || l.text.length > cap) break
