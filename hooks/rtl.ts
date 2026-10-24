@@ -356,7 +356,12 @@ const inLabel = (chars: string[], c: number) => {
 
 const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u
 
-const joins = (chars: string[], c: number) => chars[c] === ' ' && WORD_CHAR.test(chars[c - 1] ?? '') && WORD_CHAR.test(chars[c + 1] ?? '')
+const LETTER_CHAR = /[\p{L}\p{M}]/u
+
+const joins = (chars: string[], c: number) => {
+  const [a = '', b = ''] = [chars[c - 1], chars[c + 1]]
+  return chars[c] === ' ' && WORD_CHAR.test(a) && WORD_CHAR.test(b) && (LETTER_CHAR.test(a) || LETTER_CHAR.test(b))
+}
 
 const mixedSpaces = (chars: string[]): Set<number> => {
   const mixed = new Set<number>()

@@ -812,6 +812,8 @@ test('a single space keeps English words in a Hebrew figure label only between l
     ['│ שלב │──►│ ArgoCD sync │', '│⠀שלב⠀│──►│⠀ArgoCD⠀sync⠀│'],
     ['A B──►C שלב', 'A⠀B──►C שלב'],
     ['Saved Tabs-נעלם  ──►  x', 'Saved Tabs-נעלם⠀⠀──►⠀⠀x'],
+    ['שלב 1 2 3 4', 'שלב 1⠀2⠀3⠀4'],
+    ['שָׁלוֹם Saved Tabs', 'שָׁלוֹם Saved Tabs'],
   ] as const)
     expect(holdRow([...row]).cells.join('')).toBe(held)
 })
