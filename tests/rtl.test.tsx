@@ -792,6 +792,38 @@ test('iTerm holds a figure row as one line, so a colored word inside a mixed lab
   await ui.unmount()
 })
 
+for (const [rtl, label, note] of [
+  ['iterm', '⠀Saved Tabs-נעלם מ⠀', '(Recent Sessions-נמצא ב)'],
+  ['warp', ' Saved Tabs-מ םלענ ', '(Recent Sessions-ב אצמנ)'],
+] as const)
+  test(`a figure label that mixes Hebrew with two English words stays one label on ${rtl}, so the English words and the brackets stay together`, { options: { rtl } }, async $ => {
+    const ui = await $.ui.mount(mount('```figure\nרגיל  ──► נעלם מ-Saved Tabs ──► סוף\n          (נמצא ב-Recent Sessions)\n```'))
+    const rows = (await hebrewRows(ui)).join('\n')
+    expect(rows).toContain(label)
+    expect(rows).toContain(note)
+    await ui.unmount()
+  })
+
+test('a single space keeps English words in a Hebrew figure label only between letters, on either side of the Hebrew, so boxes, members and connectors still split as before', () => {
+  for (const [row, held] of [
+    ['[בנייה] [בדיקה] [Deploy]', '[בנייה]⠀[בדיקה]⠀[Deploy]'],
+    ['│ +שם: String  │', '│⠀+שם:⠀String⠀⠀│'],
+    ['עברית -- English words', 'עברית --⠀English⠀words'],
+    ['אבג──►Saved Tabs', 'Saved►──אבג⠀Tabs'],
+    ['│ שלב │──►│ ArgoCD sync │', '│⠀שלב⠀│──►│⠀ArgoCD⠀sync⠀│'],
+    ['A B──►C שלב', 'A⠀B──►C שלב'],
+    ['Saved Tabs-נעלם  ──►  x', 'Saved Tabs-נעלם⠀⠀──►⠀⠀x'],
+    ['שלב 1 2 3 4', 'שלב 1⠀2⠀3⠀4'],
+    ['שָׁלוֹם Saved Tabs', 'שָׁלוֹם Saved Tabs'],
+  ] as const)
+    expect(holdRow([...row]).cells.join('')).toBe(held)
+})
+
+test('Windows Terminal keeps English words in a Hebrew figure label together too', () => {
+  expect(holdEngine([...'רגיל  ──► נעלם מ-Saved Tabs ──► סוף']).cells.join('')).toContain('\u200e Saved Tabs-נעלם מ\u200e ')
+  expect(holdEngine([...'(נמצא ב-Recent Sessions)']).cells.join('')).toBe('(Recent Sessions-נמצא ב)')
+})
+
 test('terminals that do not mirror rows draw diagrams with plain spaces', { options: { rtl: 'warp' } }, async $ => {
   for (const source of DIAGRAMS) {
     const ui = await $.ui.mount(mount(source))
