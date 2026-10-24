@@ -1,6 +1,6 @@
 {
   "name": "prismantis",
-  "version": "0.35.0",
+  "version": "0.35.1",
   "description": "Colorful, themeable rendering for Claude Code replies: tables, headings, code, numbers, paths and links.",
   "author": {
     "name": "Nahum Litvin",
@@ -80,35 +80,58 @@
       "title": "Your prompt style",
       "description": "How the prompts you type draw in the transcript. bubble: a rounded box in the accent color. wide: the same box across the full width, a divider between turns. bar: an accent bar on the left. chevron: a bold accent › before the text. off: Claude Code's own look.",
       "default": "bubble",
-      "options": ["bubble", "wide", "bar", "chevron", "off"]
+      "options": [
+        "bubble",
+        "wide",
+        "bar",
+        "chevron",
+        "off"
+      ]
     },
     "clock": {
       "type": "string",
       "title": "Clock times",
       "description": "Shows when you sent each prompt and when each turn finished. 24h: 14:32. 12h: 2:32 PM. A time from another day gets its date. off: no times.",
       "default": "off",
-      "options": ["off", "24h", "12h"]
+      "options": [
+        "off",
+        "24h",
+        "12h"
+      ]
     },
     "toolStyle": {
       "type": "string",
       "title": "Tool row style",
       "description": "How tool rows (Ran, Read, Edited) sit next to Claude's sentences. chat: tool rows dimmed on the right, Claude on the left. tree-dim: tucked under the sentence with ⎿ and dimmed. tree-bold: tree-dim plus one-line sentences in bold. classic: the original look.",
       "default": "chat",
-      "options": ["chat", "tree-dim", "tree-bold", "classic"]
+      "options": [
+        "chat",
+        "tree-dim",
+        "tree-bold",
+        "classic"
+      ]
     },
     "toolOutput": {
       "type": "string",
       "title": "Tool output",
       "description": "How much of a tool call shows. full: what Claude Code shows. quiet: rows say in plain words what a call did, reads, searches and listings show only their row, other shell commands show their first lines, edits keep their diff, a failed call shows the last line of its error, and a refused call its full reason. Needs toolRows on.",
       "default": "full",
-      "options": ["full", "quiet"]
+      "options": [
+        "full",
+        "quiet"
+      ]
     },
     "taskStyle": {
       "type": "string",
       "title": "Task list style",
       "description": "How - [ ] and - [x] items draw. checks: [ ] and [✓] with done items dimmed and struck through. ticks: ○ and ✓, done items dimmed. box: □ and ✓, done items dimmed and struck through. progress: ticks with a done-count bar above each list.",
       "default": "checks",
-      "options": ["checks", "ticks", "box", "progress"]
+      "options": [
+        "checks",
+        "ticks",
+        "box",
+        "progress"
+      ]
     },
     "rtl": {
       "type": "string",
@@ -292,14 +315,22 @@
       "title": "Diff style",
       "description": "How edit and shell edit diffs draw. card: a rounded box with tinted lines. full: no box, each changed line tinted across the width. marks: no box and no tint, only the +/- marks in the theme's diff colors. bar: no box and no tint, a colored ▌ before each changed line. Every style highlights the code and marks the changed words.",
       "default": "card",
-      "options": ["card", "full", "marks", "bar"]
+      "options": [
+        "card",
+        "full",
+        "marks",
+        "bar"
+      ]
     },
     "pieStyle": {
       "type": "string",
       "title": "Pie style",
       "description": "How mermaid pie charts draw. round: a circle with a legend, falling back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal. bars: one bar per slice, largest first, with its share.",
       "default": "round",
-      "options": ["round", "bars"]
+      "options": [
+        "round",
+        "bars"
+      ]
     },
     "mermaid": {
       "type": "boolean",
@@ -318,7 +349,10 @@
       "title": "Copy button style",
       "description": "inline: buttons beside or above each block, always shown. hover: each block shows a dim ⧉ beside its first row, and the reply one in its bottom-right corner; the pointer on a ⧉ draws its buttons over it, so they take no line; ctrl+x tab does not reach them, and the mobile app, which has no pointer, shows them inline. Needs copyButtons on.",
       "default": "inline",
-      "options": ["inline", "hover"]
+      "options": [
+        "inline",
+        "hover"
+      ]
     },
     "issueHint": {
       "type": "boolean",
