@@ -775,7 +775,8 @@ const tableEdges = (style: Style, block: Extract<Block, { kind: 'table' }>, rtl:
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string, rtl: boolean, tip?: Tip) => {
   const { Box, Text } = el
   const t = style.theme
-  const box = style.tableStyle === 'box'
+  const box = style.tableStyle === 'box' || style.tableStyle === 'round'
+  const round = style.tableStyle === 'round'
   const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
   const { natural, words } = tableSize(block)
   const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
@@ -862,12 +863,12 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   }
 
   if (box) {
-    const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), ...wrappedRow(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
+    const lines: RenderElement[] = [edge(`${key}.t`, round ? '╭─┬╮' : '┌─┬┐'), ...wrappedRow(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
     block.rows.forEach((r, i) => {
       if (i > 0) lines.push(edge(`${key}.r${i}r`, '├─┼┤'))
       lines.push(...wrappedRow(r, `${key}.r${i}`, false))
     })
-    lines.push(edge(`${key}.b`, '└─┴┘'))
+    lines.push(edge(`${key}.b`, round ? '╰─┴╯' : '└─┴┘'))
     return <Box key={key} flexDirection="column" {...(flip ? { alignSelf: 'flex-end' as const } : {})}>{lines}</Box>
   }
 

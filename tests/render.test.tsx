@@ -489,6 +489,16 @@ test('tables draw boxed by default, with a double line under the header', async 
   }
 })
 
+test('tableStyle round draws the box with rounded corners', { options: { tableStyle: 'round' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
+  const top = (await ui.find({ type: 'Text', text: /^╭[─┬]+╮$/ }))?.text ?? ''
+  expect(top.split('┬').length).toBe(3)
+  const lines = await Promise.all([/^╞[═╪]+╡$/, /^├[─┼]+┤$/, /^╰[─┴]+╯$/].map(async re => (await ui.find({ type: 'Text', text: re }))?.text ?? ''))
+  expect(lines.every(l => l.length === top.length)).toBe(true)
+  expect(await ui.find({ type: 'Text', text: /^[┌└]/ })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('tableStyle rules keeps the open look', { options: { tableStyle: 'rules' } }, async $ => {
   const ui = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /┌|│/ })).toBeUndefined()

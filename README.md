@@ -100,7 +100,7 @@ Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `s
 
 ![Tables: plain Claude Code on the left, prismantis on the right](docs/compare/tables.png)
 
-Header cells take the `tableHeader` color, and the default `box` style puts a double line under the header. `tableStyle` picks `box` (the default, every cell boxed), `rules`, `grid` or `minimal`. `:---:` and `---:` alignment is honored, numbers in cells get the number color, and columns shrink to fit the terminal.
+Header cells take the `tableHeader` color, and the default `box` style puts a double line under the header. `tableStyle` picks `box` (the default, every cell boxed), `round` (box with rounded corners), `rules`, `grid` or `minimal`. `:---:` and `---:` alignment is honored, numbers in cells get the number color, and columns shrink to fit the terminal.
 
 ### Code
 
@@ -340,7 +340,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | --- | --- | --- |
 | `enabled` | `true`, `false` | `true` |
 | `theme` | see [Themes](#themes), or `random` for a new dark color preset each time the mod loads | `catppuccin-mocha` |
-| `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
+| `tableStyle` | `box`, `round`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `promptStyle` | `bubble`, `wide`, `bar`, `chevron`, `off` | `bubble` |
 | `clock` | `off`, `24h`, `12h` | `off` |

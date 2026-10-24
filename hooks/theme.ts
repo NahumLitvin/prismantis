@@ -19,7 +19,7 @@ export type Style = {
   theme: Theme
   background?: string
   headingStyle: 'bold' | 'underline' | 'uppercase' | 'banner'
-  tableStyle: 'box' | 'rules' | 'grid' | 'minimal'
+  tableStyle: 'box' | 'round' | 'rules' | 'grid' | 'minimal'
   taskStyle: 'checks' | 'ticks' | 'box' | 'progress'
   promptStyle: 'bubble' | 'wide' | 'bar' | 'chevron' | 'off'
   clock: Clock
@@ -82,7 +82,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     theme: { ...base, ...fromFields },
     ...(PRESET_BACKGROUNDS[preset] ? { background: PRESET_BACKGROUNDS[preset] } : {}),
     headingStyle: pick(options.headingStyle, ['bold', 'underline', 'uppercase', 'banner'] as const, 'banner'),
-    tableStyle: pick(options.tableStyle, ['box', 'rules', 'grid', 'minimal'] as const, 'box'),
+    tableStyle: pick(options.tableStyle, ['box', 'round', 'rules', 'grid', 'minimal'] as const, 'box'),
     taskStyle: pick(options.taskStyle, ['checks', 'ticks', 'box', 'progress'] as const, 'checks'),
     promptStyle: pick(options.promptStyle, ['bubble', 'wide', 'bar', 'chevron', 'off'] as const, 'bubble'),
     clock: pick(options.clock, ['off', '24h', '12h'] as const, 'off'),

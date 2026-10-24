@@ -66,10 +66,11 @@
     "tableStyle": {
       "type": "string",
       "title": "Table style",
-      "description": "box: every cell boxed, with a double line under the header. rules: a rule under the header and between rows. grid: heavier header rule, wider gaps. minimal: header rule only.",
+      "description": "box: every cell boxed, with a double line under the header. round: box with rounded corners. rules: a rule under the header and between rows. grid: heavier header rule, wider gaps. minimal: header rule only.",
       "default": "box",
       "options": [
         "box",
+        "round",
         "rules",
         "grid",
         "minimal"
