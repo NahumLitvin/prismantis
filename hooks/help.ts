@@ -55,7 +55,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 
 ### Copy tables
 
-Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. Set \`copyButtonStyle\` to \`hover\` in \`/config\` and each block shows a dim ⧉ instead: point at it for its buttons.
+Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatted table. \`⧉ html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. \`▣ png\` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. Set \`copyButtonStyle\` to \`hover\` in \`/config\` and each block shows a dim ⧉ instead: point at it for its buttons.
 
 | Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
@@ -287,7 +287,7 @@ Docs and issues: https://github.com/NahumLitvin/prismantis
 ### Task lists
 
 - [x] Tables, diagrams and charts drawn in the terminal
-- [x] Copy tables as Markdown, art or HTML (macOS/Linux)
+- [x] Copy tables as Markdown, art or HTML (macOS/Linux), and tables, diagrams and charts as a PNG image (macOS/Windows)
 - [ ] Pick a \`taskStyle\` in \`/config\`: checks, ticks, box or progress
 
 \`\`\`mermaid

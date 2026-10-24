@@ -12,7 +12,7 @@ export const load = async () => {
     stdin: {
       contents: [
         "export { parse } from './hooks/markdown.ts'",
-        "export { MAC_TABLE_COPY, LINUX_TABLE_COPY, WIN_TABLE_COPY, clipboardCommand } from './hooks/clipboard.ts'",
+        "export { MAC_TABLE_COPY, LINUX_TABLE_COPY, WIN_TABLE_COPY, MAC_IMAGE_COPY, WIN_IMAGE_COPY, clipboardCommand, imageCommand } from './hooks/clipboard.ts'",
         "export { tableHtml } from './hooks/html.ts'",
         "export { renderBlocks, renderDiffCard } from './hooks/render.tsx'",
         "export { mermaidText, boxArt, drawDiagrams } from './hooks/mermaid.tsx'",

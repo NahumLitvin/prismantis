@@ -371,7 +371,7 @@ for (const copyButtonStyle of ['inline', 'hover'] as const) test(`copyButtonStyl
 test('copyButtonStyle hover drops trailing buttons a narrow terminal has no room for, keeping the first', { options: { copyButtonStyle: 'hover' } }, async ($, on) => {
   clipboardEnv(on, 'macos')
   await startSession($, on)
-  for (const [columns, labels] of [[120, '⧉ md ⧉ art ⧉ html'], [24, '⧉ md ⧉ art']] as const) {
+  for (const [columns, labels] of [[120, '⧉ md ⧉ art ⧉ html ▣ png'], [24, '⧉ md ⧉ art']] as const) {
     const ui = await $.ui.mount({ ...draw('| a |\n|---|\n| 1 |'), viewport: { columns, rows: 40 }, surface: 'terminal' })
     expect(reveals((await ui.drawn()) as DrawnNode).map(({ node }) => withParents(node).filter(({ node: n }) => n.type === 'Button').map(({ node: n }) => n.props?.label).join(' '))).toEqual([labels])
     await ui.unmount()

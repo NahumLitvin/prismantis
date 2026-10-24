@@ -6,8 +6,8 @@ import type { Formula } from './latex'
 import { LATEX_DPR, LATEX_FONT_PX, MAX_IMAGE_BYTES, fitImage, fitsImage, imageFile, imageOf, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
 import type { Block } from './markdown'
 import { nestedBlocks, parse } from './markdown'
-import type { ClipboardBackend } from './clipboard'
-import { clipboardCommand } from './clipboard'
+import type { ClipboardBackend, HelperCommand } from './clipboard'
+import { clipboardCommand, drawsImages, imageCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { CopyButton, DrawPaste, Fold, TerminalEnv } from './render'
@@ -312,14 +312,20 @@ const probe = async ($: EngineInterface, style: Style, probes: Probes): Promise<
   return terminal
 }
 
-const copyTable = async ($: EngineInterface, backend: ClipboardBackend, html: string, text: string): Promise<string | null> => {
+const runHelper = async ($: EngineInterface, backend: ClipboardBackend, build: (systemRoot?: string) => HelperCommand): Promise<string | null> => {
   const systemRoot = backend === 'windows' ? await $.env.get('SystemRoot') : undefined
-  const command = clipboardCommand(backend, html, text, systemRoot)
+  const command = build(systemRoot)
   if (backend === 'windows' && !systemRoot) return command.failure
-  const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: 5000 }).catch(() => null)
+  const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: backend === 'windows' ? 15000 : 5000 }).catch(() => null)
   if (!result) return command.failure
   return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
 }
+
+const richCommand = (style: Style, backend: ClipboardBackend, content: string, rich: (() => string) | 'png') => (systemRoot?: string): HelperCommand => rich === 'png'
+  ? imageCommand(backend, content, { foreground: style.theme.diagramText ?? style.theme.codeText, background: style.background }, systemRoot)
+  : clipboardCommand(backend, rich(), content, systemRoot)
+
+const offers = (style: Style, rich?: (() => string) | 'png'): boolean => !rich || (rich === 'png' ? drawsImages(style.htmlCopy) : !!style.htmlCopy)
 
 const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, open?: string[], faces = false): Fold => (id, hidden, key, look) => {
   if (!open) return null
@@ -331,19 +337,20 @@ const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolv
   return { folded, faced: look?.face !== undefined, element, around: (rows, hover) => <el.Button key={`${key}.rows`} plain label={label} hover={hover} onPress={toggle}>{rows}</el.Button> }
 }
 
+const copyOut = async ($: EngineInterface, style: Style, content: string, surface: RenderSurface, rich?: (() => string) | 'png'): Promise<string> => {
+  const backend = style.htmlCopy
+  const failure = rich && backend ? await runHelper($, backend, richCommand(style, backend, content, rich)) : undefined
+  if (failure === null) return rich === 'png' ? 'Copied as image' : 'Copied formatted table'
+  const result = await $.ui.copy({ text: content, surface })
+  if (!result.isCopied) return `Copy failed: ${result.reason}`
+  return failure ? `Copied as plain text (${failure})` : 'Copied'
+}
+
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }): RenderElement[] => {
   const { Button } = el
-  const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
-    const copied = async (surface: RenderSurface): Promise<string> => {
-      const content = typeof text === 'function' ? text() : text
-      const backend = style.htmlCopy
-      const failure = html && backend ? await copyTable($, backend, html(), content) : undefined
-      if (failure === null) return 'Copied formatted table'
-      const result = await $.ui.copy({ text: content, surface })
-      if (!result.isCopied) return `Copy failed: ${result.reason}`
-      return failure ? `Copied as plain text (${failure})` : 'Copied'
-    }
-    return style.copyButtons && (!html || style.htmlCopy) ? (
+  const copy = (text: string | (() => string), key: string, label = '⧉ copy', rich?: (() => string) | 'png') => {
+    const copied = (surface: RenderSurface) => copyOut($, style, typeof text === 'function' ? text() : text, surface, rich)
+    return style.copyButtons && offers(style, rich) ? (
       <Button
         key={key}
         variant="primary"
@@ -507,7 +514,7 @@ const SETUP_TABLE = '| Item | Qty |\n|:-----|----:|\n| Apples | 3 |\n| Pears | 5
 const SETUP_SENT = new Date(2026, 0, 15, 14, 32).getTime()
 
 const copySample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, value: string, id: string, columns: number): RenderElement[] => {
-  const label: CopyButton = (_text, key, name = '⧉ copy', html) => (html && !style.htmlCopy ? null : <el.Text key={key} bold>{`[ ${name} ]`}</el.Text>)
+  const label: CopyButton = (_text, key, name = '⧉ copy', rich) => (offers(style, rich) ? <el.Text key={key} bold>{`[ ${name} ]`}</el.Text> : null)
   const table = renderBlocks(el, style, parse(SETUP_TABLE, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns, new Map(), label)
   return [
     <el.Box key={`${id}t`} flexDirection="column">{table}</el.Box>,

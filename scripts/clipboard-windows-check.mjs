@@ -7,7 +7,7 @@ if (process.platform !== 'win32') {
   process.exit(0)
 }
 
-const { parse, tableHtml, clipboardCommand } = await load()
+const { parse, tableHtml, clipboardCommand, imageCommand } = await load()
 const table = parse('| Name | Value |\n|--|--|\n| Żółć & שלום | ✅ 中文 |', { numbers: false, paths: false }).find(block => block.kind === 'table')
 assert.ok(table)
 const html = tableHtml(table)
@@ -66,3 +66,46 @@ assert.ok(cf.length === endHtml || (cf.length === endHtml + 1 && cf[endHtml] ===
 for (const cell of ['Żółć', 'שלום', '✅', '中文']) assert.ok(cf.toString('utf8', startFragment, endFragment).includes(cell), `${cell} missing from clipboard`)
 assert.equal(unicode.toString('utf8'), text.replace(/\n/g, '\r\n'))
 console.log('Windows clipboard holds CF_HTML with byte offsets and CRLF Unicode text')
+
+const image = imageCommand('windows', '┌──────┐\n│ 苹果 │\n└──────┘', { foreground: '#cdd6f4', background: '#1e1e2e' }, process.env.SystemRoot)
+const drawn = spawnSync(image.argv[0], image.argv.slice(1), { input: image.stdin, encoding: 'utf8', timeout: 30000 })
+assert.equal(drawn.status, 0, drawn.stderr || drawn.error?.message)
+const look = `
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Windows.Forms
+$picture = [System.Windows.Forms.Clipboard]::GetImage()
+if (-not $picture) { throw 'No image on clipboard' }
+$corner = $picture.GetPixel(0, 0)
+[Console]::Out.WriteLine(($picture.Width, $picture.Height, $corner.R, $corner.G, $corner.B) -join ',')
+`
+const seen = spawnSync(image.argv[0], ['-NoProfile', '-NonInteractive', '-STA', '-Command', look], { encoding: 'utf8', timeout: 30000 })
+assert.equal(seen.status, 0, seen.stderr || seen.error?.message)
+const [wide, high, ...corner] = seen.stdout.trim().split(',').map(Number)
+assert.ok(wide > 2 * 8 * 7 && high > 2 * 3 * 14, `image is ${wide}x${high}`)
+assert.deepEqual(corner, [30, 30, 46])
+console.log(`Windows image helper writes a ${wide}x${high} bitmap in the theme background`)
+
+const blocks = imageCommand('windows', '█│\n█│\n█│', { foreground: '#cdd6f4', background: '#1e1e2e' }, process.env.SystemRoot)
+const stacked = spawnSync(blocks.argv[0], blocks.argv.slice(1), { input: blocks.stdin, encoding: 'utf8', timeout: 30000 })
+assert.equal(stacked.status, 0, stacked.stderr || stacked.error?.message)
+const gaps = `
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Windows.Forms
+$picture = [System.Windows.Forms.Clipboard]::GetImage()
+$pad = 32
+$cell = ($picture.Width - 2 * $pad) / 2
+$missing = foreach ($c in 0, 1) {
+  $count = 0
+  for ($y = $pad; $y -lt $picture.Height - $pad; $y++) {
+    $any = $false
+    for ($x = $pad + $c * $cell; $x -lt $pad + ($c + 1) * $cell; $x++) { if ($picture.GetPixel($x, $y).R -gt 128) { $any = $true; break } }
+    if (-not $any) { $count++ }
+  }
+  $count
+}
+[Console]::Out.WriteLine($missing -join ',')
+`
+const holes = spawnSync(blocks.argv[0], ['-NoProfile', '-NonInteractive', '-STA', '-Command', gaps], { encoding: 'utf8', timeout: 60000 })
+assert.equal(holes.status, 0, holes.stderr || holes.error?.message)
+assert.equal(holes.stdout.trim(), '0,0', `pixel rows without █ or │ ink: ${holes.stdout.trim()}`)
+console.log('Stacked █ and │ glyphs touch from row to row in the Windows bitmap')
