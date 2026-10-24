@@ -1,5 +1,6 @@
 import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'claude-code'
 
+import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
@@ -1226,7 +1227,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const done = drawn.get(b)?.element
         if (done) return done
         const note = drawn.get(b)?.note
-        const lines = block.lines
+        const lines = isFigureLang(block.lang) ? block.lines.map(figureText) : block.lines
         const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
         const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
