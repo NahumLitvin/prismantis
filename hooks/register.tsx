@@ -212,6 +212,8 @@ const picturesOf = async ($: EngineInterface, style: Style, probes: Probes, surf
   return new Map(found.flat())
 }
 
+const imagesOn = async ($: EngineInterface, probes: Probes, surface: RenderSurface): Promise<boolean> => surface === 'terminal' && (await (probes.images ??= showsImages($).catch(() => false)))
+
 const locate = async ($: EngineInterface, style: Style) => {
   style.cwd = await $.session.root().catch(() => style.cwd)
   style.home ||= (await $.env.get('HOME').catch(() => undefined)) ?? (await $.env.get('USERPROFILE').catch(() => undefined)) ?? ''
@@ -779,7 +781,7 @@ export const register: Register = (on, options) => {
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const pictures = await picturesOf($, style, probes, e.surface, blocks)
     const open = await read($, unfolded)
-    const surfaceStyle = await withFoundPaths($, pathChecks, forSurface(fit(e.viewport), e.surface, reach), blocks)
+    const surfaceStyle = { ...(await withFoundPaths($, pathChecks, forSurface(fit(e.viewport), e.surface, reach), blocks)), images: await imagesOn($, probes, e.surface) }
     return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, pictures, undefined, open, { id: e.requestId, press: reach.marks })}</Box>
   })
 
@@ -818,7 +820,7 @@ export const register: Register = (on, options) => {
     const reach = await linkReach($, probes, style)
     const math = await mathOfBlocks($, latex, e.surface, blocks)
     const pictures = await picturesOf($, style, probes, e.surface, blocks)
-    const surfaceStyle = await withFoundPaths($, pathChecks, forSurface(fit(e.viewport), e.surface, reach), blocks)
+    const surfaceStyle = { ...(await withFoundPaths($, pathChecks, forSurface(fit(e.viewport), e.surface, reach), blocks)), images: await imagesOn($, probes, e.surface) }
     const open = await read($, unfolded)
     const reply = blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined
     const corner = reply !== undefined && markerRoom(surfaceStyle) > 0

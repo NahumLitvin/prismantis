@@ -125,12 +125,12 @@ Code blocks tagged `mermaid` draw as colored text art:
 
 - flowcharts (`graph LR`, `graph TD`, decisions), sequence, state, class and ER diagrams
 - bar and line charts with `xychart-beta`, sized to the terminal width
-- `pie` charts as a circle with a colored legend, largest slice first, and `gantt` schedules as bars on a shared date or time axis, starting on a half cell and ending on an eighth so close durations draw apart
+- `pie` charts as a circle with a colored legend, largest slice first, drawn as a smooth picture in kitty and Ghostty, and `gantt` schedules as bars on a shared date or time axis, starting on a half cell and ending on an eighth so close durations draw apart
 - each box and participant gets its own theme color, the same at both ends of a sequence diagram
 - bars in a multi-series chart get their own colors; a single-series chart prints each value above its bar and colors the tallest one
 - gridlines stay dim, axis numbers use the number color
 
-`pieStyle` picks how a pie draws. `round` falls back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal:
+`pieStyle` picks how a pie draws. `round` draws the circle as a smooth picture in kitty and Ghostty, outside tmux, and as text elsewhere; `⧉ art` still copies the text circle. It falls back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal:
 
 | `round` (default) | `bars` |
 |---|---|

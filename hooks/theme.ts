@@ -38,6 +38,7 @@ export type Style = {
   copyButtons: boolean
   copyButtonStyle: 'inline' | 'hover'
   htmlCopy: ClipboardBackend | null
+  images: boolean
   nativeCode?: boolean
   gridFace?: boolean
   httpLinks: boolean
@@ -97,6 +98,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     copyButtons: options.copyButtons !== false,
     copyButtonStyle: pick(options.copyButtonStyle, ['inline', 'hover'] as const, 'inline'),
     htmlCopy: null,
+    images: false,
     httpLinks: false,
     editorLinks: false,
     fileLinks: null,

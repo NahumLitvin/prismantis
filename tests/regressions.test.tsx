@@ -401,6 +401,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('Files a shell command changes')
   expect(showcaseText([])).toContain('Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`')
   expect(showcaseText([])).toContain('Set `pieStyle` to `bars` in `/config` for one bar per slice')
+  expect(showcaseText([])).toContain('as a smooth picture in kitty and Ghostty')
   expect(showcaseText([])).toContain("A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks")
   expect(showcaseText([])).toContain('A file an Edit or a shell command creates shows its first 10 lines as added lines under `Created`')
   expect(showcaseText([])).toContain('one `Deleted` line that opens to its removed lines on a click')

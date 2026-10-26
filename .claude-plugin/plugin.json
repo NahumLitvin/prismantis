@@ -297,7 +297,7 @@
     "pieStyle": {
       "type": "string",
       "title": "Pie style",
-      "description": "How mermaid pie charts draw. round: a circle with a legend, falling back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal. bars: one bar per slice, largest first, with its share.",
+      "description": "How mermaid pie charts draw. round: a circle with a legend, a smooth picture in kitty and Ghostty (not under tmux) and text elsewhere, falling back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal. bars: one bar per slice, largest first, with its share.",
       "default": "round",
       "options": ["round", "bars"]
     },

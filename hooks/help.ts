@@ -213,7 +213,7 @@ xychart-beta
     line "west" [12, 18, 25, 20, 14]
 \`\`\`
 
-A pie draws round with a legend. Set \`pieStyle\` to \`bars\` in \`/config\` for one bar per slice:
+A pie draws round with a legend, as a smooth picture in kitty and Ghostty. Set \`pieStyle\` to \`bars\` in \`/config\` for one bar per slice:
 
 \`\`\`mermaid
 pie showData title Time per reply stage
@@ -394,7 +394,7 @@ export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'tools', key: 'toolStyle', title: 'Tool rows', note: 'How tool rows sit next to Claude\'s sentences. Sharing sessions as screenshots? `chat` and `tree-dim` draw tool rows in dim gray, the first thing to blur when an image gets resized, so pick `tree-bold` or `classic`.', options: ['chat', 'tree-dim', 'tree-bold', 'classic'], sample: '' },
   { name: 'output', key: 'toolOutput', title: 'Tool output', note: 'How much of a tool call shows. `full` keeps Claude Code\'s own results under each row. `quiet` names a shell call by what it does and shows a failure\'s last real line instead of its whole output; it also shows reads, searches and listings as their row only and drops approval lines. Edits keep their diff either way. Needs `toolRows` on.', options: ['full', 'quiet'], sample: '' },
   { name: 'diffs', key: 'diffStyle', title: 'Diffs', note: 'How an edit or a new file draws under its row. `card` frames the lines in a rounded box, `full` drops the box and tints each changed line across the width, `marks` drops the tint and colors only the `+` and `−` marks, `bar` puts a colored `▌` before each changed line. Every look highlights the code and the words that changed. Needs `toolRows` on.', options: ['card', 'full', 'marks', 'bar'], sample: '' },
-  { name: 'pies', key: 'pieStyle', title: 'Pie charts', note: 'How mermaid `pie` charts draw. `round` falls back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal.', options: ['round', 'bars'], sample: '```mermaid\npie title Time per reply stage\n    "Draw" : 9\n    "Paint" : 5\n    "Parse" : 3\n```' },
+  { name: 'pies', key: 'pieStyle', title: 'Pie charts', note: 'How mermaid `pie` charts draw. `round` draws a smooth picture in kitty and Ghostty and text elsewhere, and falls back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal.', options: ['round', 'bars'], sample: '```mermaid\npie title Time per reply stage\n    "Draw" : 9\n    "Paint" : 5\n    "Parse" : 3\n```' },
 ]
 
 export type SetupParts = { head: string; options: { value: string; text: string }[]; tail: string }
