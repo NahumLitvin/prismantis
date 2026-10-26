@@ -678,7 +678,7 @@ export const runSource = (block: Extract<Block, { kind: 'code' }>): string | und
 }
 
 const runButton = (style: Style, block: Extract<Block, { kind: 'code' }>, key: string, copy?: CopyButton): RenderElement | null => {
-  const source = style.bashMode ? runSource(block) : undefined
+  const source = style.bashMode && style.runButton ? runSource(block) : undefined
   return source === undefined ? null : copy?.(source, key, '▶ run', undefined, true) ?? null
 }
 

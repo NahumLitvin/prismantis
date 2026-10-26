@@ -313,6 +313,12 @@
       "description": "Put a copy button on code blocks, tables, diagrams, lists and quotes, and a run button on shell blocks. Reach them with ctrl+x tab then Enter, or click where the terminal passes clicks through.",
       "default": true
     },
+    "runButton": {
+      "type": "boolean",
+      "title": "Run button",
+      "description": "Put a run button on shell code blocks in the terminal. It puts the command in the prompt with the cursor in front; type ! then Enter to run it. Off keeps only the copy button.",
+      "default": true
+    },
     "copyButtonStyle": {
       "type": "string",
       "title": "Copy button style",

@@ -352,6 +352,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `toolStyle` | `chat`, `tree-dim`, `tree-bold`, `classic` | `chat` |
 | `toolOutput` | `full`, `quiet` | `full` |
 | `copyButtons` | `true`, `false` | `true` |
+| `runButton` | `true`, `false` | `true` |
 | `copyButtonStyle` | `inline`, `hover` | `inline` |
 | `diagramHints` | `true`, `false` | `true` |
 | `issueHint` | `true`, `false` | `true` |

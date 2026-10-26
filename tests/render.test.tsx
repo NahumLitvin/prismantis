@@ -281,6 +281,13 @@ test('copyButtons off hides the run button too', { options: { copyButtons: false
   await ui.unmount()
 })
 
+test('runButton off hides the run button and keeps copy', { options: { runButton: false } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('```bash\nls\n```'), surface: 'terminal' })
+  expect(await runLabels(ui)).toEqual([])
+  expect(await ui.find({ text: /⧉ copy/ })).toBeDefined()
+  await ui.unmount()
+})
+
 const COPY_SAMPLE = `${TABLE}\n\n\`\`\`bash\nls -la\n\`\`\`\n\n> reply text\n\nplain paragraph`
 
 const floatingCopies = async (ui: { findAll: (query: { type: string }) => Promise<{ props: Record<string, unknown>; text?: string }[]> }) =>
