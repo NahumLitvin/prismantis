@@ -337,7 +337,7 @@ const bindNumber = <U extends Unit>(all: U[]): U[] =>
     return next && R.test(next.ch) ? u : { ...u, ch: LTR_BLANK }
   })
 
-const WORD = /[\p{L}\p{N}\p{P}]/u
+const WORD = /[\p{L}\p{M}\p{N}\p{P}]/u
 
 const DRAWN = /[←-⇿─-◿]/u
 
@@ -345,14 +345,40 @@ const ASCII_DRAWN = /[-+|<>]/
 
 const LETTER = /[\p{L}\p{N}]/u
 
-const drawnAt = (all: Cell[], i: number) => {
-  const ch = all[i]!.ch
-  return DRAWN.test(ch) || (ASCII_DRAWN.test(ch) && !(LETTER.test(all[i - 1]?.ch ?? '') && LETTER.test(all[i + 1]?.ch ?? '')))
-}
+const drawnChar = (ch: string, a: string, b: string) => DRAWN.test(ch) || (ASCII_DRAWN.test(ch) && !(LETTER.test(a) && LETTER.test(b)))
+
+const drawnAt = (all: Cell[], i: number) => drawnChar(all[i]!.ch, all[i - 1]?.ch ?? '', all[i + 1]?.ch ?? '')
 
 const inLabel = (chars: string[], c: number) => {
   const [a = '', b = ''] = [chars[c - 1], chars[c + 1]]
   return WORD.test(a) && WORD.test(b) && (R.test(a) || R.test(b))
+}
+
+const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u
+
+const LETTER_CHAR = /[\p{L}\p{M}]/u
+
+const joins = (chars: string[], c: number) => {
+  const [a = '', b = ''] = [chars[c - 1], chars[c + 1]]
+  return chars[c] === ' ' && WORD_CHAR.test(a) && WORD_CHAR.test(b) && (LETTER_CHAR.test(a) || LETTER_CHAR.test(b))
+}
+
+const mixedSpaces = (chars: string[]): Set<number> => {
+  const mixed = new Set<number>()
+  let spaces: number[] = []
+  let rtl = false
+  const close = () => {
+    if (rtl) for (const c of spaces) mixed.add(c)
+    spaces = []
+    rtl = false
+  }
+  chars.forEach((ch, i) => {
+    if (joins(chars, i)) spaces.push(i)
+    else if (ch === ' ' || drawnChar(ch, chars[i - 1] ?? '', chars[i + 1] ?? '')) close()
+    else rtl ||= R.test(ch)
+  })
+  close()
+  return mixed
 }
 
 type Cell = Unit & { at: number }
@@ -401,8 +427,9 @@ const hold = (chars: string[], label: (all: Cell[]) => Cell[], blank: string[]):
     }
     run = []
   }
+  const mixed = mixedSpaces(chars)
   chars.forEach((ch, c) => {
-    if (ch === ' ' && !inLabel(chars, c)) {
+    if (ch === ' ' && !inLabel(chars, c) && !mixed.has(c)) {
       flush()
       for (const b of blank) {
         held.cells.push(b)

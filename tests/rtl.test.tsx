@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
+import type { TestBody } from 'claude-code/testing'
 
 import type { Inline } from '../hooks/markdown'
 import { inlineText } from '../hooks/markdown'
@@ -791,6 +792,38 @@ test('iTerm holds a figure row as one line, so a colored word inside a mixed lab
   await ui.unmount()
 })
 
+for (const [rtl, label, note] of [
+  ['iterm', '⠀Saved Tabs-נעלם מ⠀', '(Recent Sessions-נמצא ב)'],
+  ['warp', ' Saved Tabs-מ םלענ ', '(Recent Sessions-ב אצמנ)'],
+] as const)
+  test(`a figure label that mixes Hebrew with two English words stays one label on ${rtl}, so the English words and the brackets stay together`, { options: { rtl } }, async $ => {
+    const ui = await $.ui.mount(mount('```figure\nרגיל  ──► נעלם מ-Saved Tabs ──► סוף\n          (נמצא ב-Recent Sessions)\n```'))
+    const rows = (await hebrewRows(ui)).join('\n')
+    expect(rows).toContain(label)
+    expect(rows).toContain(note)
+    await ui.unmount()
+  })
+
+test('a single space keeps English words in a Hebrew figure label only between letters, on either side of the Hebrew, so boxes, members and connectors still split as before', () => {
+  for (const [row, held] of [
+    ['[בנייה] [בדיקה] [Deploy]', '[בנייה]⠀[בדיקה]⠀[Deploy]'],
+    ['│ +שם: String  │', '│⠀+שם:⠀String⠀⠀│'],
+    ['עברית -- English words', 'עברית --⠀English⠀words'],
+    ['אבג──►Saved Tabs', 'Saved►──אבג⠀Tabs'],
+    ['│ שלב │──►│ ArgoCD sync │', '│⠀שלב⠀│──►│⠀ArgoCD⠀sync⠀│'],
+    ['A B──►C שלב', 'A⠀B──►C שלב'],
+    ['Saved Tabs-נעלם  ──►  x', 'Saved Tabs-נעלם⠀⠀──►⠀⠀x'],
+    ['שלב 1 2 3 4', 'שלב 1⠀2⠀3⠀4'],
+    ['בִּ Foo', 'Foo בִּ'],
+  ] as const)
+    expect(holdRow([...row]).cells.join('')).toBe(held)
+})
+
+test('Windows Terminal keeps English words in a Hebrew figure label together too', () => {
+  expect(holdEngine([...'רגיל  ──► נעלם מ-Saved Tabs ──► סוף']).cells.join('')).toContain('\u200e Saved Tabs-נעלם מ\u200e ')
+  expect(holdEngine([...'(נמצא ב-Recent Sessions)']).cells.join('')).toBe('(Recent Sessions-נמצא ב)')
+})
+
 test('terminals that do not mirror rows draw diagrams with plain spaces', { options: { rtl: 'warp' } }, async $ => {
   for (const source of DIAGRAMS) {
     const ui = await $.ui.mount(mount(source))
@@ -847,3 +880,174 @@ test('a terminal without bidi gets each Hebrew diagram label in display order, i
   expect(drawn('├─כן─►')).toBe('├─ןכ─►')
   expect(drawn('│ plain │')).toBe('│ plain │')
 })
+
+const toolCard = (tool: string, output: unknown) => ({ plugin: 'prismantis', surface: 'terminal' as const, component: 'ToolResult' as const, props: { tool_use_id: `t-${tool}`, tool, output, isErrored: false } })
+
+for (const rtl of ['iterm', 'warp'] as const)
+  test(`a code row with only Hebrew in it stays in its column on ${rtl}: the gutter ends in a braille blank on iTerm, so the terminal does not mirror the row`, { options: { rtl } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    claudeAt(on, '2.1.295')
+    const blank = rtl === 'iterm' ? '⠀' : ' '
+    const edit = await $.ui.mount(toolCard('Edit', { filePath: '/tmp/notes.md', structuredPatch: [{ oldStart: 4, newStart: 4, lines: [' keep this', '-שלום עולם', '+שלום עולם חדש'] }] }))
+    expect(await edit.find({ type: 'Box', text: new RegExp(`^5${blank}- שלום עולם$`) })).toBeDefined()
+    expect(await edit.find({ type: 'Box', text: new RegExp(`^5${blank}\\+ שלום עולם חדש$`) })).toBeDefined()
+    expect(await edit.find({ type: 'Box', text: /^4 {3}keep this$/ })).toBeDefined()
+    await edit.unmount()
+    const write = await $.ui.mount(toolCard('Write', { type: 'create', filePath: '/tmp/notes.md', content: 'keep this\nשלום עולם\n', structuredPatch: [], originalFile: null }))
+    const written = (await write.findAll({ type: 'Text' })).map(t => t.text)
+    expect(written).toContain(`2 ${blank}`)
+    expect(written).toContain('1  ')
+    await write.unmount()
+    const fence = await $.ui.mount(mount('```ts\nkeep this\nשלום עולם\n```'))
+    if (rtl === 'iterm') expect(await fence.find({ type: 'Box', text: /^ ⠀שלום עולם$/ })).toBeDefined()
+    expect((await fence.findAll({ type: 'Text' })).some(t => t.text.includes('⠀'))).toBe(rtl === 'iterm')
+    await fence.unmount()
+  })
+
+test('on iTerm a long Hebrew line in a code block wraps into rows that each open with a braille blank, so no continuation is mirrored away from the gutter', { options: { rtl: 'iterm' } }, async $ => {
+  const words = 'שורה ארוכה מאוד בעברית שעוברת את רוחב המסך הצר ולכן נשברת לכמה שורות'
+  const ui = await $.ui.mount(mount(`\`\`\`ts\nconst a = 1\n${words}\n\`\`\``, 40))
+  const rows = (await ui.findAll({ type: 'Box' })).map(b => b.text).filter(t => /^ ⠀[א-ת]/.test(t))
+  expect(rows.length).toBeGreaterThan(1)
+  expect(rows.map(r => r.slice(2).trim()).join(' ')).toBe(words)
+  expect(rows.every(r => r.length <= 40)).toBe(true)
+  await ui.unmount()
+})
+
+test('on iTerm a shell block whose Hebrew comes after the command keeps its shell colors and gets no braille blank, since the row already opens with English', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount(mount('```bash\nls -la # רשימת הקבצים\n```'))
+  expect((await ui.findAll({ type: 'Text' })).some(t => t.text.includes('⠀'))).toBe(false)
+  expect((await ui.find({ type: 'Text', text: /^ls$/ }))?.props.color).toBeDefined()
+  await ui.unmount()
+})
+
+test('on iTerm a shell block with a line that opens with Hebrew keeps the shell colors the block has without Hebrew', { options: { rtl: 'iterm' } }, async $ => {
+  const colors = async (source: string, texts: RegExp[]) => {
+    const ui = await $.ui.mount(mount(source))
+    const found = await Promise.all(texts.map(async text => (await ui.findAll({ type: 'Text', text })).map(t => t.props.color)))
+    await ui.unmount()
+    return found
+  }
+  const words = [/^npm$/, /^--save$/, /^"x"$/]
+  const plain = (await colors('```bash\n# note\nnpm install --save "x"\n```', [/^# note$/, ...words])).map(c => c[0])
+  const held = await colors('```bash\n# התקנת החבילות\nnpm install --save "x"\n```', [/^# התקנת החבילות$/, ...words, /^ ⠀$/])
+  expect(new Set(plain).size).toBe(4)
+  plain.forEach((color, i) => expect(held[i]).toContain(color))
+  expect(held[4]!.length).toBeGreaterThan(0)
+})
+
+const shellCall = (id: string, command: string) => ({ tool_use_id: id, tool: 'Bash', input: { command }, isRunning: false, isErrored: false, isInterrupted: false })
+
+for (const rtl of ['iterm', 'warp'] as const)
+  test(`a shell output line with only Hebrew in it stays after its gutter on ${rtl}: the gutter ends in a braille blank on iTerm`, { options: { rtl, toolOutput: 'quiet' } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    const blank = rtl === 'iterm' ? '⠀' : ' '
+    const quiet = await $.ui.mount({ ...toolCard('Bash', { stdout: 'שלום עולם\nend\n', stderr: '' }), props: { tool_use_id: `q-${rtl}`, tool: 'Bash', output: { stdout: 'שלום עולם\nend\n', stderr: '' }, isErrored: false } })
+    expect(await quiet.find({ type: 'Box', text: new RegExp(`^  ⎿ ${blank}שלום עולם$`) })).toBeDefined()
+    expect(await quiet.find({ type: 'Box', text: /^ {5}end$/ })).toBeDefined()
+    await quiet.unmount()
+    const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [shellCall(`x-${rtl}`, 'ls')], isActive: false, isExpanded: true } })
+    await group.unmount()
+    const expanded = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...shellCall(`x-${rtl}`, "cat <<'EOF'\nשלום\nEOF"), output: { stdout: 'שלום עולם\nend', stderr: '' } } })
+    expect(await expanded.find({ type: 'Box', text: new RegExp(`^${blank}שלום עולם$`) })).toBeDefined()
+    expect(await expanded.find({ type: 'Box', text: /^ end$/ })).toBeDefined()
+    if (rtl === 'iterm') expect(await expanded.find({ type: 'Box', text: /^ ⠀שלום$/ })).toBeDefined()
+    await expanded.unmount()
+  })
+
+const expandShell = async ($: Parameters<TestBody>[0], id: string, command: string, stdout: string) => {
+  const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [shellCall(id, 'ls')], isActive: false, isExpanded: true } })
+  await group.unmount()
+  return $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...shellCall(id, command), output: { stdout, stderr: '' } }, viewport: { columns: 30, rows: 40 } })
+}
+
+const longHebrew = Array(6).fill('שלום עולם').join(' ')
+
+test('on iTerm a long Hebrew command and output line in an expanded shell call wrap into rows that fit the box and each open with a braille blank', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'wi', `echo '${longHebrew}'`, `${longHebrew}\nשם\tגיל`)
+  const command = (await expanded.findAll({ type: 'Box', text: /^(●Bash\(| ⠀)/ })).filter(r => r.props.flexDirection === 'row' && !/[│╭╰]/.test(r.text)).map(r => r.text)
+  expect(command.length).toBeGreaterThan(1)
+  expect(command[0]).toMatch(/^●Bash\(echo '/)
+  expect(command.slice(1).every(r => /^ ⠀\S/.test(r))).toBe(true)
+  expect(command.every(r => r.length <= 30)).toBe(true)
+  expect([command[0]!.slice(1), ...command.slice(1).map(r => r.slice(2))].map(r => r.trimEnd()).join(' ')).toBe(`Bash(echo '${longHebrew}')`)
+  expect((await expanded.find({ type: 'Text', text: /^Bash\($/ }))?.props.bold).toBe(true)
+  const quoted = (await expanded.find({ type: 'Text', text: /^'שלום/ }))?.props.color
+  expect(quoted).toBeDefined()
+  expect((await expanded.findAll({ type: 'Text', text: /^(שלום|עולם).*'$/ })).some(t => t.props.color === quoted)).toBe(true)
+  const rows = (await expanded.findAll({ type: 'Box', text: /^⠀(שלום|עולם)/ })).filter(r => r.props.flexDirection === 'row').map(r => r.text)
+  expect(rows.length).toBeGreaterThan(1)
+  expect(rows.every(r => r.length <= 30 - 4)).toBe(true)
+  expect(rows.map(r => r.slice(1).trimEnd()).join(' ')).toBe(longHebrew)
+  expect(await expanded.find({ type: 'Box', text: /^⠀שם\tגיל$/ })).toBeDefined()
+  await expanded.unmount()
+})
+
+test('on warp a long Hebrew command and output line in an expanded shell call stay one row each, left to the terminal', { options: { rtl: 'warp' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'ww', `echo '${longHebrew}'`, longHebrew)
+  const command = (await expanded.findAll({ type: 'Box', text: /^(●Bash\(| [ ⠀])/ })).filter(r => r.props.flexDirection === 'row' && !/[│╭╰]/.test(r.text)).map(r => r.text)
+  expect(command).toHaveLength(1)
+  expect(command[0]).toMatch(/^●Bash\(echo '[^⠀]+'\)$/)
+  expect((await expanded.findAll({ type: 'Box', text: /^ (שלום|עולם)/ })).filter(r => r.props.flexDirection === 'row').map(r => r.text)).toEqual([` ${longHebrew}`])
+  await expanded.unmount()
+})
+
+test('on iTerm a single Hebrew output line too long for 120 rows is cut there and says so', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'big', 'ls', Array(2000).fill('שלום עולם').join(' '))
+  expect((await expanded.findAll({ type: 'Box', text: /^⠀\S/ })).filter(r => r.props.flexDirection === 'row')).toHaveLength(120)
+  expect(await expanded.find({ type: 'Box', text: /^ … \+1 lines$/ })).toBeDefined()
+  await expanded.unmount()
+})
+
+test('on iTerm the last of the 120 rows shows a cantillated Hebrew line whole when it fits, never a broken letter', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const line = 'שָּׁ֑'.repeat(20)
+  const expanded = await expandShell($, 'pts', 'ls', `${Array(119).fill('x').join('\n')}\n${line}`)
+  expect(await expanded.find({ type: 'Box', text: new RegExp(`^⠀${line}$`) })).toBeDefined()
+  expect(await expanded.find({ type: 'Box', text: /^ … \+\d+ lines$/ })).toBeUndefined()
+  await expanded.unmount()
+})
+
+test('on iTerm a Hebrew output line that is one letter with a huge run of points is cut and says so', { options: { rtl: 'iterm' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const expanded = await expandShell($, 'marks', 'ls', `ש${'\u05B8'.repeat(200000)}`)
+  expect(await expanded.find({ type: 'Box', text: /^ … \+1 lines$/ })).toBeDefined()
+  expect((await expanded.findAll({ type: 'Text' })).every(t => t.text.length < 1000)).toBe(true)
+  await expanded.unmount()
+})
+
+for (const rtl of ['iterm', 'warp'] as const)
+  test(`a failed tool's Hebrew reason stays after its ⎿ on ${rtl}: the gutter ends in a braille blank on iTerm`, { options: { rtl, toolStyle: 'tree-dim', toolOutput: 'quiet' } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    const blank = rtl === 'iterm' ? '⠀' : ' '
+    const failed = await $.ui.mount({ ...toolCard('Bash', 'Exit code 1\nהקובץ לא נמצא'), props: { tool_use_id: `f-${rtl}`, tool: 'Bash', output: 'Exit code 1\nהקובץ לא נמצא', isErrored: true } })
+    expect(await failed.find({ type: 'Text', text: new RegExp(`^  ⎿${blank}הקובץ לא נמצא$`) })).toBeDefined()
+    await failed.unmount()
+  })

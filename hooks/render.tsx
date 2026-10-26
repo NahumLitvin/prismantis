@@ -5,7 +5,7 @@ import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
 import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, texText } from './markdown'
 import type { Flow } from './rtl'
-import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, heldCell, listMarker, terminalLine } from './rtl'
+import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -14,6 +14,14 @@ const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F
 const segmenter = new Intl.Segmenter()
 
 export const graphemes = (s: string): string[] => [...segmenter.segment(s)].map(g => g.segment)
+
+const CLUSTER_UNITS = 32
+
+const clusters = (s: string, count: number): string => {
+  let n = 0
+  for (const { index, segment } of segmenter.segment(s)) if (n++ === count || index + segment.length > count * CLUSTER_UNITS) return s.slice(0, index)
+  return s
+}
 
 export const cells = (s: string): string[] => (/^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap(g => (WIDE.test(g) ? [g, ''] : [g])))
 
@@ -169,7 +177,7 @@ const launches = (href: string): boolean => {
 
 const isHyperlink = (href: string, reach: Reach): boolean =>
   (reach.httpLinks ? /^https?:/i : /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i).test(href)
-  || (reach.editorLinks && /^vscode(-insiders)?:\/\/file\//i.test(href))
+  || (reach.editorLinks && /^(vscode(-insiders)?|cursor|windsurf|zed):\/\/file\//i.test(href))
   || (reach.fileLinks !== null && /^file:/i.test(href) && !launches(href))
 
 const plainLink = (text: string, href: string): string => {
@@ -435,6 +443,15 @@ export const mirrored = (style: Style) => style.shape === 'mirror'
 
 export const heldLtr = (style: Style) => (style.shape === 'engine' ? { dir: 'ltr' as const } : {})
 
+const heldLabel = (style: Style, label: string, text: string): string => (mirrored(style) && hasRtl(text) ? label.replace(/ $/, LTR_BLANK) : label)
+
+const heldRow = (el: ElementTable, style: Style, key: string, label: string, text: string, cell: RenderNode): RenderElement => (
+  <el.Box key={key} flexDirection="row">
+    <el.Text dimColor>{heldLabel(style, label, text)}</el.Text>
+    {cell}
+  </el.Box>
+)
+
 const flows = new Map<string, Flow | null>()
 const flowOf = (style: Style, nodes: Inline[], columns: number, mark = !(style.inside && mirrored(style))) =>
   style.reorder && containsRtl(nodes) ? remember(flows, `${style.shape}\0${mark}\0${columns}\0${JSON.stringify(nodes)}`, () => flow(nodes, columns, width, style.shape, mark), 2000) : null
@@ -629,13 +646,44 @@ export const highlightBlock = ({ Text }: ElementTable, style: Style, lines: stri
 
 const gutterOf = (lines: string[], numbered: boolean) => (numbered ? String(lines.length).length + 2 : 0)
 
+const heldSegments = (style: Style, lines: string[], lang: string): Segment[][] =>
+  (isShellLang(lang) ? lines.map(line => shellLine(style, line)) : segmentRows(style, lines, lang)) ?? lines.map(text => (text ? [{ text, italic: false }] : []))
+
+const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, gutter: number, room: number, key: string): RenderElement[] =>
+  heldSegments(style, lines, lang).slice(0, shown).flatMap((segs, i) =>
+    visualRows(tabbed(wordPieces(segs, null)), room).map((part, k) => (
+      <el.Box key={`${key}.h${i}.${k}`} flexDirection="row">
+        {numberedLine(el, style, `  ${gutter ? (k ? ' '.repeat(gutter + 2) : `${String(i + 1).padStart(gutter)}  `) : ''}`, part, `${key}.h${i}.${k}`)}
+      </el.Box>
+    )))
+
+const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string): RenderElement[] => {
+  if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
+  const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room))
+  return style.shape === 'engine' ? rows.map((row, i) => <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</el.Text>) : rows
+}
+
+const codeBody = (el: ElementTable, style: Style, rows: RenderElement[], gutter: number, held: boolean, more: RenderNode | null): RenderElement => {
+  const { Box, Text } = el
+  return (
+    <Box flexDirection="column" paddingLeft={held ? 0 : 2}>
+      {held || !gutter || style.nativeCode ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={style.theme.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
+      {held && more ? <Box paddingLeft={2}>{more}</Box> : more}
+    </Box>
+  )
+}
+
 const isShellLang = (lang: string) => lang === '' || /^(sh|bash|zsh|shell|console|fish|powershell|ps1)$/i.test(lang)
+
+const BOX_DRAWING = /[\u2500-\u257F]/
+
+const SHELL_COMMENT = /^\s*#/
 
 export const codeLine = (el: ElementTable, style: Style, line: string, lang: string, key: string, room?: number): RenderElement => {
   const { Text } = el
   const t = style.theme
   const isShell = isShellLang(lang)
-  if (/[\u2500-\u257F]/.test(line)) return <Text key={key} color={t.codeText}>{line}</Text>
+  if (BOX_DRAWING.test(line)) return <Text key={key} color={t.codeText}>{line}</Text>
   const comment = style.reorder ? commentTail(line, style.shape) : null
   if (comment) {
     return (
@@ -646,24 +694,32 @@ export const codeLine = (el: ElementTable, style: Style, line: string, lang: str
     )
   }
   if (!isShell) return <Text key={key} color={t.codeText}>{shownCode(line, style, room) || ' '}</Text>
-  if (/^\s*#/.test(line)) return <Text key={key} color={t.codeComment}>{line}</Text>
-  const parts = shownCode(line, style, room, true).split(/("[^"]*"|'[^']*'|\s+)/).filter(p => p !== '')
+  if (SHELL_COMMENT.test(line)) return <Text key={key} color={t.codeComment}>{line}</Text>
+  return <Text key={key} color={t.codeText}>{shellSegments(style, line, room).map((s, i) => <Text key={`${key}.${i}`} color={s.color}>{s.text}</Text>)}</Text>
+}
+
+const shellLine = (style: Style, line: string): Segment[] => {
+  if (!line) return []
+  if (BOX_DRAWING.test(line)) return [{ text: line, color: style.theme.codeText, italic: false }]
+  if (SHELL_COMMENT.test(line)) return [{ text: line, color: style.theme.codeComment, italic: false }]
+  return shellSegments(style, line)
+}
+
+const shellSegments = (style: Style, line: string, room?: number): Segment[] => {
+  const t = style.theme
   let seenCommand = false
-  return (
-    <Text key={key} color={t.codeText}>
-      {parts.map((p, i) => {
-        if (/^\s+$/.test(p)) return <Text key={`${key}.${i}`}>{p}</Text>
-        if (/^["']/.test(p)) return <Text key={`${key}.${i}`} color={t.codeString}>{p}</Text>
-        if (/^--?[\w-]/.test(p)) return <Text key={`${key}.${i}`} color={t.codeFlag}>{p}</Text>
-        if (!seenCommand && !/^[$>|&;]+$/.test(p)) {
-          seenCommand = true
-          return <Text key={`${key}.${i}`} color={t.codeCommand}>{p}</Text>
-        }
-        if (/^(\||&&|;|\|\|)$/.test(p)) seenCommand = false
-        return <Text key={`${key}.${i}`}>{p}</Text>
-      })}
-    </Text>
-  )
+  const colorOf = (p: string): string | undefined => {
+    if (/^\s+$/.test(p)) return undefined
+    if (/^["']/.test(p)) return t.codeString
+    if (/^--?[\w-]/.test(p)) return t.codeFlag
+    if (!seenCommand && !/^[$>|&;]+$/.test(p)) {
+      seenCommand = true
+      return t.codeCommand
+    }
+    if (/^(\||&&|;|\|\|)$/.test(p)) seenCommand = false
+    return undefined
+  }
+  return shownCode(line, style, room, true).split(/("[^"]*"|'[^']*'|\s+)/).filter(p => p !== '').map(text => ({ text, color: colorOf(text), italic: false }))
 }
 
 const longestWord = (text: string): number => Math.max(0, ...text.split(/\s+/).map(width))
@@ -1210,10 +1266,9 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
         const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
         const room = columns - 2 - gutterOf(lines, numbered)
-        const drawnRows = (isShellLang(block.lang) ? null : highlightBlock(el, style, lines, block.lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, block.lang, `${key}.${i}`, room))
-        const rows = style.nativeCode ? [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(block.lang ? { language: block.lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
-          : style.shape === 'engine' ? drawnRows.map((row, i) => <Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</Text>) : drawnRows
-        const gutter = String(lines.length).length
+        const gutter = numbered ? String(lines.length).length : 0
+        const held = !style.nativeCode && mirrored(style) && lines.some(line => hasRtl(line) && (!opensLatin(line) || width(line) > room))
+        const rows = held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key) : codeRows(el, style, lines, shown, block.lang, numbered, room, key)
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
         const head = codeHead(label, button)
@@ -1225,10 +1280,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
               {head ? head.marker : button}
               {head?.element}
             </Box>
-            <Box flexDirection="column" paddingLeft={2}>
-              {!numbered || style.nativeCode ? rows : rows.map((row, i) => row.type === 'Text' ? <Box key={`n${i}`} flexDirection="row"><Text color={t.codeComment} dimColor>{`${String(i + 1).padStart(gutter)}  `}</Text>{row}</Box> : row)}
-              {toggle?.element ?? null}
-            </Box>
+            {codeBody(el, style, rows, gutter, held, toggle?.element ?? null)}
           </Box>
         )
       }
@@ -1381,12 +1433,9 @@ export const renderShellResult = (el: ElementTable, style: Style, output: unknow
   const shown = [...lines(out.stdout), ...lines(out.stderr)]
   const head = shown.slice(0, RESULT_LINES).map(l => shortenPaths(l, style))
   return (
-    <Box flexDirection="row">
-      <Text dimColor>{'  ⎿  '}</Text>
-      <Box flexDirection="column">
-        {head.length === 0 ? <Text dimColor>(No output)</Text> : head.map((l, i) => <Text key={`l${i}`} wrap="truncate-end">{l === '' ? ' ' : l}</Text>)}
-        {shown.length > head.length ? <Text dimColor>{`… +${shown.length - head.length} lines`}</Text> : null}
-      </Box>
+    <Box flexDirection="column">
+      {head.length === 0 ? heldRow(el, style, 'l0', '  ⎿  ', '', <Text dimColor>(No output)</Text>) : head.map((l, i) => heldRow(el, style, `l${i}`, i ? '     ' : '  ⎿  ', l, <Text wrap="truncate-end">{l === '' ? ' ' : l}</Text>))}
+      {shown.length > head.length ? heldRow(el, style, 'more', '     ', '', <Text dimColor>{`… +${shown.length - head.length} lines`}</Text>) : null}
     </Box>
   )
 }
@@ -1658,8 +1707,8 @@ const rowStarts = (text: string, room: number): number[] => {
   return starts
 }
 
-const splitRows = (pieces: Piece[], starts: number[]): Piece[][] => {
-  const rows: Piece[][] = starts.map(() => [])
+const splitRows = <P extends Piece>(pieces: P[], starts: number[]): P[][] => {
+  const rows: P[][] = starts.map(() => [])
   let [at, r] = [0, 0]
   for (const p of pieces) {
     for (let from = 0; from < p.text.length; ) {
@@ -1675,7 +1724,7 @@ const splitRows = (pieces: Piece[], starts: number[]): Piece[][] => {
 
 const DIFF_ROOM = 8
 
-const visualRows = (pieces: Piece[], room: number | undefined): Piece[][] => {
+const visualRows = <P extends Piece>(pieces: P[], room: number | undefined): P[][] => {
   const text = pieces.map(p => p.text).join('')
   return room === undefined || room < DIFF_ROOM || width(text) <= room ? [pieces] : splitRows(pieces, rowStarts(text, room))
 }
@@ -1713,7 +1762,7 @@ const onBand = (color: string | undefined, band: string | undefined) => {
 const muted = (style: Style, band: string | undefined) => onBand(style.theme.codeComment ?? style.theme.codeText, band)
 
 const numberedLine = (el: ElementTable, style: Style, label: string, pieces: Piece[], key: string, band?: string): RenderElement[] => [
-  <el.Text key={`${key}.g`} color={style.theme.codeComment} dimColor {...muted(style, band)}>{label}</el.Text>,
+  <el.Text key={`${key}.g`} color={style.theme.codeComment} dimColor {...muted(style, band)}>{heldLabel(style, label, pieceText(pieces))}</el.Text>,
   <el.Text key={`${key}.c`} color={style.theme.codeText} {...lift(style.theme.codeText, band)}>{drawCode(el, style, pieces, undefined, undefined, `${key}.c`, band)}</el.Text>,
 ]
 
@@ -1802,7 +1851,7 @@ const lineText = (el: ElementTable, style: Style, paint: DiffPaint, r: DiffLine,
   const code = style.theme.codeText
   return [
     ...(paint.look === 'bar' ? [<Text key={`${key}.b`} color={paint.marks[r.mark]} {...on}>{barOf(r.mark)}</Text>] : []),
-    <Text key={`${key}.n`} dimColor {...on}>{numberOf(paint, r, k)}</Text>,
+    <Text key={`${key}.n`} dimColor {...on}>{heldLabel(style, numberOf(paint, r, k), r.text)}</Text>,
     <Text key={`${key}.m`} color={paint.marks[r.mark]} dimColor={r.mark === ' '} {...on}>{markOf(r.mark)}</Text>,
     <Text key={`${key}.c`} color={bg ? onTint(code, bg) : code} {...on}>{drawCode(el, style, part, bg, paint.words[r.mark], key)}</Text>,
     ...(bg && pad > 0 ? [<Text key={`${key}.p`} {...on}>{' '.repeat(pad)}</Text>] : []),
@@ -2119,9 +2168,10 @@ export const renderFailure = (el: ElementTable, style: Style, output: unknown, k
   const reason = refusal ?? errorReason(output)
   if (reason === undefined) return undefined
   const chat = style.toolStyle === 'chat'
+  const shown = refusal ?? shortenPaths(reason, style)
   return (
     <el.Box key={key} flexDirection="row" width="100%" justifyContent={chat ? 'flex-end' : 'flex-start'}>
-      <el.Text color={style.theme.codeFlag} wrap={refusal === undefined ? 'truncate-middle' : 'wrap'}>{`${chat ? '' : '  ⎿ '}${refusal ?? shortenPaths(reason, style)}`}</el.Text>
+      <el.Text color={style.theme.codeFlag} wrap={refusal === undefined ? 'truncate-middle' : 'wrap'}>{`${chat ? '' : heldLabel(style, '  ⎿ ', shown)}${shown}`}</el.Text>
     </el.Box>
   )
 }
@@ -2425,37 +2475,82 @@ const OUTPUT_LINES = 120
 
 const lines = (value: unknown): string[] => (typeof value === 'string' && value !== '' ? value.replace(CONTROL, '').replace(/\n$/, '').split('\n') : [])
 
-export const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }): RenderElement => {
+const BOX_INDENT = 2
+
+const SHELL_FRAME = BOX_INDENT + 4
+
+const COMMAND_LEAD = 2
+
+type HeldPiece = Piece & { bold?: boolean }
+
+type OutputLine = { text: string; color?: string }
+
+const trimLead = ([first, ...rest]: HeldPiece[]): HeldPiece[] => {
+  if (!first) return rest
+  const text = first.text.trimStart()
+  return text ? [{ ...first, text }, ...rest] : rest
+}
+
+const wrappedRows = (pieces: HeldPiece[], room: number | undefined): HeldPiece[][] => {
+  const rows = visualRows(pieces, room)
+  if (rows.length === 1) return rows
+  return visualRows(tabbed(pieces), room).flatMap((part, k) => (k ? [trimLead(part)].filter(p => p.length) : [part]))
+}
+
+const outputLineRows = (style: Style, text: string, room: number | undefined): string[] =>
+  mirrored(style) && hasRtl(text) ? wrappedRows([{ text, italic: false, word: false }], room).map(pieceText) : [text]
+
+const outputRows = (style: Style, shown: OutputLine[], room: number | undefined): { rows: OutputLine[]; hidden: number } => {
+  const rows: OutputLine[] = []
+  let whole = 0
+  for (const l of shown) {
+    const left = OUTPUT_LINES - rows.length
+    if (left <= 0) break
+    const head = room !== undefined && mirrored(style) && hasRtl(l.text) ? clusters(l.text, left * room) : l.text
+    const split = outputLineRows(style, head, room)
+    rows.push(...split.slice(0, left).map(text => ({ text, color: l.color })))
+    if (split.length > left || head.length < l.text.length) break
+    whole++
+  }
+  return { rows, hidden: shown.length - whole }
+}
+
+const commandRows = (style: Style, line: string, head: string, tail: string, room: number | undefined): HeldPiece[][] | null => {
+  if (!mirrored(style) || !hasRtl(line) || SHELL_COMMENT.test(line) || BOX_DRAWING.test(line)) return null
+  const mark = (text: string): HeldPiece[] => (text ? [{ text, italic: false, word: false, bold: true }] : [])
+  const code = wordPieces(shellSegments(style, line).map(seg => ({ ...seg, color: seg.color ?? style.theme.codeText })), null)
+  return wrappedRows([...mark(head), ...code, ...mark(tail)], room)
+}
+
+const commandLine = (el: ElementTable, style: Style, row: ToolRow, line: string, i: number, last: boolean, room: number | undefined): RenderElement[] => {
+  const { Box, Text } = el
+  const held = commandRows(style, line, i === 0 ? `${row.tool}(` : '', last ? ')' : '', room)
+  const cells = held?.map(part => ({ text: pieceText(part), cell: part.map((p, j) => <Text key={`${j}`} bold={p.bold} color={p.color}>{p.text}</Text>) })) ?? [
+    { text: line, cell: [i === 0 ? <Text key="h" bold>{`${row.tool}(`}</Text> : null, codeLine(el, style, line, 'bash', `cmd${i}`), last ? <Text key="t" bold>)</Text> : null] },
+  ]
+  return cells.map(({ text, cell }, k) => (
+    <Box key={`c${i}.${k}`} flexDirection="row">
+      <Box width={COMMAND_LEAD} flexShrink={0}>{i === 0 && k === 0 ? <Text color={statusColor(style.theme, row)}>{row.isRunning ? '◌' : '●'}</Text> : <Text>{heldLabel(style, '  ', text)}</Text>}</Box>
+      <Text>{cell}</Text>
+    </Box>
+  ))
+}
+
+export const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }, columns?: number): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
-  const command = (field(row.input, 'command') ?? '').split('\n')
+  const command = (field(row.input, 'command') ?? '').replace(CONTROL, '').split('\n')
   const out = row.output !== null && typeof row.output === 'object' ? (row.output as Record<string, unknown>) : {}
-  const stdout = lines(out.stdout)
-  const stderr = lines(out.stderr)
-  const shown = [...stdout.map(text => ({ text, color: undefined as string | undefined })), ...stderr.map(text => ({ text, color: t.codeFlag as string | undefined }))]
-  const visible = shown.slice(0, OUTPUT_LINES)
-  const dot = statusColor(t, row)
+  const shown: OutputLine[] = [...lines(out.stdout).map(text => ({ text })), ...lines(out.stderr).map(text => ({ text, color: t.codeFlag }))]
+  const { rows, hidden } = outputRows(style, shown, columns === undefined ? undefined : columns - SHELL_FRAME)
   return (
     <Box flexDirection="column">
-      <Box flexDirection="row">
-        <Box width={2} flexShrink={0}>
-          <Text color={dot}>{row.isRunning ? '◌' : '●'}</Text>
-        </Box>
-        <Box flexDirection="column">
-          {command.map((line, i) => (
-            <Text key={`c${i}`}>
-              {i === 0 ? <Text bold>{`${row.tool}(`}</Text> : null}
-              {codeLine(el, style, line, 'bash', `cmd${i}`)}
-              {i === command.length - 1 ? <Text bold>)</Text> : null}
-            </Text>
-          ))}
-        </Box>
-      </Box>
+      {command.flatMap((line, i) => commandLine(el, style, row, line, i, i === command.length - 1, columns === undefined ? undefined : columns - COMMAND_LEAD))}
       {row.isRunning ? null : (
-        <Box paddingLeft={2}>
-          <Box flexDirection="column" alignSelf="flex-start" borderStyle="round" borderColor={t.codeComment} paddingX={1}>
-            {visible.length === 0 ? <Text dimColor>(No output)</Text> : visible.map((l, i) => <Text key={`o${i}`} color={l.color}>{l.text === '' ? ' ' : l.text}</Text>)}
-            {shown.length > visible.length ? <Text dimColor>{`\u2026 +${shown.length - visible.length} lines`}</Text> : null}
+        <Box paddingLeft={BOX_INDENT}>
+          <Box flexDirection="column" alignSelf="flex-start" borderStyle="round" borderColor={t.codeComment} paddingRight={1}>
+            {rows.length === 0 ? heldRow(el, style, 'o0', ' ', '', <Text dimColor>(No output)</Text>) : rows.map((r, i) => heldRow(el, style, `o${i}`, ' ', r.text, <Text color={r.color}>{r.text === '' ? ' ' : r.text}</Text>))}
+            {hidden ? heldRow(el, style, 'more', ' ', '', <Text dimColor>{`\u2026 +${hidden} lines`}</Text>) : null}
           </Box>
         </Box>
       )}
