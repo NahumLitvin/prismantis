@@ -406,6 +406,8 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('one `Deleted` line that opens to its removed lines on a click')
   expect(showcaseText([])).toContain('one `Renamed old → new` line')
   expect(showcaseText([])).not.toContain('diffAddedColor')
+  expect(showcaseText([])).toContain('Shell blocks also get `▶ run`')
+  expect(blocks.some(b => b.kind === 'code' && b.lang === 'bash' && b.lines.join('\n') === 'git status --short')).toBe(true)
 })
 
 test('mermaid boxes stay closed around wide labels', async () => {
@@ -468,6 +470,7 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(helpText([])).toContain('`random`')
   expect(showcaseText([])).toContain('/prismantis theme random')
   expect(helpText([])).toContain('HTML (macOS/Linux)')
+  expect(helpText([])).toContain('`▶ run` on shell blocks')
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
@@ -2017,7 +2020,7 @@ for (const copyButtonStyle of ['inline', 'hover'] as const) test(`a quote that o
   const boxes = await ui.findAll({ type: 'Box' })
   const low = boxes.filter(b => (copyButtonStyle === 'hover' ? b.props.display === 'none' && b.props.bottom === 0 && b.props.right === 0 && b.text !== '⧉ copy reply' : b.props.alignSelf === 'flex-end' && b.key !== 'reply'))
   expect(low.map(b => b.text)).toEqual(['⧉ copy'])
-  expect(boxes.filter(b => b.props.position === 'absolute' && b.props.top === 0 && b.props.display === 'none' && b.text !== '⧉ copy reply').map(b => b.text)).toEqual(copyButtonStyle === 'hover' ? ['⧉ copy', '⧉ copy'] : [])
+  expect(boxes.filter(b => b.props.position === 'absolute' && b.props.top === 0 && b.props.display === 'none' && b.text !== '⧉ copy reply').map(b => b.text)).toEqual(copyButtonStyle === 'hover' ? ['▶ run ⧉ copy', '⧉ copy'] : [])
   await ui.unmount()
 })
 
@@ -2046,7 +2049,7 @@ test('copyButtonStyle hover reserves every floating button\'s width on the block
 test('copyButtonStyle hover puts the button of a quote whose nested quote opens with code on its last row, clear of the code\'s own', { options: { copyButtonStyle: 'hover' } }, async $ => {
   const ui = await $.ui.mount(mount('> > ```bash\n> > ls\n> > ```\n>\n> text'))
   const floats = await hoverFloats(ui)
-  expect(floats.filter(b => b.props.top === 0).map(b => b.text)).toEqual(['⧉ copy'])
+  expect(floats.filter(b => b.props.top === 0).map(b => b.text)).toEqual(['▶ run ⧉ copy'])
   expect(floats.filter(b => b.props.bottom === 0).map(b => b.text)).toEqual(['⧉ copy'])
   await ui.unmount()
 })

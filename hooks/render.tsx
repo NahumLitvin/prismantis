@@ -665,6 +665,26 @@ const codeBody = (el: ElementTable, style: Style, rows: RenderElement[], gutter:
   )
 }
 
+const RUNNABLE = /^(sh|bash|zsh|shell|console)$/i
+
+const SLASH_COMMAND = /^\s*\/[\w:-]+(\s|$)/
+
+export const runSource = (block: Extract<Block, { kind: 'code' }>): string | undefined => {
+  if (!RUNNABLE.test(block.lang)) return undefined
+  const prompted = block.lines.filter(line => line.startsWith('$ '))
+  const lines = prompted.length ? prompted.map(line => line.slice(2)) : block.lines
+  if (lines.some(line => SLASH_COMMAND.test(line))) return undefined
+  return lines.join('\n').trim() || undefined
+}
+
+const runButton = (style: Style, block: Extract<Block, { kind: 'code' }>, key: string, copy?: CopyButton): RenderElement | null => {
+  const source = style.bashMode ? runSource(block) : undefined
+  return source === undefined ? null : copy?.(source, key, '▶ run', undefined, true) ?? null
+}
+
+const codeButtons = (el: ElementTable, run: RenderElement | null, button: RenderElement | null) =>
+  run && button ? <el.Box flexDirection="row" columnGap={1}>{run}{button}</el.Box> : button
+
 const isShellLang = (lang: string) => lang === '' || /^(sh|bash|zsh|shell|console|fish|powershell|ps1)$/i.test(lang)
 
 const BOX_DRAWING = /[\u2500-\u257F]/
@@ -960,7 +980,7 @@ const leadInline = (blocks: Block[]): Inline[] => {
 }
 
 const renderNested = (el: ElementTable, style: Style, blocks: Block[], columns: number, key: string, copy?: CopyButton, fold?: Fold, tip?: Tip) =>
-  renderBlocks(el, style, blocks, columns, drawMath(el, style, blocks), copy && ((text, id, label, html) => copy(text, `${key}.${id}`, label, html)), fold && ((id, hidden, k) => fold(id, hidden, `${key}.${k}`)), tip)
+  renderBlocks(el, style, blocks, columns, drawMath(el, style, blocks), copy && ((text, id, ...rest) => copy(text, `${key}.${id}`, ...rest)), fold && ((id, hidden, k) => fold(id, hidden, `${key}.${k}`)), tip)
 
 const quoteBar = (el: ElementTable, text: string, color: string | undefined, lines: number) =>
   lines <= 1 ? <el.Text color={color}>{text}</el.Text> : clip(el, width(text), <el.Text color={color}>{Array.from({ length: lines }, () => text).join('\n')}</el.Text>)
@@ -1110,7 +1130,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
   )
 }
 
-export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string) => RenderElement | null
+export type CopyButton = (text: string | (() => string), key: string, label?: string, html?: () => string, run?: boolean) => RenderElement | null
 export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string }>
 export type FoldLook = { label?: string; face?: (folded: boolean) => RenderElement }
 export type Fold = (id: string, hidden: number, key: string, look?: FoldLook) => { folded: boolean; element: RenderElement; faced: boolean; around?: (rows: RenderElement, hover: TextHoverProps) => RenderElement } | null
@@ -1224,9 +1244,9 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
     return { first, second, html }
   })
-  const codeHead = (label: string, button: RenderElement | null) => {
+  const codeHead = (label: string, button: RenderElement | null, run: RenderElement | null) => {
     if (!hover || !button) return null
-    const float = floating([button])
+    const float = floating(fitted([run, button]))
     return { ...float, minWidth: Math.min(columns, width(label) + 1 + float.needs) }
   }
   const room = (b: number) => (hover && buttons[b]!.first ? columns - MARK : columns)
@@ -1256,15 +1276,16 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const gutter = numbered ? String(lines.length).length : 0
         const held = !style.nativeCode && mirrored(style) && lines.some(line => hasRtl(line) && (!opensLatin(line) || width(line) > room))
         const rows = held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key) : codeRows(el, style, lines, shown, block.lang, numbered, room, key)
+        const run = runButton(style, block, `run${b}`, copy)
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
-        const head = codeHead(label, button)
+        const head = codeHead(label, button, run)
         return (
           <Box key={key} flexDirection="column" alignSelf="flex-start" minWidth={head?.minWidth}>
             {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={head ? 1 : 4}>
               <Text color={t.codeComment}>{label}</Text>
-              {head ? head.marker : button}
+              {head ? head.marker : codeButtons(el, run, button)}
               {head?.element}
             </Box>
             {codeBody(el, style, rows, gutter, held, toggle?.element ?? null)}

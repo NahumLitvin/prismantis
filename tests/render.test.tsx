@@ -239,10 +239,45 @@ test('code blocks, tables and quotes get a copy button, tables an art button, th
   const text = `${TABLE}\n\n\`\`\`bash\nls -la\n\`\`\`\n\n> reply text\n\nplain paragraph`
   const ui = await $.ui.mount({ ...draw(text), surface: 'terminal' })
   const buttons = await ui.findAll({ type: 'Button' })
-  expect(buttons.length).toBe(5)
+  expect(buttons.length).toBe(6)
   expect(buttons.every(b => b.props.variant === "primary")).toBe(true)
   await ui.press({ key: 'copy1' })
   expect(copied).toEqual(['ls -la'])
+  await ui.unmount()
+})
+
+const runLabels = async (ui: { findAll: (query: { type: string }) => Promise<{ key?: string; props: Record<string, unknown> }[]> }) =>
+  (await ui.findAll({ type: 'Button' })).filter(b => b.props.label === '▶ run').map(b => b.key)
+
+test('shell code blocks get a run button that fills the prompt for shell mode, others do not', async ($, on) => {
+  const fills: { text: string; cursor?: number }[] = []
+  on('prompt.fill', (_, e) => {
+    fills.push({ text: e.text, cursor: e.cursor })
+    return { isFilled: true as const }
+  })
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  const ui = await $.ui.mount({ ...draw('```bash\nls -la\necho done\n```\n\n```ts\nconst a = 1\n```\n\n```console\n$ npm test\nok 3 tests\n$ npm run build\n```\n\n```bash\n/prismantis theme nord\n```'), surface: 'terminal' })
+  expect(await runLabels(ui)).toEqual(['run0', 'run2'])
+  await ui.press({ key: 'run0' })
+  await ui.press({ key: 'run2' })
+  expect(fills).toEqual([{ text: 'ls -la\necho done', cursor: 0 }, { text: 'npm test\nnpm run build', cursor: 0 }])
+  expect(toasts).toEqual(['Type ! then Enter to run it', 'Type ! then Enter to run it'])
+  await ui.unmount()
+})
+
+for (const surface of ['desktop', 'mobile'] as const) test(`no run button on ${surface}, which has no shell mode prompt`, async $ => {
+  const ui = await $.ui.mount({ ...draw('```bash\nls\n```'), surface })
+  expect(await runLabels(ui)).toEqual([])
+  await ui.unmount()
+})
+
+test('copyButtons off hides the run button too', { options: { copyButtons: false } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('```bash\nls\n```'), surface: 'terminal' })
+  expect(await runLabels(ui)).toEqual([])
   await ui.unmount()
 })
 
@@ -271,9 +306,10 @@ for (const surface of SURFACES) test(`copyButtonStyle hover hides every copy but
   })
   const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface })
   const tree = (await ui.drawn()) as DrawnNode
-  expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
-  expect(await floatingCopies(ui)).toEqual(['⧉ md ⧉ art', '⧉ copy', '⧉ copy', '⧉ copy reply'])
-  expect(reveals(tree).flatMap(({ node }) => withParents(node).filter(({ node: n }) => n.type === 'Button'))).toHaveLength(5)
+  const runs = surface === 'terminal'
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(runs ? 6 : 5)
+  expect(await floatingCopies(ui)).toEqual(['⧉ md ⧉ art', runs ? '▶ run ⧉ copy' : '⧉ copy', '⧉ copy', '⧉ copy reply'])
+  expect(reveals(tree).flatMap(({ node }) => withParents(node).filter(({ node: n }) => n.type === 'Button'))).toHaveLength(runs ? 6 : 5)
   for (const { node } of reveals(tree)) {
     const scope = node.hover?.scope ?? ''
     expect(node.hover).toEqual({ scope, display: 'flex' })
@@ -288,7 +324,8 @@ for (const surface of SURFACES) test(`copyButtonStyle hover draws a block's butt
   const ui = await $.ui.mount({ ...draw('| Region | p99 |\n|---|---:|\n| eu | 12 |\n\n```bash\nls\n```\n\n> ```bash\n> npm test\n> ```\n>\n> Run that first.'), surface })
   const tree = (await ui.drawn()) as DrawnNode
   const floats = reveals(tree).filter(({ node }) => labelsOf(node) !== '⧉ copy reply')
-  expect(floats.map(({ node }) => labelsOf(node))).toEqual(['⧉ md ⧉ art', '⧉ copy', '⧉ copy', '⧉ copy'])
+  const shell = surface === 'terminal' ? '▶ run ⧉ copy' : '⧉ copy'
+  expect(floats.map(({ node }) => labelsOf(node))).toEqual(['⧉ md ⧉ art', shell, shell, '⧉ copy'])
   for (const { node, parent } of floats) {
     const flow = drawnKids(parent!).filter(inFlow)
     const marker = flow.at(-1)!
@@ -380,7 +417,7 @@ test('copyButtonStyle hover drops trailing buttons a narrow terminal has no room
 
 test('copyButtonStyle inline, the default, keeps every copy button in the flow', async $ => {
   const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
-  expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(6)
   expect(await floatingCopies(ui)).toHaveLength(0)
   await ui.unmount()
 })

@@ -38,6 +38,7 @@ export type Style = {
   copyButtons: boolean
   copyButtonStyle: 'inline' | 'hover'
   htmlCopy: ClipboardBackend | null
+  bashMode?: boolean
   nativeCode?: boolean
   gridFace?: boolean
   httpLinks: boolean

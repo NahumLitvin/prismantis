@@ -116,6 +116,12 @@ A line that holds only a tag draws dim, so wrapper tags show the reply's structu
 { "theme": "dracula", "headingStyle": "banner", "mermaid": true }
 \`\`\`
 
+\`\`\`bash
+git status --short
+\`\`\`
+
+Shell blocks also get \`▶ run\`: it puts the command in the prompt box with the cursor in front, so \`!\` and Enter run it in shell mode.
+
 Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a \`+M more lines\` button, \`show less\` folds them back; \`⧉ copy\` still copies the whole block.
 
 \`\`\`ts
@@ -288,6 +294,7 @@ Docs and issues: https://github.com/NahumLitvin/prismantis
 
 - [x] Tables, diagrams and charts drawn in the terminal
 - [x] Copy tables as Markdown, art or HTML (macOS/Linux)
+- [x] \`▶ run\` on shell blocks fills the prompt: type \`!\` and Enter to run it
 - [ ] Pick a \`taskStyle\` in \`/config\`: checks, ticks, box or progress
 
 \`\`\`mermaid

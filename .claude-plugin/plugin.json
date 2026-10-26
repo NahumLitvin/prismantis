@@ -310,7 +310,7 @@
     "copyButtons": {
       "type": "boolean",
       "title": "Copy buttons",
-      "description": "Put a copy button on code blocks, tables, diagrams, lists and quotes. Reach them with ctrl+x tab then Enter, or click where the terminal passes clicks through.",
+      "description": "Put a copy button on code blocks, tables, diagrams, lists and quotes, and a run button on shell blocks. Reach them with ctrl+x tab then Enter, or click where the terminal passes clicks through.",
       "default": true
     },
     "copyButtonStyle": {

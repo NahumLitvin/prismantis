@@ -73,7 +73,7 @@ prismantis also runs in Codex, with themes for code, tables and diagrams and the
 | [Figures](#figures) | ` ```figure ` text pictures drawn as written in the theme's colors, for timelines, layouts and before and after; glyphs and markup checked before they are drawn |
 | [LaTeX math](#latex-math) | `$$` and ` ```math ` formulas typeset as images in kitty and Ghostty by [RaTeX](https://github.com/erweixin/RaTeX), text everywhere else |
 | [Layout](#layout) | back-to-back tables and diagrams sit side by side and wrap on narrow terminals |
-| [Copy buttons](#copy-buttons) | `⧉ md`, `⧉ art` and `⧉ html` on tables, `[ ⧉ copy ]` on code, lists and quotes, `/prismantis copy` without a mouse |
+| [Copy buttons](#copy-buttons) | `⧉ md`, `⧉ art` and `⧉ html` on tables, `[ ⧉ copy ]` on code, lists and quotes, `[ ▶ run ]` on shell blocks, `/prismantis copy` without a mouse |
 | [Tool rows](#tool-rows) | `Ran gh pr view 12`, `Read ~/src/app.ts`, groups summed up as `Ran 3 commands, read 2 files`, with status dots; `toolOutput: quiet` hides what Claude only read and says in plain words what each call did |
 | [Turn footer](#turn-footer) | `✻ Baked for 6m 20s` with the duration in the number color |
 | [Slash commands](#slash-commands) | command output (`/cost`, `/context`, plugin commands) gets the same tables and code styling |
@@ -202,6 +202,7 @@ When tables, diagrams and figures follow each other, they share a row and wrap o
 
 - **Tables:** `⧉ md` copies the original Markdown and `⧉ art` a boxed table that pastes well into Slack. `⧉ html` copies a formatted table (headers, alignment, inline formatting) plus a tab-separated plain-text copy.
 - **Code, lists and quotes:** `[ ⧉ copy ]` on each. Code copies without its fences, lists as markdown, quotes without their `> ` markers.
+- **Shell blocks:** `bash`, `sh`, `zsh`, `shell` and `console` blocks also get `[ ▶ run ]` in the terminal. It puts the command in the prompt box with the cursor in front, so typing `!` switches to shell mode and Enter runs it; nothing runs until you do. A multi-line block runs as one script, and a `console` block keeps only its `$ ` lines, without the `$ `. Blocks of slash commands get none. Mods cannot switch the prompt to shell mode themselves, which is why the `!` is yours to type.
 - **Diagrams and figures:** `⧉ source` copies the mermaid or figure source, `⧉ art` the drawn art.
 - **Whole replies:** replies with more than one block, or any Hebrew or Arabic, end with `⧉ copy reply`, which copies the reply as Claude wrote it. Selecting right-to-left text on screen copies letters in drawn order, not reading order.
 - **No mouse:** `/prismantis copy` copies the last reply, `/prismantis copy code` its last code block.

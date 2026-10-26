@@ -333,7 +333,11 @@ const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolv
 
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }): RenderElement[] => {
   const { Button } = el
-  const copy = (text: string | (() => string), key: string, label = '⧉ copy', html?: () => string) => {
+  const filled = async (text: string): Promise<void> => {
+    const result = await $.prompt.fill({ text, cursor: 0 }).catch(() => null)
+    $.ui.toast(result?.isFilled ? 'Type ! then Enter to run it' : `Could not fill the prompt${result?.refusal ? ` (${result.refusal})` : ''}`)
+  }
+  const copy: CopyButton = (text, key, label = '⧉ copy', html, run) => {
     const copied = async (surface: RenderSurface): Promise<string> => {
       const content = typeof text === 'function' ? text() : text
       const backend = style.htmlCopy
@@ -348,7 +352,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
         key={key}
         variant="primary"
         label={label}
-        onPress={async press => $.ui.toast(await copied(press.surface).catch(() => 'Copy failed'))}
+        onPress={run && typeof text === 'string' ? () => filled(text) : async press => $.ui.toast(await copied(press.surface).catch(() => 'Copy failed'))}
       />
     ) : null
   }
@@ -599,7 +603,7 @@ export const register: Register = (on, options) => {
   const probes: Probes = {}
   const pathChecks: PathChecks = { asked: new Set(), batch: [], found: new Set() }
   const forSurface = (base: Style, surface: RenderSurface, links: LinkReach): Style => {
-    const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor, fileLinks: links.files, pathLinks: links.paths } : base) : { ...base, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop' }
+    const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, bashMode: true, httpLinks: links.http, editorLinks: links.editor, fileLinks: links.files, pathLinks: links.paths } : { ...base, bashMode: true }) : { ...base, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop' }
     return surface === 'mobile' && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
   }
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
