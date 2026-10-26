@@ -97,3 +97,20 @@ test('with file links on, a file link named anything but its own path draws as t
   expect(await ui.find({ type: 'Text', text: /^t1 \(file:\/\/\/Applications\/Calculator\.app\)$/ })).toBeDefined()
   await ui.unmount()
 })
+
+const APP_ACTIONS = [
+  'obsidian://new?vault=notes&name=todo&content=x&overwrite=true',
+  'obsidian://adv-uri?vault=notes&commandid=x',
+  'obsidian://open?vault=notes&file=todo&append=x',
+  'obsidian://open?vault=notes&file=todo&%61ppend=x',
+  'obsidian:///notes/todo.md?prepend=x',
+]
+
+test('with app links on, app links that write notes or run commands stay text, in every block', async ($, on) => {
+  claudeAt(on, '2.1.294')
+  if (!(await linksHttp($.ui.mount(reply('[x](vscode://file/C:/x.md)'))))) return
+  const ui = await $.ui.mount({ ...reply(everyBlock(`${targetLinks} ${APP_ACTIONS.map(href => `[${href}](${href})`).join(' ')}`)), viewport: { columns: 120, rows: 40, isFullscreen: false } })
+  const hrefs = (await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))
+  expect(hrefs.filter(h => !/^(https|file):/i.test(h))).toEqual([])
+  await ui.unmount()
+})

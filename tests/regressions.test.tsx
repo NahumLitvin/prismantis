@@ -380,6 +380,9 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('the file each one read or edited opens on click')
   expect(showcaseText([])).toContain('f(*args, **kwargs)')
   expect(showcaseText([])).toContain('Programs and launchers stay plain text')
+  expect(showcaseText([])).toContain('[a note](obsidian://open?vault=notes&file=todo)')
+  expect(showcaseText([])).toContain('[a new note](obsidian://new?vault=notes&name=x&content=y)')
+  expect(showcaseText([])).toContain('[diagnostics](ms-msdt:/id) stay text')
   expect(blocks.some(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'path' && n.text.endsWith('.sh')) && b.inline.some(n => n.kind === 'path' && n.text.endsWith('.app')))).toBe(true)
   expect(blocks.some(b => b.kind === 'list' && b.items.some(i => i.task === true) && b.items.some(i => i.task === false) && b.items.some(i => i.depth > 0 && i.task !== undefined))).toBe(true)
   expect(kinds.has('notes')).toBe(true)
@@ -658,6 +661,34 @@ for (const [where, surface, base] of [
     expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
     expect(await ui.find({ type: 'Text', text: /^note \(vscode:\/\/file\/C:\/src\/notes\.md:12\)$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^zed \(zed:\/\/file\/home\/me\/main\.rs:9:2\)$/ })).toBeDefined()
+    await ui.unmount()
+  })
+}
+
+const APP_LINK_SAMPLES = '[note](obsidian://open?vault=notes&file=todo) [path](OBSIDIAN:///notes/todo.md) [search](obsidian://search?query=x) [opener](obsidian://openx) [diagnostics](ms-msdt:/id) [lookalike](obsidianx://open)'
+
+const inline = (text: string) => ({ ...mount(text), viewport: { columns: 120, rows: 40, isFullscreen: false } })
+
+test('Obsidian links that open a note become terminal hyperlinks outside fullscreen from Claude Code 2.1.294', async ($, on) => {
+  claudeAt(on, '2.1.294')
+  if (!(await linksHttp($.ui.mount(mount('[x](vscode://file/C:/x.md)'))))) return
+  const ui = await $.ui.mount(inline(APP_LINK_SAMPLES))
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['obsidian://open?vault=notes&file=todo', 'OBSIDIAN:///notes/todo.md'])
+  await ui.unmount()
+})
+
+for (const [where, surface, base, isFullscreen] of [
+  ['on desktop, which links only https', 'desktop', '2.1.294', false],
+  ['on Claude Code 2.1.293', 'terminal', '2.1.293', false],
+  ['when the Claude Code version is unknown', 'terminal', undefined, false],
+  ['in fullscreen, where Claude Code opens only allowlisted schemes', 'terminal', '2.1.294', true],
+  ['when the screen mode is unknown', 'terminal', '2.1.294', undefined],
+] as const) {
+  test(`Obsidian links draw as plain text ${where}`, async ($, on) => {
+    if (base) claudeAt(on, base)
+    const ui = await $.ui.mount({ ...mount(APP_LINK_SAMPLES), surface, viewport: { columns: 120, rows: 40, isFullscreen } })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
+    expect(await ui.find({ type: 'Text', text: /^note \(obsidian:\/\/open\?vault=notes&file=todo\)$/ })).toBeDefined()
     await ui.unmount()
   })
 }

@@ -42,6 +42,7 @@ export type Style = {
   gridFace?: boolean
   httpLinks: boolean
   editorLinks: boolean
+  obsidianLinks: boolean
   fileLinks: string | null
   pathLinks: boolean
   found?: ReadonlySet<string>
@@ -99,6 +100,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     htmlCopy: null,
     httpLinks: false,
     editorLinks: false,
+    obsidianLinks: false,
     fileLinks: null,
     pathLinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
