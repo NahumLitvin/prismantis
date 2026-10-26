@@ -198,12 +198,14 @@ const pictureOf = async ($: EngineInterface, src: string, home: string): Promise
 
 const loaded = new Map<string, Promise<Omit<Picture, 'alt'> | null>>()
 
-const picturesOf = async ($: EngineInterface, style: Style, probes: Probes, surface: string, blocks: Block[]): Promise<Map<number, Picture>> => {
+const imagesOn = async ($: EngineInterface, probes: Probes, surface: RenderSurface): Promise<boolean> => surface === 'terminal' && (await (probes.images ??= showsImages($).catch(() => false)))
+
+const picturesOf = async ($: EngineInterface, style: Style, probes: Probes, surface: RenderSurface, blocks: Block[]): Promise<Map<number, Picture>> => {
   const images = [...blocks.entries()].flatMap(([i, block]) => {
     const image = imageOf(block)
     return image ? [{ i, ...image }] : []
   })
-  if (surface !== 'terminal' || images.length === 0 || !(await (probes.images ??= showsImages($).catch(() => false)))) return new Map()
+  if (images.length === 0 || !(await imagesOn($, probes, surface))) return new Map()
   await locate($, style)
   const found = await Promise.all(images.map(async ({ i, alt, src }) => {
     const picture = await remember(loaded, src, () => pictureOf($, src, style.home), 50)
@@ -211,8 +213,6 @@ const picturesOf = async ($: EngineInterface, style: Style, probes: Probes, surf
   }))
   return new Map(found.flat())
 }
-
-const imagesOn = async ($: EngineInterface, probes: Probes, surface: RenderSurface): Promise<boolean> => surface === 'terminal' && (await (probes.images ??= showsImages($).catch(() => false)))
 
 const locate = async ($: EngineInterface, style: Style) => {
   style.cwd = await $.session.root().catch(() => style.cwd)
@@ -756,7 +756,7 @@ export const register: Register = (on, options) => {
       landing = land
       if (land) landSetupFocus($, land)
     }
-    const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes, style)), copyButtons: false, pathLinks: false }
+    const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes, style)), copyButtons: false, pathLinks: false, images: await imagesOn($, probes, e.surface) }
     const view: SetupView = { el: $.ui.resolve(e), base, options, at, step, current: currentOf(step), columns: e.props.bodyColumns, rows: e.props.scroll.bodyRows, pick: value => void pickInPane($, picked, at, value, currentOf) }
     return setupKeyboardPane($, view, await read($, setupFocus), picked.theme)
   })
@@ -770,7 +770,7 @@ export const register: Register = (on, options) => {
     const found = e.props.command === 'prismantis' ? findSetup(PRESET_NAMES, e.props.text) : undefined
     if (found) {
       const el = $.ui.resolve(e)
-      const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes, style)), copyButtons: false, pathLinks: false }
+      const base = { ...forSurface(fit(e.viewport), e.surface, await linkReach($, probes, style)), copyButtons: false, pathLinks: false, images: await imagesOn($, probes, e.surface) }
       return <el.Box flexDirection="column" rowGap={1}>{drawSetup($, el, base, options, found, columnsOf(e.viewport))}</el.Box>
     }
     const blocks = parseCached(e.props.text)

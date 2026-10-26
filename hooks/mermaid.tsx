@@ -308,8 +308,10 @@ const pieColorsOf = (style: Style) => (style.pieStyle === 'round' ? diagramPalet
 
 export const PIE_ROW_PX = 40
 
+const exact = (color: string) => /^(#|rgb\()/i.test(color.trim()) || Number(/^ansi256\((\d+)\)$/i.exec(color.trim())?.[1]) >= 16
+
 const rgbOf = (color: string): Rgb | null => {
-  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(ratexColor(color))?.[1]
+  const hex = exact(color) ? /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(ratexColor(color))?.[1] : undefined
   if (!hex) return null
   const full = hex.length === 3 ? [...hex].map(c => c + c).join('') : hex
   return [0, 2, 4].map(k => Number.parseInt(full.slice(k, k + 2), 16)) as unknown as Rgb
@@ -329,7 +331,7 @@ const piePicture = (el: ElementTable, style: Style, pie: Pie, key: string): Rend
   const colors = palette.map(rgbOf)
   if (!Image || colors.some(c => c === null)) return null
   const side = 2 * pie.radius * PIE_ROW_PX
-  const rgba = remember(pictures, `${side}:${pie.bounds}:${colors}`, () => base64(pieRgba(pie.bounds, colors as Rgb[], side)), 20)
+  const rgba = remember(pictures, `${side}:${pie.bounds}:${colors}`, () => base64(pieRgba(pie.bounds, colors as Rgb[], side)), 8)
   const { Box, Text } = el
   return (
     <Box key={key} flexDirection="column" paddingLeft={2}>
@@ -350,7 +352,7 @@ const piePicture = (el: ElementTable, style: Style, pie: Pie, key: string): Rend
 }
 
 const chartElement = (el: ElementTable, style: Style, art: ChartArt, block: Extract<Block, { kind: 'code' }>, key: string): RenderElement =>
-  (art.pie && style.images && !block.isOpen && !mirrored(style) ? piePicture(el, style, art.pie, key) : null) ??
+  (art.pie && style.images && !block.isOpen && !mirrored(style) && !hasRtl(art.text) ? piePicture(el, style, art.pie, key) : null) ??
   boxArt(el, style, art.text, key, inlineMarks(block.lines.join('\n')), art.slices, art.series)
 
 export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {

@@ -5,7 +5,7 @@ import { pieRgba } from '../hooks/charts'
 import { showcaseText } from '../hooks/help'
 import { fitImage, imageFile } from '../hooks/latex'
 import { parse } from '../hooks/markdown'
-import { PIE_ROW_PX } from '../hooks/mermaid'
+import { diagramPalette, PIE_ROW_PX } from '../hooks/mermaid'
 import { PRESETS } from '../hooks/presets'
 import { startSession } from './clipboard-env'
 
@@ -159,7 +159,7 @@ test('a round pie draws as a smooth image beside its text legend in kitty', asyn
   expect(await ui.find({ type: 'Text', text: /^Pets$/ })).toBeDefined()
   const texts = await ui.findAll({ type: 'Text' })
   const swatches = texts.filter(n => n.text === '██').map(n => n.props.color)
-  expect(new Set(swatches).size).toBe(3)
+  expect(swatches).toEqual(diagramPalette(PRESETS['catppuccin-mocha']).slice(0, 3))
   expect(await ui.find({ type: 'Text', text: /▟/ })).toBeUndefined()
   await ui.unmount()
 })
@@ -184,11 +184,31 @@ test('a round pie in kitty stays text on the desktop and while its block is open
   }
 })
 
-test('a round pie stays text when a slice color has no exact RGB value', { options: { linkColor: 'cyan' } }, async ($, on) => {
+for (const linkColor of ['cyan', 'blueBright', 'ansi256(12)']) test(`a round pie stays text when a slice color is the terminal's own ${linkColor}`, { options: { linkColor } }, async ($, on) => {
   mock.env(on, KITTY)
   await startSession($, on)
   const ui = await $.ui.mount(reply(PIE))
   expect(await textPie(ui)).toEqual([false, true])
+  await ui.unmount()
+})
+
+for (const [name, env, options] of [
+  ['under tmux', { ...KITTY, TMUX: '/tmp/tmux-501/default,1,0' }, {}],
+  ['in a mirrored layout', KITTY, { rtl: 'iterm' }],
+] as const) test(`a round pie in kitty stays text ${name}`, { options }, async ($, on) => {
+  mock.env(on, env)
+  await startSession($, on)
+  const ui = await $.ui.mount(reply(PIE))
+  expect(await textPie(ui)).toEqual([false, true])
+  await ui.unmount()
+})
+
+test('a round pie with Hebrew labels stays text in Ghostty, so the legend keeps its reordering', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'ghostty', TERM: 'xterm-ghostty', HOME: '/home/me' })
+  await startSession($, on)
+  const ui = await $.ui.mount(reply(PIE.replace('"Dogs"', '"כלבים גדולים"')))
+  expect(await textPie(ui)).toEqual([false, true])
+  expect(await ui.find({ type: 'Text', text: /םילודג םיבלכ/ })).toBeDefined()
   await ui.unmount()
 })
 
