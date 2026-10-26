@@ -177,7 +177,7 @@ const launches = (href: string): boolean => {
 
 const isHyperlink = (href: string, reach: Reach): boolean =>
   (reach.httpLinks ? /^https?:/i : /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i).test(href)
-  || (reach.editorLinks && /^vscode(-insiders)?:\/\/file\//i.test(href))
+  || (reach.editorLinks && /^(vscode(-insiders)?|cursor|windsurf|zed):\/\/file\//i.test(href))
   || (reach.fileLinks !== null && /^file:/i.test(href) && !launches(href))
 
 const plainLink = (text: string, href: string): string => {

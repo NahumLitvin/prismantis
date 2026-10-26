@@ -626,14 +626,22 @@ test('http hyperlinks start at Claude Code 2.1.289', () => {
   for (const base of ['2.1.288', '2.1.287', '2.0.999', '1.9.400', 'dev', '', undefined]) expect(takesHttpLinks(base)).toBe(false)
 })
 
-const EDITOR_LINKS = '[note](vscode://file/C:/src/notes.md:12) [insiders](vscode-insiders://file/home/me/app.ts) [clone](vscode://vscode.git/clone?url=https://example.com/x.git)'
+const EDITOR_LINKS = '[note](vscode://file/C:/src/notes.md:12) [insiders](vscode-insiders://file/home/me/app.ts) [cursor](cursor://file/C:/src/app.ts:3:5) [windsurf](windsurf://file/home/me/run.py:7) [zed](zed://file/home/me/main.rs:9:2) [clone](vscode://vscode.git/clone?url=https://example.com/x.git) [zclone](zed://git/clone?repo=https://example.com/x.git) [settings](zed://settings)'
 
-test('VS Code file links become terminal hyperlinks from Claude Code 2.1.294', async ($, on) => {
+test('Editor file links become terminal hyperlinks from Claude Code 2.1.294', async ($, on) => {
   claudeAt(on, '2.1.294')
   if (!(await linksHttp($.ui.mount(mount('[x](vscode://file/C:/x.md)'))))) return
   const ui = await $.ui.mount(mount(EDITOR_LINKS))
-  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['vscode://file/C:/src/notes.md:12', 'vscode-insiders://file/home/me/app.ts'])
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual([
+    'vscode://file/C:/src/notes.md:12',
+    'vscode-insiders://file/home/me/app.ts',
+    'cursor://file/C:/src/app.ts:3:5',
+    'windsurf://file/home/me/run.py:7',
+    'zed://file/home/me/main.rs:9:2',
+  ])
   expect(await ui.find({ type: 'Text', text: /^clone \(vscode:\/\/vscode\.git\/clone\?url=https:\/\/example\.com\/x\.git\)$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^zclone \(zed:\/\/git\/clone\?repo=https:\/\/example\.com\/x\.git\)$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^settings \(zed:\/\/settings\)$/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -642,16 +650,17 @@ for (const [where, surface, base] of [
   ['on Claude Code 2.1.293', 'terminal', '2.1.293'],
   ['when the Claude Code version is unknown', 'terminal', undefined],
 ] as const) {
-  test(`VS Code file links draw as plain text ${where}`, async ($, on) => {
+  test(`Editor file links draw as plain text ${where}`, async ($, on) => {
     if (base) claudeAt(on, base)
     const ui = await $.ui.mount({ ...mount(EDITOR_LINKS), surface })
     expect(await ui.findAll({ type: 'Link' })).toHaveLength(0)
     expect(await ui.find({ type: 'Text', text: /^note \(vscode:\/\/file\/C:\/src\/notes\.md:12\)$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^zed \(zed:\/\/file\/home\/me\/main\.rs:9:2\)$/ })).toBeDefined()
     await ui.unmount()
   })
 }
 
-test('VS Code file hyperlinks start at Claude Code 2.1.294', () => {
+test('Editor file hyperlinks start at Claude Code 2.1.294', () => {
   for (const base of ['2.1.294', '2.1.294-dev', '2.1.296', '2.1.1000', '2.2.0', '3.0.0']) expect(takesEditorLinks(base)).toBe(true)
   for (const base of ['2.1.293', '2.1.289', '2.1.287', '2.0.999', 'dev', '', undefined]) expect(takesEditorLinks(base)).toBe(false)
 })
