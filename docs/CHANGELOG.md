@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.35.2] - 2026-10-26
+
+### Fixed
+
+- On iTerm, the last rows of a long expanded Bash output no longer end in a broken letter, and a cantillated or emoji line that fits is drawn whole ([#299](https://github.com/NahumLitvin/prismantis/pull/299)).
+
 ## [0.35.1] - 2026-10-24
 
 ### Fixed
