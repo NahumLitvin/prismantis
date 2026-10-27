@@ -104,9 +104,14 @@ const APP_ACTIONS = [
   'obsidian://open?vault=notes&file=todo&append=x',
   'obsidian://open?vault=notes&file=todo&%61ppend=x',
   'obsidian:///notes/todo.md?prepend=x',
+  'obsidian://open?vault=notes&file=todo&append',
+  'obsidian://open?vault=notes&file=x.terminal',
+  'obsidian://open?vault=notes&File=x%2Ecommand',
+  'obsidian://open?path=/Users/me/Tool.app/',
+  'obsidian:///Users/me/run.command',
 ]
 
-test('with app links on, app links that write notes or run commands stay text, in every block', async ($, on) => {
+test('with app links on, app links that write notes, run commands, or launch files stay text, in every block', async ($, on) => {
   claudeAt(on, '2.1.294')
   if (!(await linksHttp($.ui.mount(reply('[x](vscode://file/C:/x.md)'))))) return
   const ui = await $.ui.mount({ ...reply(everyBlock(`${targetLinks} ${APP_ACTIONS.map(href => `[${href}](${href})`).join(' ')}`)), viewport: { columns: 120, rows: 40, isFullscreen: false } })
