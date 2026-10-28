@@ -78,9 +78,16 @@
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",
-      "description": "How the prompts you type draw in the transcript. bubble: a rounded box in the accent color. wide: the same box across the full width, a divider between turns. bar: an accent bar on the left. chevron: a bold accent › before the text. off: Claude Code's own look.",
+      "description": "How the prompts you type draw in the transcript. bubble: on the right like a chat app, under You ⬤, in a rounded frame of the theme's green on a deep green fill, with Claude's replies in a bubble of their own while replyStyle is auto. wide: a rounded accent box across the full width, a divider between turns. bar: an accent bar on the left. chevron: a bold accent › before the text. off: Claude Code's own look.",
       "default": "bubble",
       "options": ["bubble", "wide", "bar", "chevron", "off"]
+    },
+    "replyStyle": {
+      "type": "string",
+      "title": "Claude's reply style",
+      "description": "How Claude's replies draw in the transcript. auto: bubble while promptStyle is bubble, so both sides of the conversation draw as a chat, off with any other promptStyle. bubble: under ⬤ Claude, in a rounded frame of Claude's orange on a fill a step off the background. solid: the same fill to the edge, its top and bottom in half blocks, no frame. framed: the frame with no fill. off: a dot before the first line, no frame.",
+      "default": "auto",
+      "options": ["auto", "bubble", "solid", "framed", "off"]
     },
     "clock": {
       "type": "string",
@@ -285,6 +292,18 @@
       "type": "string",
       "title": "Diff removed",
       "description": "Color for removed diff lines: their - marks and count, and in hex the tint behind them, mixed into black or white so code text stays at 4.5:1. Hex, rgb(), ansi256() or a name. Empty uses the theme's red.",
+      "default": ""
+    },
+    "promptFillColor": {
+      "type": "string",
+      "title": "Your bubble fill",
+      "description": "Fill behind your prompts with promptStyle bubble. Hex, rgb(), ansi256() or a name. Empty uses a deep shade of the theme's green, a pale one in a light theme.",
+      "default": ""
+    },
+    "replyFillColor": {
+      "type": "string",
+      "title": "Claude's bubble fill",
+      "description": "Fill behind Claude's replies with replyStyle bubble or solid. Hex, rgb(), ansi256() or a name. Empty uses a midnight blue a step off the theme's background, a pale one in a light theme.",
       "default": ""
     },
     "diffStyle": {

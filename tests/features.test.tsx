@@ -9,7 +9,7 @@ import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from '../hooks/theme'
 import { ISSUE_HINT, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, setupParts, setupSteps, setupText } from '../hooks/help'
 import type { Theme } from '../hooks/theme'
-import { EDIT_NOTES, PRISM_COLORS, bashEdits, columnWidths, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, tint, wordTint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
+import { BAND_STEP, BUBBLE_STEP, EDIT_NOTES, PRISM_COLORS, bashEdits, bubbleFill, replyFill, columnWidths, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, tint, wordTint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 import { claudeAt } from './claude-version'
 
 const t = PRESETS['catppuccin-mocha']
@@ -557,7 +557,7 @@ test('double-backtick code keeps single backticks inside', async () => {
   expect(p.inline.filter(n => n.kind === 'code').map(n => ('text' in n ? n.text : ''))).toEqual(['a `b` c'])
 })
 
-test('wide characters take two columns in tables', async $ => {
+test('wide characters take two columns in tables', { options: { replyStyle: 'off' } }, async $ => {
   const ui = await $.ui.mount({
     plugin: 'prismantis',
     surface: 'terminal',
@@ -584,7 +584,7 @@ test('columns share the room equally when even the longest words do not fit', ()
   expect(columnWidths([20, 20, 20], 26, 3, [12, 12, 2])).toEqual([7, 7, 6])
 })
 
-test('a long path in a narrow table keeps its column wide enough to stay whole', async $ => {
+test('a long path in a narrow table keeps its column wide enough to stay whole', { options: { replyStyle: 'off' } }, async $ => {
   const table = [
     '| # | File | Change |',
     '|---|---|---|',
@@ -838,14 +838,145 @@ test('/prismantis copy says so when there is nothing to copy', async ($, on) => 
 const prompt = (text: string, kind: 'composer' | 'task-notification' = 'composer', surface: 'terminal' | 'desktop' = 'terminal') =>
   ({ plugin: 'prismantis', component: 'UserMessage' as const, props: { text, origin: { kind } as never, isExpanded: true }, viewport: { columns: 80, rows: 10 }, surface })
 
-test('your prompts draw in a rounded accent bubble by default', async $ => {
+test('your prompts draw on the right under You ⬤ by default, in a bubble of the theme green on a deep green fill', async $ => {
+  const background = PRESET_BACKGROUNDS['catppuccin-mocha']!
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(prompt('how many frog raids?', 'composer', surface))
-    const bubble = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')
-    expect(bubble?.props.borderColor).toBe(PRESETS['catppuccin-mocha'].accent)
-    expect((await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].heading)
+    const boxes = await ui.findAll({ type: 'Box' })
+    const bubble = boxes.find(b => b.props.borderStyle === 'round')
+    expect(bubble?.props.borderColor).toBe(t.diffAdded)
+    expect(bubble?.props.backgroundColor).toBe(bubbleFill(t, background, t.diffAdded, true))
+    expect(bubble?.props.backgroundColor).toBe('#1d3928')
+    expect(contrast(String(bubble?.props.backgroundColor), background)).toBeGreaterThanOrEqual(BUBBLE_STEP)
+    expect(boxes.some(b => b.props.alignItems === 'flex-end' && b.props.width === '100%')).toBe(true)
+    expect((await ui.find({ type: 'Text', text: /^You {2}⬤ $/ }))?.props).toMatchObject({ color: t.diffAdded, bold: true })
+    expect((await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color).toBe(t.heading)
     await ui.unmount()
   }
+})
+
+test('a long prompt in the bubble wraps at three quarters of the width', async $ => {
+  const ui = await $.ui.mount(prompt('raid '.repeat(30).trim()))
+  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBe(57)
+  await ui.unmount()
+})
+
+const answer = (text: string, isFirstOfReply = true, surface: 'terminal' | 'desktop' = 'terminal') =>
+  ({ plugin: 'prismantis', component: 'AssistantMessage' as const, props: { text, isFirstOfReply }, viewport: { columns: 80, rows: 20 }, surface })
+
+test('replyStyle auto draws replies as a bubble by default, while your prompts are a bubble', async $ => {
+  const ui = await $.ui.mount(answer('The test passes now.'))
+  expect((await ui.find({ type: 'Text', text: /^⬤ {2}Claude$/ }))?.props.color).toBe('claude')
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(true)
+  await ui.unmount()
+})
+
+test('replyStyle auto keeps the dot before a reply with any other promptStyle', { options: { promptStyle: 'bar' } }, async $ => {
+  const ui = await $.ui.mount(answer('The test passes now.'))
+  expect((await ui.find({ type: 'Text', text: /^●$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle || b.props.backgroundColor)).toBe(false)
+  await ui.unmount()
+})
+
+test('replyStyle off keeps the accent dot before a reply and draws no frame', { options: { replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount(answer('The test passes now.'))
+  expect((await ui.find({ type: 'Text', text: /^●$/ }))?.props.color).toBe(t.accent)
+  expect(await ui.find({ type: 'Text', text: /^⬤ {2}Claude$/ })).toBeUndefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle || b.props.backgroundColor)).toBe(false)
+  await ui.unmount()
+})
+
+test('replyStyle bubble frames each block of a reply in the accent on a fill, under ⬤ Claude on the first block only', { options: { replyStyle: 'bubble' } }, async $ => {
+  const fill = replyFill(t, PRESET_BACKGROUNDS['catppuccin-mocha'])
+  expect(fill).toBe('#1d2335')
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const first = await $.ui.mount(answer('The test passes now.', true, surface))
+    expect((await first.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props).toMatchObject({ borderColor: 'claude', borderDimColor: true, backgroundColor: fill })
+    expect((await first.find({ type: 'Text', text: /^⬤ {2}Claude$/ }))?.props).toMatchObject({ color: 'claude', bold: true })
+    expect(await first.find({ type: 'Text', text: /^●$/ })).toBeUndefined()
+    await first.unmount()
+    const later = await $.ui.mount(answer('Then the build.', false, surface))
+    expect(await later.find({ type: 'Text', text: /^⬤ {2}Claude$/ })).toBeUndefined()
+    expect((await later.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(true)
+    await later.unmount()
+  }
+})
+
+test('replyStyle solid fills a reply to the edge, its top and bottom in half blocks, with no frame', { options: { replyStyle: 'solid' } }, async $ => {
+  const fill = replyFill(t, PRESET_BACKGROUNDS['catppuccin-mocha'])
+  const ui = await $.ui.mount(answer('The test passes now.'))
+  expect((await ui.find({ type: 'Text', text: /^▗▄{76}▖$/ }))?.props.color).toBe(fill)
+  expect((await ui.find({ type: 'Text', text: /^▝▀{76}▘$/ }))?.props.color).toBe(fill)
+  const boxes = await ui.findAll({ type: 'Box' })
+  expect(boxes.some(b => b.props.backgroundColor === fill)).toBe(true)
+  expect(boxes.some(b => b.props.borderStyle)).toBe(false)
+  await ui.unmount()
+})
+
+test('a light theme keeps a bubble fill pale, a step toward its own green, so dark text stays readable', () => {
+  const latte = PRESETS['catppuccin-latte']
+  const background = PRESET_BACKGROUNDS['catppuccin-latte']!
+  const fill = bubbleFill(latte, background, latte.diffAdded, true)!
+  expect(contrast(fill, background)).toBeGreaterThanOrEqual(BAND_STEP)
+  expect(contrast(fill, '#000000')).toBeGreaterThan(contrast(fill, '#ffffff'))
+  expect(contrast(latte.codeText!, fill)).toBeGreaterThanOrEqual(4.5)
+})
+
+test('a bubble in a light theme draws your text in the code text color when the heading color would not read on its fill', { options: { theme: 'catppuccin-latte' } }, async $ => {
+  const latte = PRESETS['catppuccin-latte']
+  const ui = await $.ui.mount(prompt('how many frog raids?'))
+  const ink = (await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color
+  expect(ink).toBe(latte.codeText)
+  const fill = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.backgroundColor
+  expect(contrast(String(ink), String(fill))).toBeGreaterThanOrEqual(4.5)
+  await ui.unmount()
+})
+
+test('a light theme keeps Claude\'s fill a pale blue that its code text reads on', () => {
+  const latte = PRESETS['catppuccin-latte']
+  const fill = replyFill(latte, PRESET_BACKGROUNDS['catppuccin-latte'])!
+  expect(contrast(fill, '#000000')).toBeGreaterThan(contrast(fill, '#ffffff'))
+  expect(contrast(latte.codeText!, fill)).toBeGreaterThanOrEqual(4.5)
+})
+
+test('promptFillColor and replyFillColor set the fills of the bubbles', { options: { promptFillColor: '#1e3a28', replyFillColor: '#1c2233' } }, async $ => {
+  const mine = await $.ui.mount(prompt('how many frog raids?'))
+  expect((await mine.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.backgroundColor).toBe('#1e3a28')
+  await mine.unmount()
+  const reply = await $.ui.mount(answer('The test passes now.'))
+  expect((await reply.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.backgroundColor).toBe('#1c2233')
+  await reply.unmount()
+})
+
+test('replyStyle solid draws no frame on a code block, so a mouse selection copies only the code', { options: { replyStyle: 'solid' } }, async $ => {
+  const ui = await $.ui.mount(answer('```bash\nls -la\n```'))
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle !== undefined)).toBe(false)
+  await ui.unmount()
+})
+
+test('a bubble keeps the hover ⧉ gutter inside its frame, so the ⧉ never lands on the frame line', { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount(answer('## Plan\n\nShip it.'))
+  const frame = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')
+  const row = frame?.children?.find((child): child is NonNullable<typeof frame> => !!child && typeof child === 'object')
+  expect(row?.children?.at(-1)).toMatchObject({ props: { width: 2, flexShrink: 0 } })
+  await ui.unmount()
+})
+
+test('replyStyle framed draws the frame with no fill', { options: { replyStyle: 'framed' } }, async $ => {
+  const ui = await $.ui.mount(answer('The test passes now.'))
+  const frame = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')
+  expect(frame?.props.borderColor).toBe('claude')
+  expect(frame?.props.backgroundColor).toBeUndefined()
+  await ui.unmount()
+})
+
+test('replyStyle solid in a theme with no colors to fill with draws the frame instead', { options: { replyStyle: 'solid', theme: 'mono' } }, async $ => {
+  const ui = await $.ui.mount(answer('The test passes now.'))
+  expect(await ui.find({ type: 'Text', text: /^▗/ })).toBeUndefined()
+  const frame = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')
+  expect(frame?.props.borderColor).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^⬤ {2}Claude$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
 })
 
 test('a pasted block in your prompt is its own frame, folded to a button that opens it as highlighted code', async $ => {
@@ -869,7 +1000,7 @@ test('promptStyle wide draws the bubble across the full width', { options: { pro
 
 test('the default bubble fits its text', async $ => {
   const ui = await $.ui.mount(prompt('hi'))
-  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBeUndefined()
+  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBe(6)
   await ui.unmount()
 })
 
@@ -944,7 +1075,7 @@ test('task notifications are not drawn as your prompt', async ($, on) => {
 
 test('a Hebrew prompt bubble sits on the right', { options: { rtl: 'warp' } }, async $ => {
   const ui = await $.ui.mount(prompt('כמה פשיטות היו השבוע?'))
-  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.alignSelf).toBe('flex-end')
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })
 
@@ -2380,7 +2511,7 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
     return { value: e.value }
   })
   const steps = setupSteps(PRESET_NAMES)
-  expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'headingStyle', 'copyButtonStyle', 'promptStyle', 'clock', 'toolStyle', 'toolOutput', 'diffStyle', 'pieStyle'])
+  expect(steps.map(s => s.key)).toEqual(['theme', 'tableStyle', 'taskStyle', 'headingStyle', 'copyButtonStyle', 'promptStyle', 'replyStyle', 'clock', 'toolStyle', 'toolOutput', 'diffStyle', 'pieStyle'])
   for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
   expect(steps[0]!.options).toEqual(PRESET_NAMES)
   expect(steps.find(s => s.key === 'copyButtonStyle')?.note).toContain('`hover` puts a dim ⧉ beside each block instead and shows its buttons only while the pointer is on that ⧉')
@@ -2392,10 +2523,11 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
   expect((await setupRun($, 'setup headings uppercase')).text).toBe(`Headings set to uppercase.\n\n${setupText(setupParts(PRESET_NAMES, 4))}`)
   expect((await setupRun($, 'setup copy hover')).text?.startsWith('Copy buttons set to hover.')).toBe(true)
   expect((await setupRun($, 'setup prompts bar')).text?.startsWith('Your prompts set to bar.')).toBe(true)
-  expect((await setupRun($, 'setup clock 24h')).text).toBe(`Times set to 24h.\n\n${setupText(setupParts(PRESET_NAMES, 7))}`)
-  expect((await setupRun($, 'setup tools tree-bold')).text).toBe(`Tool rows set to tree-bold.\n\n${setupText(setupParts(PRESET_NAMES, 8))}`)
-  expect((await setupRun($, 'setup output 2')).text).toBe(`Tool output set to quiet.\n\n${setupText(setupParts(PRESET_NAMES, 9))}`)
-  expect((await setupRun($, 'setup diffs 4')).text).toBe(`Diffs set to bar.\n\n${setupText(setupParts(PRESET_NAMES, 10))}`)
+  expect((await setupRun($, 'setup replies solid')).text).toBe(`Claude's replies set to solid.\n\n${setupText(setupParts(PRESET_NAMES, 7))}`)
+  expect((await setupRun($, 'setup clock 24h')).text).toBe(`Times set to 24h.\n\n${setupText(setupParts(PRESET_NAMES, 8))}`)
+  expect((await setupRun($, 'setup tools tree-bold')).text).toBe(`Tool rows set to tree-bold.\n\n${setupText(setupParts(PRESET_NAMES, 9))}`)
+  expect((await setupRun($, 'setup output 2')).text).toBe(`Tool output set to quiet.\n\n${setupText(setupParts(PRESET_NAMES, 10))}`)
+  expect((await setupRun($, 'setup diffs 4')).text).toBe(`Diffs set to bar.\n\n${setupText(setupParts(PRESET_NAMES, 11))}`)
   expect((await setupRun($, 'setup pies bars')).text).toBe(`Pie charts set to bars.\n\n${SETUP_DONE}`)
   expect(writes).toEqual([
     { key: 'prismantis.theme', value: 'nord' },
@@ -2404,6 +2536,7 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
     { key: 'prismantis.headingStyle', value: 'uppercase' },
     { key: 'prismantis.copyButtonStyle', value: 'hover' },
     { key: 'prismantis.promptStyle', value: 'bar' },
+    { key: 'prismantis.replyStyle', value: 'solid' },
     { key: 'prismantis.clock', value: '24h' },
     { key: 'prismantis.toolStyle', value: 'tree-bold' },
     { key: 'prismantis.toolOutput', value: 'quiet' },
@@ -2413,8 +2546,8 @@ test('/prismantis setup walks every step, saves each pick through config, and ca
   expect((await setupRun($, 'setup tasks')).text).toBe(setupText(setupParts(PRESET_NAMES, 2)))
   expect((await setupRun($, 'setup tables 9')).text?.startsWith('Unknown tables pick "9".')).toBe(true)
   expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
-  expect(writes).toHaveLength(11)
-  expect(setupText(setupParts(PRESET_NAMES, 7))).toContain('`tree-bold` or `classic`')
+  expect(writes).toHaveLength(12)
+  expect(setupText(setupParts(PRESET_NAMES, 8))).toContain('`tree-bold` or `classic`')
 })
 
 const paneStandIn = (on: Parameters<TestBody>[1], log: string[], surfaces: readonly ('terminal' | 'desktop')[] = ['terminal']) => {
@@ -2444,7 +2577,7 @@ test('/prismantis setup opens a pane in the terminal: arrows move through the st
   expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
   expect(panes).toEqual(['open prismantis-setup'])
   const pane = await setupPane($, 'terminal')
-  expect(await pane.find({ type: 'Text', text: /Setup 1\/11: Theme/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 1\/12: Theme/ })).toBeTruthy()
   expect(await pane.find({ type: 'Text', text: new RegExp(SETUP_PANE_KEYS.slice(0, 20)) })).toBeTruthy()
   expect((await pane.findAll({ type: 'Button' })).map(b => b.props.key)).toHaveLength(PRESET_NAMES.length + 1)
   expect(await pane.find({ type: 'Button', key: 'pick:theme:catppuccin-mocha' })).toMatchObject({ props: { autoFocus: true, variant: 'primary' } })
@@ -2454,13 +2587,13 @@ test('/prismantis setup opens a pane in the terminal: arrows move through the st
   expect(await pane.find({ type: 'Text', text: /^\d+\. nord/ })).toBeTruthy()
   expect(await pane.find({ type: 'Text', text: /^\d+\. catppuccin-mocha/ })).toBeUndefined()
   await pane.press({ key: 'pick:theme:nord' })
-  expect(await pane.find({ type: 'Text', text: /Setup 2\/11: Tables/ })).toBeTruthy()
-  for (const [step, value] of [['tables', 'grid'], ['tasks', 'progress'], ['headings', 'uppercase'], ['copy', 'hover'], ['prompts', 'bar'], ['clock', '24h'], ['tools', 'tree-bold'], ['output', 'quiet']] as const) await pane.press({ key: `pick:${step}:${value}` })
-  expect(await pane.find({ type: 'Text', text: /Setup 10\/11: Diffs/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 2\/12: Tables/ })).toBeTruthy()
+  for (const [step, value] of [['tables', 'grid'], ['tasks', 'progress'], ['headings', 'uppercase'], ['copy', 'hover'], ['prompts', 'bar'], ['replies', 'solid'], ['clock', '24h'], ['tools', 'tree-bold'], ['output', 'quiet']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  expect(await pane.find({ type: 'Text', text: /Setup 11\/12: Diffs/ })).toBeTruthy()
   await pane.press({ key: 'pick:diffs:bar' })
-  expect(await pane.find({ type: 'Text', text: /Setup 11\/11: Pie charts/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 12\/12: Pie charts/ })).toBeTruthy()
   await pane.press({ key: 'pick:pies:bars' })
-  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.tableStyle=grid', 'prismantis.taskStyle=progress', 'prismantis.headingStyle=uppercase', 'prismantis.copyButtonStyle=hover', 'prismantis.promptStyle=bar', 'prismantis.clock=24h', 'prismantis.toolStyle=tree-bold', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.pieStyle=bars'])
+  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.tableStyle=grid', 'prismantis.taskStyle=progress', 'prismantis.headingStyle=uppercase', 'prismantis.copyButtonStyle=hover', 'prismantis.promptStyle=bar', 'prismantis.replyStyle=solid', 'prismantis.clock=24h', 'prismantis.toolStyle=tree-bold', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.pieStyle=bars'])
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup'])
   await pane.unmount()
 })
@@ -2493,7 +2626,7 @@ test('/prismantis setup in the pane stays on the step and keeps the pane open wh
   await setupRun($, 'setup')
   const pane = await setupPane($, 'terminal')
   await pane.press({ key: 'pick:theme:nord' })
-  expect(await pane.find({ type: 'Text', text: /Setup 1\/11: Theme/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 1\/12: Theme/ })).toBeTruthy()
   expect(await pane.find({ type: 'Button', key: 'pick:theme:nord' })).toMatchObject({ props: { variant: 'primary' } })
   expect(panes).toEqual(['open prismantis-setup'])
   expect(toasts.at(-1)).toBe('Could not switch theme: managed')
@@ -2544,9 +2677,9 @@ test('/prismantis setup in the pane opens again on the last step when its save i
   paneStandIn(on, panes)
   await setupRun($, 'setup')
   const pane = await setupPane($, 'terminal')
-  for (const [step, value] of [['theme', 'nord'], ['tables', 'grid'], ['tasks', 'progress'], ['headings', 'uppercase'], ['copy', 'hover'], ['prompts', 'bar'], ['clock', '24h'], ['tools', 'tree-bold'], ['output', 'quiet'], ['diffs', 'bar'], ['pies', 'bars']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  for (const [step, value] of [['theme', 'nord'], ['tables', 'grid'], ['tasks', 'progress'], ['headings', 'uppercase'], ['copy', 'hover'], ['prompts', 'bar'], ['replies', 'solid'], ['clock', '24h'], ['tools', 'tree-bold'], ['output', 'quiet'], ['diffs', 'bar'], ['pies', 'bars']] as const) await pane.press({ key: `pick:${step}:${value}` })
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup', 'open prismantis-setup'])
-  expect(await pane.find({ type: 'Text', text: /Setup 11\/11: Pie charts/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 12\/12: Pie charts/ })).toBeTruthy()
   expect(toasts.at(-1)).toBe('Could not save pieStyle: managed')
   await pane.unmount()
 })
@@ -2563,7 +2696,7 @@ test('/prismantis setup in the pane shows the next step and its toast before the
   await setupRun($, 'setup')
   const pane = await setupPane($, 'terminal')
   await pane.press({ key: 'pick:theme:dracula' })
-  expect(await pane.find({ type: 'Text', text: /Setup 2\/11: Tables/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /Setup 2\/12: Tables/ })).toBeTruthy()
   expect(await pane.find({ type: 'Button', key: 'pick:tables:box' })).toMatchObject({ props: { variant: 'primary' } })
   expect(toasts).toEqual(['Theme set to dracula.'])
   await pane.unmount()
@@ -2632,17 +2765,25 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   await copy.unmount()
   const prompts = await mount(5)
   expect(await prompts.findAll({ type: 'Text', text: /fix the failing test/ })).toHaveLength(5)
+  expect((await prompts.findAll({ type: 'Text', text: /^You {2}⬤ $/ })).filter(n => n.props.bold)).toHaveLength(1)
   await prompts.unmount()
-  const clock = await mount(6)
+  const replies = await mount(6)
+  expect((await replies.findAll({ type: 'Text', text: /^⬤ {2}Claude$/ })).filter(n => n.props.bold)).toHaveLength(4)
+  expect(await replies.findAll({ type: 'Text', text: /^●$/ })).toHaveLength(1)
+  expect(await replies.findAll({ type: 'Text', text: /^▗▄+▖$/ })).toHaveLength(1)
+  expect((await replies.findAll({ type: 'Box' })).filter(b => b.props.borderStyle === 'round')).toHaveLength(3)
+  expect(await replies.findAll({ type: 'Text', text: /^retries$/ })).toHaveLength(5)
+  await replies.unmount()
+  const clock = await mount(7)
   expect(await clock.findAll({ type: 'Text', text: /^14:32 ?$/ })).toHaveLength(2)
   expect(await clock.findAll({ type: 'Text', text: /^2:32 PM ?$/ })).toHaveLength(2)
   expect(await clock.findAll({ type: 'Text', text: /fix the failing test/ })).toHaveLength(3)
   await clock.unmount()
-  const tools = await mount(7)
+  const tools = await mount(8)
   expect(await tools.find({ type: 'Text', text: /⎿/ })).toBeTruthy()
   expect(await tools.findAll({ type: 'Text', text: /^Read$/ })).toHaveLength(4)
   await tools.unmount()
-  const output = await mount(8)
+  const output = await mount(9)
   expect(await output.findAll({ type: 'Text', text: /^Build the app · npm/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /Error: Exit code 2/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /error TS2322/ })).toHaveLength(7)
@@ -2652,7 +2793,7 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   expect(await output.findAll({ type: 'Text', text: /Allowed by auto mode classifier/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /\+3 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)
   await output.unmount()
-  const diffs = await mount(9)
+  const diffs = await mount(10)
   expect(await diffs.findAll({ type: 'Text', text: /^Edited$/ })).toHaveLength(4)
   expect(await diffs.findAll({ type: 'Text', text: /^ {2}retries: 5,$/ })).toHaveLength(4)
   expect((await diffs.findAll({ type: 'Box' })).filter(b => b.props.borderStyle === 'round')).toHaveLength(1)

@@ -327,7 +327,7 @@ for (const surface of SURFACES) test(`copyButtonStyle hover gives every block wi
   await ui.unmount()
 })
 
-test('copyButtonStyle hover keeps a long code label and its ⧉ on one row at the narrowest width', { options: { copyButtonStyle: 'hover' } }, async $ => {
+test('copyButtonStyle hover keeps a long code label and its ⧉ on one row at the narrowest width', { options: { replyStyle: 'off', copyButtonStyle: 'hover' } }, async $ => {
   const ui = await $.ui.mount({ ...draw('```typescriptreact\nx\n```'), viewport: { columns: 24, rows: 40 }, surface: 'terminal' })
   const code = (await ui.find({ key: 'b0' }))!
   const header = code.children.find((child): child is DrawnNode => !!child && typeof child === 'object' && (child as DrawnNode).props?.justifyContent === 'space-between')!
@@ -336,7 +336,7 @@ test('copyButtonStyle hover keeps a long code label and its ⧉ on one row at th
   await ui.unmount()
 })
 
-for (const surface of SURFACES) test(`copyButtonStyle hover puts the reply's ⧉ in its bottom-right corner, in a gutter of its own, with copy reply drawn over it, on ${surface}`, { options: { copyButtonStyle: 'hover' } }, async $ => {
+for (const surface of SURFACES) test(`copyButtonStyle hover puts the reply's ⧉ in its bottom-right corner, in a gutter of its own, with copy reply drawn over it, on ${surface}`, { options: { replyStyle: 'off', copyButtonStyle: 'hover' } }, async $ => {
   for (const text of [COPY_SAMPLE, 'שלום עולם']) {
     const ui = await $.ui.mount({ ...draw(text), surface })
     const anchor = await ui.find({ key: 'reply' })
@@ -360,7 +360,7 @@ for (const surface of SURFACES) test(`copyButtonStyle hover shows nothing while 
 
 const WIDE = `| A | B |\n|---|---|\n| ${'alpha '.repeat(12)}| ${'bravo '.repeat(12)}|\n\nx\n\n\`\`\`mermaid\nflowchart LR\n  A[${'a'.repeat(12)}] --> B[${'b'.repeat(12)}] --> C[${'c'.repeat(12)}]\n\`\`\`\n\ny\n\n\`\`\`mermaid\nflowchart LR\n  A[${'a'.repeat(7)}] --> B[${'b'.repeat(7)}] --> C[${'c'.repeat(7)}] --> D[${'d'.repeat(7)}]\n\`\`\``
 const widest = (node: DrawnNode): number => (node.type === 'Text' ? width(shownText(node)) : Math.max(0, ...drawnKids(node).map(widest)))
-for (const copyButtonStyle of ['inline', 'hover'] as const) test(`copyButtonStyle ${copyButtonStyle} lays a full-width table and diagram out ${copyButtonStyle === 'hover' ? 'two columns narrower, so the ⧉ fits beside them' : 'to the whole width'}`, { options: { copyButtonStyle } }, async $ => {
+for (const copyButtonStyle of ['inline', 'hover'] as const) test(`copyButtonStyle ${copyButtonStyle} lays a full-width table and diagram out ${copyButtonStyle === 'hover' ? 'two columns narrower, so the ⧉ fits beside them' : 'to the whole width'}`, { options: { replyStyle: 'off', copyButtonStyle } }, async $ => {
   const ui = await $.ui.mount({ ...draw(WIDE), viewport: { columns: 60, rows: 40 }, surface: 'terminal' })
   const [table, wide, wider] = await Promise.all(['c0', 'c2', 'c4'].map(async key => widest((await ui.find({ key })) as DrawnNode)))
   if (copyButtonStyle === 'inline') expect({ table, wide: wide! > 56 - MARK - 2 }).toEqual({ table: 56, wide: true })

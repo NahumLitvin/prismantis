@@ -392,7 +392,7 @@ test('a figure wider than the terminal stays a code block', async ($, on) => {
   }
 })
 
-test('a figure as wide as the hint allows draws in an 80-column window, one column more does not', async ($, on) => {
+test('a figure as wide as the hint allows draws in an 80-column window, one column more does not', { options: { replyStyle: 'off' } }, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {
     const safe = await $.ui.mount(reply(['```figure', `{accent:${'─'.repeat(FIGURE_SAFE_COLUMNS)}}`, '```'].join('\n'), surface, 80))
