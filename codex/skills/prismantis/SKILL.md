@@ -18,6 +18,8 @@ Paths written without ./, like docs/guide/ or src/app.ts:42, and Windows paths l
 
 Programs and launchers stay plain text, so a click never runs one: ./install.sh, ~/Desktop/setup.command and /Applications/Calculator.app keep the path color without a link.
 
+Obsidian links that open a note open on click, like [a note](obsidian://open?vault=notes&file=todo), while one that writes, like [a new note](obsidian://new?vault=notes&name=x&content=y), and other app links like [diagnostics](ms-msdt:/id) stay text.
+
 Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses [Foo_(bar)](https://en.wikipedia.org/wiki/Foo_(bar)), a file link [`render.tsx`](https://github.com/NahumLitvin/prismantis/blob/main/hooks/render.tsx) and **bold with *italic* inside**.
 
 ## Commands
@@ -27,7 +29,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
-| `/prismantis setup` | Pick a theme and how tables, tasks, headings, copy buttons, prompts, times, tool rows, tool output, diffs and pie charts look, from drawn samples |
+| `/prismantis setup` | Pick a theme and how tables, tasks, headings, copy buttons, prompts, replies, times, tool rows, tool output, diffs and pie charts look, from drawn samples |
 | `/config` | Edit any option |
 
 > [!NOTE]
@@ -82,7 +84,7 @@ Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted tab
 
 ### Your prompts
 
-Scroll up: what you typed draws in a bubble. `promptStyle` switches to `wide`, `bar`, `chevron` or `off` in `/config`. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
+Scroll up: what you typed sits on the right under `You ⬤` and Claude's replies on the left under `⬤ Claude`, each in a bubble of its own, like a chat app. `promptStyle` switches to `wide`, `bar`, `chevron` or `off` in `/config`, which also brings back the dot before Claude's replies; `replyStyle` picks `solid`, `framed` or `off` for Claude's side. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
 
 ### Tool rows
 
@@ -211,7 +213,7 @@ xychart-beta
     line "west" [12, 18, 25, 20, 14]
 ```
 
-A pie draws round with a legend. Set `pieStyle` to `bars` in `/config` for one bar per slice:
+A pie draws round with a legend, as a smooth picture in kitty and Ghostty. Set `pieStyle` to `bars` in `/config` for one bar per slice:
 
 ```mermaid
 pie showData title Time per reply stage
