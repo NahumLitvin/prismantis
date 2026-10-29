@@ -80,7 +80,7 @@ prismantis also runs in Codex, with themes for code, tables and diagrams and the
 | [Diagram hints](#diagram-hints) | a short model-only note on each prompt so Claude reaches for diagrams, charts and figures when they help, and builds explaining replies around the pictures |
 | [Text](#text) | bold, italic, strikethrough, inline code, links, versions, durations, percentages and clickable paths in their own colors |
 | [Headings, lists, quotes](#headings-lists-quotes) | 4 heading styles, nested lists, task lists, quotes with an accent bar |
-| [Your prompts](#your-prompts) | what you type draws in a bubble, an accent bar or a chevron, so you find your turns when you scroll back, and `clock` adds when you sent it and when the turn finished |
+| [Your prompts](#your-prompts) | yours on the right and Claude's on the left, each in a bubble like a chat app, or an accent bar or a chevron, so you find your turns when you scroll back, and `clock` adds when you sent it and when the turn finished |
 | [Right to left](#right-to-left) | Hebrew and Arabic read right to left, with bullets, quote bars and table columns mirrored |
 | [Other mods](#other-mods) | `$.prismantis.markdown` draws any markdown the way replies are drawn, for mod authors |
 
@@ -125,12 +125,12 @@ Code blocks tagged `mermaid` draw as colored text art:
 
 - flowcharts (`graph LR`, `graph TD`, decisions), sequence, state, class and ER diagrams
 - bar and line charts with `xychart-beta`, sized to the terminal width
-- `pie` charts as a circle with a colored legend, largest slice first, and `gantt` schedules as bars on a shared date or time axis, starting on a half cell and ending on an eighth so close durations draw apart
+- `pie` charts as a circle with a colored legend, largest slice first, drawn as a smooth picture in kitty and Ghostty, and `gantt` schedules as bars on a shared date or time axis, starting on a half cell and ending on an eighth so close durations draw apart
 - each box and participant gets its own theme color, the same at both ends of a sequence diagram
 - bars in a multi-series chart get their own colors; a single-series chart prints each value above its bar and colors the tallest one
 - gridlines stay dim, axis numbers use the number color
 
-`pieStyle` picks how a pie draws. `round` falls back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal:
+`pieStyle` picks how a pie draws. `round` draws the circle as a smooth picture in kitty and Ghostty, outside tmux, and as text elsewhere; `⧉ art` still copies the text circle. It falls back to bars in ascii mode, with more slices than the theme has distinct colors (mono always) or in a narrow terminal:
 
 | `round` (default) | `bars` |
 |---|---|
@@ -300,11 +300,11 @@ Task lists draw as `[ ]` and `[✓]`, with done items dimmed and struck through.
 
 ![Your prompts: plain Claude Code on the left, prismantis on the right](docs/compare/prompts.png)
 
-What you type, at the prompt or through Remote Control, draws in the theme's colors. `promptStyle` picks the look, and `off` keeps Claude Code's own. Task notifications and teammate messages are left alone.
+What you type, at the prompt or through Remote Control, draws in the theme's colors. `promptStyle` picks the look, and `off` keeps Claude Code's own. `bubble` draws it on the right like a chat app, as wide as its longest line and at most three quarters of the window, under `You ⬤`, in a rounded frame of the theme's green on a deep green fill, a pale one in a light theme, and Claude's replies in a bubble of their own. The other styles keep Claude's replies as they were. `promptFillColor` and `replyFillColor` change the two fills. Task notifications and teammate messages are left alone.
 
 | `bubble` (default) | `wide` | `bar` | `chevron` |
 |---|---|---|---|
-| ![a prompt in a rounded box](docs/prompts/bubble.png) | ![a prompt in a rounded box across the full width](docs/prompts/wide.png) | ![a prompt with an accent bar](docs/prompts/bar.png) | ![a prompt with a bold chevron](docs/prompts/chevron.png) |
+| ![your prompt on the right under You in a green bubble, Claude's reply on the left under Claude in an orange one](docs/prompts/bubble.png) | ![a prompt in a rounded box across the full width](docs/prompts/wide.png) | ![a prompt with an accent bar](docs/prompts/bar.png) | ![a prompt with a bold chevron](docs/prompts/chevron.png) |
 
 `clock` adds the time: each prompt shows when you sent it, and the line that closes each turn when it finished (`✻ Baked for 1m 55s · 14:32`). It reads `24h` or `12h`, and a time from another day gets its date. With `promptStyle: off` the time goes in front of Claude Code's own prompt row. Off by default.
 
@@ -312,6 +312,12 @@ What you type, at the prompt or through Remote Control, draws in the theme's col
 |---|---|---|
 | `24h` | ![a prompt bubble that starts with the time it was sent](docs/clock/prompt.png) | ![a turn line that ends with the time it finished](docs/clock/turn.png) |
 | `12h` | ![a prompt bubble that starts with 5:45 PM](docs/clock/prompt-12h.png) | ![a turn line that ends with 5:45 PM](docs/clock/turn-12h.png) |
+
+`replyStyle` does the same for Claude's replies, so the two sides of the conversation read apart at a glance. Its default, `auto`, draws them as `bubble` while your prompts are a `bubble` and as `off` with any other `promptStyle`. `bubble` heads a reply with `⬤ Claude` and draws it in a rounded frame of Claude's orange, as Claude Code's theme draws it, on a midnight blue fill a step off the background, `solid` fills it to the edge with half blocks top and bottom and no frame, `framed` keeps the frame with no fill. A reply that calls tools between its sentences draws one bubble per block of text, and only the first gets `⬤ Claude`. In a theme with no colors to fill with, such as `mono`, `solid` draws the frame. `off` keeps the dot before the first line.
+
+| `bubble` (with `auto`) | `solid` | `framed` |
+|---|---|---|
+| ![Claude's reply under Claude in an orange frame on a filled background](docs/prompts/bubble.png) | ![Claude's reply on a filled background with no frame](docs/prompts/reply-solid.png) | ![Claude's reply in an orange frame with no fill](docs/prompts/reply-framed.png) |
 
 ### Right to left
 
@@ -348,6 +354,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `promptStyle` | `bubble`, `wide`, `bar`, `chevron`, `off` | `bubble` |
+| `replyStyle` | `auto` (`bubble` while `promptStyle` is `bubble`, else `off`), `bubble`, `solid`, `framed`, `off` | `auto` |
 | `clock` | `off`, `24h`, `12h` | `off` |
 | `headingStyle` | `banner`, `bold`, `underline`, `uppercase` | `banner` |
 | `highlightNumbers` | `true`, `false` | `true` |
@@ -392,6 +399,8 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 | `diagramText` | diagram labels, LaTeX formulas and figure text |
 | `diffAdded` | added diff lines: their tint, `+` marks and count (the theme's own green) |
 | `diffRemoved` | removed diff lines: their tint, `−` marks and count (the theme's own red) |
+| `promptFill` | the fill behind your prompts with `promptStyle: bubble` (a deep shade of the theme's green, a pale one in a light theme) |
+| `replyFill` | the fill behind Claude's replies with `replyStyle: bubble` or `solid` (a midnight blue a step off the background, a pale one in a light theme) |
 
 ## Troubleshooting
 

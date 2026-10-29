@@ -166,7 +166,7 @@ for (const [kind, cell] of [
   })
 }
 
-test('a link column is sized for the URL it shows', async $ => {
+test('a link column is sized for the URL it shows', { options: { replyStyle: 'off' } }, async $ => {
   const url = 'https://example.com/a/rather/long/path'
   const ui = await $.ui.mount(mount(`| link | n |\n|---|---|\n| [go](${url}) | 1 |`))
   const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).slice(1)
@@ -190,7 +190,7 @@ test('presets stay intact', async () => {
   expect(PRESETS.dracula.tableHeader).toBe('#f1fa8c')
 })
 
-test('code blocks draw no frame, so a mouse selection copies only the code', async $ => {
+test('code blocks draw no frame, so a mouse selection copies only the code', { options: { replyStyle: 'off' } }, async $ => {
   const ui = await $.ui.mount(mount('```bash\nls -la\n```'))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle !== undefined)).toBe(false)
   await ui.unmount()
@@ -352,6 +352,8 @@ test('the help screen shows every element prismantis draws', async () => {
   const blocks = parse(showcaseText(Object.keys(PRESETS)), hl)
   expect(showcaseText(Object.keys(PRESETS))).toContain('promptStyle')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`wide`')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`replyStyle`')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`You ⬤`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('A paste of 4 lines or more')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`clock`')
   expect(showcaseText([])).toContain('⧉ html')
@@ -405,6 +407,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('Files a shell command changes')
   expect(showcaseText([])).toContain('Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`')
   expect(showcaseText([])).toContain('Set `pieStyle` to `bars` in `/config` for one bar per slice')
+  expect(showcaseText([])).toContain('as a smooth picture in kitty and Ghostty')
   expect(showcaseText([])).toContain("A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks")
   expect(showcaseText([])).toContain('A file an Edit or a shell command creates shows its first 10 lines as added lines under `Created`')
   expect(showcaseText([])).toContain('one `Deleted` line that opens to its removed lines on a click')
@@ -1752,7 +1755,7 @@ test('gantt bars end on an eighth of a cell and start on a half, so close durati
   expect(mermaidText('gantt\n  dateFormat YYYY-MM-DD\n  A :a, 2026-10-01, 2d', true, 80)).not.toMatch(/[▐▏▎▍▌▋▊▉]/)
 })
 
-test('a gantt bar end drawn in part of a cell takes its bar color, while axis ticks keep theirs', async $ => {
+test('a gantt bar end drawn in part of a cell takes its bar color, while axis ticks keep theirs', { options: { replyStyle: 'off' } }, async $ => {
   const ui = await $.ui.mount(mount('```mermaid\n' + FINE_GANTT + '\n```', 80))
   expect(await ui.find({ type: 'Text', text: /^█+[▎▍▌▋▊▉]$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^▐█+$/ })).toBeDefined()
@@ -2020,7 +2023,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`footnotes number a
   await ui.unmount()
 })
 
-for (const copyButtons of [true, false]) test(`a quote ${copyButtons ? 'beside its copy button' : 'without a copy button'} sizes its bar for the width left`, { options: { copyButtons } }, async $ => {
+for (const copyButtons of [true, false]) test(`a quote ${copyButtons ? 'beside its copy button' : 'without a copy button'} sizes its bar for the width left`, { options: { replyStyle: 'off', copyButtons } }, async $ => {
   const ui = await $.ui.mount(mount(`> ${'word '.repeat(10)}end`, 60))
   expect(Math.max(...(await barLines(ui))) > 1).toBe(copyButtons)
   await ui.unmount()

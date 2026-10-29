@@ -1,5 +1,6 @@
 import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'claude-code'
 
+import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
@@ -668,6 +669,8 @@ const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number
       </el.Box>
     )))
 
+const figureFallbackLines = (block: Extract<Block, { kind: 'code' }>): string[] => isFigureLang(block.lang) ? block.lines.map(figureText) : block.lines
+
 const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string): RenderElement[] => {
   if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
   const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room))
@@ -1272,7 +1275,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const done = drawn.get(b)?.element
         if (done) return done
         const note = drawn.get(b)?.note
-        const lines = block.lines
+        const lines = figureFallbackLines(block)
         const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
         const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
@@ -2020,9 +2023,9 @@ const previewInks = (theme: Theme): string[] =>
 
 const stepped = (share: number, by: number): number => Math.round((share + by) * 100) / 100
 
-const bandFrom = (background: string, text: string): string => {
+const bandFrom = (background: string, text: string, step = BAND_STEP): string => {
   let share = 0.02
-  while (share < BAND_MOST && contrast(tint(background, text, share)!, background) < BAND_STEP) share = stepped(share, 0.01)
+  while (share < BAND_MOST && contrast(tint(background, text, share)!, background) < step) share = stepped(share, 0.01)
   return tint(background, text, share)!
 }
 
@@ -2670,9 +2673,59 @@ const PASTE = /<pasted_content id="([^"]*)">\n?([\s\S]*?)\n?<\/pasted_content id
 
 export type DrawPaste = (body: string, key: string) => RenderElement
 
-const boxedPrompt = (style: Style) => style.promptStyle === 'bubble' || style.promptStyle === 'wide'
+const CHAT_SHARE = 0.75
 
-const widePrompt = (style: Style, hebrew: boolean) => style.promptStyle === 'wide' || (hebrew && mirrored(style))
+const YOU_HEAD = 'You  ⬤ '
+
+const CLAUDE_HEAD = '⬤  Claude'
+
+const youColor = (theme: Theme): string | undefined => theme.diffAdded ?? theme.accent
+
+export const BUBBLE_STEP = 1.3
+
+const darkBackground = (hex: string): boolean => contrast(hex, '#000000') < contrast(hex, '#ffffff')
+
+const bubbleBand = (background: string, color: string, hued: boolean): string => {
+  if (!darkBackground(background)) return bandFrom(background, color)
+  return bandFrom(background, hued ? fullHue(color) : color, BUBBLE_STEP)
+}
+
+export const bubbleFill = (theme: Theme, background: string | undefined, color: string | undefined, hued = false): string | undefined =>
+  background && HEX.test(background) && color && HEX.test(color) ? bubbleBand(background, color, hued) : previewBand(theme, background)
+
+const MIDNIGHT = '#0080c0'
+
+export const replyFill = (theme: Theme, background: string | undefined): string | undefined =>
+  theme.replyFill ?? (background && HEX.test(background) ? tint(background, MIDNIGHT, darkBackground(background) ? 0.05 : 0.06) : previewBand(theme, background))
+
+const promptFill = (theme: Theme, background: string | undefined, color: string | undefined): string | undefined => theme.promptFill ?? bubbleFill(theme, background, color, true)
+
+const readableOn = (ink: string | undefined, fill: string | undefined, fallback: string | undefined): string | undefined =>
+  ink && fill && fallback && HEX.test(ink) && HEX.test(fill) && contrast(ink, fill) < TEXT_CONTRAST ? fallback : ink
+
+const promptInk = (style: Style): string | undefined => {
+  const t = style.theme
+  if (style.promptStyle === 'chevron') return t.accent
+  return style.promptStyle === 'bubble' ? readableOn(t.heading, promptFill(t, style.background, youColor(t)), t.codeText) : t.heading
+}
+
+const promptRoom = (style: Style, columns: number): number => (style.promptStyle === 'bubble' ? Math.floor(columns * CHAT_SHARE) : columns)
+
+const chatWidth = (lines: readonly string[], room: number, stamp: number, pasted: boolean): number =>
+  pasted ? room : Math.min(room, Math.max(...lines.map(width)) + stamp + 4)
+
+const chatSize = (style: Style, hebrew: boolean, lines: readonly string[], columns: number, time: string | undefined, pasted: boolean): number | '100%' =>
+  hebrew && mirrored(style) ? '100%' : chatWidth(lines, promptRoom(style, columns), time === undefined ? 0 : time.length + 1, pasted)
+
+const chatPrompt = (el: ElementTable, style: Style, content: RenderElement, size: number | '100%'): RenderElement => {
+  const color = youColor(style.theme)
+  return (
+    <el.Box flexDirection="column" width="100%" {...(size === '100%' ? {} : { alignItems: 'flex-end' as const })}>
+      <el.Text color={color} bold>{YOU_HEAD}</el.Text>
+      <el.Box borderStyle="round" borderColor={color} backgroundColor={promptFill(style.theme, style.background, color)} paddingX={1} width={size} flexShrink={0}>{content}</el.Box>
+    </el.Box>
+  )
+}
 
 export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, columns: number, time?: string, paste?: DrawPaste): RenderElement => {
   const { Box, Text } = el
@@ -2681,9 +2734,9 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   const own = (line: string) => paste && /^\0\d+\0$/.test(line) ? pastes[Number(line.slice(1, -1))]! : undefined
   const told = (line: string) => line.replace(/\0(\d+)\0/g, (_, n) => `[Pasted text +${pastes[Number(n)]!.split('\n').length} lines]`)
   const t = style.theme
-  const color = style.promptStyle === 'chevron' ? t.accent : t.heading
+  const color = promptInk(style)
   const rows = text.split('\n')
-  const lines = rows.map(line => (own(line) === undefined ? flowOf(style, [{ kind: 'text', text: told(line) }], columns - 4 - (time === undefined ? 0 : time.length + 1)) : null))
+  const lines = rows.map(line => (own(line) === undefined ? flowOf(style, [{ kind: 'text', text: told(line) }], promptRoom(style, columns) - 4 - (time === undefined ? 0 : time.length + 1)) : null))
   const hebrew = lines.some(l => l?.base === 'R')
   const rtl = hebrew && !mirrored(style)
   const body = (
@@ -2698,9 +2751,66 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   )
   const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
-  if (boxedPrompt(style)) {
-    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} {...(widePrompt(style, hebrew) ? { width: '100%' } : {})}>{content}</Box>
+  if (style.promptStyle === 'bubble') return chatPrompt(el, style, content, chatSize(style, hebrew, rows.map(told), columns, time, rows.some(line => own(line) !== undefined)))
+  if (style.promptStyle === 'wide') {
+    return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} width="100%">{content}</Box>
   }
   const mark = <Text color={t.accent} bold>{style.promptStyle === 'bar' ? (rtl ? ' ▐' : '▌ ') : rtl ? ' ‹' : '› '}</Text>
   return <Box flexDirection="row" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>
+}
+
+type ReplyLook = Exclude<Style['replyStyle'], 'auto'>
+
+const chosenLook = (style: Style): ReplyLook => (style.replyStyle !== 'auto' ? style.replyStyle : style.promptStyle === 'bubble' ? 'bubble' : 'off')
+
+const replyLook = (style: Style): ReplyLook => {
+  const look = chosenLook(style)
+  return look === 'solid' && replyFill(style.theme, style.background) === undefined ? 'framed' : look
+}
+
+export const replyStyleFor = (style: Style, text: string): Style => (mirrored(style) && hasRtl(text) ? { ...style, replyStyle: 'off' } : style)
+
+export const replyRoom = (style: Style): number => ({ off: 0, solid: 0, bubble: 2, framed: 2 })[replyLook(style)]
+
+const solidEdge = (width: number, top: boolean): string => (width < 2 ? (top ? '▄' : '▀').repeat(width) : top ? `▗${'▄'.repeat(width - 2)}▖` : `▝${'▀'.repeat(width - 2)}▘`)
+
+const claudeColor = (theme: Theme): string | undefined => (theme.accent === undefined ? undefined : 'claude')
+
+const replyFrame = (el: ElementTable, style: Style, body: RenderElement, columns: number): RenderElement => {
+  const t = style.theme
+  const look = replyLook(style)
+  const fill = look === 'framed' ? undefined : replyFill(t, style.background)
+  if (look === 'solid') {
+    const width = columns + 2
+    return (
+      <el.Box flexDirection="column" width={width} flexShrink={0}>
+        <el.Text color={fill} wrap="truncate-end">{solidEdge(width, true)}</el.Text>
+        <el.Box flexDirection="column" paddingX={1} backgroundColor={fill}>{body}</el.Box>
+        <el.Text color={fill} wrap="truncate-end">{solidEdge(width, false)}</el.Text>
+      </el.Box>
+    )
+  }
+  return <el.Box flexDirection="column" flexGrow={1} paddingX={1} borderStyle="round" borderColor={claudeColor(t)} borderDimColor backgroundColor={fill}>{body}</el.Box>
+}
+
+export const renderReply = (el: ElementTable, style: Style, drawn: RenderElement[], first: boolean, columns: number, corner: boolean): RenderElement => {
+  const room = corner ? <el.Box width={MARK} flexShrink={0} /> : null
+  const body = <el.Box flexDirection="column" rowGap={1} flexGrow={1}>{drawn}</el.Box>
+  if (replyLook(style) === 'off') {
+    return (
+      <el.Box key="msg" flexDirection="row">
+        <el.Box width={2} flexShrink={0}>
+          <el.Text color={style.theme.accent}>{first ? '●' : ' '}</el.Text>
+        </el.Box>
+        {body}
+        {room}
+      </el.Box>
+    )
+  }
+  return (
+    <el.Box key="msg" flexDirection="column">
+      {first ? <el.Text color={claudeColor(style.theme)} bold>{CLAUDE_HEAD}</el.Text> : null}
+      {replyFrame(el, style, <el.Box flexDirection="row">{body}{room}</el.Box>, columns)}
+    </el.Box>
+  )
 }
