@@ -313,6 +313,10 @@ What you type, at the prompt or through Remote Control, draws in the theme's col
 
 `replyStyle` does the same for Claude's replies, so the two sides of the conversation read apart at a glance. Its default, `auto`, draws them as `bubble` while your prompts are a `bubble` and as `off` with any other `promptStyle`. `bubble` heads a reply with `⬤ Claude` and draws it in a rounded frame of Claude's orange, as Claude Code's theme draws it, on a midnight blue fill a step off the background, `solid` fills it to the edge with half blocks top and bottom and no frame, `framed` keeps the frame with no fill. A reply that calls tools between its sentences draws one bubble per block of text, and only the first gets `⬤ Claude`. In a theme with no colors to fill with, such as `mono`, `solid` draws the frame. `off` keeps the dot before the first line.
 
+| `bubble` (with `auto`) | `solid` | `framed` |
+|---|---|---|
+| ![Claude's reply under Claude in an orange frame on a filled background](docs/prompts/bubble.png) | ![Claude's reply on a filled background with no frame](docs/prompts/reply-solid.png) | ![Claude's reply in an orange frame with no fill](docs/prompts/reply-framed.png) |
+
 ### Right to left
 
 ![Right to left: plain Claude Code on the left, prismantis on the right](docs/compare/rtl.png)
