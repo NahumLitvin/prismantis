@@ -3,6 +3,6 @@
   "hooks/markdown.ts": 206,
   "hooks/mermaid.tsx": 71,
   "hooks/register.tsx": 69,
-  "hooks/render.tsx": 174,
+  "hooks/render.tsx": 168,
   "hooks/rtl.ts": 27
 }

@@ -6,7 +6,7 @@ import { drawFigure, isFigureLang } from './figure'
 import { ratexColor } from './latex'
 import type { Block } from './markdown'
 import type { Drawn } from './render'
-import { cells, graphemes, heldLtr, mirrored, remember, width } from './render'
+import { cells, graphemes, gridFace, heldLtr, mirrored, remember, width } from './render'
 import { asIs, hasRtl, holdEngine, holdRow, holdVisual, led } from './rtl'
 import type { Style, Theme } from './theme'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
@@ -286,7 +286,7 @@ export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, k
           parts.push(<Text key={`t${parts.length}`} color={hue} {...mark}>{chars.slice(at, end).join('')}</Text>)
           at = end
         }
-        return <Text key={`${key}.${i}`} {...heldLtr(style)}>{parts.length ? parts : ' '}</Text>
+        return <Text key={`${key}.${i}`} {...heldLtr(style)} {...gridFace(style)}>{parts.length ? parts : ' '}</Text>
       })}
     </Box>
   )

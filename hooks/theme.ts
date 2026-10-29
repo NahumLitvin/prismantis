@@ -42,6 +42,7 @@ export type Style = {
   images: boolean
   nativeCode?: boolean
   gridFace?: boolean
+  desktop?: boolean
   httpLinks: boolean
   editorLinks: boolean
   fileLinks: string | null

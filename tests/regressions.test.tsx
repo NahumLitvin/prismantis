@@ -11,6 +11,7 @@ import { drawsHyperlinks, isReadOnlyCall, renderBashEdits, renderBlocks, tableAr
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { resolveStyle } from '../hooks/theme'
 import { claudeAt, linksHttp } from './claude-version'
+import { topEdgeWidth } from './table-edge'
 import { clipboardEnv, recordCopies, recordToasts } from './clipboard-env'
 
 const hl = { numbers: true, paths: true }
@@ -1965,8 +1966,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`a code block and a
   if (surface === 'desktop') expect((await ui.find({ type: 'Code' }))?.props.source).toBe('npm test')
   else expect((await ui.find({ type: 'Text', text: /^npm$/ }))?.props.color).toBe(t.codeCommand)
   expect((await ui.find({ type: 'Text', text: /^Check$/ }))?.props.color).toBe(t.tableHeader)
-  const edge = await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })
-  expect(width('│ ') + width(edge!.text) + 2 + width('[ ⧉ copy ]') <= 60 - 4).toBe(true)
+  expect(width('│ ') + await topEdgeWidth(ui, 2) + 2 + width('[ ⧉ copy ]') <= 60 - 4).toBe(true)
   const labels = (await ui.findAll({ type: 'Button' })).map(b => b.props.label)
   expect(labels.filter(l => l === '⧉ copy')).toHaveLength(2)
   expect(labels.filter(l => l === '⧉ md')).toHaveLength(1)

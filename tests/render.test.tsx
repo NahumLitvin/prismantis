@@ -4,6 +4,7 @@ import { parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
 import { MARK, width } from '../hooks/render'
 import { resolveStyle } from '../hooks/theme'
+import { claudeAt, withMono } from './claude-version'
 import { clipboardEnv, startSession } from './clipboard-env'
 
 const TABLE = [
@@ -477,13 +478,23 @@ test('code blocks draw through the native Code element off the terminal', async 
   await term.unmount()
 })
 
-test('tables draw boxed by default, with a double line under the header', async $ => {
+test('tables draw boxed by default, with a double line under the header', async ($, on) => {
+  claudeAt(on, '2.1.299')
   for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ ...draw(TABLE), surface })
-    const top = (await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ }))?.text ?? ''
-    expect(top.split('┬').length).toBe(3)
-    const lines = [top, ...(await Promise.all([/^╞[═╪]+╡$/, /^├[─┼]+┤$/, /^└[─┴]+┘$/].map(async re => (await ui.find({ type: 'Text', text: re }))?.text ?? '')))]
-    expect(lines.every(l => l.length === top.length && l.length > 0)).toBe(true)
+    const ui = await withMono($.ui.mount({ ...draw(TABLE), surface }))
+    if (!ui) continue
+    const edges = [/^┌[─┬]+┐$/, /^╞[═╪]+╡$/, /^├[─┼]+┤$/, /^└[─┴]+┘$/]
+    if (surface === 'terminal') {
+      const top = (await ui.find({ type: 'Text', text: edges[0]! }))?.text ?? ''
+      expect(top.split('┬').length).toBe(3)
+      const lines = [top, ...(await Promise.all(edges.slice(1).map(async re => (await ui.find({ type: 'Text', text: re }))?.text ?? '')))]
+      expect(lines.every(l => l.length === top.length && l.length > 0)).toBe(true)
+    } else {
+      const walls = (await ui.findAll({ type: 'Text', text: /^(┌─|─┬─|─┐)\n/ })).map(w => w.text)
+      expect(walls).toEqual(['┌─\n│ \n╞═\n│ \n├─\n│ \n└─', '─┬─\n │ \n═╪═\n │ \n─┼─\n │ \n─┴─', '─┬─\n │ \n═╪═\n │ \n─┼─\n │ \n─┴─', '─┐\n │\n═╡\n │\n─┤\n │\n─┘'])
+      expect((await ui.findAll({ type: 'Text', text: /^─+$/ })).length).toBe(9)
+      expect((await ui.findAll({ type: 'Text', text: /^═+$/ })).length).toBe(3)
+    }
     expect((await ui.find({ type: 'Text', text: /^Service$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].tableHeader)
     await ui.unmount()
   }

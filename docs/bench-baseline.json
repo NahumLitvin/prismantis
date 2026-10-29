@@ -11,6 +11,7 @@
   "stream replay, 164 redraws of a 16428-char reply (per redraw)": 0.09457,
   "nodes: 500 highlighted ts lines": 19505,
   "nodes: 300 table rows": 10533,
+  "nodes: 300 table rows, desktop": 10575,
   "nodes: 300 paragraphs": 6600,
   "nodes: 300 paragraphs, paths linked": 6600,
   "nodes: 300 table rows of paths, linked": 5118,

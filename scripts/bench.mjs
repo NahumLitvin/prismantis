@@ -61,6 +61,7 @@ const pathTable = `| file | notes |\n|---|---|\n${Array.from({ length: 300 }, (_
 const nodeRows = [
   ["nodes: 500 highlighted ts lines", `\`\`\`ts\n${Array.from({ length: 500 }, (_, i) => `const v${i} = await fetch("/api/${i}", { retries: ${i % 5} })`).join("\n")}\n\`\`\``],
   ["nodes: 300 table rows", bigTable.split("\n").slice(0, 302).join("\n")],
+  ["nodes: 300 table rows, desktop", bigTable.split("\n").slice(0, 302).join("\n"), { ...style, htmlCopy: null, nativeCode: true, desktop: true, gridFace: true }],
   ["nodes: 300 paragraphs", paragraphs],
   ["nodes: 300 paragraphs, paths linked", paragraphs, linked],
   ["nodes: 300 table rows of paths, linked", pathTable, linked],
