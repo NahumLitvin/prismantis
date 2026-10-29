@@ -4,7 +4,7 @@ import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
-import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, texText } from './markdown'
+import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, parseInline, texText } from './markdown'
 import type { Flow } from './rtl'
 import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
@@ -2736,7 +2736,8 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   const t = style.theme
   const color = promptInk(style)
   const rows = text.split('\n')
-  const lines = rows.map(line => (own(line) === undefined ? flowOf(style, [{ kind: 'text', text: told(line) }], promptRoom(style, columns) - 4 - (time === undefined ? 0 : time.length + 1)) : null))
+  const marked = rows.map(line => parseInline(told(line), { numbers: false, paths: false }))
+  const lines = rows.map((line, i) => (own(line) === undefined ? flowOf(style, marked[i]!, promptRoom(style, columns) - 4 - (time === undefined ? 0 : time.length + 1)) : null))
   const hebrew = lines.some(l => l?.base === 'R')
   const rtl = hebrew && !mirrored(style)
   const body = (
@@ -2745,13 +2746,13 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
         const pasted = own(line)
         if (pasted !== undefined) return paste!(pasted, `paste${i}`)
         const flow = lines[i]
-        return flow ? renderFlow(el, style, flow.lines, `p${i}`, { color, bold: style.promptStyle === 'chevron' }) : <Text key={`p${i}`} color={color} bold={style.promptStyle === 'chevron'}>{told(line)}</Text>
+        return flow ? renderFlow(el, style, flow.lines, `p${i}`, { color, bold: style.promptStyle === 'chevron' }) : <Text key={`p${i}`} color={color} bold={style.promptStyle === 'chevron'}>{marked[i]!.every(n => n.kind === 'text') ? told(line) : renderInline(el, style, marked[i]!, `p${i}`)}</Text>
       })}
     </Box>
   )
   const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
-  if (style.promptStyle === 'bubble') return chatPrompt(el, style, content, chatSize(style, hebrew, rows.map(told), columns, time, rows.some(line => own(line) !== undefined)))
+  if (style.promptStyle === 'bubble') return chatPrompt(el, style, content, chatSize(style, hebrew, marked.map(inlineText), columns, time, rows.some(line => own(line) !== undefined)))
   if (style.promptStyle === 'wide') {
     return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} width="100%">{content}</Box>
   }
