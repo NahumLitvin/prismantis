@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.37.0] - 2026-10-29
+
+### Added
+
+- New option `replyStyle` draws Claude's replies in a bubble of their own under `⬤ Claude`: `bubble` (a rounded frame of Claude's orange on a midnight blue fill), `solid` (the fill to the edge, no frame), `framed` (the frame, no fill) or `off`. Its default, `auto`, is `bubble` while your prompts are a `bubble` and `off` otherwise. `promptFillColor` and `replyFillColor` change the two fills, and `/prismantis setup` has a "Claude's replies" step ([#309](https://github.com/NahumLitvin/prismantis/pull/309)).
+- In kitty and Ghostty, a round pie is a smooth picture with its text legend beside it. Other terminals, the desktop app and tmux keep the text circle ([#305](https://github.com/NahumLitvin/prismantis/pull/305)).
+- In a terminal outside fullscreen mode, on Claude Code 2.1.294 or later, Obsidian links such as `obsidian://open?vault=notes&file=todo` open Obsidian on click. In fullscreen mode, and for links that would create or change a note or launch a file, they stay text with their URL ([#300](https://github.com/NahumLitvin/prismantis/pull/300)).
+
+### Changed
+
+- `promptStyle: bubble`, the default, draws the conversation as a chat: your prompt on the right under `You ⬤`, as wide as its longest line and at most three quarters of the window, and Claude's replies on the left in their own bubble. `wide`, `bar`, `chevron` and `off` keep both sides as they were. A mouse selection of several lines inside a framed reply picks up the frame's `│`; the copy buttons are unaffected, and `replyStyle: solid` has no side frame ([#309](https://github.com/NahumLitvin/prismantis/pull/309)).
+
+### Fixed
+
+- A figure that falls back to a code block no longer shows its `{accent:…}` role markup as literal text ([#293](https://github.com/NahumLitvin/prismantis/pull/293)).
+
 ## [0.36.0] - 2026-10-26
 
 ### Added
