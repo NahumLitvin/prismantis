@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.37.1] - 2026-10-29
+
+### Fixed
+
+- In Apple Terminal outside fullscreen, Hebrew and Arabic prompts and replies read in the right order again, inside the chat bubbles too. A Hebrew line with an English path in the middle no longer draws its chunks in reverse ([#315](https://github.com/NahumLitvin/prismantis/pull/315)).
+
 ## [0.37.0] - 2026-10-29
 
 ### Added
