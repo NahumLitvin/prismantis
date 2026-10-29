@@ -626,9 +626,8 @@ for (const rtl of ['warp', 'iterm'] as const)
     await ui.unmount()
   })
 
-test('Apple Terminal keeps the right alignment and gets the mark too', { options: { rtl: 'apple-terminal' } }, async $ => {
+test('Apple Terminal keeps the right alignment', { options: { rtl: 'apple-terminal' } }, async $ => {
   const ui = await $.ui.mount(mount('kubectl נכשל על ה-cluster'))
-  expect(await ui.find({ type: 'Text', text: /^׀ $/ })).toBeDefined()
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
   await ui.unmount()
 })
@@ -1051,3 +1050,23 @@ for (const rtl of ['iterm', 'warp'] as const)
     expect(await failed.find({ type: 'Text', text: new RegExp(`^  ⎿${blank}הקובץ לא נמצא$`) })).toBeDefined()
     await failed.unmount()
   })
+
+const afterTerminalBidi = (row: string) => inlineText(terminalLine([{ kind: 'text', text: row }]))
+const lineRows = async (ui: Parameters<typeof hebrewRows>[0]) =>
+  [...new Set((await hebrewRows(ui)).filter(t => !t.includes('\n')))].filter((t, _, all) => !all.some(o => o !== t && o.includes(t)))
+
+test('Apple Terminal outside fullscreen gets a Hebrew prompt and reply in its bubbles in reading order after its own bidi pass', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'Apple_Terminal' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const prompt = 'סכם בקצרה את התקלה של 14:00 מתוך logs/hourly.csv: כותרת, רשימה קצרה וטבלה קטנה'
+  const asked = await $.ui.mount({ plugin: 'prismantis', component: 'UserMessage' as const, props: { text: prompt, origin: { kind: 'composer' } as never, isExpanded: true }, viewport: { columns: 120, rows: 40 }, surface: 'terminal' as const })
+  expect((await lineRows(asked)).map(afterTerminalBidi)).toEqual([visual(prompt)])
+  await asked.unmount()
+  const heading = 'תקלה ב-DB timeouts ב-14:00'
+  const item = 'ה-RPS נשאר יציב לאורך כל החלון'
+  const replied = await $.ui.mount(mount(`## ${heading}\n\n- ${item}\n- הכל תקין`))
+  const rows = (await lineRows(replied)).map(afterTerminalBidi)
+  expect(rows).toEqual([visual(heading), visual(item), visual('הכל תקין')])
+  await replied.unmount()
+})
