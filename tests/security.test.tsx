@@ -107,6 +107,7 @@ const APP_ACTIONS = [
   'obsidian://open?vault=notes&file=todo&append',
   'obsidian://open?vault=notes&file=x.terminal',
   'obsidian://open?vault=notes&File=x%2Ecommand',
+  'obsidian://open?vault=notes&file=x?.command',
   'obsidian://open?path=/Users/me/Tool.app/',
   'obsidian:///Users/me/run.command',
 ]

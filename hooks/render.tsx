@@ -178,7 +178,7 @@ const launches = (href: string): boolean => {
 
 const obsidianTargets = (href: string): string[] => [
   href,
-  ...(/\?([^#]*)/.exec(href)?.[1] ?? '').split('&').filter(pair => /^(file|path)=/i.test(unescaped(pair))).map(pair => pair.slice(pair.indexOf('=') + 1)),
+  ...(/\?([^#]*)/.exec(href)?.[1] ?? '').split('&').filter(pair => /^(file|path)=/i.test(unescaped(pair))).map(pair => pair.slice(pair.indexOf('=') + 1).replaceAll('?', '%3F')),
 ]
 
 const opensObsidianNote = (href: string): boolean =>
