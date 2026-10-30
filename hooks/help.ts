@@ -354,6 +354,11 @@ flowchart LR
 \`\`\`
 `
 
+export const NARROW_PANE = 100
+
+export const narrowHint = (columns: number): string =>
+  `This terminal pane is ${columns} columns wide, and a diagram wider than the pane draws as its source. Keep diagrams narrow: flowchart TD, never LR, node and edge labels of 1 to 3 words, at most 3 boxes side by side, and at most 3 sequence diagram participants.`
+
 export const ISSUE_HINT = 'If the user says prismantis drew something wrong, offer (ask first) a minimal repro issue at https://github.com/NahumLitvin/prismantis/issues.'
 const KOREAN_SHOWCASE = `
 ## 한국어
