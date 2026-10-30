@@ -82,6 +82,8 @@ Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted tab
   - [ ] Diagrams on the desktop app
 - [ ] Ship the next release
 
+Set `listMarker` to dash in `/config` and bullets draw as `-`, so a list you select with the mouse pastes as markdown.
+
 ### Your prompts
 
 Scroll up: what you typed sits on the right under `You ⬤` and Claude's replies on the left under `⬤ Claude`, each in a bubble of its own, like a chat app. `promptStyle` switches to `wide`, `bar`, `chevron` or `off` in `/config`, which also brings back the dot before Claude's replies; `replyStyle` picks `solid`, `framed` or `off` for Claude's side. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.

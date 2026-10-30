@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.38.0] - 2026-10-30
+
+### Added
+
+- New option `listMarker`: `dots` (`•` then `◦` nested, the default) or `dash`, which draws `-` at every level so a list you select with the mouse pastes as a markdown list into Slack, GitHub or a doc. Numbered lists keep their numbers, and `/prismantis setup` has a "List bullets" step ([#320](https://github.com/NahumLitvin/prismantis/pull/320)).
+
+### Fixed
+
+- Bold, italic, inline code and links in your own prompt draw as they do in replies with every `promptStyle` but `off`, instead of showing the raw `**` and backticks ([#318](https://github.com/NahumLitvin/prismantis/pull/318)).
+
 ## [0.37.1] - 2026-10-29
 
 ### Fixed
