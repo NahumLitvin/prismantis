@@ -84,6 +84,8 @@ Use \`⧉ md\` for Markdown, \`⧉ art\` for chat, or \`⧉ html\` for a formatt
   - [ ] Diagrams on the desktop app
 - [ ] Ship the next release
 
+Set \`listMarker\` to dash in \`/config\` and bullets draw as \`-\`, so a list you select with the mouse pastes as markdown.
+
 ### Your prompts
 
 Scroll up: what you typed sits on the right under \`You ⬤\` and Claude's replies on the left under \`⬤ Claude\`, each in a bubble of its own, like a chat app. \`promptStyle\` switches to \`wide\`, \`bar\`, \`chevron\` or \`off\` in \`/config\`, which also brings back the dot before Claude's replies; \`replyStyle\` picks \`solid\`, \`framed\` or \`off\` for Claude's side. Set \`clock\` to \`24h\` or \`12h\` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
@@ -291,6 +293,7 @@ Docs and issues: https://github.com/NahumLitvin/prismantis
 - [x] Tables, diagrams and charts drawn in the terminal
 - [x] Copy tables as Markdown, art or HTML (macOS/Linux), and tables, diagrams and charts as a PNG image (macOS/Windows)
 - [ ] Pick a \`taskStyle\` in \`/config\`: checks, ticks, box or progress
+- [ ] Set \`listMarker\` to dash so a list you select with the mouse pastes as markdown
 
 \`\`\`mermaid
 flowchart LR
@@ -383,12 +386,13 @@ flowchart LR
 
 export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
-export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'taskStyle' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
   { name: 'tables', key: 'tableStyle', title: 'Tables', note: 'How markdown tables draw.', options: ['box', 'rules', 'grid', 'minimal'], sample: '| Item | Qty |\n|:-----|----:|\n| Apples | 3 |\n| Pears | 5 |' },
   { name: 'tasks', key: 'taskStyle', title: 'Tasks', note: 'How `- [ ]` and `- [x]` items draw.', options: ['checks', 'ticks', 'box', 'progress'], sample: '- [x] Parse the reply\n- [x] Draw it\n- [ ] Ship it' },
+  { name: 'lists', key: 'listMarker', title: 'List bullets', note: 'How bullet list items draw. `dash` draws `-` at every level, so a list you select with the mouse pastes as a markdown list into Slack, GitHub or a doc.', options: ['dots', 'dash'], sample: '- Parse the reply\n  - Find the lists\n- Draw it' },
   { name: 'headings', key: 'headingStyle', title: 'Headings', note: 'How `#` and `##` headings draw. Terminals have one font size, so headings stand out through style and color.', options: ['banner', 'bold', 'underline', 'uppercase'], sample: '# Release notes\n\n## Fixes\n\nTables keep their width.' },
   { name: 'copy', key: 'copyButtonStyle', title: 'Copy buttons', note: 'Where the copy buttons on tables, code, diagrams and replies sit. `inline` shows them beside or above each block. `hover` puts a dim ⧉ beside each block instead and shows its buttons only while the pointer is on that ⧉, so they take no line; ctrl+x tab does not reach a hidden one, and the mobile app draws them inline. Needs `copyButtons` on.', options: ['inline', 'hover'], sample: '' },
   { name: 'prompts', key: 'promptStyle', title: 'Your prompts', note: 'How what you type draws in the transcript. `bubble` puts it on the right like a chat app, under `You ⬤`, and Claude\'s replies in a bubble of their own. The other styles keep Claude\'s replies as they were. `off` keeps Claude Code\'s own look.', options: ['bubble', 'wide', 'bar', 'chevron', 'off'], sample: '' },

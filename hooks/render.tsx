@@ -971,6 +971,12 @@ const ALERT_COLOR = { note: 'blue', tip: 'green', important: 'magenta', warning:
 
 const prose = (style: Style) => (style.inside === 'quote' ? { italic: true, color: style.theme.quote } : {})
 
+const bulletOf = (style: Style, item: { marker: string; depth: number }): string => {
+  if (/\d/.test(item.marker)) return item.marker
+  if (style.listMarker === 'dash') return '-'
+  return item.depth ? '◦' : '•'
+}
+
 const renderParagraph = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'paragraph' }>, columns: number, key: string, tip?: Tip) => {
   const { Box, Text } = el
   const rtl = flowOf(style, block.inline, columns)
@@ -1120,7 +1126,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
       )}
       {block.items.map((item, i) => {
         const k = `${key}.${i}`
-        const glyph = item.task !== undefined ? TASK_GLYPHS[style.taskStyle][item.task ? 1 : 0] : /\d/.test(item.marker) ? item.marker : item.depth ? '◦' : '•'
+        const glyph = item.task !== undefined ? TASK_GLYPHS[style.taskStyle][item.task ? 1 : 0] : bulletOf(style, item)
         const glyphColor = item.task && tick ? t.accent : t.bullet
         const pad = item.depth * 2 + glyph.length + 1
         const look = { ...(item.task === true ? { dimColor: true, strikethrough: strike } : {}), ...prose(style) }

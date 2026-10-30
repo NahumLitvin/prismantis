@@ -117,6 +117,16 @@
       "default": "checks",
       "options": ["checks", "ticks", "box", "progress"]
     },
+    "listMarker": {
+      "type": "string",
+      "title": "List bullets",
+      "description": "How bullet list items draw. dots: • at the top level and ◦ nested. dash: - at every level, so a list you select with the mouse pastes as a markdown list into Slack, GitHub or a doc.",
+      "default": "dots",
+      "options": [
+        "dots",
+        "dash"
+      ]
+    },
     "rtl": {
       "type": "string",
       "title": "Right-to-left terminal",
