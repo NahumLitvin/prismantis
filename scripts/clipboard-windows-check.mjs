@@ -109,3 +109,18 @@ const holes = spawnSync(blocks.argv[0], ['-NoProfile', '-NonInteractive', '-STA'
 assert.equal(holes.status, 0, holes.stderr || holes.error?.message)
 assert.equal(holes.stdout.trim(), '0,0', `pixel rows without █ or │ ink: ${holes.stdout.trim()}`)
 console.log('Stacked █ and │ glyphs touch from row to row in the Windows bitmap')
+
+const tinted = imageCommand('windows', '█', { foreground: '#cdd6f4', background: '#1e1e2e' }, process.env.SystemRoot, [['#f38ba8']])
+const painted = spawnSync(tinted.argv[0], tinted.argv.slice(1), { input: tinted.stdin, encoding: 'utf8', timeout: 30000 })
+assert.equal(painted.status, 0, painted.stderr || painted.error?.message)
+const middle = `
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Windows.Forms
+$picture = [System.Windows.Forms.Clipboard]::GetImage()
+$c = $picture.GetPixel([int]($picture.Width / 2), [int]($picture.Height / 2))
+[Console]::Out.WriteLine(($c.R, $c.G, $c.B) -join ',')
+`
+const hue = spawnSync(tinted.argv[0], ['-NoProfile', '-NonInteractive', '-STA', '-Command', middle], { encoding: 'utf8', timeout: 30000 })
+assert.equal(hue.status, 0, hue.stderr || hue.error?.message)
+assert.equal(hue.stdout.trim(), '243,139,168', `a red █ drew as ${hue.stdout.trim()}`)
+console.log('A glyph with its own color draws in that color in the Windows bitmap')
