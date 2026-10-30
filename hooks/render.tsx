@@ -2685,7 +2685,7 @@ const YOU_HEAD = 'You  ⬤ '
 
 const CLAUDE_HEAD = '⬤  Claude'
 
-const youColor = (theme: Theme): string | undefined => theme.diffAdded ?? theme.accent
+const youColor = (theme: Theme): string | undefined => theme.promptBorder ?? theme.diffAdded ?? theme.accent
 
 export const BUBBLE_STEP = 1.3
 
@@ -2712,7 +2712,7 @@ const readableOn = (ink: string | undefined, fill: string | undefined, fallback:
 const promptInk = (style: Style): string | undefined => {
   const t = style.theme
   if (style.promptStyle === 'chevron') return t.accent
-  return style.promptStyle === 'bubble' ? readableOn(t.heading, promptFill(t, style.background, youColor(t)), t.codeText) : t.heading
+  return style.promptStyle === 'bubble' ? t.promptText ?? readableOn(t.heading, promptFill(t, style.background, youColor(t)), t.codeText) : t.heading
 }
 
 const promptRoom = (style: Style, columns: number): number => (style.promptStyle === 'bubble' ? Math.floor(columns * CHAT_SHARE) : columns)
