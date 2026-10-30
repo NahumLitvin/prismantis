@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.38.1] - 2026-10-30
+
+### Fixed
+
+- Where Claude Code cannot save plugin settings (seen in the VS Code extension over Remote-SSH), `/prismantis theme` and `/prismantis setup` used to fail with "no command.run hook answered it". They now say the save failed and name the key and value to set by hand in `~/.claude/settings.json` ([#323](https://github.com/NahumLitvin/prismantis/pull/323)).
+
 ## [0.38.0] - 2026-10-30
 
 ### Added
