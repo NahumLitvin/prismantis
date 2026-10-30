@@ -855,6 +855,16 @@ test('your prompts draw on the right under You ⬤ by default, in a bubble of th
   }
 })
 
+test('markdown in your prompt draws as bold and code, not as asterisks and backticks', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(prompt('a prompt with **bold** and `code` in it', 'composer', surface))
+    expect((await ui.find({ type: 'Text', text: /^bold$/ }))?.props.bold).toBe(true)
+    expect(await ui.find({ type: 'Text', text: /^code$/ })).toBeDefined()
+    expect((await ui.findAll({ type: 'Text' })).filter(n => /\*\*|`/.test(n.text ?? ''))).toEqual([])
+    await ui.unmount()
+  }
+})
+
 test('a long prompt in the bubble wraps at three quarters of the width', async $ => {
   const ui = await $.ui.mount(prompt('raid '.repeat(30).trim()))
   expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBe(57)
