@@ -21,6 +21,7 @@ export type Style = {
   headingStyle: 'bold' | 'underline' | 'uppercase' | 'banner'
   tableStyle: 'box' | 'rules' | 'grid' | 'minimal'
   taskStyle: 'checks' | 'ticks' | 'box' | 'progress'
+  listMarker: 'dots' | 'dash'
   promptStyle: 'bubble' | 'wide' | 'bar' | 'chevron' | 'off'
   replyStyle: 'auto' | 'bubble' | 'solid' | 'framed' | 'off'
   clock: Clock
@@ -87,6 +88,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     headingStyle: pick(options.headingStyle, ['bold', 'underline', 'uppercase', 'banner'] as const, 'banner'),
     tableStyle: pick(options.tableStyle, ['box', 'rules', 'grid', 'minimal'] as const, 'box'),
     taskStyle: pick(options.taskStyle, ['checks', 'ticks', 'box', 'progress'] as const, 'checks'),
+    listMarker: pick(options.listMarker, ['dots', 'dash'] as const, 'dots'),
     promptStyle: pick(options.promptStyle, ['bubble', 'wide', 'bar', 'chevron', 'off'] as const, 'bubble'),
     replyStyle: pick(options.replyStyle, ['auto', 'bubble', 'solid', 'framed', 'off'] as const, 'auto'),
     clock: pick(options.clock, ['off', '24h', '12h'] as const, 'off'),

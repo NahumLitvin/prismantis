@@ -290,7 +290,13 @@ Terminals have one font size, so headings stand out through style and color. `he
 | a box around H1, a heavy rule under H2 | bold in the heading color | `bold` with H1 and H2 underlined | `bold` with H1 in capitals |
 | ![banner](docs/headings/banner.png) | ![bold](docs/headings/bold.png) | ![underline](docs/headings/underline.png) | ![uppercase](docs/headings/uppercase.png) |
 
-Lists keep their numbers and nest with `•` and `◦`. Quotes get an accent bar down every line and keep their paragraphs, lists, code, tables and nested quotes, and GitHub alerts (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) draw as colored boxes.
+Lists keep their numbers and nest with `•` and `◦`. `listMarker: dash` draws `-` at every level instead, so a list you select with the mouse pastes as a markdown list into Slack, GitHub or a doc.
+
+| `dots` | `dash` |
+|---|---|
+| ![dots](docs/lists/dots.png) | ![dash](docs/lists/dash.png) |
+
+Quotes get an accent bar down every line and keep their paragraphs, lists, code, tables and nested quotes, and GitHub alerts (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) draw as colored boxes.
 
 Task lists draw as `[ ]` and `[✓]`, with done items dimmed and struck through. `taskStyle` switches to `ticks` (`○` `✓`), `box` (`□` `✓`) or `progress`, which adds a done-count bar above each list.
 
@@ -353,6 +359,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `theme` | see [Themes](#themes), or `random` for a new dark color preset each time the mod loads | `catppuccin-mocha` |
 | `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
+| `listMarker` | `dots` (`•` then `◦` nested), `dash` (`-` at every level, pastes as a markdown list) | `dots` |
 | `promptStyle` | `bubble`, `wide`, `bar`, `chevron`, `off` | `bubble` |
 | `replyStyle` | `auto` (`bubble` while `promptStyle` is `bubble`, else `off`), `bubble`, `solid`, `framed`, `off` | `auto` |
 | `clock` | `off`, `24h`, `12h` | `off` |
