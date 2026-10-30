@@ -1143,8 +1143,9 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
   )
 }
 
-export type CopyButton = (text: string | (() => string), key: string, label?: string, rich?: (() => string) | 'png') => RenderElement | null
-export type Drawn = Map<number, { element?: RenderElement; art?: string; note?: string }>
+export type CopyButton = (text: string | (() => string), key: string, label?: string, rich?: (() => string) | 'png', hues?: () => Hues) => RenderElement | null
+export type Hues = (string | undefined)[][]
+export type Drawn = Map<number, { element?: RenderElement; art?: string; hues?: () => Hues; note?: string }>
 export type FoldLook = { label?: string; face?: (folded: boolean) => RenderElement }
 export type Fold = (id: string, hidden: number, key: string, look?: FoldLook) => { folded: boolean; element: RenderElement; faced: boolean; around?: (rows: RenderElement, hover: TextHoverProps) => RenderElement } | null
 export type Tip = (note: number) => (() => void) | undefined
@@ -1255,7 +1256,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
     const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
-    return { first, second, html, png: second && copy?.(grid!, `png${b}`, '▣ png', 'png') }
+    return { first, second, html, png: second && copy?.(grid!, `png${b}`, '▣ png', 'png', drawn.get(b)?.hues) }
   })
   const codeHead = (label: string, button: RenderElement | null) => {
     if (!hover || !button) return null
