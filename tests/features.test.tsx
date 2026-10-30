@@ -688,6 +688,15 @@ test('/prismantis theme <name> and /prismantis <name> switch the theme through c
   expect(short.text).toBe('Theme set to random.')
 })
 
+test('/prismantis theme and setup still answer with what to set by hand when the surface cannot save config', async ($, on) => {
+  on('config.set', () => {
+    throw new Error('no plugin rows')
+  })
+  const run = async (args: string) => (await $.command.run({ command: 'prismantis', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })).text ?? ''
+  expect(await run('theme nord')).toMatch(/^Could not switch theme: .+\. Set "theme": "nord" by hand in the prismantis options under pluginConfigs in ~\/\.claude\/settings\.json, then restart\.$/)
+  expect(await run('setup tables grid')).toMatch(/^Could not save tableStyle: .+\. Set "tableStyle": "grid" by hand/)
+})
+
 test('/prismantis random re-rolls on every call once the setting is random', { options: { theme: 'random' } }, async ($, on) => {
   on('config.set', (_, e) => ({ value: e.value }))
   const roll = async () => (await $.command.run({ command: 'prismantis', args: 'random', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 120 } })).text ?? ''

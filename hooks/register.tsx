@@ -394,9 +394,15 @@ const THEME_ARGS = [...PRESET_NAMES, 'random']
 
 type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
 
+const saveOption = ($: EngineInterface, key: string, value: string): Promise<string | undefined> =>
+  $.config.set({ key: `${$.plugin.name}.${key}`, value }).then(
+    r => r.deny,
+    (e: unknown) => `${e instanceof Error ? e.message : String(e)}. Set "${key}": "${value}" by hand in the ${$.plugin.name} options under pluginConfigs in ~/.claude/settings.json, then restart.`,
+  )
+
 const setTheme = async ($: EngineInterface, picked: Picked, name: string): Promise<string> => {
-  const result = await $.config.set({ key: `${$.plugin.name}.theme`, value: name })
-  if (result.deny) return `Could not switch theme: ${result.deny}`
+  const deny = await saveOption($, 'theme', name)
+  if (deny) return `Could not switch theme: ${deny}`
   if (name !== 'random' || picked.options.theme !== 'random') return `Theme set to ${name}.`
   const others = RANDOM_THEMES.filter(t => t !== picked.theme)
   picked.theme = others[Math.floor(Math.random() * others.length)]!
@@ -408,7 +414,7 @@ const setTheme = async ($: EngineInterface, picked: Picked, name: string): Promi
 }
 
 const saveSetupPick = async ($: EngineInterface, picked: Picked, step: SetupStep, value: string): Promise<string> =>
-  step.key === 'theme' ? setTheme($, picked, value) : $.config.set({ key: `${$.plugin.name}.${step.key}`, value }).then(r => (r.deny ? `Could not save ${step.key}: ${r.deny}` : `${step.title} set to ${value}.`))
+  step.key === 'theme' ? setTheme($, picked, value) : saveOption($, step.key, value).then(deny => (deny ? `Could not save ${step.key}: ${deny}` : `${step.title} set to ${value}.`))
 
 const SETUP_PANE = 'prismantis-setup'
 
