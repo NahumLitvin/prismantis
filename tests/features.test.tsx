@@ -2879,3 +2879,23 @@ test('/prismantis demo stays English when LANG names no showcase language', asyn
   mock.env(on, { LANG: 'en_US.UTF-8' })
   expect((await setupRun($, 'demo')).text).not.toContain('한국어')
 })
+
+test('a narrow pane adds its width to the render hint, a wide one does not', async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  for (const columns of [70, 120]) {
+    const reply = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'AssistantMessage', props: { text: 'hi', isFirstOfReply: true }, viewport: { columns, rows: 40 } })
+    await reply.unmount()
+    await $.prompt.submit({ text: 'draw it', wait: false, origin: { kind: 'composer' } })
+  }
+  expect(seen[0]?.some(c => c.includes('70 columns'))).toBe(true)
+  expect(seen[1]?.some(c => c.includes('columns wide'))).toBe(false)
+})
