@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.38.2] - 2026-10-30
+
+### Fixed
+
+- In a tiled or split terminal pane narrower than 100 columns, Claude now knows the pane width and writes diagrams that fit it, so they draw instead of falling back to source ([#326](https://github.com/NahumLitvin/prismantis/pull/326)).
+
 ## [0.38.1] - 2026-10-30
 
 ### Fixed
