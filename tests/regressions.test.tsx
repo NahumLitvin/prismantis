@@ -395,6 +395,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
   expect(showcaseText([])).toContain('copyButtonStyle')
+  expect(showcaseText([])).toContain('textCopyButtons')
   expect(showcaseText([])).toContain('each block shows a dim ⧉ instead: point at it for its buttons')
   expect(showcaseText([])).toContain('+M more lines')
   expect(showcaseText([])).toContain('```figure')

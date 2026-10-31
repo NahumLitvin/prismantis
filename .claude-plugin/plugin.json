@@ -349,6 +349,12 @@
       "default": "inline",
       "options": ["inline", "hover"]
     },
+    "textCopyButtons": {
+      "type": "boolean",
+      "title": "Copy buttons on lists and quotes",
+      "description": "Put a copy button on lists, quotes and alerts. Off keeps the buttons on code blocks, tables, diagrams and whole replies. Needs copyButtons on.",
+      "default": true
+    },
     "issueHint": {
       "type": "boolean",
       "title": "Issue hint",
