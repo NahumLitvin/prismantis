@@ -847,7 +847,7 @@ const tableRoot = (style: Style, flip: boolean) => (flip ? { alignSelf: 'flex-en
 
 const laidRuleSpace = (style: Style) => (style.gridFace ? { marginY: 1 } : {})
 
-const laidCell = (style: Style, box: boolean) => (style.gridFace && box ? { paddingY: 1 } : {})
+const laidCell = (style: Style, box: boolean) => (style.gridFace ? { alignItems: 'flex-start' as const, ...(box ? { paddingY: 1 } : {}) } : {})
 
 const laidEdge = ({ Box }: ElementTable, style: Style, key: string, double: boolean) => {
   const line = (k: string) => <Box key={k} height={HAIRLINE} flexShrink={0} backgroundColor={ruleInk(style)} />
@@ -1115,11 +1115,15 @@ const listSide = (style: Style, block: Extract<Block, { kind: 'list' }>): 'R' | 
   return mostlyRtl(style, block.items.map(item => item.inline)) ? 'R' : 'L'
 }
 
+const laidRow = (style: Style) => (style.gridFace ? { alignItems: 'flex-start' as const } : {})
+
+const laidMarker = ({ Box }: ElementTable, style: Style, marker: RenderElement) => (style.gridFace ? <Box flexShrink={0}>{marker}</Box> : marker)
+
 const leftItem = (el: ElementTable, style: Style, depth: number, lead: string, color: string | undefined, inline: Inline[], room: number, k: string, look: TextLook, tip?: Tip) => {
   const { Box, Text } = el
   return (
-    <Box key={k} flexDirection="row" paddingLeft={depth * 2}>
-      <Text color={color}>{lead}</Text>
+    <Box key={k} flexDirection="row" paddingLeft={depth * 2} {...laidRow(style)}>
+      {laidMarker(el, style, <Text color={color}>{lead}</Text>)}
       {pressInline(el, style, inline, room, `${k}.i`, tip, look) ?? <Text {...look}>{renderInline(el, style, inline, k)}</Text>}
     </Box>
   )
@@ -1131,8 +1135,8 @@ const heldItem = (el: ElementTable, style: Style, item: Extract<Block, { kind: '
   const { Box, Text } = el
   const lines = mirrored(style) ? flowOf(style, item.inline, room - 1, false)!.lines.map(line => [{ kind: 'text' as const, text: LTR_BLANK }, ...line]) : flowOf(style, item.inline, room)!.lines
   return (
-    <Box key={k} flexDirection="row" paddingLeft={item.depth * 2}>
-      <Text color={color}>{mirrored(style) ? glyph : `${glyph} `}</Text>
+    <Box key={k} flexDirection="row" paddingLeft={item.depth * 2} {...laidRow(style)}>
+      {laidMarker(el, style, <Text color={color}>{mirrored(style) ? glyph : `${glyph} `}</Text>)}
       <Box flexDirection="column">{renderFlow(el, style, lines, k, look)}</Box>
     </Box>
   )
@@ -1145,14 +1149,14 @@ const listRow = (el: ElementTable, style: Style, item: Extract<Block, { kind: 'l
   const lines = rtl?.lines ?? [mirrored(style) ? [ROW_MARK, ...item.inline] : item.inline]
   const drawn = () => (rtl ? null : pressInline(el, style, lines[0]!, room, `${k}.i`, tip, look, mirrored(style) ? {} : { justifyContent: 'flex-end' })) ?? renderFlow(el, style, lines, k, look)
   return right && mirrored(style) ? (
-    <Box key={k} flexDirection="row">
-      <Text color={glyphColor}>{`${' '.repeat(item.depth * 2)}${glyph} `}</Text>
+    <Box key={k} flexDirection="row" {...laidRow(style)}>
+      {laidMarker(el, style, <Text color={glyphColor}>{`${' '.repeat(item.depth * 2)}${glyph} `}</Text>)}
       <Box flexDirection="column">{drawn()}</Box>
     </Box>
   ) : right ? (
-    <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2}>
+    <Box key={k} flexDirection="row" justifyContent="flex-end" paddingRight={item.depth * 2} {...laidRow(style)}>
       <Box flexDirection="column" alignItems="flex-end">{drawn()}</Box>
-      <Text color={glyphColor}>{` ${listMarker(glyph, style.shape)}`}</Text>
+      {laidMarker(el, style, <Text color={glyphColor}>{` ${listMarker(glyph, style.shape)}`}</Text>)}
     </Box>
   ) : rtl?.base === 'R' ? (
     heldItem(el, style, item, glyph, glyphColor, room, k, look)

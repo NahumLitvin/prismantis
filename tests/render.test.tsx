@@ -510,6 +510,7 @@ for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tab
   expect(shares.reduce((sum, n) => sum + n, 0)).toBe(100)
   expect(headers.map(b => [b?.props.flexShrink, b?.props.minWidth])).toEqual([[1, 'api-gateway'.length], [1, 'Regions'.length], [1, 'Version'.length]])
   expect((await ui.find({ key: 'b0' }))?.props.alignSelf).toBe('flex-start')
+  expect(headers.every(b => b?.props.alignItems === 'flex-start')).toBe(true)
   const lines = boxes.filter(b => b.props.backgroundColor === ink)
   const walls = lines.filter(b => b.props.width === 0.12)
   const runs = lines.filter(b => typeof b.props.width === 'string')
@@ -599,6 +600,22 @@ test('two code blocks that differ only in where lines break fold on their own', 
   await ui.unmount()
 })
 
+for (const surface of ['terminal', 'desktop'] as const) test(`a list item on ${surface} ${surface === 'desktop' ? 'keeps its marker on the first line, unshrunk, when its text wraps' : 'draws its marker as plain text beside its text'}`, async $ => {
+  const ui = await $.ui.mount({ ...draw(`1. ${'long words '.repeat(30).trim()}\n2. Short`), surface })
+  const rows = (await ui.findAll({ type: 'Box' })).filter(b => b.props.flexDirection === 'row' && /^1\. long/.test(b.text ?? ''))
+  const row = rows[rows.length - 1]
+  expect(row).toBeDefined()
+  const holders = (await ui.findAll({ type: 'Box' })).filter(b => b.props.flexShrink === 0 && b.text === '1. ')
+  if (surface === 'desktop') {
+    expect(row!.props.alignItems).toBe('flex-start')
+    expect(holders).toHaveLength(1)
+  } else {
+    expect(row!.props.alignItems).toBeUndefined()
+    expect(holders).toHaveLength(0)
+  }
+  await ui.unmount()
+})
+
 test('desktop columns ask for no more than their planned width, so long words break as in the terminal', async $ => {
   const table = '| a | b | c |\n|---|---|---|\n| src/components/navigation/sidebar.tsx | tests/integration/checkout.test.ts | docs/records/001-architecture-overview.md |'
   const ui = await $.ui.mount({ ...draw(table), surface: 'desktop', viewport: { columns: 40, rows: 20 } })
@@ -628,6 +645,21 @@ for (const surface of ['terminal', 'desktop'] as const) test(`a right-to-left bo
   } else {
     expect(glyphs).toBeDefined()
     expect(walls).toHaveLength(0)
+  }
+  await ui.unmount()
+})
+
+for (const rtl of ['iterm', 'apple-terminal'] as const) for (const surface of ['terminal', 'desktop'] as const) test(`a wrapped right-to-left list item with rtl ${rtl} on ${surface} ${surface === 'desktop' ? 'keeps its marker on the first line, unshrunk' : 'draws its marker as plain text'}`, { options: { rtl } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(`1. ${'מילים ארוכות '.repeat(25).trim()}\n2. קצר`), surface })
+  const boxes = await ui.findAll({ type: 'Box' })
+  const holders = boxes.filter(b => b.props.flexShrink === 0 && /^\s*1\.?\s*$|^\s*\.1\s*$/.test(b.text ?? ''))
+  const rows = boxes.filter(b => b.props.flexDirection === 'row' && b.props.alignItems === 'flex-start' && /מילים/.test(b.text ?? ''))
+  if (surface === 'desktop') {
+    expect(holders.length).toBeGreaterThan(0)
+    expect(rows.length).toBeGreaterThan(0)
+  } else {
+    expect(holders).toHaveLength(0)
+    expect(rows).toHaveLength(0)
   }
   await ui.unmount()
 })
