@@ -477,16 +477,64 @@ test('code blocks draw through the native Code element off the terminal', async 
   await term.unmount()
 })
 
-test('tables draw boxed by default, with a double line under the header', async $ => {
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ ...draw(TABLE), surface })
-    const top = (await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ }))?.text ?? ''
-    expect(top.split('┬').length).toBe(3)
-    const lines = [top, ...(await Promise.all([/^╞[═╪]+╡$/, /^├[─┼]+┤$/, /^└[─┴]+┘$/].map(async re => (await ui.find({ type: 'Text', text: re }))?.text ?? '')))]
-    expect(lines.every(l => l.length === top.length && l.length > 0)).toBe(true)
-    expect((await ui.find({ type: 'Text', text: /^Service$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].tableHeader)
-    await ui.unmount()
+test('tables draw boxed by default in the terminal, with a double line under the header', async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
+  const top = (await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ }))?.text ?? ''
+  expect(top.split('┬').length).toBe(3)
+  const lines = [top, ...(await Promise.all([/^╞[═╪]+╡$/, /^├[─┼]+┤$/, /^└[─┴]+┘$/].map(async re => (await ui.find({ type: 'Text', text: re }))?.text ?? '')))]
+  expect(lines.every(l => l.length === top.length && l.length > 0)).toBe(true)
+  expect((await ui.find({ type: 'Text', text: /^Service$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].tableHeader)
+  await ui.unmount()
+})
+
+const percent = (width: unknown) => (typeof width === 'string' && /^\d+%$/.test(width) ? Number(width.slice(0, -1)) : NaN)
+
+for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tableStyle ${tableStyle} in the terminal keeps its character rules in fixed columns`, { options: { tableStyle } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
+  const boxes = await ui.findAll({ type: 'Box' })
+  expect(boxes.some(b => b.props.backgroundColor !== undefined && Number(b.props.height ?? 1) < 1)).toBe(false)
+  expect(boxes.filter(b => /^(Service|Regions|Version)$/.test(b.text ?? '')).every(b => typeof b.props.width === 'number' && b.props.flexShrink === 0)).toBe(true)
+  expect((await ui.find({ key: 'b0' }))?.props.alignSelf).toBeUndefined()
+  if (tableStyle === 'box') expect(await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })).toBeDefined()
+  else expect(await ui.findAll({ type: 'Text', text: /^[─━]+$/ })).toHaveLength(tableStyle === 'minimal' ? 3 : 6)
+  await ui.unmount()
+})
+
+for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tableStyle ${tableStyle} on desktop draws its lines as thin colored boxes that share the percent widths of their columns`, { options: { tableStyle } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'desktop' })
+  const ink = PRESETS['catppuccin-mocha'].tableRule
+  const boxes = await ui.findAll({ type: 'Box' })
+  expect(await ui.find({ type: 'Text', text: /[┌┐└┘│╞╡├┤┬┴┼╪─━═]/ })).toBeUndefined()
+  const headers = ['Service', 'Regions', 'Version'].map(name => boxes.find(b => b.text === name && b.props.width !== undefined))
+  const shares = headers.map(b => percent(b?.props.width))
+  expect(shares.reduce((sum, n) => sum + n, 0)).toBe(100)
+  expect(headers.map(b => [b?.props.flexShrink, b?.props.minWidth])).toEqual([[1, 'api-gateway'.length], [1, 'Regions'.length], [1, 'Version'.length]])
+  expect((await ui.find({ key: 'b0' }))?.props.alignSelf).toBe('flex-start')
+  const lines = boxes.filter(b => b.props.backgroundColor === ink)
+  const walls = lines.filter(b => b.props.width === 0.12)
+  const runs = lines.filter(b => typeof b.props.width === 'string')
+  const spans = lines.filter(b => b.props.width === undefined)
+  if (tableStyle === 'box') {
+    expect(walls).toHaveLength(12)
+    expect(spans.map(b => b.props.height)).toEqual(Array(5).fill(0.06))
+    expect(runs).toHaveLength(0)
+    expect(headers.every(b => b?.props.paddingY === 1)).toBe(true)
+  } else {
+    expect(walls).toHaveLength(0)
+    expect(spans).toHaveLength(0)
+    const rows = tableStyle === 'minimal' ? 1 : 2
+    expect(runs.map(b => percent(b.props.width))).toEqual(Array.from({ length: rows }, () => shares).flat())
+    expect(runs.map(b => b.props.minWidth)).toEqual(Array.from({ length: rows }, () => headers.map(h => h?.props.minWidth)).flat())
+    expect(runs.slice(0, 3).map(b => b.props.height)).toEqual(Array(3).fill(tableStyle === 'grid' ? 0.12 : 0.06))
   }
+  await ui.unmount()
+})
+
+test('a theme without a table rule color draws desktop table lines in gray', { options: { theme: 'mono' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'desktop' })
+  const walls = (await ui.findAll({ type: 'Box' })).filter(b => b.props.width === 0.12)
+  expect(walls.length > 0 && walls.every(b => b.props.backgroundColor === 'gray')).toBe(true)
+  await ui.unmount()
 })
 
 test('tableStyle rules keeps the open look', { options: { tableStyle: 'rules' } }, async $ => {
@@ -548,5 +596,38 @@ test('two code blocks that differ only in where lines break fold on their own', 
   await ui.press({ key: 'fold0' })
   expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
   expect((await ui.find({ key: 'fold2' }))?.props.label).toBe('+11 more lines')
+  await ui.unmount()
+})
+
+test('desktop columns ask for no more than their planned width, so long words break as in the terminal', async $ => {
+  const table = '| a | b | c |\n|---|---|---|\n| src/components/navigation/sidebar.tsx | tests/integration/checkout.test.ts | docs/records/001-architecture-overview.md |'
+  const ui = await $.ui.mount({ ...draw(table), surface: 'desktop', viewport: { columns: 40, rows: 20 } })
+  const headers = ['a', 'b', 'c'].map(async name => (await ui.findAll({ type: 'Box' })).find(b => b.text === name && typeof b.props.width === 'string'))
+  const minimums = (await Promise.all(headers)).map(b => b?.props.minWidth as number)
+  expect(minimums.every(n => typeof n === 'number')).toBe(true)
+  expect(minimums.reduce((sum, n) => sum + n, 0)).toBeLessThanOrEqual(36)
+  await ui.unmount()
+})
+
+test('a held box table on desktop keeps the gap between each wall and the cell after it', { options: { rtl: 'iterm' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Name | Value |\n|---|---|\n| greeting | שלום |'), surface: 'desktop' })
+  const walls = (await ui.findAll({ type: 'Box' })).filter(b => b.props.width === 0.12)
+  expect(walls).toHaveLength(6)
+  expect(walls.filter(b => b.props.marginRight === 1)).toHaveLength(4)
+  expect(walls.filter(b => b.props.marginLeft === 1)).toHaveLength(4)
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`a right-to-left box table with the inverse shape on ${surface} draws its rows ${surface === 'desktop' ? 'with the same walls as its frame' : 'as text lines'}`, { options: { rtl: 'apple-terminal' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| שם | ערך |\n|---|---|\n| אחד | שתיים |'), surface })
+  const glyphs = await ui.find({ type: 'Text', text: /│/ })
+  const walls = (await ui.findAll({ type: 'Box' })).filter(b => b.props.width === 0.12)
+  if (surface === 'desktop') {
+    expect(glyphs).toBeUndefined()
+    expect(walls.length).toBeGreaterThan(0)
+  } else {
+    expect(glyphs).toBeDefined()
+    expect(walls).toHaveLength(0)
+  }
   await ui.unmount()
 })

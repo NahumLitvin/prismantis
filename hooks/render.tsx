@@ -811,6 +811,48 @@ const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: stri
   </Box>
 )
 
+const HAIRLINE = 0.06
+const WALL_WIDTH = 0.12
+
+const ruleInk = (style: Style) => style.theme.tableRule ?? 'gray'
+
+const percentShares = (widths: number[]): number[] => {
+  const total = widths.reduce((sum, w) => sum + w, 0) || 1
+  const exact = widths.map(w => (100 * w) / total)
+  const shares = exact.map(Math.floor)
+  const left = 100 - shares.reduce((sum, n) => sum + n, 0)
+  exact.map((x, i) => ({ i, rest: x - shares[i]! })).sort((a, b) => b.rest - a.rest).slice(0, left).forEach(({ i }) => shares[i]!++)
+  return shares
+}
+
+const tableColumn = (style: Style, w: number, share: number, word: number) =>
+  style.gridFace ? { width: `${share}%`, flexShrink: 1, minWidth: Math.min(word, w) } : { width: w, flexShrink: 0 }
+
+const tableRuleRun = ({ Box, Text }: ElementTable, style: Style, w: number, share: number, word: number, char: string, heavy: boolean, key: string) => {
+  if (!style.gridFace) return <Text key={key} color={style.theme.tableRule} dimColor={!heavy && !style.theme.tableRule}>{char.repeat(w)}</Text>
+  return <Box key={key} {...tableColumn(style, w, share, word)} height={char === '━' ? 2 * HAIRLINE : HAIRLINE} backgroundColor={ruleInk(style)} />
+}
+
+const tableRoot = (style: Style, flip: boolean) => (flip ? { alignSelf: 'flex-end' as const } : style.gridFace ? { alignSelf: 'flex-start' as const } : {})
+
+const laidRuleSpace = (style: Style) => (style.gridFace ? { marginY: 1 } : {})
+
+const laidCell = (style: Style, box: boolean) => (style.gridFace && box ? { paddingY: 1 } : {})
+
+const laidEdge = ({ Box }: ElementTable, style: Style, key: string, double: boolean) => {
+  const line = (k: string) => <Box key={k} height={HAIRLINE} flexShrink={0} backgroundColor={ruleInk(style)} />
+  if (!double) return line(key)
+  return <Box key={key} flexDirection="column" justifyContent="space-between" height={0.3} flexShrink={0}>{line(`${key}.a`)}{line(`${key}.b`)}</Box>
+}
+
+const isBlank = (ch: string | undefined) => ch === ' ' || ch === LTR_BLANK
+
+const laidWall = ({ Box }: ElementTable, style: Style) => (key: string, text: string) => (
+  <Box key={key} width={WALL_WIDTH} flexShrink={0} backgroundColor={ruleInk(style)} {...(isBlank(text[0]) ? { marginLeft: 1 } : {})} {...(isBlank(text[text.length - 1]) ? { marginRight: 1 } : {})} />
+)
+
+const drawsTextRows = (style: Style, rtl: boolean) => rtl && style.shape === 'inverse' && !style.gridFace
+
 const tableEdges = (style: Style, block: Extract<Block, { kind: 'table' }>, rtl: boolean, mirror: boolean) => {
   const held = !rtl && mirrored(style) && tableCells(block).some(containsRtl)
   return {
@@ -828,6 +870,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
   const { natural, words } = tableSize(block)
   const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
+  const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
   const flip = rtl && !mirror
@@ -841,13 +884,11 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     block.align[c] === 'right' ? 'flex-end' : block.align[c] === 'center' ? 'center' : 'flex-start'
 
   const rule = (k: string, heavy: boolean) => (
-    <Box key={k} flexDirection="row" columnGap={columnGap}>
+    <Box key={k} flexDirection="row" columnGap={columnGap} {...laidRuleSpace(style)}>
       {lead(k)}
       {order.map((c, i) => [
         i > 0 && spacer(`${k}.${c}g`),
-        <Text key={`${k}.${c}`} color={t.tableRule} dimColor={!heavy && !t.tableRule}>
-          {(heavy ? ruleChar : '─').repeat(widths[c]!)}
-        </Text>,
+        tableRuleRun(el, style, widths[c]!, shares[c]!, words[c]!, heavy ? ruleChar : '─', heavy, `${k}.${c}`),
       ])}
     </Box>
   )
@@ -857,7 +898,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   )
   const clipped = (lines: number) => (k: string, text: string) => clip(el, width(text), bar(`${k}.b`, text, lines), k)
   const edge = (k: string, [left, fill, mid, right]: string) =>
-    bar(k, (mirror ? WALL : left) + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + (mirror ? WALL : right))
+    style.gridFace ? laidEdge(el, style, k, fill === '═') : bar(k, (mirror ? WALL : left) + order.map(c => fill!.repeat(widths[c]! + 2)).join(mid) + (mirror ? WALL : right))
 
   const terminalRow = (cells: Inline[][], k: string, isHeader: boolean) => {
     const parts: Inline[] = box ? [{ kind: 'dim', text: '│ ' }] : []
@@ -874,7 +915,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     return <Text key={k}>{renderInline(el, style, terminalLine(parts), k)}</Text>
   }
 
-  const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar) => rtl && style.shape === 'inverse' ? terminalRow(cells, k, isHeader) : (
+  const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar) => drawsTextRows(style, rtl) ? terminalRow(cells, k, isHeader) : (
     <Box key={k} flexDirection="row" columnGap={columnGap} alignItems="stretch">
       {!box && lead(k)}
       {box && border(`${k}.l`, wall('│ '))}
@@ -885,7 +926,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
         const side = mirror ? (block.align[c] === 'center' ? 'center' : 'flex-start') : cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
         const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
-          <Box key={`${k}.${c}`} width={w} flexShrink={0} justifyContent={side}>
+          <Box key={`${k}.${c}`} {...tableColumn(style, w, shares[c]!, words[c]!)} {...laidCell(style, box)} justifyContent={side}>
             {pressInline(el, style, runs, w, `${k}.${c}.p`, tip, isHeader ? { bold: true, color: t.tableHeader } : {}, { justifyContent: side })
               ?? (isHeader
                 ? <Text bold color={t.tableHeader}>{runs.some(n => n.kind === 'footnote') ? renderInline(el, style, runs, `${k}.${c}`) : inlineText(runs)}</Text>
@@ -900,6 +941,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   )
 
   const wrappedRow = (cells: Inline[][], k: string, isHeader: boolean) => {
+    if (style.gridFace) return [row(cells, k, isHeader, laidWall(el, style))]
     if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(displayText(cells[c] ?? []), w)))))]
     const wrapped = widths.map((w, c) => {
       const content = cells[c] ?? []
@@ -917,7 +959,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       lines.push(...wrappedRow(r, `${key}.r${i}`, false))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
-    return <Box key={key} flexDirection="column" {...(flip ? { alignSelf: 'flex-end' as const } : {})}>{lines}</Box>
+    return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{lines}</Box>
   }
 
   const body: RenderElement[] = [row(block.header, `${key}.h`, true), rule(`${key}.hr`, true)]
@@ -925,7 +967,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     body.push(row(r, `${key}.r${i}`, false))
     if (style.tableStyle !== 'minimal' && i < block.rows.length - 1) body.push(rule(`${key}.r${i}r`, false))
   })
-  return <Box key={key} flexDirection="column" {...(flip ? { alignSelf: 'flex-end' as const } : {})}>{body}</Box>
+  return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{body}</Box>
 }
 
 const renderHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, key: string) => {

@@ -1997,8 +1997,13 @@ for (const surface of ['terminal', 'desktop'] as const) test(`a code block and a
   if (surface === 'desktop') expect((await ui.find({ type: 'Code' }))?.props.source).toBe('npm test')
   else expect((await ui.find({ type: 'Text', text: /^npm$/ }))?.props.color).toBe(t.codeCommand)
   expect((await ui.find({ type: 'Text', text: /^Check$/ }))?.props.color).toBe(t.tableHeader)
-  const edge = await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })
-  expect(width('│ ') + width(edge!.text) + 2 + width('[ ⧉ copy ]') <= 60 - 4).toBe(true)
+  if (surface === 'desktop') {
+    expect(await ui.find({ type: 'Text', text: /[┌└├╞┬┼]/ })).toBeUndefined()
+    expect((await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'string' && /^\d+%$/.test(b.props.width as string) && /^(Check|Result)$/.test(b.text ?? ''))).toHaveLength(2)
+  } else {
+    const edge = await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })
+    expect(width('│ ') + width(edge!.text) + 2 + width('[ ⧉ copy ]') <= 60 - 4).toBe(true)
+  }
   const labels = (await ui.findAll({ type: 'Button' })).map(b => b.props.label)
   expect(labels.filter(l => l === '⧉ copy')).toHaveLength(2)
   expect(labels.filter(l => l === '⧉ md')).toHaveLength(1)
@@ -2261,8 +2266,8 @@ test('a <br> in a table cell parses as a line break, but not inside a code span'
 
 for (const surface of ['terminal', 'desktop'] as const) test(`a <br> in a table cell starts a new row of the cell on ${surface}`, async $ => {
   const ui = await $.ui.mount({ ...mount('| Step | Detail |\n|---|---|\n| Prevent | Then:<br/>• Run `brew install gnu-sed` |'), surface })
-  const cells = (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0)
-  expect(cells.map(b => b.text).filter(t => /Detail|Then:|brew/.test(t))).toEqual(['Detail', 'Then:', '• Run brew install gnu-sed'])
+  const cells = (await ui.findAll({ type: 'Box' })).filter(b => b.props.width !== undefined && b.props.backgroundColor === undefined && b.props.overflow !== 'hidden')
+  expect(cells.flatMap(b => (b.text ?? '').split('\n')).filter(t => /Detail|Then:|brew/.test(t))).toEqual(['Detail', 'Then:', '• Run brew install gnu-sed'])
   expect(await ui.find({ type: 'Text', text: /<br/ })).toBeUndefined()
   await ui.unmount()
 })
