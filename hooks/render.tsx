@@ -106,6 +106,7 @@ const headerRuns = (nodes: Inline[]): Inline[] =>
 const HTTP_LINKS_FROM = [2, 1, 289]
 const EDITOR_LINKS_FROM = [2, 1, 294]
 const CLICKABLE_MARKS_FROM = [2, 1, 295]
+const MONO_TEXT_FROM = [2, 1, 299]
 
 const releaseFrom = (from: readonly number[]) => (base?: string): boolean => {
   const m = /^(\d+)\.(\d+)\.(\d+)/.exec(base ?? '')
@@ -120,6 +121,8 @@ export const takesHttpLinks = releaseFrom(HTTP_LINKS_FROM)
 export const takesEditorLinks = releaseFrom(EDITOR_LINKS_FROM)
 
 export const takesClickableMarks = releaseFrom(CLICKABLE_MARKS_FROM)
+
+export const takesMonoText = releaseFrom(MONO_TEXT_FROM)
 
 export const fileRoot = (distro?: string): string => (distro ? `file://wsl.localhost/${encodeURIComponent(distro)}` : 'file://')
 
@@ -454,6 +457,8 @@ const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
 export const mirrored = (style: Style) => style.shape === 'mirror'
 
 export const heldLtr = (style: Style) => (style.shape === 'engine' ? { dir: 'ltr' as const } : {})
+
+export const artFace = (style: Style): { mono?: true } => (style.monoFace ? { mono: true } : {})
 
 const heldLabel = (style: Style, label: string, text: string): string => (mirrored(style) && hasRtl(text) ? label.replace(/ $/, LTR_BLANK) : label)
 

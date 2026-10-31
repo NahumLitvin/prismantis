@@ -43,6 +43,7 @@ export type Style = {
   images: boolean
   nativeCode?: boolean
   gridFace?: boolean
+  monoFace?: boolean
   httpLinks: boolean
   editorLinks: boolean
   obsidianLinks: boolean
