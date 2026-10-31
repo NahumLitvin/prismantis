@@ -816,6 +816,16 @@ const WALL_WIDTH = 0.12
 
 const ruleInk = (style: Style) => style.theme.tableRule ?? 'gray'
 
+const thematicBreak = ({ Box, Text }: ElementTable, style: Style, columns: number, key: string) => {
+  const length = Math.max(8, Math.min(columns, 80))
+  if (!style.gridFace) return <Text key={key} color={style.theme.rule} dimColor={!style.theme.rule}>{'─'.repeat(length)}</Text>
+  return (
+    <Box key={key} flexDirection="row" height={1} alignItems="center">
+      <Box width={length} flexShrink={1} minWidth={0} height={HAIRLINE} backgroundColor={style.theme.rule ?? 'gray'} />
+    </Box>
+  )
+}
+
 const percentShares = (widths: number[]): number[] => {
   const total = widths.reduce((sum, w) => sum + w, 0) || 1
   const exact = widths.map(w => (100 * w) / total)
@@ -987,7 +997,12 @@ const mirroredBanner = (el: ElementTable, style: Style, level: number, inline: I
   return <Box key={key} flexDirection="column">{edge(`${key}.t`)}{text}{edge(`${key}.b`)}</Box>
 }
 
-const HEADING_RULE = 200
+const bannerRule = ({ Box, Text }: ElementTable, style: Style, color: string | undefined, label: string) =>
+  style.gridFace ? (
+    <Box flexDirection="row" height={0.5} alignItems="center">
+      <Box width={0} flexGrow={1} height={2 * HAIRLINE} backgroundColor={color ?? 'gray'} />
+    </Box>
+  ) : <Text color={color}>{'━'.repeat(width(label))}</Text>
 
 const drawHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, inline: Inline[], key: string) => {
   const { Box, Text } = el
@@ -1002,7 +1017,7 @@ const drawHeading = (el: ElementTable, style: Style, block: Extract<Block, { kin
     case 'banner':
       if (block.level === 1) return <Box key={key} alignSelf="flex-start" borderStyle="bold" borderColor={color} paddingX={1}><Text bold color={color}>{renderInline(el, style, inline, key)}</Text></Box>
       return block.level === 2
-        ? <Box key={key} flexDirection="column" alignSelf="flex-start"><Text bold color={color}>{renderInline(el, style, inline, key)}</Text>{style.gridFace ? <Box flexDirection="row"><Box width={0} flexGrow={1} height={1} overflow="hidden"><Text color={color}>{'━'.repeat(HEADING_RULE)}</Text></Box></Box> : <Text color={color}>{'━'.repeat(width(label))}</Text>}</Box>
+        ? <Box key={key} flexDirection="column" alignSelf="flex-start"><Text bold color={color}>{renderInline(el, style, inline, key)}</Text>{bannerRule(el, style, color, label)}</Box>
         : <Text key={key} bold color={block.level === 3 ? color : t.strong}>{renderInline(el, style, inline, key)}</Text>
     default:
       return <Text key={key} bold color={color}>{renderInline(el, style, inline, key)}</Text>
@@ -1318,7 +1333,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       case 'alert':
         return renderAlert(el, style, block, beside(b), key, copy, fold, tip)
       case 'rule':
-        return <Text key={key} color={t.rule} dimColor={!t.rule}>{'─'.repeat(Math.max(8, Math.min(columns, 80)))}</Text>
+        return thematicBreak(el, style, columns, key)
       case 'code': {
         const done = drawn.get(b)?.element
         if (done) return done
