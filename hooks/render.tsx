@@ -1182,7 +1182,7 @@ const codeId = (lines: string[]): string => {
 const copySource = (style: Style, block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n')
   : block.kind === 'table' ? block.raw
-  : style.inside ? undefined
+  : style.inside || !style.textCopyButtons ? undefined
   : block.kind === 'list' ? block.raw
   : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n')
   : undefined

@@ -397,6 +397,17 @@ test('copyButtons off draws no buttons', { options: { copyButtons: false } }, as
   await ui.unmount()
 })
 
+for (const copyButtonStyle of ['inline', 'hover'] as const) test(`textCopyButtons off drops the ${copyButtonStyle} buttons on lists, quotes and alerts and keeps code, table and reply buttons`, { options: { textCopyButtons: false, copyButtonStyle } }, async $ => {
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...draw(`- one\n- two\n\n> quoted\n\n> [!NOTE]\n> noted\n\n${TABLE}\n\n\`\`\`bash\nls\n\`\`\``), surface })
+    const labels = (await ui.findAll({ type: 'Button' })).map(b => String(b.props.label))
+    expect(labels.filter(l => l === '⧉ copy')).toHaveLength(1)
+    expect(labels).toContain('⧉ md')
+    expect(labels).toContain('⧉ copy reply')
+    await ui.unmount()
+  }
+})
+
 test('lists copy as markdown', async ($, on) => {
   const copied: string[] = []
   on('ui.copy', (_, e) => {
