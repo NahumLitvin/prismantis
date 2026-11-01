@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
+import { width } from '../hooks/layout'
 import { PRESETS } from '../hooks/presets'
-import { width } from '../hooks/render'
 
 const reply = (text: string, surface: 'terminal' | 'desktop') => ({
   plugin: 'prismantis',

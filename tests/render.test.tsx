@@ -2,7 +2,8 @@ import { expect, test } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
-import { MARK, width } from '../hooks/render'
+import { MARK } from '../hooks/render'
+import { width } from '../hooks/layout'
 import { resolveStyle } from '../hooks/theme'
 import { clipboardEnv, startSession } from './clipboard-env'
 
