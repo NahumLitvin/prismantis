@@ -187,6 +187,7 @@ var installThemes = () => {
   mkdirSync(to, { recursive: true });
   const files = readdirSync(from).filter((file) => file.endsWith(".json"));
   for (const file of files) copyFileSync(join(from, file), join(to, file));
+  process.emit("SIGUSR2");
   return files.length;
 };
 var tui_default = {
