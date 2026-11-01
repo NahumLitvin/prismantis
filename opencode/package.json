@@ -1,6 +1,6 @@
 {
   "name": "prismantis",
-  "version": "0.38.2",
+  "version": "0.39.0",
   "description": "Themeable OpenCode replies: prismantis themes, colored figure blocks, and a session note that gets tables, diagrams and figures into replies.",
   "type": "module",
   "license": "MIT",
