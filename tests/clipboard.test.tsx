@@ -288,3 +288,27 @@ test('copyButtons off draws no ▣ png', { options: { copyButtons: false } }, as
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)
   await ui.unmount()
 })
+
+test('▣ png keeps the colors the figure and the diagram draw with', async ($, on) => {
+  clipboardEnv(on, 'macos')
+  const inputs: string[] = []
+  on('process.run', (_, e) => {
+    inputs.push(e.init?.stdin ?? '')
+    return runResult(0)
+  })
+  recordToasts(on)
+  await startSession($, on)
+  const text = '```figure\n{accent:┌──┐} {warn:DOWN} up\n```\n\n```mermaid\nflowchart TD\n  A[Start] --> B[End]\n```'
+  const ui = await $.ui.mount({ ...mount, props: { text, isFirstOfReply: true } })
+  for (const key of ['png0', 'png1']) await ui.press({ key })
+  const colors = (input: string) => {
+    const payload = JSON.parse(input) as { lines: { text: string; color?: number[] }[][] }
+    return new Map(payload.lines.flat().map(g => [g.text, String(g.color)]))
+  }
+  const figure = colors(inputs[0]!)
+  expect(figure.get('D')).not.toBe(figure.get('u'))
+  expect(figure.get('┌')).not.toBe(figure.get('u'))
+  const diagram = colors(inputs[1]!)
+  expect(diagram.get('┌')).not.toBe('undefined')
+  await ui.unmount()
+})

@@ -368,7 +368,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
         const wide = art === null ? Infinity : artWidth(art.text)
         narrowest = Math.min(narrowest, wide)
         if (art === null || wide > columns - 2) continue
-        drawn.set(i, { element: chartElement(el, style, art, block, `b${i}`), art: art.text })
+        drawn.set(i, { element: chartElement(el, style, art, block, `b${i}`), art: art.text, hues: () => painting(style, art.text, art.slices, art.series).colors })
         break
       }
       if (!drawn.has(i) && !block.isOpen) {

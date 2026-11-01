@@ -79,7 +79,12 @@ payload.lines.forEach(function (glyphs, i) {
   var bottom = height - pad - (i + 1) * line
   glyphs.forEach(function (g) {
     var x = pad + g.at * cell
-    if (!/^[─-▟]$/.test(g.text)) return $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(x, bottom + baseline, 1000, 1000), 0, attributes)
+    var painted = attributes
+    if (g.color) {
+      painted = attributes.mutableCopy
+      painted.setObjectForKey(rgb(g.color), $.NSForegroundColorAttributeName)
+    }
+    if (!/^[─-▟]$/.test(g.text)) return $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(x, bottom + baseline, 1000, 1000), 0, painted)
     $.NSGraphicsContext.saveGraphicsState
     $.NSRectClip($.NSMakeRect(x, bottom, cell, line))
     var fit = $.NSAffineTransform.transform
@@ -87,7 +92,7 @@ payload.lines.forEach(function (glyphs, i) {
     fit.scaleXByYBy(cell / block.size.width, line / block.size.height)
     fit.translateXByYBy(-block.origin.x, -block.origin.y)
     fit.concat
-    $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(0, 0, 1000, 1000), 0, attributes)
+    $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(0, 0, 1000, 1000), 0, painted)
     $.NSGraphicsContext.restoreGraphicsState
   })
 })
@@ -128,8 +133,9 @@ try {
     foreach ($g in $payload.lines[$i]) {
       $x = $pad + $g.at * $cell
       $y = $pad + $i * $line
+      $ink = if ($g.color) { [System.Drawing.Color]::FromArgb($g.color[0], $g.color[1], $g.color[2]) } else { $fg }
       if ($g.text -notmatch '^[\u2500-\u259f]$') {
-        [System.Windows.Forms.TextRenderer]::DrawText($graphics, [string]$g.text, $font, (New-Object System.Drawing.Point($x, $y)), $fg, $bg, $flags)
+        [System.Windows.Forms.TextRenderer]::DrawText($graphics, [string]$g.text, $font, (New-Object System.Drawing.Point($x, $y)), $ink, $bg, $flags)
         continue
       }
       $path = New-Object System.Drawing.Drawing2D.GraphicsPath
@@ -140,6 +146,7 @@ try {
       $fit.Translate(-$block.X, -$block.Y)
       $path.Transform($fit)
       $graphics.SetClip((New-Object System.Drawing.Rectangle($x, $y, $cell, $line)))
+      $brush.Color = $ink
       $graphics.FillPath($brush, $path)
       $graphics.ResetClip()
     }
@@ -187,17 +194,26 @@ const rgbOf = (color: string | undefined, fallback: number[]): number[] => {
   return /^#[0-9a-f]{6}$/i.test(hex) ? [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)) : fallback
 }
 
-export const imageLines = (text: string): { at: number; text: string }[][] =>
-  text.split('\n').map(line => holdVisual(cells(line)).cells.flatMap((g, at) => (g.trim() ? [{ at, text: g }] : [])))
+export const imageLines = (text: string, tint: (row: number, cell: number) => number[] | undefined = () => undefined): { at: number; text: string; color?: number[] }[][] =>
+  text.split('\n').map((line, row) => {
+    const { cells: shown, from } = holdVisual(cells(line))
+    return shown.flatMap((g, at) => {
+      const color = tint(row, from[at] ?? at)
+      return g.trim() ? [color ? { at, text: g, color } : { at, text: g }] : []
+    })
+  })
 
 const luma = ([r, g, b]: number[]): number => (0.299 * r! + 0.587 * g! + 0.114 * b!) / 255
 
 const readable = (foreground: number[], background: number[]): number[] =>
   Math.abs(luma(foreground) - luma(background)) >= 0.4 ? foreground : luma(background) > 0.5 ? [0, 0, 0] : [255, 255, 255]
 
-export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string }, systemRoot?: string): HelperCommand => {
-  const lines = imageLines(text)
+export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string }, systemRoot?: string, hues?: (string | undefined)[][]): HelperCommand => {
   const background = rgbOf(colors.background, [255, 255, 255])
+  const lines = imageLines(text, (row, cell) => {
+    const rgb = rgbOf(hues?.[row]?.[cell], [])
+    return rgb.length ? readable(rgb, background) : undefined
+  })
   const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground: readable(rgbOf(colors.foreground, [0, 0, 0]), background), background })
   return backend === 'windows'
     ? { stdin: ascii(json), argv: powershell(systemRoot, WIN_IMAGE_COPY), failure: 'Windows image helper failed' }
