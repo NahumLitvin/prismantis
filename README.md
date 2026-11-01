@@ -62,6 +62,12 @@ For LaTeX math, install RaTeX's renderer and set `latex` to `true`; see [LaTeX m
 
 prismantis also runs in Codex, with themes for code, tables and diagrams and the same session note. Install, what works today, and the two Codex issues it waits on for parity: [codex/README.md](codex/README.md).
 
+### OpenCode
+
+prismantis also runs in OpenCode 2.2.5 and later, where it draws figure blocks in color, ships its themes for code and prose, and adds the same session note. Install and what works: [opencode/README.md](opencode/README.md).
+
+![OpenCode in prismantis-dracula](docs/compare/opencode.png)
+
 ## Features
 
 | Feature | What you get |

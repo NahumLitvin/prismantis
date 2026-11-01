@@ -1,0 +1,11 @@
+{
+  "name": "prismantis",
+  "version": "0.38.2",
+  "description": "Themeable OpenCode replies: prismantis themes, colored figure blocks, and a session note that gets tables, diagrams and figures into replies.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./server.js",
+    "./tui": "./tui.js"
+  }
+}
