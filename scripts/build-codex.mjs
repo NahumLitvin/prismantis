@@ -10,7 +10,7 @@ const bundled = await build({
   stdin: {
     contents: `export { HINT, showcaseText } from './hooks/help'
 export { FIGURE_HINT } from './hooks/figure'
-export { PRESETS, PRESET_NAMES } from './hooks/presets'
+export { PRESETS, PRESET_NAMES, PRESET_BACKGROUNDS } from './hooks/presets'
 export { PRISM_COLORS } from './hooks/render'`,
     resolveDir: root,
     loader: 'ts',
@@ -122,3 +122,66 @@ const market = JSON.parse(readFileSync(join(root, '.claude-plugin/marketplace.js
 const plugins = market.plugins.map(({ source, ...plugin }) => ({ ...plugin, source: { source: 'url', url: `https://github.com/${source.repo}.git`, ref: source.ref, sha: source.sha } }))
 mkdirSync(join(root, '.agents/plugins'), { recursive: true })
 writeFileSync(join(root, '.agents/plugins/marketplace.json'), `${JSON.stringify({ ...market, plugins }, null, 2)}\n`)
+
+const opencode = join(root, 'opencode')
+rmSync(opencode, { recursive: true, force: true })
+const pure = { name: 'pure', setup: b => b.onResolve({ filter: /^\.\.?\//, namespace: 'file' }, async args => args.pluginData ? undefined : { ...(await b.resolve(args.path, { kind: args.kind, resolveDir: args.resolveDir, pluginData: true })), sideEffects: false }) }
+for (const part of ['server', 'tui']) {
+  await build({ entryPoints: [join(root, `scripts/opencode/${part}.ts`)], outfile: join(opencode, `${part}.js`), bundle: true, format: 'esm', platform: 'node', external: ['@opentui/core', 'claude-code'], logLevel: 'error', plugins: [pure] })
+}
+
+const mix = (a, b, share) => `#${[1, 3, 5].map(i => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - share) + parseInt(b.slice(i, i + 2), 16) * share).toString(16).padStart(2, '0')).join('')}`
+const opencodeTheme = (t, bg) => {
+  const panel = bg ? mix(bg, t.codeText, 0.06) : 'none'
+  const element = bg ? mix(bg, t.codeText, 0.12) : 'none'
+  return {
+    $schema: 'https://opencode.ai/theme.json',
+    theme: {
+      primary: t.accent, secondary: t.link, accent: t.diagram, error: t.diffRemoved, warning: t.path, success: t.diffAdded, info: t.heading,
+      text: t.codeText, textMuted: t.codeComment, background: bg ?? 'none', backgroundPanel: panel, backgroundElement: element,
+      border: t.tableRule, borderActive: t.accent, borderSubtle: t.rule,
+      diffAdded: t.diffAdded, diffRemoved: t.diffRemoved, diffContext: t.codeComment, diffHunkHeader: t.diagram,
+      diffHighlightAdded: t.diffAdded, diffHighlightRemoved: t.diffRemoved,
+      diffAddedBg: bg ? mix(bg, t.diffAdded, 0.15) : 'none', diffRemovedBg: bg ? mix(bg, t.diffRemoved, 0.15) : 'none', diffContextBg: panel,
+      diffLineNumber: t.codeComment, diffAddedLineNumberBg: bg ? mix(bg, t.diffAdded, 0.25) : 'none', diffRemovedLineNumberBg: bg ? mix(bg, t.diffRemoved, 0.25) : 'none',
+      markdownText: t.codeText, markdownHeading: t.heading, markdownLink: t.link, markdownLinkText: t.link, markdownCode: t.inlineCode,
+      markdownBlockQuote: t.quote, markdownEmph: t.emphasis, markdownStrong: t.strong, markdownHorizontalRule: t.rule,
+      markdownListItem: t.bullet, markdownListEnumeration: t.bullet, markdownImage: t.link, markdownImageText: t.link, markdownCodeBlock: t.codeText,
+      syntaxComment: t.codeComment, syntaxKeyword: t.codeFlag, syntaxFunction: t.codeCommand, syntaxVariable: t.emphasis, syntaxString: t.codeString,
+      syntaxNumber: t.number, syntaxType: t.codeCommand, syntaxOperator: t.codeFlag, syntaxPunctuation: t.codeText,
+    },
+  }
+}
+const opencodeThemes = cc.PRESET_NAMES.filter(n => cc.PRESETS[n].codeText)
+mkdirSync(join(opencode, 'themes'), { recursive: true })
+for (const name of opencodeThemes) writeFileSync(join(opencode, `themes/prismantis-${name}.json`), `${JSON.stringify(opencodeTheme(cc.PRESETS[name], cc.PRESET_BACKGROUNDS[name]), null, 2)}\n`)
+writeFileSync(join(opencode, 'package.json'), `${JSON.stringify({ name: manifest.name, version: manifest.version, description: 'Themeable OpenCode replies: prismantis themes, colored figure blocks, and a session note that gets tables, diagrams and figures into replies.', type: 'module', license: 'MIT', exports: { '.': './server.js', './tui': './tui.js' } }, null, 2)}\n`)
+writeFileSync(join(opencode, 'README.md'), [
+  '# prismantis for OpenCode',
+  '',
+  `OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode draws \`\`\`figure blocks in color, gives OpenCode the same session note as Claude Code, so replies come back with tables, diagrams and figures, and ships ${opencodeThemes.length} prismantis themes that color code and prose.`,
+  '',
+  '## Install',
+  '',
+  'Needs OpenCode 2.2.5 or later.',
+  '',
+  '```bash',
+  `opencode plugin add 'github:NahumLitvin/prismantis#v${manifest.version}::path:opencode'`,
+  '```',
+  '',
+  'Run `/prismantis-themes` to install the themes, and pick one in settings > Theme. `/prismantis` prints the demo.',
+  '',
+  '## What works',
+  '',
+  '| Feature | OpenCode |',
+  '|---|---|',
+  '| The session note: tables, diagrams and figures in replies | ✓ |',
+  '| Code, headings, bold, italic, quotes, lists and links in the theme colors | ✓ |',
+  '| Figures drawn with their colors | ✓ |',
+  '| Mermaid flowchart, sequence, state, gantt, gitGraph and timeline (drawn by OpenCode) | ✓ |',
+  '| xychart bar and line charts, pie | |',
+  '| Copy buttons, tool rows, diff cards, prompt styles, alert boxes, footnotes, right-to-left text | |',
+  '',
+  'This folder is generated from the Claude Code source by `npm --prefix scripts run build:codex`. Edit the source, not these files.',
+  '',
+].join('\n'))
