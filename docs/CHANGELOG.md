@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.39.0] - 2026-11-01
+
+### Added
+
+- prismantis runs in OpenCode 2.2.5 and later: figure blocks drawn in color from the active theme, 16 themes for code and prose (`/prismantis-themes` installs them), the session note and `/prismantis`. Install steps are in [opencode/README.md](https://github.com/NahumLitvin/prismantis/blob/main/opencode/README.md) ([#334](https://github.com/NahumLitvin/prismantis/pull/334)).
+- New options `promptBorderColor` and `promptTextColor` color the frame, `You ⬤` label and text of your prompt bubble without changing diff or heading colors. Left empty, nothing changes. Thanks @nick4eva ([#331](https://github.com/NahumLitvin/prismantis/pull/331)).
+- New option `textCopyButtons`: set it to `false` to drop the copy buttons on lists, quotes and alerts and keep the ones on code, tables, diagrams and the whole reply. Thanks @nick4eva ([#332](https://github.com/NahumLitvin/prismantis/pull/332)).
+
+### Fixed
+
+- `▣ png` on a figure or diagram pastes it in the theme's colors instead of one gray ([#329](https://github.com/NahumLitvin/prismantis/pull/329)).
+
 ## [0.38.2] - 2026-10-30
 
 ### Fixed
