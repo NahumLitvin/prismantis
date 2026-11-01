@@ -977,6 +977,24 @@ test('promptFillColor and replyFillColor set the fills of the bubbles', { option
   await reply.unmount()
 })
 
+test('promptBorderColor and promptTextColor set the frame, label and text of your bubble and leave the diff green alone', { options: { promptBorderColor: '#a05a4a', promptTextColor: '#cad3f5' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(prompt('how many frog raids?', 'composer', surface))
+    expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.borderColor).toBe('#a05a4a')
+    expect((await ui.find({ type: 'Text', text: /^You {2}⬤ $/ }))?.props.color).toBe('#a05a4a')
+    expect((await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color).toBe('#cad3f5')
+    await ui.unmount()
+  }
+  expect(resolveStyle({ promptBorderColor: '#a05a4a' }).theme.diffAdded).toBe(t.diffAdded)
+})
+
+test('a bubble keeps the theme green frame and heading text while promptBorderColor and promptTextColor are empty', { options: { promptBorderColor: '', promptTextColor: '' } }, async $ => {
+  const ui = await $.ui.mount(prompt('how many frog raids?'))
+  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.borderColor).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color).toBe(t.heading)
+  await ui.unmount()
+})
+
 test('replyStyle solid draws no frame on a code block, so a mouse selection copies only the code', { options: { replyStyle: 'solid' } }, async $ => {
   const ui = await $.ui.mount(answer('```bash\nls -la\n```'))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle !== undefined)).toBe(false)

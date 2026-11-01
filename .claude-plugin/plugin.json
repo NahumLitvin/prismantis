@@ -310,6 +310,18 @@
       "description": "Fill behind your prompts with promptStyle bubble. Hex, rgb(), ansi256() or a name. Empty uses a deep shade of the theme's green, a pale one in a light theme.",
       "default": ""
     },
+    "promptBorderColor": {
+      "type": "string",
+      "title": "Your bubble frame",
+      "description": "Frame and You ⬤ label of your prompts with promptStyle bubble, and the hue of its default fill. Hex, rgb(), ansi256() or a name. Empty uses the theme's green (the diff added color).",
+      "default": ""
+    },
+    "promptTextColor": {
+      "type": "string",
+      "title": "Your bubble text",
+      "description": "Text of your prompts with promptStyle bubble. Hex, rgb(), ansi256() or a name. Empty uses the heading color, or the code text color where the heading color would not read on the fill.",
+      "default": ""
+    },
     "replyFillColor": {
       "type": "string",
       "title": "Claude's bubble fill",
