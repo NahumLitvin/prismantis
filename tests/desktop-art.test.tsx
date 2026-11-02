@@ -49,3 +49,10 @@ test('the monospaced face starts at Claude Code 2.1.299', () => {
   const versions = ['2.1.287', '2.1.296', '2.1.299', '2.1.300-dev', '2.2.0', '1.9.999', 'dev', undefined]
   expect(versions.map(takesMonoText)).toEqual([false, false, true, true, true, false, false, false])
 })
+
+for (const [surface, base, note] of [['terminal', '2.1.299', undefined], ['desktop', '2.1.299', 'figure is 100 cols, terminal is 86'], ['desktop', '2.1.296', undefined]] as const) test(`a 100 column figure in a 110 column viewport on ${surface} with Claude Code ${base} ${note ? 'stays code, since the monospaced face fits fewer cells' : 'draws'}`, async ($, on) => {
+  claudeAt(on, base)
+  const ui = await $.ui.mount({ ...reply(`\`\`\`figure\n{accent:${'─'.repeat(100)}}\n\`\`\``, surface), viewport: { columns: 110, rows: 40 } })
+  expect((await ui.find({ type: 'Text', text: /^figure is \d+ cols, terminal is \d+$/ }))?.text).toBe(note)
+  await ui.unmount()
+})
