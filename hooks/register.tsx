@@ -55,7 +55,12 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 const expandedCalls = new Set<string>()
 const readOnlyCalls = new Set<string>()
 
-const columnsOf = (viewport?: { columns?: number }) => Math.max(20, (viewport?.columns ?? 100) - 4)
+const DESKTOP_ROOM = 0.84
+
+const columnsOf = (viewport: { columns?: number } | undefined, style: Pick<Style, 'monoFace'>) => {
+  const reported = viewport?.columns ?? 100
+  return Math.max(20, (style.monoFace ? Math.floor(reported * DESKTOP_ROOM) : reported) - 4)
+}
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
 const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
@@ -794,7 +799,7 @@ export const register: Register = (on, options) => {
     if (found) {
       const el = $.ui.resolve(e)
       const base = { ...forSurface(style, e, await linkReach($, probes, style)), copyButtons: false, pathLinks: false, images: await imagesOn($, probes, e.surface) }
-      return <el.Box flexDirection="column" rowGap={1}>{drawSetup($, el, base, options, found, columnsOf(e.viewport))}</el.Box>
+      return <el.Box flexDirection="column" rowGap={1}>{drawSetup($, el, base, options, found, columnsOf(e.viewport, base))}</el.Box>
     }
     const blocks = parseCached(e.props.text)
     if (blocks.length === 0) return next(e)
@@ -805,7 +810,7 @@ export const register: Register = (on, options) => {
     const pictures = await picturesOf($, style, probes, e.surface, blocks)
     const open = await read($, unfolded)
     const surfaceStyle = { ...(await withFoundPaths($, pathChecks, forSurface(style, e, reach), blocks)), images: await imagesOn($, probes, e.surface) }
-    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport), math, pictures, undefined, open, { id: e.requestId, press: reach.marks })}</Box>
+    return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport, surfaceStyle), math, pictures, undefined, open, { id: e.requestId, press: reach.marks })}</Box>
   })
 
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
@@ -817,7 +822,7 @@ export const register: Register = (on, options) => {
     if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
     const el = $.ui.resolve(e)
     const drawn = forSurface(style, e, await linkReach($, probes, style))
-    const columns = columnsOf(e.viewport)
+    const columns = columnsOf(e.viewport, drawn)
     const open = await read($, unfolded)
     const paste: DrawPaste = (body, key) => {
       const lines = body.split('\n')
@@ -847,7 +852,7 @@ export const register: Register = (on, options) => {
     const open = await read($, unfolded)
     const reply = blocks.length > 1 || hasRtl(e.props.text) ? e.props.text : undefined
     const corner = reply !== undefined && markerRoom(surfaceStyle) > 0
-    const columns = columnsOf(e.viewport)
+    const columns = columnsOf(e.viewport, surfaceStyle)
     const framed = replyStyleFor(surfaceStyle, e.props.text)
     const drawn = drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columns - replyRoom(framed), math, pictures, reply, open, { id: e.requestId, press: reach.marks })
     return renderReply(el, framed, drawn, e.props.isFirstOfReply === true, columns, corner)
