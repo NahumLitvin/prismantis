@@ -1,6 +1,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { artFace, cells, graphemes, heldLtr, mirrored, remember, width } from './render'
+import { cells, graphemes, width } from './layout'
+import { artFace, heldLtr, mirrored, remember } from './render'
 import { FIGURE_ROLES } from './markdown'
 import { asIs, hasRtl, holdEngine, holdText, holdVisual, led } from './rtl'
 import type { Style, Theme } from './theme'

@@ -4,7 +4,7 @@ import { expect, test } from 'claude-code/testing'
 import { FIGURE_GLYPHS, FIGURE_HINT, FIGURE_MAX_COLUMNS, FIGURE_MAX_LINES, FIGURE_SAFE_COLUMNS, checkFigure, figureRoleColors, figureRuns, figureText, isFigureLang, reframe } from '../hooks/figure'
 import { FIGURE_ROLES } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
-import { width } from '../hooks/render'
+import { width } from '../hooks/layout'
 
 const lines = (text: string) => text.split('\n')
 

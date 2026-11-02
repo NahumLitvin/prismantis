@@ -1,5 +1,5 @@
 import { ratexColor } from './latex'
-import { cells, width } from './render'
+import { cells, width } from './layout'
 import { holdVisual } from './rtl'
 
 export const MAC_TABLE_COPY = `
