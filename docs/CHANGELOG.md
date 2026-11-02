@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.39.1] - 2026-11-02
+
+### Fixed
+
+- In the Claude desktop app, tables keep the style picked in `/prismantis setup` and no longer break apart or lose text at their right edge: every `tableStyle` draws its lines as thin colored lines, a wide table fits the reply, and long cells wrap inside their column. Banner and `---` rules draw as one line, and a wrapped list item keeps its marker on its first line. Thanks @b33eep ([#333](https://github.com/NahumLitvin/prismantis/pull/333)).
+- In the Claude desktop app from Claude Code 2.1.299, mermaid diagrams and figures draw in the app's monospaced face, so boxes, arrows and axes line up, and they are laid out to the room that face really has, so they no longer run past the right edge. Thanks @CodingJinxx ([#279](https://github.com/NahumLitvin/prismantis/pull/279), [#333](https://github.com/NahumLitvin/prismantis/pull/333)).
+
 ## [0.39.0] - 2026-11-01
 
 ### Added
