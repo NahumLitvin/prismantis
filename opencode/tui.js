@@ -5,36 +5,18 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bold, fg, StyledText, TextRenderable } from "@opentui/core";
 
+// ../hooks/layout.ts
+var WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}\u20E3]|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u;
+var segmenter = new Intl.Segmenter();
+var graphemes = (s) => [...segmenter.segment(s)].map((g) => g.segment);
+var cells = (s) => /^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap((g) => WIDE.test(g) ? [g, ""] : [g]);
+
 // ../hooks/markdown.ts
 var FIGURE_ROLES = ["accent", "warn", "ok", "note", "dim", "strong"];
 var ROLE_MARKUP = new RegExp(`\\{(?:${FIGURE_ROLES.join("|")}):([^{}]*)\\}`, "g");
 var scriptMap = (from, to) => new Map(Array.from(from).map((c, i) => [c, Array.from(to)[i]]));
 var SUP = scriptMap("0123456789+-\u2212=()niabcdefghjklmoprstuvwxyzABDEGHIJKLMNOPRTUVW", "\u2070\xB9\xB2\xB3\u2074\u2075\u2076\u2077\u2078\u2079\u207A\u207B\u207B\u207C\u207D\u207E\u207F\u2071\u1D43\u1D47\u1D9C\u1D48\u1D49\u1DA0\u1D4D\u02B0\u02B2\u1D4F\u02E1\u1D50\u1D52\u1D56\u02B3\u02E2\u1D57\u1D58\u1D5B\u02B7\u02E3\u02B8\u1DBB\u1D2C\u1D2E\u1D30\u1D31\u1D33\u1D34\u1D35\u1D36\u1D37\u1D38\u1D39\u1D3A\u1D3C\u1D3E\u1D3F\u1D40\u1D41\u2C7D\u1D42");
 var SUB = scriptMap("0123456789+-\u2212=()aehijklmnoprstuvx", "\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089\u208A\u208B\u208B\u208C\u208D\u208E\u2090\u2091\u2095\u1D62\u2C7C\u2096\u2097\u2098\u2099\u2092\u209A\u1D63\u209B\u209C\u1D64\u1D65\u2093");
-
-// ../hooks/render.tsx
-var WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}\u20E3]|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u;
-var segmenter = new Intl.Segmenter();
-var graphemes = (s) => [...segmenter.segment(s)].map((g) => g.segment);
-var cells = (s) => /^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap((g) => WIDE.test(g) ? [g, ""] : [g]);
-var HTTP_LINKS_FROM = [2, 1, 289];
-var EDITOR_LINKS_FROM = [2, 1, 294];
-var CLICKABLE_MARKS_FROM = [2, 1, 295];
-var releaseFrom = (from) => (base) => {
-  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(base ?? "");
-  if (!m) return false;
-  const version = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const at = version.findIndex((n, i) => n !== from[i]);
-  return at === -1 || version[at] > from[at];
-};
-var takesHttpLinks = releaseFrom(HTTP_LINKS_FROM);
-var takesEditorLinks = releaseFrom(EDITOR_LINKS_FROM);
-var takesClickableMarks = releaseFrom(CLICKABLE_MARKS_FROM);
-var PART = String.raw`[\p{L}\p{N}_@+-]+`;
-var NAME = String.raw`\.?${PART}(?:\.${PART})*`;
-var LOOSE_PATH = new RegExp(String.raw`(?<![\p{L}\p{N}_/\\.:~@+-])(?:[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?|${NAME}(?:\/${NAME})*\/(?:${NAME})?|${PART}(?:\.${PART})+)(?![\p{L}\p{N}_/\\@+-]|\.[\p{L}\p{N}])`, "gu");
-var BOX_INDENT = 2;
-var SHELL_FRAME = BOX_INDENT + 4;
 
 // ../hooks/figure.tsx
 var FIGURE_MAX_COLUMNS = 100;
