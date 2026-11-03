@@ -234,7 +234,7 @@ const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null>
 
 type LinkReach = { http: boolean; editor: boolean; marks: boolean; monoText: boolean; files: string | null; paths: boolean }
 
-type Probes = { terminal?: Promise<Terminal | null>; htmlCopy?: Promise<ClipboardBackend | null>; links?: Promise<LinkReach>; images?: Promise<boolean> }
+type Probes = { terminal?: Promise<Terminal | null>; multiplexed?: Promise<boolean>; htmlCopy?: Promise<ClipboardBackend | null>; links?: Promise<LinkReach>; images?: Promise<boolean> }
 
 const terminalEnv = async ($: EngineInterface): Promise<TerminalEnv> => ({
   FORCE_HYPERLINK: await $.env.get('FORCE_HYPERLINK'),
@@ -309,13 +309,17 @@ const fileCard = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']
   return renderDiffCard(el, drawn(), output, folder($, el, await read($, unfolded), press), id, columns)
 }
 
+const multiplexed = async ($: EngineInterface): Promise<boolean> => Boolean(await $.env.get('TMUX') || await $.env.get('STY') || await $.env.get('ZELLIJ'))
+
 const probe = async ($: EngineInterface, style: Style, probes: Probes): Promise<Terminal | null> => {
   probes.terminal ??= applyRtl($, style)
   const terminal = await probes.terminal
   probes.htmlCopy ??= htmlBackend($)
-  const before = style.htmlCopy
+  probes.multiplexed ??= multiplexed($).catch(() => false)
+  const { htmlCopy, smallDot } = style
   style.htmlCopy = await probes.htmlCopy
-  if (style.htmlCopy !== before) $.ui.invalidate('ui.render')
+  style.smallDot = await probes.multiplexed
+  if (style.htmlCopy !== htmlCopy || style.smallDot !== smallDot) $.ui.invalidate('ui.render')
   return terminal
 }
 

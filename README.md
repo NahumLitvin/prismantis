@@ -426,6 +426,8 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 - **No `⧉ html` on tables:** you're over SSH, in the desktop app or VS Code, or on Linux with no graphical session. `⧉ md` and `⧉ art` still work.
 - **`⧉ html` copied plain text only:** CopyQ isn't running, or the clipboard helper failed. The toast says why.
 - **Clicking a copy button selects the word "copy":** your terminal copies on select. Use `/prismantis copy`.
+- **Fills look flat gray in tmux:** Claude Code draws 256 colors inside tmux, which turns dark fills gray. Set `CLAUDE_CODE_TMUX_TRUECOLOR=1` in the environment Claude Code starts in.
+- **`You ●` instead of `You ⬤` in tmux, screen or Zellij:** on purpose. The large dot can draw across two cells in the terminal outside, which leaves half dots behind and over the next letter.
 
 ## Limits
 

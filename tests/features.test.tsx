@@ -11,6 +11,7 @@ import { ISSUE_HINT, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, setupParts,
 import type { Theme } from '../hooks/theme'
 import { BAND_STEP, BUBBLE_STEP, EDIT_NOTES, PRISM_COLORS, bashEdits, bubbleFill, replyFill, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, tint, wordTint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 import { columnWidths } from '../hooks/layout'
+import { startSession } from './clipboard-env'
 import { claudeAt } from './claude-version'
 
 const t = PRESETS['catppuccin-mocha']
@@ -898,6 +899,28 @@ test('replyStyle auto draws replies as a bubble by default, while your prompts a
   const ui = await $.ui.mount(answer('The test passes now.'))
   expect((await ui.find({ type: 'Text', text: /^⬤ {2}Claude$/ }))?.props.color).toBe('claude')
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(true)
+  await ui.unmount()
+})
+
+for (const [name, env] of [['tmux', { TMUX: '/tmp/tmux-501/default,1,0' }], ['screen', { STY: '1234.pts-0.host' }], ['zellij', { ZELLIJ: '0' }]] as const) {
+  test(`under ${name} the chat heads use the one-cell dot, since the terminal outside may draw the large one across two cells`, async ($, on) => {
+    mock.env(on, env)
+    await startSession($, on)
+    const you = await $.ui.mount(prompt('how many frog raids?'))
+    expect((await you.find({ type: 'Text', text: /^You {2}● $/ }))?.props.color).toBe(t.diffAdded)
+    await you.unmount()
+    const claude = await $.ui.mount(answer('The test passes now.'))
+    expect((await claude.find({ type: 'Text', text: /^● {2}Claude$/ }))?.props.color).toBe('claude')
+    expect((await claude.findAll({ type: 'Text' })).filter(n => n.text?.includes('⬤'))).toEqual([])
+    await claude.unmount()
+  })
+}
+
+test('outside a terminal multiplexer the chat heads keep the large dot', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'ghostty' })
+  await startSession($, on)
+  const ui = await $.ui.mount(answer('The test passes now.'))
+  expect(await ui.find({ type: 'Text', text: /^⬤ {2}Claude$/ })).toBeDefined()
   await ui.unmount()
 })
 
