@@ -396,6 +396,13 @@
       "description": "Draw ```mermaid blocks as colored box art sized to the terminal. Off leaves the code as written.",
       "default": true
     },
+    "folds": {
+      "type": "string",
+      "title": "Long blocks",
+      "description": "How long code blocks, diff cards, new-file previews and pasted text in your prompts start. closed: folded to their first lines with a +N more lines button. open: drawn whole (up to each one's line ceiling) with a show less button. Drawing them whole costs more nodes and time on every redraw.",
+      "default": "closed",
+      "options": ["closed", "open"]
+    },
     "copyButtons": {
       "type": "boolean",
       "title": "Copy buttons",

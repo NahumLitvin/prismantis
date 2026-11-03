@@ -306,7 +306,7 @@ const fileCard = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']
   const press = (await linkReach($, probes, style)).marks
   if (leftToEngine(output, press)) return undefined
   await locate($, style)
-  return renderDiffCard(el, drawn(), output, folder($, el, await read($, unfolded), press), id, columns)
+  return renderDiffCard(el, drawn(), output, folder($, el, await read($, unfolded), press, style.folds === 'open'), id, columns)
 }
 
 const multiplexed = async ($: EngineInterface): Promise<boolean> => Boolean(await $.env.get('TMUX') || await $.env.get('STY') || await $.env.get('ZELLIJ'))
@@ -338,11 +338,12 @@ const richCommand = (style: Style, backend: ClipboardBackend, content: string, r
 
 const offers = (style: Style, rich?: (() => string) | 'png'): boolean => !rich || (rich === 'png' ? drawsImages(style.htmlCopy) : !!style.htmlCopy)
 
-const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, open?: string[], faces = false): Fold => (id, hidden, key, look) => {
+const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, open?: string[], faces = false, startOpen = false): Fold => (id, hidden, key, look) => {
   if (!open) return null
-  const folded = !open.includes(id)
+  const toggled = open.includes(id)
+  const folded = startOpen ? toggled : !toggled
   const label = folded ? look?.label ?? `+${hidden} more lines` : 'show less'
-  const toggle = () => update($, unfolded, ids => (folded ? [...ids, id].slice(-500) : ids.filter(x => x !== id)))
+  const toggle = () => update($, unfolded, ids => (toggled ? ids.filter(x => x !== id) : [...ids, id].slice(-500)))
   if (!faces) return { folded, faced: false, element: <el.Button key={key} variant="secondary" label={label} onPress={toggle} /> }
   const element = look?.face ? <el.Button key={key} plain label={label} onPress={toggle}>{look.face(folded)}</el.Button> : <el.Button key={key} variant="secondary" label={label} onPress={toggle} />
   return { folded, faced: look?.face !== undefined, element, around: (rows, hover) => <el.Button key={`${key}.rows`} plain label={label} hover={hover} onPress={toggle}>{rows}</el.Button> }
@@ -383,7 +384,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     }
   }
   const tip = notes?.press ? noteTip(blocks, text => void $.ui.toast(text)) : undefined
-  const elements = renderBlocks(el, notes ? { ...style, noteKey: instanceKey(notes.id) } : style, blocks, columns, drawMath(el, style, blocks, drawn), copy, folder($, el, open), tip)
+  const elements = renderBlocks(el, notes ? { ...style, noteKey: instanceKey(notes.id) } : style, blocks, columns, drawMath(el, style, blocks, drawn), copy, folder($, el, open, false, style.folds === 'open'), tip)
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
   if (!button) return elements
   return [...elements, style.copyButtonStyle === 'hover' ? replyMarker(el, button, notes?.id) : <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>]
@@ -678,7 +679,7 @@ export const register: Register = (on, options) => {
         const above = !hasShellOutput(output) ? null : quiet ? renderShellResult(el, style, output) : await next({ ...e, props: { ...e.props, output } })
         firstEdit ??= e.props.tool_use_id
         const notes = editNotes(edits, firstEdit === e.props.tool_use_id, shellCommands.get(e.props.tool_use_id))
-        const drawn = renderBashEdits(el, forSurface(cards(), e, await linkReach($, probes, style)), edits, folder($, el, await read($, unfolded), (await linkReach($, probes, style)).marks), e.props.tool_use_id, above !== null, notes, e.viewport?.columns)
+        const drawn = renderBashEdits(el, forSurface(cards(), e, await linkReach($, probes, style)), edits, folder($, el, await read($, unfolded), (await linkReach($, probes, style)).marks, style.folds === 'open'), e.props.tool_use_id, above !== null, notes, e.viewport?.columns)
         return above === null ? drawn : <el.Box flexDirection="column">{above}{drawn}</el.Box>
       }
       if (!quiet) return next(e)
@@ -831,7 +832,7 @@ export const register: Register = (on, options) => {
     const paste: DrawPaste = (body, key) => {
       const lines = body.split('\n')
       const title = `pasted text · ${lines.length} lines`
-      const toggle = folder($, el, open)(`${e.requestId}:${key}`, lines.length, key, { label: title })
+      const toggle = folder($, el, open, false, style.folds === 'open')(`${e.requestId}:${key}`, lines.length, key, { label: title })
       const opened = toggle?.folded === false
       return (
         <el.Box key={key} borderStyle="double" borderColor={drawn.theme.codeComment} paddingX={1} flexDirection="column" alignSelf="flex-start">
