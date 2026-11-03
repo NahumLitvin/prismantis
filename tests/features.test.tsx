@@ -1039,6 +1039,100 @@ test('alert color options set each alert kind, and an empty one keeps the termin
   }
 })
 
+test('runningDot blink blinks a running tool\'s dot while the call runs and stops after it', { options: { toolStyle: 'classic', runningDot: 'blink' } }, async ($, on) => {
+  engine(on)
+  const clock = mock.clock(on)
+  let finish = () => {}
+  on('tool.call', () => new Promise(resolve => { finish = () => resolve({ result: 'done' }) }))
+  const running = $.tool.call({ tool: 'Bash', command: 'make test' })
+  await clock.settle()
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'b-1'), isRunning: true } })
+  const dot = async () => (await row.find({ type: 'Text', text: /^[●◌ ]$/ }))?.children?.[0]
+  const seen = [await dot()]
+  for (let i = 0; i < 3; i++) {
+    await clock.advance(500)
+    seen.push(await dot())
+  }
+  expect(seen).toEqual(['●', ' ', '●', ' '])
+  finish()
+  await running
+  await clock.advance(500)
+  expect(await dot()).toBe('●')
+  await row.unmount()
+})
+
+test('runningDot blink stops blinking when a running call is refused or interrupted', { options: { toolStyle: 'classic', runningDot: 'blink' } }, async ($, on) => {
+  engine(on)
+  const clock = mock.clock(on)
+  on('tool.call', () => Promise.reject(new Error('interrupted')))
+  await $.tool.call({ tool: 'Bash', command: 'make test' }).catch(() => undefined)
+  await clock.advance(500)
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'x-1'), isRunning: true } })
+  const dot = async () => (await row.find({ type: 'Text', text: /^[●◌ ]$/ }))?.children?.[0]
+  const seen = [await dot()]
+  await clock.advance(500)
+  seen.push(await dot())
+  expect(seen).toEqual(['●', '●'])
+  await row.unmount()
+})
+
+test('runningDot ring keeps the still ◌ on a running tool', { options: { toolStyle: 'classic' } }, async ($, on) => {
+  engine(on)
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'r-1'), isRunning: true } })
+  expect(await row.find({ type: 'Text', text: /^◌$/ })).toBeDefined()
+  await row.unmount()
+})
+
+test('unreadPrompts greys only the new bubble of a prompt sent again, and lets a held prompt go after two turns', { options: { unreadPrompts: true, promptStyle: 'wide' } }, async ($, on) => {
+  const clock = mock.clock(on)
+  mock.env(on, {})
+  on('turn.start', (_, e) => ({ turnId: e.turnId }) as never)
+  on('turn.step', async function* () {
+    yield { kind: 'text', index: 0, text: 'ok' } as never
+  })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  const old = await $.ui.mount({ ...prompt('yes'), requestId: 'yes-1' })
+  const ink = async (ui: typeof old) => (await ui.find({ type: 'Text', text: /^yes$/ }))?.props.color
+  expect(await ink(old), 'old before').toBe(t.heading)
+  await clock.advance(60000)
+  await $.prompt.submit({ text: 'yes', wait: false, origin: { kind: 'composer' } })
+  const again = await $.ui.mount({ ...prompt('yes'), requestId: 'yes-2' })
+  expect(await ink(again), 'again').toBe(t.codeComment)
+  expect(await ink(old), 'old after').toBe(t.heading)
+  await $.prompt.submit({ text: 'later', wait: true, turnId: 'busy', origin: { kind: 'composer' } } as never)
+  const later = await $.ui.mount({ ...prompt('later'), requestId: 'later-1' })
+  const laterInk = async () => (await later.find({ type: 'Text', text: /^later$/ }))?.props.color
+  expect(await laterInk(), 'later held').toBe(t.codeComment)
+  for (const turnId of ['a', 'b']) await $.turn.start({ turnId, text: 'something else' } as never)
+  for await (const _ of $.turn.step({ turnId: 'b', index: 0, model: 'claude-test' } as never)) break
+  await clock.advance(500)
+  expect(await laterInk(), 'later released').toBe(t.heading)
+  for (const ui of [old, again, later]) await ui.unmount()
+})
+
+test('unreadPrompts draws a prompt in the comment grey, blinking to the rule color, until the model\'s first chunk, and leaves slash commands alone', { options: { unreadPrompts: true, promptStyle: 'wide' } }, async ($, on) => {
+  const clock = mock.clock(on)
+  mock.env(on, {})
+  on('turn.step', async function* () {
+    yield { kind: 'text', index: 0, text: 'on it' } as never
+  })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  await $.prompt.submit({ text: 'how many frog raids?', wait: false, origin: { kind: 'composer' } })
+  const ui = await $.ui.mount(prompt('how many frog raids?'))
+  const ink = async () => (await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color
+  expect(await ink()).toBe(t.codeComment)
+  await clock.advance(500)
+  expect(await ink()).toBe(t.rule)
+  for await (const _ of $.turn.step({ turnId: 't-1', index: 0, model: 'claude-test' } as never)) break
+  await clock.advance(500)
+  expect(await ink()).toBe(t.heading)
+  await ui.unmount()
+  await $.prompt.submit({ text: '/help', command: { name: 'help', args: '' }, wait: false, origin: { kind: 'composer' } } as never)
+  const other = await $.ui.mount(prompt('a prompt nobody sent'))
+  expect((await other.find({ type: 'Text', text: /^a prompt nobody sent$/ }))?.props.color).toBe(t.heading)
+  await other.unmount()
+})
+
 test('replyBorderColor sets the frame and label of Claude\'s bubble, and empty keeps Claude\'s orange', { options: { replyBorderColor: '#c4b7dc', replyStyle: 'framed' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(answer('The test passes now.', true, surface))
@@ -2980,98 +3074,4 @@ test('a narrow pane adds its width to the render hint, a wide one does not', asy
   }
   expect(seen[0]?.some(c => c.includes('70 columns'))).toBe(true)
   expect(seen[1]?.some(c => c.includes('columns wide'))).toBe(false)
-})
-
-test('runningDot blink blinks a running tool\'s dot while the call runs and stops after it', { options: { toolStyle: 'classic', runningDot: 'blink' } }, async ($, on) => {
-  engine(on)
-  const clock = mock.clock(on)
-  let finish = () => {}
-  on('tool.call', () => new Promise(resolve => { finish = () => resolve({ result: 'done' }) }))
-  const running = $.tool.call({ tool: 'Bash', command: 'make test' })
-  await clock.settle()
-  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'b-1'), isRunning: true } })
-  const dot = async () => (await row.find({ type: 'Text', text: /^[●◌ ]$/ }))?.children?.[0]
-  const seen = [await dot()]
-  for (let i = 0; i < 3; i++) {
-    await clock.advance(500)
-    seen.push(await dot())
-  }
-  expect(seen).toEqual(['●', ' ', '●', ' '])
-  finish()
-  await running
-  await clock.advance(500)
-  expect(await dot()).toBe('●')
-  await row.unmount()
-})
-
-test('runningDot blink stops blinking when a running call is refused or interrupted', { options: { toolStyle: 'classic', runningDot: 'blink' } }, async ($, on) => {
-  engine(on)
-  const clock = mock.clock(on)
-  on('tool.call', () => Promise.reject(new Error('interrupted')))
-  await $.tool.call({ tool: 'Bash', command: 'make test' }).catch(() => undefined)
-  await clock.advance(500)
-  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'x-1'), isRunning: true } })
-  const dot = async () => (await row.find({ type: 'Text', text: /^[●◌ ]$/ }))?.children?.[0]
-  const seen = [await dot()]
-  await clock.advance(500)
-  seen.push(await dot())
-  expect(seen).toEqual(['●', '●'])
-  await row.unmount()
-})
-
-test('runningDot ring keeps the still ◌ on a running tool', { options: { toolStyle: 'classic' } }, async ($, on) => {
-  engine(on)
-  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'r-1'), isRunning: true } })
-  expect(await row.find({ type: 'Text', text: /^◌$/ })).toBeDefined()
-  await row.unmount()
-})
-
-test('unreadPrompts greys only the new bubble of a prompt sent again, and lets a held prompt go after two turns', { options: { unreadPrompts: true, promptStyle: 'wide' } }, async ($, on) => {
-  const clock = mock.clock(on)
-  mock.env(on, {})
-  on('turn.start', (_, e) => ({ turnId: e.turnId }) as never)
-  on('turn.step', async function* () {
-    yield { kind: 'text', index: 0, text: 'ok' } as never
-  })
-  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
-  const old = await $.ui.mount({ ...prompt('yes'), requestId: 'yes-1' })
-  const ink = async (ui: typeof old) => (await ui.find({ type: 'Text', text: /^yes$/ }))?.props.color
-  expect(await ink(old), 'old before').toBe(t.heading)
-  await clock.advance(60000)
-  await $.prompt.submit({ text: 'yes', wait: false, origin: { kind: 'composer' } })
-  const again = await $.ui.mount({ ...prompt('yes'), requestId: 'yes-2' })
-  expect(await ink(again), 'again').toBe(t.codeComment)
-  expect(await ink(old), 'old after').toBe(t.heading)
-  await $.prompt.submit({ text: 'later', wait: true, turnId: 'busy', origin: { kind: 'composer' } } as never)
-  const later = await $.ui.mount({ ...prompt('later'), requestId: 'later-1' })
-  const laterInk = async () => (await later.find({ type: 'Text', text: /^later$/ }))?.props.color
-  expect(await laterInk(), 'later held').toBe(t.codeComment)
-  for (const turnId of ['a', 'b']) await $.turn.start({ turnId, text: 'something else' } as never)
-  for await (const _ of $.turn.step({ turnId: 'b', index: 0, model: 'claude-test' } as never)) break
-  await clock.advance(500)
-  expect(await laterInk(), 'later released').toBe(t.heading)
-  for (const ui of [old, again, later]) await ui.unmount()
-})
-
-test('unreadPrompts draws a prompt in the comment grey, blinking to the rule color, until the model\'s first chunk, and leaves slash commands alone', { options: { unreadPrompts: true, promptStyle: 'wide' } }, async ($, on) => {
-  const clock = mock.clock(on)
-  mock.env(on, {})
-  on('turn.step', async function* () {
-    yield { kind: 'text', index: 0, text: 'on it' } as never
-  })
-  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
-  await $.prompt.submit({ text: 'how many frog raids?', wait: false, origin: { kind: 'composer' } })
-  const ui = await $.ui.mount(prompt('how many frog raids?'))
-  const ink = async () => (await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color
-  expect(await ink()).toBe(t.codeComment)
-  await clock.advance(500)
-  expect(await ink()).toBe(t.rule)
-  for await (const _ of $.turn.step({ turnId: 't-1', index: 0, model: 'claude-test' } as never)) break
-  await clock.advance(500)
-  expect(await ink()).toBe(t.heading)
-  await ui.unmount()
-  await $.prompt.submit({ text: '/help', command: { name: 'help', args: '' }, wait: false, origin: { kind: 'composer' } } as never)
-  const other = await $.ui.mount(prompt('a prompt nobody sent'))
-  expect((await other.find({ type: 'Text', text: /^a prompt nobody sent$/ }))?.props.color).toBe(t.heading)
-  await other.unmount()
 })
