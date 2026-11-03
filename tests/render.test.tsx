@@ -464,6 +464,15 @@ test('Prism colors Lua keywords and comments', async $ => {
   await ui.unmount()
 })
 
+test('Prism colors PHP variables, properties and comments', async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('```php\n$total = $order->sum; // app\n```'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^\$total$/ }))?.props.color).toBe(t.emphasis)
+  expect((await ui.find({ type: 'Text', text: /^sum$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^\/\/ app$/ }))?.props.italic).toBe(true)
+  await ui.unmount()
+})
+
 test('fence languages that name Prism internals fall back to plain code', async $ => {
   for (const lang of ['extend', 'toString', 'constructor', '__proto__']) {
     const ui = await $.ui.mount({ ...draw(`\`\`\`${lang}\nhello\n\`\`\``), surface: 'terminal' })
