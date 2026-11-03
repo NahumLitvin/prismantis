@@ -2647,9 +2647,11 @@ export type DrawPaste = (body: string, key: string) => RenderElement
 
 const CHAT_SHARE = 0.75
 
-const YOU_HEAD = 'You  ⬤ '
+const headDot = (style: Pick<Style, 'smallDot'>): string => (style.smallDot ? '●' : '⬤')
 
-const CLAUDE_HEAD = '⬤  Claude'
+const youHead = (style: Style): string => `You  ${headDot(style)} `
+
+const claudeHead = (style: Style): string => `${headDot(style)}  Claude`
 
 const youColor = (theme: Theme): string | undefined => theme.promptBorder ?? theme.diffAdded ?? theme.accent
 
@@ -2693,7 +2695,7 @@ const chatPrompt = (el: ElementTable, style: Style, content: RenderElement, size
   const color = youColor(style.theme)
   return (
     <el.Box flexDirection="column" width="100%" {...(size === '100%' ? {} : { alignItems: 'flex-end' as const })}>
-      <el.Text color={color} bold>{YOU_HEAD}</el.Text>
+      <el.Text color={color} bold>{youHead(style)}</el.Text>
       <el.Box borderStyle="round" borderColor={color} backgroundColor={promptFill(style.theme, style.background, color)} paddingX={1} width={size} flexShrink={0}>{content}</el.Box>
     </el.Box>
   )
@@ -2782,7 +2784,7 @@ export const renderReply = (el: ElementTable, style: Style, drawn: RenderElement
   }
   return (
     <el.Box key="msg" flexDirection="column">
-      {first ? <el.Text color={claudeColor(style.theme)} bold>{CLAUDE_HEAD}</el.Text> : null}
+      {first ? <el.Text color={claudeColor(style.theme)} bold>{claudeHead(style)}</el.Text> : null}
       {replyFrame(el, style, <el.Box flexDirection="row">{body}{room}</el.Box>, columns)}
     </el.Box>
   )
