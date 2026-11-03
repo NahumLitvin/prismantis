@@ -358,6 +358,12 @@
       "description": "Box, bar and label of > [!CAUTION] alerts. Hex, rgb(), ansi256() or a name. Empty uses the terminal's red.",
       "default": ""
     },
+    "replyBorderColor": {
+      "type": "string",
+      "title": "Claude's bubble frame",
+      "description": "Frame and ⬤ Claude label of Claude's replies with replyStyle bubble or framed. Hex, rgb(), ansi256() or a name. Empty uses Claude Code's own Claude orange.",
+      "default": ""
+    },
     "diffStyle": {
       "type": "string",
       "title": "Diff style",
