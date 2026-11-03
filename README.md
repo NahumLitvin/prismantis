@@ -325,11 +325,17 @@ What you type, at the prompt or through Remote Control, draws in the theme's col
 | `24h` | ![a prompt bubble that starts with the time it was sent](docs/clock/prompt.png) | ![a turn line that ends with the time it finished](docs/clock/turn.png) |
 | `12h` | ![a prompt bubble that starts with 5:45 PM](docs/clock/prompt-12h.png) | ![a turn line that ends with 5:45 PM](docs/clock/turn-12h.png) |
 
-`replyStyle` does the same for Claude's replies, so the two sides of the conversation read apart at a glance. Its default, `auto`, draws them as `bubble` while your prompts are a `bubble` and as `off` with any other `promptStyle`. `bubble` heads a reply with `⬤ Claude` and draws it in a rounded frame of Claude's orange, as Claude Code's theme draws it, on a midnight blue fill a step off the background, `solid` fills it to the edge with half blocks top and bottom and no frame, `framed` keeps the frame with no fill. A reply that calls tools between its sentences draws one bubble per block of text, and only the first gets `⬤ Claude`. In a theme with no colors to fill with, such as `mono`, `solid` draws the frame. `off` keeps the dot before the first line.
+`replyStyle` does the same for Claude's replies, so the two sides of the conversation read apart at a glance. Its default, `auto`, draws them as `bubble` while your prompts are a `bubble` and as `off` with any other `promptStyle`. `bubble` heads a reply with `⬤ Claude` and draws it in a rounded frame of Claude's orange, as Claude Code's theme draws it, on a midnight blue fill a step off the background, `solid` fills it to the edge with half blocks top and bottom and no frame, `framed` keeps the frame with no fill. A reply that calls tools between its sentences draws one bubble per block of text, and only the first gets `⬤ Claude`. In a theme with no colors to fill with, such as `mono`, `solid` draws the frame. `off` keeps the dot before the first line. `bubbleLabels` sets the `You ⬤` and `⬤ Claude` labels over the bubbles: `large` (the default), `small` with the dot `●`, or `off` for frames alone.
 
 | `bubble` (with `auto`) | `solid` | `framed` |
 |---|---|---|
 | ![Claude's reply under Claude in an orange frame on a filled background](docs/prompts/bubble.png) | ![Claude's reply on a filled background with no frame](docs/prompts/reply-solid.png) | ![Claude's reply in an orange frame with no fill](docs/prompts/reply-framed.png) |
+
+`bubbleLabels` sets the labels over the bubbles: `large` draws `You ⬤` and `⬤ Claude` as above, `small` swaps the ⬤ for a `●`, and `off` drops both labels and keeps the frames.
+
+| `large` (default) | `small` | `off` |
+|---|---|---|
+| ![You and Claude labels with the large dot over the prompt and reply bubbles](docs/prompts/bubble.png) | ![You and Claude labels with a small dot over the prompt and reply bubbles](docs/prompts/labels-small.png) | ![the prompt and reply bubbles with no labels over them](docs/prompts/labels-off.png) |
 
 ### Right to left
 
@@ -368,6 +374,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `listMarker` | `dots` (`•` then `◦` nested), `dash` (`-` at every level, pastes as a markdown list) | `dots` |
 | `promptStyle` | `bubble`, `wide`, `bar`, `chevron`, `off` | `bubble` |
 | `replyStyle` | `auto` (`bubble` while `promptStyle` is `bubble`, else `off`), `bubble`, `solid`, `framed`, `off` | `auto` |
+| `bubbleLabels` | `large` (`⬤`), `small` (`●`), `off` (no labels) | `large` |
 | `clock` | `off`, `24h`, `12h` | `off` |
 | `headingStyle` | `banner`, `bold`, `underline`, `uppercase` | `banner` |
 | `highlightNumbers` | `true`, `false` | `true` |
