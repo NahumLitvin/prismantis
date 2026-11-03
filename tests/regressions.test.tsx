@@ -2321,3 +2321,13 @@ test('copying a table keeps a <br> cell as one cell: a <br> in HTML, a quoted mu
   expect(tableHtml(table)).toContain('<td style="text-align: left">one<br><strong>two</strong></td>')
   expect(tableText(table)).toBe('a\tb\n"one\ntwo"\tx')
 })
+
+test('a two-node cycle with an outgoing edge falls back to its source instead of hanging', async $ => {
+  const source = 'flowchart TD\n  A --> B\n  B --> A\n  B --> C'
+  const started = Date.now()
+  expect(mermaidText(source, false, 97)).toBeNull()
+  expect(Date.now() - started).toBeLessThan(5000)
+  const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```', 97))
+  expect(await ui.find({ type: 'Text', text: /B --> C/ })).toBeDefined()
+  await ui.unmount()
+})
