@@ -603,6 +603,21 @@ test('long code blocks fold to 20 lines, open and fold back on press, and copy e
   }
 })
 
+test('folds open starts a long code block open, folds it on press and opens it again', { options: { folds: 'open' } }, async $ => {
+  for (const [surface, n] of [['terminal', 40], ['desktop', 45]] as const) {
+    const ui = await $.ui.mount({ ...draw(longCode(n)), surface })
+    const shown = async () => surface === 'desktop' ? String((await ui.find({ type: 'Code' }))!.props.source).split('\n').length : (await ui.findAll({ type: 'Text', text: /^ *\d+  $/ })).length
+    expect(await shown()).toBe(n)
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
+    await ui.press({ key: 'fold0' })
+    expect(await shown()).toBe(20)
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe(`+${n - 20} more lines`)
+    await ui.press({ key: 'fold0' })
+    expect(await shown()).toBe(n)
+    await ui.unmount()
+  }
+})
+
 test('two code blocks that differ only in where lines break fold on their own', async $ => {
   const body = Array.from({ length: 29 }, () => 'x').join('\n')
   const ui = await $.ui.mount({ ...draw(`\`\`\`text\nab\nc\n${body}\n\`\`\`\n\nand\n\n\`\`\`text\na\nbc\n${body}\n\`\`\``), surface: 'terminal' as const })
