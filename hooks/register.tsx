@@ -682,6 +682,7 @@ export const register: Register = (on, options) => {
   if (options.enabled === false) return
   const firstTheme = pickTheme(options.theme)
   const style = resolveStyle({ ...options, theme: firstTheme })
+  const here: { surface?: RenderSurface[] } = style.surfaces ? { surface: style.surfaces } : {}
   const blinker: Blinker = { tools: 0, ready: new Set(), held: new Map() }
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
@@ -709,7 +710,7 @@ export const register: Register = (on, options) => {
   }
   let firstEdit: string | undefined
   if (options.toolRows !== false) {
-    on('ui.render', { component: 'ToolGroup' }, async ($, e, next) => {
+    on('ui.render', { component: 'ToolGroup', ...here }, async ($, e, next) => {
       await locate($, style)
       for (const call of e.props.calls) noteCommand(call.tool_use_id, call.tool, call.input)
       if (quiet) for (const call of e.props.calls) if (call.tool_use_id && isReadOnlyCall(call.tool, call.input)) rememberCall(readOnlyCalls, call.tool_use_id)
@@ -720,7 +721,7 @@ export const register: Register = (on, options) => {
       const dotDark = await darkDot($, style, groupRunning(e.props))
       return renderToolGroup($.ui.resolve(e), { ...forSurface(style, e, await linkReach($, probes, style)), dotDark }, e.props.calls, e.props.isActive, e.viewport?.columns)
     })
-    on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
+    on('ui.render', { component: 'ToolUse', ...here }, async ($, e, next) => {
       await locate($, style)
       noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
@@ -729,7 +730,7 @@ export const register: Register = (on, options) => {
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
       return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), { ...style, dotDark }, e.props, e.viewport?.columns) : next(e)
     })
-    on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
+    on('ui.render', { component: 'ToolResult', ...here }, async ($, e, next) => {
       const cards = (): Style => ({ ...style, pressPreview: e.surface === 'terminal' })
       if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) return (await fileCard($, $.ui.resolve(e), e.props.output, e.props.tool_use_id, style, probes, cards, e.viewport?.columns)) ?? next(e)
       const edits = e.props.tool === 'Bash' && !e.props.isErrored ? bashEdits(e.props.output) : undefined
@@ -805,7 +806,7 @@ export const register: Register = (on, options) => {
     return { text: await setTheme($, picked, name) }
   })
 
-  on('ui.render', { component: 'TurnDuration' }, async ($, e) => {
+  on('ui.render', { component: 'TurnDuration', ...here }, async ($, e) => {
     const at = style.clock === 'off' ? undefined : endedAt(await read($, turnEnds), e.props.durationMs, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
     return renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs, time)
@@ -866,7 +867,7 @@ export const register: Register = (on, options) => {
     return {}
   })
 
-  on('ui.render', { component: 'Pane', requestId: SETUP_PANE }, async ($, e) => {
+  on('ui.render', { component: 'Pane', requestId: SETUP_PANE, ...here }, async ($, e) => {
     const steps = setupSteps(PRESET_NAMES)
     const at = Math.min(await read($, setupAt), steps.length - 1)
     const step = steps[at]!
@@ -880,10 +881,10 @@ export const register: Register = (on, options) => {
     return setupKeyboardPane($, view, await read($, setupFocus), picked.theme)
   })
 
-  on('ui.render', { component: 'InfoNotice' }, async (_$, e, next) =>
+  on('ui.render', { component: 'InfoNotice', ...here }, async (_$, e, next) =>
     mirrored(style) && hasRtl(e.props.text) && opensLatin(e.props.text) ? next({ ...e, props: { ...e.props, text: ROW_MARK_TEXT + e.props.text } }) : next(e))
 
-  on('ui.render', { component: 'CommandOutput' }, async ($, e, next) => {
+  on('ui.render', { component: 'CommandOutput', ...here }, async ($, e, next) => {
     if (e.props.isErrored) return next(e)
     if (e.props.text.includes('\u001b')) return next(e)
     const found = e.props.command === 'prismantis' ? findSetup(PRESET_NAMES, e.props.text) : undefined
@@ -904,7 +905,7 @@ export const register: Register = (on, options) => {
     return <Box flexDirection="column" rowGap={1} {...fullWidth(e.props.text)}>{drawMarkdown($, el, surfaceStyle, blocks, columnsOf(e.viewport, surfaceStyle), math, pictures, undefined, open, { id: e.requestId, press: reach.marks })}</Box>
   })
 
-  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
+  on('ui.render', { component: 'UserMessage', ...here }, async ($, e, next) => {
     const kind = e.props.origin.kind
     const own = kind === 'composer' || kind === 'bridge' || (kind === 'unclassified' && !e.props.from && !e.props.task)
     if (!own) return next(e)
@@ -930,7 +931,7 @@ export const register: Register = (on, options) => {
     return renderUserPrompt(el, drawn, e.props.text, columns, time, paste)
   })
 
-  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+  on('ui.render', { component: 'AssistantMessage', ...here }, async ($, e, next) => {
     if (e.surface === 'terminal' && e.viewport?.columns) pane = e.viewport.columns
     const blocks = parseCached(e.props.text)
     if (blocks.length === 0) return next(e)
@@ -949,7 +950,7 @@ export const register: Register = (on, options) => {
     return renderReply(el, framed, drawn, e.props.isFirstOfReply === true, columns, corner)
   })
 
-  on('prismantis.markdown', async ($, e, next) => {
+  on('prismantis.markdown', here, async ($, e, next) => {
     const blocks = parseCached(e.text, shared, 20)
     if (blocks.length === 0) return next(e)
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
