@@ -1059,6 +1059,58 @@ test('tableTextColor colors plain table cells and leaves the header and inline c
   }
 })
 
+test('runningDot blink blinks a running tool\'s dot while the call runs and stops after it', { options: { toolStyle: 'classic', runningDot: 'blink' } }, async ($, on) => {
+  engine(on)
+  const clock = mock.clock(on)
+  let finish = () => {}
+  on('tool.call', () => new Promise(resolve => { finish = () => resolve({ result: 'done' }) }))
+  const running = $.tool.call({ tool: 'Bash', command: 'make test' })
+  await clock.settle()
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'b-1'), isRunning: true } })
+  const dot = async () => (await row.find({ type: 'Text', text: /^[●◌ ]$/ }))?.children?.[0]
+  const seen = [await dot()]
+  for (let i = 0; i < 3; i++) {
+    await clock.advance(500)
+    seen.push(await dot())
+  }
+  expect(seen).toEqual(['●', ' ', '●', ' '])
+  finish()
+  await running
+  await clock.advance(500)
+  expect(await dot()).toBe('●')
+  await row.unmount()
+})
+
+test('runningDot ring keeps the still ◌ on a running tool', { options: { toolStyle: 'classic' } }, async ($, on) => {
+  engine(on)
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'make test' }, 'r-1'), isRunning: true } })
+  expect(await row.find({ type: 'Text', text: /^◌$/ })).toBeDefined()
+  await row.unmount()
+})
+
+test('unreadPrompts draws a prompt in the comment grey, blinking to the rule color, until the model\'s first chunk, and leaves slash commands alone', { options: { unreadPrompts: true, promptStyle: 'wide' } }, async ($, on) => {
+  const clock = mock.clock(on)
+  mock.env(on, {})
+  on('turn.step', async function* () {
+    yield { kind: 'text', index: 0, text: 'on it' } as never
+  })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  await $.prompt.submit({ text: 'how many frog raids?', wait: false, origin: { kind: 'composer' } })
+  const ui = await $.ui.mount(prompt('how many frog raids?'))
+  const ink = async () => (await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color
+  expect(await ink()).toBe(t.codeComment)
+  await clock.advance(500)
+  expect(await ink()).toBe(t.rule)
+  for await (const _ of $.turn.step({ turnId: 't-1', index: 0, model: 'claude-test' } as never)) break
+  await clock.advance(500)
+  expect(await ink()).toBe(t.heading)
+  await ui.unmount()
+  await $.prompt.submit({ text: '/help', command: { name: 'help', args: '' }, wait: false, origin: { kind: 'composer' } } as never)
+  const other = await $.ui.mount(prompt('a prompt nobody sent'))
+  expect((await other.find({ type: 'Text', text: /^a prompt nobody sent$/ }))?.props.color).toBe(t.heading)
+  await other.unmount()
+})
+
 test('replyStyle solid draws no frame on a code block, so a mouse selection copies only the code', { options: { replyStyle: 'solid' } }, async $ => {
   const ui = await $.ui.mount(answer('```bash\nls -la\n```'))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle !== undefined)).toBe(false)

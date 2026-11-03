@@ -71,6 +71,23 @@ const setupAt = atom({ plugin: 'prismantis', key: 'setupAt' } as const, 0)
 const setupFocus = atom({ plugin: 'prismantis', key: 'setupFocus' } as const, '')
 const setupLand = atom({ plugin: 'prismantis', key: 'setupLand' } as const, '')
 const foundPaths = atom({ plugin: 'prismantis', key: 'foundPaths' } as const, [])
+const awaiting = atom({ plugin: 'prismantis', key: 'awaiting' } as const, [] as string[])
+const blink = atom({ plugin: 'prismantis', key: 'blink' } as const, false)
+const BLINK_MS = 500
+let blinking: ReturnType<EngineInterface['clock']['every']> | undefined
+let toolsRunning = 0
+const stopBlink = () => {
+  blinking?.cancel()
+  blinking = undefined
+}
+const keepBlinking = async ($: EngineInterface) => {
+  const waiting = (await read($, awaiting)).length > 0 || toolsRunning > 0
+  if (waiting && !blinking) blinking = $.clock.every(BLINK_MS, () => void update($, blink, lit => !lit).catch(stopBlink))
+  if (!waiting && blinking) {
+    stopBlink()
+    await update($, blink, () => false)
+  }
+}
 
 const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
   const ref = { plugin: 'prismantis', key: 'drawn', id } as const
@@ -657,13 +674,15 @@ export const register: Register = (on, options) => {
         for (const call of e.props.calls) if (call.tool_use_id) rememberCall(expandedCalls, call.tool_use_id, 500)
         return next(e)
       }
-      return renderToolGroup($.ui.resolve(e), forSurface(style, e, await linkReach($, probes, style)), e.props.calls, e.props.isActive, e.viewport?.columns)
+      const dotDark = style.runningDot === 'blink' && e.props.isActive && e.props.calls.some(c => c.isRunning) && (await read($, blink))
+      return renderToolGroup($.ui.resolve(e), { ...forSurface(style, e, await linkReach($, probes, style)), dotDark }, e.props.calls, e.props.isActive, e.viewport?.columns)
     })
     on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
       await locate($, style)
       noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
-      if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), forSurface(style, e, await linkReach($, probes, style)), e.props, e.viewport?.columns)
+      const dotDark = style.runningDot === 'blink' && e.props.isRunning && (await read($, blink))
+      if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), { ...forSurface(style, e, await linkReach($, probes, style)), dotDark }, e.props, e.viewport?.columns)
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
       return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), style, e.props, e.viewport?.columns) : next(e)
     })
@@ -693,8 +712,16 @@ export const register: Register = (on, options) => {
     })
   }
 
-  on('tool.call', async (_$, e, next) => {
-    const done = await next(e)
+  on('tool.call', async ($, e, next) => {
+    if (style.runningDot !== 'blink') {
+      const done = await next(e)
+      pathChecks.asked = new Set(pathChecks.found)
+      return done
+    }
+    toolsRunning++
+    await keepBlinking($)
+    const done = await next(e).finally(() => toolsRunning--)
+    await keepBlinking($)
     pathChecks.asked = new Set(pathChecks.found)
     return done
   })
@@ -746,7 +773,36 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
+  const ready = new Set<string>()
+  const held = new Set<string>()
+  on('turn.start', async (_$, e, next) => {
+    const key = promptKey(e.text)
+    if (style.unreadPrompts && e.agentId === undefined && held.delete(key)) ready.add(key)
+    return next(e)
+  })
+  on('turn.step', async function* ($, e, next) {
+    const asked = style.unreadPrompts && e.agentId === undefined ? [...ready] : undefined
+    let first = asked !== undefined
+    for await (const chunk of next(e)) {
+      if (first) {
+        first = false
+        asked!.forEach(key => ready.delete(key))
+        const list = await read($, awaiting)
+        const left = list.filter(key => ready.has(key) || held.has(key))
+        if (left.length !== list.length) await update($, awaiting, () => left)
+        await keepBlinking($)
+      }
+      yield chunk
+    }
+  })
+
   on('prompt.submit', async ($, e, next) => {
+    if (style.unreadPrompts && !e.command && (e.origin.kind === 'composer' || e.origin.kind === 'bridge')) {
+      const key = promptKey(e.text)
+      ;(e.wait && e.turnId !== undefined ? held : ready).add(key)
+      await update($, awaiting, list => [...list, key].slice(-20))
+      await keepBlinking($)
+    }
     if (style.clock !== 'off' && (e.origin.kind === 'composer' || e.origin.kind === 'bridge')) {
       const at = await $.clock.now()
       await update($, sent, list => withRecord(list, { text: promptKey(e.text), at }))
@@ -825,7 +881,10 @@ export const register: Register = (on, options) => {
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
     if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
     const el = $.ui.resolve(e)
-    const drawn = forSurface(style, e, await linkReach($, probes, style))
+    const shown = forSurface(style, e, await linkReach($, probes, style))
+    const unread = style.unreadPrompts && (await read($, awaiting)).includes(promptKey(e.props.text))
+    const ink = unread ? ((await read($, blink)) ? shown.theme.rule : shown.theme.codeComment) : undefined
+    const drawn = ink ? { ...shown, theme: { ...shown.theme, heading: ink, accent: ink, promptText: ink, promptBorder: ink } } : shown
     const columns = columnsOf(e.viewport, drawn)
     const open = await read($, unfolded)
     const paste: DrawPaste = (body, key) => {

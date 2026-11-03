@@ -27,6 +27,9 @@ export type Style = {
   clock: Clock
   toolStyle: 'chat' | 'tree-dim' | 'tree-bold' | 'classic'
   toolOutput: 'full' | 'quiet'
+  runningDot: 'ring' | 'blink'
+  dotDark?: boolean
+  unreadPrompts: boolean
   narration?: boolean
   inside?: 'quote' | 'alert'
   noteKey?: string
@@ -97,6 +100,8 @@ export const resolveStyle = (options: PluginOptions): Style => {
     clock: pick(options.clock, ['off', '24h', '12h'] as const, 'off'),
     toolStyle: pick(options.toolStyle, ['chat', 'tree-dim', 'tree-bold', 'classic'] as const, 'chat'),
     toolOutput: pick(options.toolOutput, ['full', 'quiet'] as const, 'full'),
+    runningDot: pick(options.runningDot, ['ring', 'blink'] as const, 'ring'),
+    unreadPrompts: options.unreadPrompts === true,
     diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),
     pieStyle: pick(options.pieStyle, ['round', 'bars'] as const, 'round'),
     highlightNumbers: options.highlightNumbers !== false,
