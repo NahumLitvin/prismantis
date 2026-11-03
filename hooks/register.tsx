@@ -594,16 +594,17 @@ const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, ra
 const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, base: Style, options: PluginOptions, found: NonNullable<ReturnType<typeof findSetup>>, columns: number): RenderElement[] => {
   const key = setupSteps(PRESET_NAMES)[found.at]!.key
   const md = (style: Style, text: string, id: string) => <el.Box key={id} flexDirection="column" rowGap={1}>{drawMarkdown($, el, style, parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns)}</el.Box>
-  const sample = (style: Style, value: string, id: string): RenderElement[] => {
-    if (key === 'promptStyle') return promptSample(el, style, value, id, columns)
-    if (key === 'toolStyle') return [md({ ...style, narration: style.toolStyle === 'tree-bold' }, 'Reading the config.', `${id}s`), <el.Box key={id}>{renderToolRow(el, style, { tool: 'Read', input: { file_path: 'src/config.ts' }, isRunning: false, isErrored: false, isInterrupted: false }, columns)}</el.Box>]
-    if (key === 'toolOutput') return toolOutputSample(el, style, value, id, columns)
-    if (key === 'diffStyle') return diffSample(el, style, id, columns)
-    if (key === 'copyButtonStyle') return copySample(el, style, value, id, columns)
-    if (key === 'clock') return clockSample(el, style, value, id, columns)
-    if (key === 'replyStyle') return replySample($, el, style, id, columns)
-    return []
+  const samples: Partial<Record<SetupStep['key'], (style: Style, value: string, id: string) => RenderElement[]>> = {
+    promptStyle: (style, value, id) => promptSample(el, style, value, id, columns),
+    toolStyle: (style, _, id) => [md({ ...style, narration: style.toolStyle === 'tree-bold' }, 'Reading the config.', `${id}s`), <el.Box key={id}>{renderToolRow(el, style, { tool: 'Read', input: { file_path: 'src/config.ts' }, isRunning: false, isErrored: false, isInterrupted: false }, columns)}</el.Box>],
+    toolOutput: (style, value, id) => toolOutputSample(el, style, value, id, columns),
+    diffStyle: (style, _, id) => diffSample(el, style, id, columns),
+    copyButtonStyle: (style, value, id) => copySample(el, style, value, id, columns),
+    clock: (style, value, id) => clockSample(el, style, value, id, columns),
+    replyStyle: (style, _, id) => replySample($, el, style, id, columns),
+    bubbleLabels: (style, _, id) => [...promptSample(el, style, style.promptStyle, `${id}p`, columns), ...replySample($, el, style, id, columns)],
   }
+  const sample = (style: Style, value: string, id: string): RenderElement[] => samples[key]?.(style, value, id) ?? []
   const picks = found.parts.options.map(({ value, text }, i) => {
     const style = key === 'theme' ? { ...base, theme: resolveStyle({ ...options, theme: value }).theme } : { ...base, [key]: value }
     return <el.Box key={`o${i}`} flexDirection="column">{md(style, text, 'm')}{sample(style, value, 'x')}</el.Box>
