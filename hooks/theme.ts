@@ -1,4 +1,4 @@
-import type { PluginOptions } from 'claude-code'
+import type { PluginOptions, RenderSurface } from 'claude-code'
 
 import type { ClipboardBackend } from './clipboard'
 import type { PresetName } from './presets'
@@ -38,6 +38,7 @@ export type Style = {
   diffStyle: 'card' | 'full' | 'marks' | 'bar'
   pieStyle: 'round' | 'bars'
   highlightNumbers: boolean
+  surfaces?: RenderSurface[]
   highlightPaths: boolean
   mermaid: boolean
   mermaidAscii: boolean
@@ -70,6 +71,13 @@ export type Style = {
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)|ansi256\(\d{1,3}\)|(black|red|green|yellow|blue|magenta|cyan|white|gray|grey)(Bright)?)$/i
 
 export const isColor = (value: unknown): value is string => typeof value === 'string' && COLOR.test(value.trim())
+
+const SURFACES: RenderSurface[] = ['terminal', 'desktop', 'vscode', 'mobile']
+
+const surfacesOf = (value: unknown): RenderSurface[] | undefined => {
+  const named = String(value ?? '').toLowerCase().split(',').map(s => s.trim()).filter((s): s is RenderSurface => (SURFACES as string[]).includes(s))
+  return named.length ? named : undefined
+}
 
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback
@@ -108,6 +116,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),
     pieStyle: pick(options.pieStyle, ['round', 'bars'] as const, 'round'),
     highlightNumbers: options.highlightNumbers !== false,
+    surfaces: surfacesOf(options.surfaces),
     highlightPaths: options.highlightPaths !== false,
     mermaid: options.mermaid !== false,
     mermaidAscii: options.mermaidAscii === true,

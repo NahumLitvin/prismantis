@@ -85,6 +85,33 @@ test('disabled leaves the engine renderer alone', { options: { enabled: false } 
   await ui.unmount()
 })
 
+for (const surfaces of [undefined, 'all', 'desktop-app, nope', '']) {
+  test(`surfaces ${JSON.stringify(surfaces)} draws everywhere`, { options: surfaces === undefined ? {} : { surfaces } }, async $ => {
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount({ ...draw(TABLE), surface })
+      expect((await ui.find({ type: 'Text', text: /^Service$/ }))?.text).toBe('Service')
+      await ui.unmount()
+    }
+  })
+}
+
+test('surfaces terminal leaves the desktop to the engine', { options: { surfaces: ' Terminal ,bogus' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const desktop = await $.ui.mount({ ...draw(TABLE), surface: 'desktop' })
+  expect(await desktop.find({ type: 'Text', text: /^Service$/ })).toBeUndefined()
+  expect((await desktop.find({ type: 'Text', text: /^engine$/ }))?.text).toBe('engine')
+  await desktop.unmount()
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'desktop', component: 'TurnDuration', props: { word: 'Cooked', durationMs: 4000 } })
+  expect((await row.find({ type: 'Text', text: /^engine$/ }))?.text).toBe('engine')
+  await row.unmount()
+  const terminal = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
+  expect((await terminal.find({ type: 'Text', text: /^Service$/ }))?.text).toBe('Service')
+  await terminal.unmount()
+})
+
 test('box art from a mermaid mod above is not shell-colored', async $ => {
   const ui = await $.ui.mount({ ...draw('```\n┌───┐\n│ A │\n└───┘\n```'), surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^│ A │$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].codeText)

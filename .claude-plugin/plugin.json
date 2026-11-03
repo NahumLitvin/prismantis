@@ -25,6 +25,12 @@
       "description": "Draw replies with this mod. Off falls back to Claude Code's own renderer.",
       "default": true
     },
+    "surfaces": {
+      "type": "string",
+      "title": "Surfaces",
+      "description": "Where this mod draws, as a comma-separated list of terminal, desktop, vscode and mobile, like terminal,vscode. The rest fall back to Claude Code's own renderer. Empty or all draws everywhere.",
+      "default": "all"
+    },
     "theme": {
       "type": "string",
       "title": "Theme",
