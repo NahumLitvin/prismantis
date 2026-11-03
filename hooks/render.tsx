@@ -2589,7 +2589,7 @@ const commandLine = (el: ElementTable, style: Style, row: ToolRow, line: string,
   ]
   return cells.map(({ text, cell }, k) => (
     <Box key={`c${i}.${k}`} flexDirection="row">
-      <Box width={COMMAND_LEAD} flexShrink={0}>{i === 0 && k === 0 ? <Text color={statusColor(style.theme, row)}>{row.isRunning ? '◌' : '●'}</Text> : <Text>{heldLabel(style, '  ', text)}</Text>}</Box>
+      <Box width={COMMAND_LEAD} flexShrink={0}>{i === 0 && k === 0 ? <Text color={statusColor(style.theme, row)}>{runningDot(style, row.isRunning)}</Text> : <Text>{heldLabel(style, '  ', text)}</Text>}</Box>
       <Text>{cell}</Text>
     </Box>
   ))
