@@ -559,7 +559,7 @@ test('no figure hint when mermaid is off', { options: { mermaid: false } }, asyn
 test('a continuation line joins the list item it is indented under', async () => {
   const [list] = parse('- parent\n  - child\n  more about parent', { numbers: false, paths: false })
   if (list?.kind !== 'list') throw new Error('not a list')
-  expect(list.items.map(i => i.inline.map(n => ('text' in n ? n.text : '')).join(''))).toEqual(['parent more about parent', 'child'])
+  expect(list.items.map(i => i.inline.map(n => ('text' in n ? n.text : '')).join(''))).toEqual(['parent\nmore about parent', 'child'])
 })
 
 test('double-backtick code keeps single backticks inside', async () => {

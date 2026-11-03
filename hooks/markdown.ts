@@ -9,7 +9,7 @@ export type Inline =
   | { kind: 'image'; text: string; src: string }
   | { kind: 'number'; text: string }
   | { kind: 'path'; text: string; href?: string }
-  | { kind: 'dim'; text: string }
+  | { kind: 'dim'; text: string; tint?: string }
   | { kind: 'footnote'; text: string; note?: number }
 
 export type Note = { mark: string; inline: Inline[]; note: number }
@@ -112,11 +112,11 @@ const decorate = (raw: string, hl: Highlight): Inline[] => {
 }
 
 export const parseInline = (text: string, hl: Highlight): Inline[] => {
-  if (text.length > MAX_INLINE) return [{ kind: 'text', text }]
+  if (text.length > MAX_INLINE) return [{ kind: 'text', text: dropTints(text) }]
   const out: Inline[] = []
   let at = 0
   for (const m of text.matchAll(INLINE)) {
-    if (m.index > at) out.push(...decorate(text.slice(at, m.index), hl))
+    if (m.index > at) out.push(...tinted(text.slice(at, m.index), hl))
     if (m[2] !== undefined) out.push({ kind: 'code', text: m[2] })
     else if (m[3] !== undefined) out.push({ kind: 'link', text: m[3].replace(/^`([^`]+)`$/, '$1'), href: m[4]! })
     else if (m[5] !== undefined || m[6] !== undefined) out.push({ kind: 'strong', children: parseInline(m[5] ?? m[6] ?? "", hl) })
@@ -128,7 +128,7 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
     else if (m[14] !== undefined) out.push({ kind: 'image', text: m[13] || 'image', src: m[14] })
     at = m.index + m[0].length
   }
-  if (at < text.length) out.push(...decorate(text.slice(at), hl))
+  if (at < text.length) out.push(...tinted(text.slice(at), hl))
   return out
 }
 
@@ -275,9 +275,38 @@ const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight):
 
 export const CONTROL = /\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)?|\u001b\[[0-?]*[ -/]*[@-~]|\u001b[@-_]?|[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g
 
+const TINT_ON: Record<string, string> = { '2': 'dim', '3': 'italic', '90': 'gray', '36': 'cyan', '32': 'green', '33': 'yellow' }
+const TINT_KEYS = Object.keys(TINT_ON)
+const keepTints = (raw: string): string =>
+  raw.replace(/\u001b\[(\d+)m/g, (m, code: string) =>
+    code in TINT_ON ? `\uE000${String.fromCharCode(0xe100 + TINT_KEYS.indexOf(code))}` : code === '22' || code === '23' || code === '39' ? '\uE001' : m)
+const TINTED = /\uE000([\uE100-\uE1FF])([^\uE000\uE001]*)\uE001?/g
+const dropTints = (text: string) => text.replace(/\uE000[\uE100-\uE1FF]?|\uE001/g, '')
+const tinted = (text: string, hl: Highlight): Inline[] => {
+  if (!text.includes('\uE000') && !text.includes('\uE001')) return decorate(text, hl)
+  const out: Inline[] = []
+  let at = 0
+  for (const m of text.matchAll(TINTED)) {
+    if (m.index > at) out.push(...decorate(dropTints(text.slice(at, m.index)), hl))
+    if (m[2]) out.push({ kind: 'dim', text: m[2].replace(ROLE_MARKUP, '$1'), tint: TINT_ON[TINT_KEYS[m[1]!.charCodeAt(0) - 0xe100]!] })
+    at = m.index + m[0].length
+  }
+  if (at < text.length) out.push(...decorate(dropTints(text.slice(at)), hl))
+  return out
+}
+
+const untint = (b: Block): Block => {
+  const raw = dropTints(b.raw)
+  if (b.kind === 'code') return { ...b, raw, lines: b.lines.map(dropTints) }
+  if (b.kind === 'quote' || b.kind === 'alert') return { ...b, raw, blocks: b.blocks.map(untint) }
+  if (b.kind === 'list') return { ...b, raw, items: b.items.map(it => (it.blocks ? { ...it, blocks: it.blocks.map(untint) } : it)) }
+  return { ...b, raw }
+}
+
 export const parse = (raw: string, hl: Highlight): Block[] => {
-  const source = raw.replace(CONTROL, '')
-  const blocks = parseBlocks(source, hl)
+  const source = keepTints(raw).replace(CONTROL, '')
+  const parsed = parseBlocks(source, hl)
+  const blocks = /[\uE000\uE001]/.test(source) ? parsed.map(untint) : parsed
   return source.includes('[^') ? numberNotes(blocks, notesOf(source), hl) : blocks
 }
 
@@ -332,7 +361,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   let para: string[] = []
 
   const flush = (end: number) => {
-    if (para.length) add({ kind: 'paragraph', inline: parseInline(para.join(' '), hl) }, paraStart, end)
+    if (para.length) add({ kind: 'paragraph', inline: parseInline(para.join('\n'), hl) }, paraStart, end)
     para = []
   }
 
@@ -446,12 +475,12 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
             }
             target.blocks = [...(target.blocks ?? []), { kind: 'code', lang: fence[2] ?? '', lines: body, ...(isOpen ? { isOpen: true as const } : {}), raw: lines.slice(from, i + 1).join('\n') }]
           } else if (last?.kind === 'paragraph') {
-            last.inline = [...last.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+            last.inline = [...last.inline, { kind: 'text', text: '\n' }, ...parseInline(at(i).trim(), hl)]
             last.raw += `\n${at(i)}`
           } else if (last) {
             target.blocks!.push({ kind: 'paragraph', inline: parseInline(at(i).trim(), hl), raw: at(i) })
           } else {
-            target.inline = [...target.inline, { kind: 'text', text: ' ' }, ...parseInline(at(i).trim(), hl)]
+            target.inline = [...target.inline, { kind: 'text', text: '\n' }, ...parseInline(at(i).trim(), hl)]
           }
         } else {
           break

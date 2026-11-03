@@ -435,7 +435,10 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'path':
         return <Text key={key} color={t.path}>{n.href === undefined ? n.text : <el.Link href={n.href} label={n.text} />}</Text>
       case 'dim':
-        return n === ROW_MARK ? <Text key={key} color={t.rule}>{n.text}</Text> : <Text key={key} dimColor>{n.text}</Text>
+        if (n === ROW_MARK) return <Text key={key} color={t.rule}>{n.text}</Text>
+        if (n.tint === 'italic') return <Text key={key} italic>{n.text}</Text>
+        if (n.tint && n.tint !== 'dim') return <Text key={key} color={n.tint}>{n.text}</Text>
+        return <Text key={key} dimColor>{n.text}</Text>
       case 'footnote':
         return <Text key={key} color={t.accent} {...noteHover(style, n.note)}>{n.text}</Text>
     }
