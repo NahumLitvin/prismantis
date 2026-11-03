@@ -290,7 +290,7 @@ test('copyButtons off draws no ▣ png', { options: { copyButtons: false } }, as
   await ui.unmount()
 })
 
-test('▣ png draws a table as the screen does: header bold in its color, rules, inline colors and table text', { options: { theme: 'catppuccin-mocha', tableTextColor: '#ffffff', tableRuleColor: '#9399b2' } }, async ($, on) => {
+test('▣ png draws a table as the screen does: header bold in its color, rules, inline colors and table text', { options: { theme: 'catppuccin-mocha', tableTextColor: '#ffffff' } }, async ($, on) => {
   clipboardEnv(on, 'macos')
   const inputs: string[] = []
   on('process.run', (_, e) => {
@@ -308,7 +308,7 @@ test('▣ png draws a table as the screen does: header bold in its color, rules,
   const at = (row: number, text: string) => lines[row]!.find(g => g.text === text)!
   expect(lines[2]!.map(g => g.text).join('')).toMatch(/^╞═+╪═+╡$/)
   expect(lines[1]![1]).toMatchObject({ at: 2, text: 'N', color: rgb(t.tableHeader!), bold: true })
-  expect(at(0, '┌').color).toEqual(rgb('#9399b2'))
+  expect(at(0, '┌').color).toEqual(rgb(t.tableRule!))
   expect(at(3, 'p').color).toEqual([255, 255, 255])
   expect(at(3, 'c').color).toEqual(rgb(t.inlineCode!))
   expect(at(3, 'b')).toMatchObject({ color: rgb(t.strong!), bold: true })

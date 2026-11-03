@@ -215,10 +215,10 @@ export type Ink = string | { color?: string; bold?: boolean; italic?: boolean } 
 
 type Face = { color?: number[]; bold?: true; italic?: true }
 
-export const imageLines = (text: string, tint: (row: number, cell: number) => Face | undefined = () => undefined): ({ at: number; text: string } & Face)[][] =>
+export const imageLines = (text: string, tint: (row: number, cell: number, glyph: string) => Face | undefined = () => undefined): ({ at: number; text: string } & Face)[][] =>
   text.split('\n').map((line, row) => {
     const { cells: shown, from } = holdVisual(cells(line))
-    return shown.flatMap((g, at) => (g.trim() ? [{ at, text: g, ...tint(row, from[at] ?? at) }] : []))
+    return shown.flatMap((g, at) => (g.trim() ? [{ at, text: g, ...tint(row, from[at] ?? at, g) }] : []))
   })
 
 const luma = ([r, g, b]: number[]): number => (0.299 * r! + 0.587 * g! + 0.114 * b!) / 255
@@ -226,16 +226,16 @@ const luma = ([r, g, b]: number[]): number => (0.299 * r! + 0.587 * g! + 0.114 *
 const readable = (foreground: number[], background: number[]): number[] =>
   Math.abs(luma(foreground) - luma(background)) >= 0.4 ? foreground : luma(background) > 0.5 ? [0, 0, 0] : [255, 255, 255]
 
-const faceOf = (ink: Ink, background: number[]): Face | undefined => {
+const faceOf = (ink: Ink, background: number[], art: boolean): Face | undefined => {
   const look = typeof ink === 'object' ? ink : { color: ink }
   const rgb = rgbOf(look.color, [])
-  const face: Face = { ...(rgb.length ? { color: readable(rgb, background) } : {}), ...(look.bold ? { bold: true as const } : {}), ...(look.italic ? { italic: true as const } : {}) }
+  const face: Face = { ...(rgb.length ? { color: art ? rgb : readable(rgb, background) } : {}), ...(look.bold ? { bold: true as const } : {}), ...(look.italic ? { italic: true as const } : {}) }
   return Object.keys(face).length ? face : undefined
 }
 
 export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string }, systemRoot?: string, hues?: Ink[][]): HelperCommand => {
   const background = rgbOf(colors.background, [255, 255, 255])
-  const lines = imageLines(text, (row, cell) => faceOf(hues?.[row]?.[cell], background))
+  const lines = imageLines(text, (row, cell, glyph) => faceOf(hues?.[row]?.[cell], background, /^[─-▟]$/.test(glyph)))
   const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground: readable(rgbOf(colors.foreground, [0, 0, 0]), background), background })
   return backend === 'windows'
     ? { stdin: ascii(json), argv: powershell(systemRoot, WIN_IMAGE_COPY), failure: 'Windows image helper failed' }
