@@ -89,6 +89,13 @@
       "default": "auto",
       "options": ["auto", "bubble", "solid", "framed", "off"]
     },
+    "bubbleLabels": {
+      "type": "string",
+      "title": "Bubble labels",
+      "description": "The You ⬤ label above your prompt bubble and the ⬤ Claude label above Claude's first bubble. large: ⬤, as Claude Code draws it. small: the dot ●. off: no labels, only the frames.",
+      "default": "large",
+      "options": ["large", "small", "off"]
+    },
     "clock": {
       "type": "string",
       "title": "Clock times",

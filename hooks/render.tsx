@@ -2720,9 +2720,9 @@ const CHAT_SHARE = 0.75
 
 const headDot = (style: Pick<Style, 'smallDot'>): string => (style.smallDot ? '●' : '⬤')
 
-const youHead = (style: Style): string => `You  ${headDot(style)} `
+const youHead = (style: Style): string => style.bubbleLabels === 'small' ? 'You ● ' : `You  ${headDot(style)} `
 
-const claudeHead = (style: Style): string => `${headDot(style)}  Claude`
+const claudeHead = (style: Style): string => style.bubbleLabels === 'small' ? '● Claude' : `${headDot(style)}  Claude`
 
 const youColor = (theme: Theme): string | undefined => theme.promptBorder ?? theme.diffAdded ?? theme.accent
 
@@ -2766,7 +2766,7 @@ const chatPrompt = (el: ElementTable, style: Style, content: RenderElement, size
   const color = youColor(style.theme)
   return (
     <el.Box flexDirection="column" width="100%" {...(size === '100%' ? {} : { alignItems: 'flex-end' as const })}>
-      <el.Text color={color} bold>{youHead(style)}</el.Text>
+      {style.bubbleLabels === 'off' ? null : <el.Text color={color} bold>{youHead(style)}</el.Text>}
       <el.Box borderStyle="round" borderColor={color} backgroundColor={promptFill(style.theme, style.background, color)} paddingX={1} width={size} flexShrink={0}>{content}</el.Box>
     </el.Box>
   )
@@ -2855,7 +2855,7 @@ export const renderReply = (el: ElementTable, style: Style, drawn: RenderElement
   }
   return (
     <el.Box key="msg" flexDirection="column">
-      {first ? <el.Text color={claudeColor(style.theme)} bold>{claudeHead(style)}</el.Text> : null}
+      {first && style.bubbleLabels !== 'off' ? <el.Text color={claudeColor(style.theme)} bold>{claudeHead(style)}</el.Text> : null}
       {replyFrame(el, style, <el.Box flexDirection="row">{body}{room}</el.Box>, columns)}
     </el.Box>
   )

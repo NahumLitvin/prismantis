@@ -24,6 +24,7 @@ export type Style = {
   listMarker: 'dots' | 'dash'
   promptStyle: 'bubble' | 'wide' | 'bar' | 'chevron' | 'off'
   replyStyle: 'auto' | 'bubble' | 'solid' | 'framed' | 'off'
+  bubbleLabels: 'large' | 'small' | 'off'
   clock: Clock
   toolStyle: 'chat' | 'tree-dim' | 'tree-bold' | 'classic'
   toolOutput: 'full' | 'quiet'
@@ -94,6 +95,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     listMarker: pick(options.listMarker, ['dots', 'dash'] as const, 'dots'),
     promptStyle: pick(options.promptStyle, ['bubble', 'wide', 'bar', 'chevron', 'off'] as const, 'bubble'),
     replyStyle: pick(options.replyStyle, ['auto', 'bubble', 'solid', 'framed', 'off'] as const, 'auto'),
+    bubbleLabels: pick(options.bubbleLabels, ['large', 'small', 'off'] as const, 'large'),
     clock: pick(options.clock, ['off', '24h', '12h'] as const, 'off'),
     toolStyle: pick(options.toolStyle, ['chat', 'tree-dim', 'tree-bold', 'classic'] as const, 'chat'),
     toolOutput: pick(options.toolOutput, ['full', 'quiet'] as const, 'full'),
