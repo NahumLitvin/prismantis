@@ -86,7 +86,7 @@ const darkDot = async ($: EngineInterface, style: Style, running: boolean): Prom
 const unreadLook = async ($: EngineInterface, style: Style, shown: Style, text: string): Promise<Style> => {
   if (!style.unreadPrompts || !(await read($, awaiting)).includes(promptKey(text))) return shown
   const ink = (await read($, blink)) ? shown.theme.rule : shown.theme.codeComment
-  return { ...shown, theme: { ...shown.theme, heading: ink, accent: ink, promptText: ink, promptBorder: ink } }
+  return { ...shown, theme: { ...shown.theme, heading: ink, accent: ink, promptText: ink } }
 }
 
 const markUnread = async ($: EngineInterface, style: Style, e: { text: string; command?: unknown; wait?: boolean; turnId?: string; origin: { kind: string } }, queues: { ready: Set<string>; held: Set<string> }) => {
