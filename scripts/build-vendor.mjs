@@ -150,7 +150,6 @@ const PATHFINDER = /beautiful-mermaid\/src\/ascii\/pathfinder\.ts$/
 const PATH_LOOP = `  while (pq.length > 0) {
     const current = pq.pop()!.coord
 `
-const PATH_STEPS = 50000
 const PARSER = /beautiful-mermaid\/src\/parser\.ts$/
 const NODE_ID_START = 'const NODE_PATTERNS'
 const NODE_ID_END = 'const CLASS_SHORTHAND_REGEX'
@@ -245,7 +244,7 @@ track(await build({
       api.onLoad({ filter: PATHFINDER }, args => {
         const src = readFileSync(args.path, 'utf8')
         if (!src.includes(PATH_LOOP)) throw new Error('pathfinder.ts getPath no longer pops the queue the same way')
-        const capped = `  let steps = 0\n  while (pq.length > 0) {\n    if (++steps > ${PATH_STEPS}) throw new Error('mermaid edge routing gave up')\n    const current = pq.pop()!.coord\n`
+        const capped = `  let steps = 0\n  while (pq.length > 0) {\n    if (++steps > 50000) throw new Error('mermaid edge routing gave up')\n    const current = pq.pop()!.coord\n`
         return { contents: src.replace(PATH_LOOP, capped), loader: 'ts' }
       })
       api.onLoad({ filter: PARSER }, args => {
