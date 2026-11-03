@@ -1,5 +1,6 @@
 import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'claude-code'
 
+import type { Ink } from './clipboard'
 import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
@@ -10,7 +11,7 @@ import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, comm
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
-import { clusters, columnWidths, graphemes, longestWord, mostLines, textRows, widestLine, width, wrapRanges } from './layout'
+import { cells, clusters, columnWidths, graphemes, longestWord, mostLines, textRows, widestLine, width, wrapRanges } from './layout'
 
 const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
   const out: Inline[] = []
@@ -683,29 +684,81 @@ const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
   return { natural: column(widestLine), words: column(longestWord) }
 }
 
-const tableGrid = (block: Extract<Block, { kind: 'table' }>): string => {
-  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
+type Face = Exclude<Ink, string | undefined>
+
+const own = (face: Face): Face => Object.fromEntries(Object.entries(face).filter(([, v]) => v !== undefined))
+
+const inlineFace = (t: Theme, n: Inline): Face =>
+  n.kind === 'strong' ? { color: t.strong, bold: true }
+    : n.kind === 'emphasis' || n.kind === 'math' ? { color: t.emphasis, italic: true }
+    : n.kind === 'code' ? { color: t.inlineCode }
+    : n.kind === 'link' || n.kind === 'image' ? { color: t.link }
+    : n.kind === 'number' ? { color: t.number }
+    : n.kind === 'path' ? { color: t.path }
+    : n.kind === 'footnote' ? { color: t.accent }
+    : {}
+
+const cellInks = (t: Theme, nodes: Inline[], face: Face): Ink[] => nodes.flatMap(n => {
+  const inner = { ...face, ...own(inlineFace(t, n)) }
+  return 'children' in n ? cellInks(t, n.children, inner) : Array<Ink>(displayText([n]).length).fill(inner)
+})
+
+const tablePicture = (block: Extract<Block, { kind: 'table' }>, screen: boolean, t: Theme = {}): { text: string; inks: Ink[][] } => {
+  const rows = [block.header, ...block.rows].map(r => block.header.map((_, c) => r[c] ?? []))
+  const texts = rows.map(r => r.map(displayText))
   const { natural, words } = tableSize(block)
   const widths = columnWidths(natural, ART_WIDTH - 4, 3, words)
-  const pad = (text: string, c: number, align: 'left' | 'right' | 'center') => {
-    const room = Math.max(0, widths[c]! - width(text))
-    const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
-    return ' '.repeat(left) + text + ' '.repeat(room - left)
+  const rule: Ink = own({ color: t.tableRule })
+  const lines: string[] = []
+  const inks: Ink[][] = []
+  const line = (l: string, m: string, r: string, fill = '─') => {
+    const text = l + widths.map(w => fill.repeat(w + 2)).join(m) + r
+    lines.push(text)
+    inks.push(cells(text).map(() => rule))
   }
-  const line = (l: string, m: string, r: string) => l + widths.map(w => '─'.repeat(w + 2)).join(m) + r
-  const row = (r: string[], header: boolean) => {
-    const lines = r.map((text, c) => wrapRanges(text, widths[c]!).map(([a, b]) => text.slice(a, b)))
-    return Array.from({ length: Math.max(...lines.map(l => l.length)) }, (_, i) =>
-      `│ ${lines.map((l, c) => pad(l[i] ?? '', c, header ? 'center' : block.align[c] ?? 'left')).join(' │ ')} │`)
+  const row = (i: number) => {
+    const header = i === 0
+    const paints = rows[i]!.map((nodes, c) => (header ? Array<Ink>(texts[i]![c]!.length).fill(own({ color: t.tableHeader, bold: screen || undefined })) : cellInks(t, nodes, own({ color: t.tableText }))))
+    const pieces = texts[i]!.map((text, c) => wrapRanges(text, widths[c]!))
+    for (let k = 0; k < Math.max(...pieces.map(p => p.length)); k++) {
+      let text = '│'
+      const ink: Ink[] = [rule]
+      pieces.forEach((p, c) => {
+        const [a, b] = p[k] ?? [0, 0]
+        const piece = texts[i]![c]!.slice(a, b)
+        const align = header && !screen ? 'center' : block.align[c] ?? 'left'
+        const room = Math.max(0, widths[c]! - width(piece))
+        const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
+        text += ` ${' '.repeat(left)}${piece}${' '.repeat(room - left)} │`
+        ink.push(...Array<Ink>(left + 1).fill(undefined))
+        let at = a
+        for (const g of graphemes(piece)) {
+          ink.push(...cells(g).map(() => paints[c]![at]))
+          at += g.length
+        }
+        ink.push(...Array<Ink>(room - left + 1).fill(undefined), rule)
+      })
+      lines.push(text)
+      inks.push(ink)
+    }
   }
-  const art = [line('┌', '┬', '┐'), ...row(cells[0]!, true), ...cells.slice(1).flatMap(r => [line('├', '┼', '┤'), ...row(r, false)]), line('└', '┴', '┘')]
-  return art.join('\n')
+  line('┌', '┬', '┐')
+  row(0)
+  for (let i = 1; i < rows.length; i++) {
+    if (i === 1 && screen) line('╞', '╪', '╡', '═')
+    else line('├', '┼', '┤')
+    row(i)
+  }
+  line('└', '┴', '┘')
+  return { text: lines.join('\n'), inks }
 }
+
+const tableGrid = (block: Extract<Block, { kind: 'table' }>): string => tablePicture(block, false).text
 
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => ['```', tableGrid(block), '```'].join('\n')
 
 const artsOf = (drawn: string | undefined, block: Block): { art?: string | (() => string); grid?: string | (() => string) } =>
-  drawn !== undefined ? { art: drawn, grid: drawn } : block.kind === 'table' ? { art: () => tableArt(block), grid: () => tableGrid(block) } : {}
+  drawn !== undefined ? { art: drawn, grid: drawn } : block.kind === 'table' ? { art: () => tableArt(block), grid: () => tablePicture(block, true).text } : {}
 
 const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: string) => (
   <Box key={key} flexDirection="column" minWidth={w}>
@@ -841,11 +894,11 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
         const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
           <Box key={`${k}.${c}`} {...tableColumn(style, w, shares[c]!, words[c]!)} {...laidCell(style, box)} justifyContent={side}>
-            {pressInline(el, style, runs, w, `${k}.${c}.p`, tip, isHeader ? { bold: true, color: t.tableHeader } : {}, { justifyContent: side })
+            {pressInline(el, style, runs, w, `${k}.${c}.p`, tip, isHeader ? { bold: true, color: t.tableHeader } : t.tableText ? { color: t.tableText } : {}, { justifyContent: side })
               ?? (isHeader
                 ? <Text bold color={t.tableHeader}>{runs.some(n => n.kind === 'footnote') ? renderInline(el, style, runs, `${k}.${c}`) : inlineText(runs)}</Text>
                 : mirror && inlineText(content).trim() === '' ? <Text>{' '.repeat(w)}</Text>
-                : <Text>{renderInline(el, style, content, `${k}.${c}`)}</Text>)}
+                : <Text color={t.tableText}>{renderInline(el, style, content, `${k}.${c}`)}</Text>)}
           </Box>
         )
         return [i > 0 && (box ? border(`${k}.${c}s`, wall(' │ ')) : spacer(`${k}.${c}g`)), cellBox]
@@ -1111,7 +1164,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 }
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, rich?: (() => string) | 'png', hues?: () => Hues) => RenderElement | null
-export type Hues = (string | undefined)[][]
+export type Hues = Ink[][]
 export type Drawn = Map<number, { element?: RenderElement; art?: string; hues?: () => Hues; note?: string }>
 export type FoldLook = { label?: string; face?: (folded: boolean) => RenderElement }
 export type Fold = (id: string, hidden: number, key: string, look?: FoldLook) => { folded: boolean; element: RenderElement; faced: boolean; around?: (rows: RenderElement, hover: TextHoverProps) => RenderElement } | null
@@ -1223,7 +1276,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
     const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
-    return { first, second, html, png: second && copy?.(grid!, `png${b}`, '▣ png', 'png', drawn.get(b)?.hues) }
+    return { first, second, html, png: second && copy?.(grid!, `png${b}`, '▣ png', 'png', block.kind === 'table' ? () => tablePicture(block, true, style.theme).inks : drawn.get(b)?.hues) }
   })
   const codeHead = (label: string, button: RenderElement | null) => {
     if (!hover || !button) return null

@@ -58,6 +58,17 @@ var payload = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(input
 var rgb = function (c) { return $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0] / 255, c[1] / 255, c[2] / 255, 1) }
 var font = $.NSFont.fontWithNameSize('Menlo', 14)
 if (!font) font = $.NSFont.monospacedSystemFontOfSizeWeight(14, 0)
+var faces = {}
+var faceOf = function (g) {
+  var key = (g.bold ? 'b' : '') + (g.italic ? 'i' : '')
+  if (!faces[key]) {
+    var face = font
+    if (g.bold) face = $.NSFontManager.sharedFontManager.convertFontToHaveTrait(face, 2)
+    if (g.italic) face = $.NSFontManager.sharedFontManager.convertFontToHaveTrait(face, 1)
+    faces[key] = face
+  }
+  return faces[key]
+}
 var attributes = $.NSMutableDictionary.dictionary
 attributes.setObjectForKey(font, $.NSFontAttributeName)
 attributes.setObjectForKey(rgb(payload.foreground), $.NSForegroundColorAttributeName)
@@ -80,9 +91,10 @@ payload.lines.forEach(function (glyphs, i) {
   glyphs.forEach(function (g) {
     var x = pad + g.at * cell
     var painted = attributes
-    if (g.color) {
+    if (g.color || g.bold || g.italic) {
       painted = attributes.mutableCopy
-      painted.setObjectForKey(rgb(g.color), $.NSForegroundColorAttributeName)
+      if (g.color) painted.setObjectForKey(rgb(g.color), $.NSForegroundColorAttributeName)
+      if (g.bold || g.italic) painted.setObjectForKey(faceOf(g), $.NSFontAttributeName)
     }
     if (!/^[─-▟]$/.test(g.text)) return $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(x, bottom + baseline, 1000, 1000), 0, painted)
     $.NSGraphicsContext.saveGraphicsState
@@ -125,6 +137,7 @@ try {
   $probe.AddString([string][char]0x2588, $font.FontFamily, 0, $font.Size, $origin, $typographic)
   $block = $probe.GetBounds()
   $brush = New-Object System.Drawing.SolidBrush($fg)
+  $faces = @{}
   $bitmap = New-Object System.Drawing.Bitmap([int](2 * $pad + $cell * $payload.columns), [int](2 * $pad + $line * $payload.lines.Count))
   $bitmap.SetResolution(192, 192)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -134,8 +147,12 @@ try {
       $x = $pad + $g.at * $cell
       $y = $pad + $i * $line
       $ink = if ($g.color) { [System.Drawing.Color]::FromArgb($g.color[0], $g.color[1], $g.color[2]) } else { $fg }
+      $face = [int][System.Drawing.FontStyle]::Regular
+      if ($g.bold) { $face = $face -bor [int][System.Drawing.FontStyle]::Bold }
+      if ($g.italic) { $face = $face -bor [int][System.Drawing.FontStyle]::Italic }
+      if (-not $faces.ContainsKey($face)) { $faces[$face] = New-Object System.Drawing.Font($font, [System.Drawing.FontStyle]$face) }
       if ($g.text -notmatch '^[\u2500-\u259f]$') {
-        [System.Windows.Forms.TextRenderer]::DrawText($graphics, [string]$g.text, $font, (New-Object System.Drawing.Point($x, $y)), $ink, $bg, $flags)
+        [System.Windows.Forms.TextRenderer]::DrawText($graphics, [string]$g.text, $faces[$face], (New-Object System.Drawing.Point($x, $y)), $ink, $bg, $flags)
         continue
       }
       $path = New-Object System.Drawing.Drawing2D.GraphicsPath
@@ -194,13 +211,14 @@ const rgbOf = (color: string | undefined, fallback: number[]): number[] => {
   return /^#[0-9a-f]{6}$/i.test(hex) ? [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)) : fallback
 }
 
-export const imageLines = (text: string, tint: (row: number, cell: number) => number[] | undefined = () => undefined): { at: number; text: string; color?: number[] }[][] =>
+export type Ink = string | { color?: string; bold?: boolean; italic?: boolean } | undefined
+
+type Face = { color?: number[]; bold?: true; italic?: true }
+
+export const imageLines = (text: string, tint: (row: number, cell: number) => Face | undefined = () => undefined): ({ at: number; text: string } & Face)[][] =>
   text.split('\n').map((line, row) => {
     const { cells: shown, from } = holdVisual(cells(line))
-    return shown.flatMap((g, at) => {
-      const color = tint(row, from[at] ?? at)
-      return g.trim() ? [color ? { at, text: g, color } : { at, text: g }] : []
-    })
+    return shown.flatMap((g, at) => (g.trim() ? [{ at, text: g, ...tint(row, from[at] ?? at) }] : []))
   })
 
 const luma = ([r, g, b]: number[]): number => (0.299 * r! + 0.587 * g! + 0.114 * b!) / 255
@@ -208,12 +226,16 @@ const luma = ([r, g, b]: number[]): number => (0.299 * r! + 0.587 * g! + 0.114 *
 const readable = (foreground: number[], background: number[]): number[] =>
   Math.abs(luma(foreground) - luma(background)) >= 0.4 ? foreground : luma(background) > 0.5 ? [0, 0, 0] : [255, 255, 255]
 
-export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string }, systemRoot?: string, hues?: (string | undefined)[][]): HelperCommand => {
+const faceOf = (ink: Ink, background: number[]): Face | undefined => {
+  const look = typeof ink === 'object' ? ink : { color: ink }
+  const rgb = rgbOf(look.color, [])
+  const face: Face = { ...(rgb.length ? { color: readable(rgb, background) } : {}), ...(look.bold ? { bold: true as const } : {}), ...(look.italic ? { italic: true as const } : {}) }
+  return Object.keys(face).length ? face : undefined
+}
+
+export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string }, systemRoot?: string, hues?: Ink[][]): HelperCommand => {
   const background = rgbOf(colors.background, [255, 255, 255])
-  const lines = imageLines(text, (row, cell) => {
-    const rgb = rgbOf(hues?.[row]?.[cell], [])
-    return rgb.length ? readable(rgb, background) : undefined
-  })
+  const lines = imageLines(text, (row, cell) => faceOf(hues?.[row]?.[cell], background))
   const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground: readable(rgbOf(colors.foreground, [0, 0, 0]), background), background })
   return backend === 'windows'
     ? { stdin: ascii(json), argv: powershell(systemRoot, WIN_IMAGE_COPY), failure: 'Windows image helper failed' }

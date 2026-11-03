@@ -1049,6 +1049,16 @@ test('replyBorderColor sets the frame and label of Claude\'s bubble, and empty k
   expect(resolveStyle({ replyBorderColor: '' }).theme.replyBorder).toBeUndefined()
 })
 
+test('tableTextColor colors plain table cells and leaves the header and inline colors alone', { options: { tableTextColor: '#ffffff', replyStyle: 'off' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(answer('| Name | Note |\n|--|--|\n| plain | `code` |', true, surface))
+    expect((await ui.find({ type: 'Text', text: /^plain$/ }))?.props.color).toBe('#ffffff')
+    expect((await ui.findAll({ type: 'Text', text: /^code$/ })).at(-1)?.props.color).toBe(t.inlineCode)
+    expect((await ui.find({ type: 'Text', text: /^Name$/ }))?.props.color).toBe(t.tableHeader)
+    await ui.unmount()
+  }
+})
+
 test('replyStyle solid draws no frame on a code block, so a mouse selection copies only the code', { options: { replyStyle: 'solid' } }, async $ => {
   const ui = await $.ui.mount(answer('```bash\nls -la\n```'))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle !== undefined)).toBe(false)
