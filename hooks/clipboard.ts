@@ -233,8 +233,8 @@ const faceOf = (ink: Ink, background: number[], art: boolean): Face | undefined 
   return Object.keys(face).length ? face : undefined
 }
 
-export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string }, systemRoot?: string, hues?: Ink[][]): HelperCommand => {
-  const background = rgbOf(colors.background, [255, 255, 255])
+export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string; themeBackground?: string }, systemRoot?: string, hues?: Ink[][]): HelperCommand => {
+  const background = rgbOf(colors.background, rgbOf(colors.themeBackground, [255, 255, 255]))
   const lines = imageLines(text, (row, cell, glyph) => faceOf(hues?.[row]?.[cell], background, /^[─-╿]$/.test(glyph)))
   const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground: readable(rgbOf(colors.foreground, [0, 0, 0]), background), background })
   return backend === 'windows'
