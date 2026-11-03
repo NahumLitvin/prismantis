@@ -22,6 +22,6 @@ fi
 
 name=$1 cols=$2 rows=$3 steps=$4
 cp "$S/baseline.json" "$S/cfg/settings.json"
-timeout 150 python3 "$HERE/capture.py" "$S/out/$name.bin" "$(cat "$S/repo")" "$cols" "$rows" "$steps" env -u CLAUDE_CODE_PLUGIN_DIRS CLAUDE_CONFIG_DIR="$S/cfg" claude >/dev/null 2>&1 || true
+python3 "$HERE/capture.py" "$S/out/$name.bin" "$(cat "$S/repo")" "$cols" "$rows" "$steps" env -u CLAUDE_CODE_PLUGIN_DIRS CLAUDE_CONFIG_DIR="$S/cfg" claude >/dev/null 2>&1 || true
 node "$HERE/render.mjs" "$S/out/$name.bin" "$S/out/$name.png" "$cols" "$rows" "$X" >/dev/null
 echo "$S/out/$name.png saved: $(jq -c '.pluginConfigs["prismantis@drive"].options // {}' "$S/cfg/settings.json")"

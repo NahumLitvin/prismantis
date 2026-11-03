@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -16,5 +16,10 @@ const term = new Terminal({ cols: ${cols}, rows: ${rows}, fontFamily: 'Menlo, mo
 term.open(document.getElementById('t'))
 term.write(Uint8Array.from(atob('${data}'), c => c.charCodeAt(0)))
 </script></body></html>`)
-execFileSync(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', `--user-data-dir=${join(dir, 'profile')}`, '--hide-scrollbars', `--window-size=${Number(cols) * 9 + 30},${Number(rows) * 16 + 130}`, '--virtual-time-budget=4000', `--screenshot=${png}`, `file://${html}`], { stdio: 'ignore', timeout: 60000 })
+rmSync(png, { force: true })
+try {
+  execFileSync(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', `--user-data-dir=${join(dir, 'profile')}`, '--hide-scrollbars', `--window-size=${Number(cols) * 9 + 30},${Number(rows) * 16 + 130}`, '--virtual-time-budget=4000', `--screenshot=${png}`, `file://${html}`], { stdio: 'ignore', timeout: 60000 })
+} catch (error) {
+  if (!existsSync(png) || statSync(png).size === 0) throw error
+}
 console.log(png)
