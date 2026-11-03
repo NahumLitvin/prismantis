@@ -370,6 +370,12 @@
       "description": "Frame and ⬤ Claude label of Claude's replies with replyStyle bubble or framed. Hex, rgb(), ansi256() or a name. Empty uses Claude Code's own Claude orange.",
       "default": ""
     },
+    "pngBackgroundColor": {
+      "type": "string",
+      "title": "png copy background",
+      "description": "Background of the ▣ png copy of tables, diagrams and figures. Hex, rgb(), ansi256() or a name. Empty uses the theme's background, white when the theme has none. Set it to your terminal's background to paste what you see.",
+      "default": ""
+    },
     "diffStyle": {
       "type": "string",
       "title": "Diff style",
