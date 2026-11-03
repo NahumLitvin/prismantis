@@ -767,8 +767,14 @@ const tableGrid = (block: Extract<Block, { kind: 'table' }>): string => tablePic
 
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => ['```', tableGrid(block), '```'].join('\n')
 
+const tableArts = (block: Extract<Block, { kind: 'table' }>, t: Theme) => {
+  let picture: { text: string; inks: Ink[][] } | undefined
+  const drawn = () => (picture ??= tablePicture(block, true, t))
+  return { art: () => tableArt(block), grid: () => drawn().text, hues: () => drawn().inks }
+}
+
 const artsOf = (drawn: { art?: string; hues?: () => Hues } | undefined, block: Block, t: Theme): { art?: string | (() => string); grid?: string | (() => string); hues?: () => Hues } =>
-  drawn?.art !== undefined ? { art: drawn.art, grid: drawn.art, hues: drawn.hues } : block.kind === 'table' ? { art: () => tableArt(block), grid: () => tablePicture(block, true).text, hues: () => tablePicture(block, true, t).inks } : {}
+  drawn?.art !== undefined ? { art: drawn.art, grid: drawn.art, hues: drawn.hues } : block.kind === 'table' ? tableArts(block, t) : {}
 
 const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: string) => (
   <Box key={key} flexDirection="column" minWidth={w}>
