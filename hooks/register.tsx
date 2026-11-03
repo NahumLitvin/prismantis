@@ -818,7 +818,7 @@ export const register: Register = (on, options) => {
   })
 
   on('turn.start', async (_$, e, next) => {
-    if (e.agentId === undefined) startTurn(blinker, promptKey(e.text))
+    if ((e as { agentId?: string }).agentId === undefined) startTurn(blinker, promptKey(e.text))
     return next(e)
   })
   on('turn.step', async function* ($, e, next) {
