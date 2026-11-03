@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { LINUX_TABLE_COPY, MAC_IMAGE_COPY, MAC_TABLE_COPY, WIN_IMAGE_COPY, WIN_TABLE_COPY, imageCommand } from '../hooks/clipboard'
+import { PRESETS } from '../hooks/presets'
 import { clipboardEnv, recordCopies, recordToasts, runResult, startSession } from './clipboard-env'
 
 const source = '| Name | Value |\n|--|--:|\n| **שלום** | `$(ignored)` |'
@@ -261,7 +262,7 @@ for (const surface of ['terminal', 'desktop'] as const) for (const [backend, set
   const drawn = JSON.parse(calls[0]!.input).lines.map((glyphs: { text: string }[]) => glyphs.map(g => g.text).join(''))
   expect(copies[0]).toContain('```')
   expect(drawn.join('\n')).not.toContain('`')
-  expect(drawn).toEqual(copies[0]!.split('\n').slice(1, -1).map(line => line.replace(/ /g, '')))
+  expect(drawn).toEqual(copies[0]!.split('\n').slice(1, -1).map((line, i) => (i === 2 ? line.replace(/[├┼┤─]/g, c => ({ '├': '╞', '┼': '╪', '┤': '╡', '─': '═' })[c]!) : line.replace(/ /g, ''))))
   await ui.press({ key: 'png1' })
   expect(JSON.parse(calls[1]!.input).lines.flat().map((run: { text: string }) => run.text).join('')).toContain('Gateway')
   expect(toasts).toEqual(['Copied', 'Copied as image', 'Copied as image'])
@@ -287,6 +288,39 @@ test('copyButtons off draws no ▣ png', { options: { copyButtons: false } }, as
   const ui = await $.ui.mount({ ...mount, props: { text: figures, isFirstOfReply: true } })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)
   await ui.unmount()
+})
+
+test('▣ png draws a table as the screen does: header bold in its color, rules, inline colors and table text', { options: { theme: 'catppuccin-mocha', tableTextColor: '#ffffff' } }, async ($, on) => {
+  clipboardEnv(on, 'macos')
+  const inputs: string[] = []
+  on('process.run', (_, e) => {
+    inputs.push(e.init?.stdin ?? '')
+    return runResult(0)
+  })
+  recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount({ ...mount, props: { text: '| Name | Note |\n|--|--|\n| plain | `code` **bold** *slant* |', isFirstOfReply: true } })
+  await ui.press({ key: 'png0' })
+  type Glyph = { at: number; text: string; color?: number[]; bold?: boolean; italic?: boolean }
+  const lines = (JSON.parse(inputs[0]!) as { lines: Glyph[][] }).lines
+  const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+  const t = PRESETS['catppuccin-mocha']
+  const at = (row: number, text: string) => lines[row]!.find(g => g.text === text)!
+  expect(lines[2]!.map(g => g.text).join('')).toMatch(/^╞═+╪═+╡$/)
+  expect(lines[1]![1]).toMatchObject({ at: 2, text: 'N', color: rgb(t.tableHeader!), bold: true })
+  expect(at(0, '┌').color).toEqual(rgb(t.tableRule!))
+  expect(at(3, 'p').color).toEqual([255, 255, 255])
+  expect(at(3, 'c').color).toEqual(rgb(t.inlineCode!))
+  expect(at(3, 'b')).toMatchObject({ color: rgb(t.strong!), bold: true })
+  expect(at(3, 's')).toMatchObject({ color: rgb(t.emphasis!), italic: true })
+  expect(at(3, 'p').bold).toBeUndefined()
+  await ui.unmount()
+})
+
+test('the png helper keeps a rule glyph in its drawn color and still makes a bar or a letter readable', () => {
+  const text = '─█a'
+  const glyphs = JSON.parse(imageCommand('macos', text, { foreground: '#000000', background: '#ffffff' }, undefined, [['#f5f5f5', '#f5f5f5', '#f5f5f5']]).stdin).lines[0]
+  expect(glyphs.map((g: { color?: number[] }) => g.color)).toEqual([[245, 245, 245], [0, 0, 0], [0, 0, 0]])
 })
 
 test('▣ png keeps the colors the figure and the diagram draw with', async ($, on) => {

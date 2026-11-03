@@ -184,6 +184,12 @@
       "description": "Color for table rules. Hex (#a6e3a1), rgb(166,227,161), ansi256(114) or a name (green). Empty uses the theme.",
       "default": ""
     },
+    "tableTextColor": {
+      "type": "string",
+      "title": "Table text",
+      "description": "Color for plain text in table body cells, on screen and in the png copy. Hex, rgb(), ansi256() or a name. Empty keeps the terminal's own text color (the diagram text color in the png copy).",
+      "default": ""
+    },
     "numberColor": {
       "type": "string",
       "title": "Numbers",
