@@ -331,6 +331,12 @@ What you type, at the prompt or through Remote Control, draws in the theme's col
 |---|---|---|
 | ![Claude's reply under Claude in an orange frame on a filled background](docs/prompts/bubble.png) | ![Claude's reply on a filled background with no frame](docs/prompts/reply-solid.png) | ![Claude's reply in an orange frame with no fill](docs/prompts/reply-framed.png) |
 
+`bubbleLabels` sets the labels over the bubbles: `large` draws `You ⬤` and `⬤ Claude` as above, `small` swaps the ⬤ for a `●`, and `off` drops both labels and keeps the frames.
+
+| `large` (default) | `small` | `off` |
+|---|---|---|
+| ![You and Claude labels with the large dot over the prompt and reply bubbles](docs/prompts/bubble.png) | ![You and Claude labels with a small dot over the prompt and reply bubbles](docs/prompts/labels-small.png) | ![the prompt and reply bubbles with no labels over them](docs/prompts/labels-off.png) |
+
 ### Right to left
 
 ![Right to left: plain Claude Code on the left, prismantis on the right](docs/compare/rtl.png)
