@@ -930,6 +930,8 @@ const drawHeading = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
 const ALERT_COLOR = { note: 'blue', tip: 'green', important: 'magenta', warning: 'yellow', caution: 'red' } as const
 
+const ALERT_TOKEN = { note: 'alertNote', tip: 'alertTip', important: 'alertImportant', warning: 'alertWarning', caution: 'alertCaution' } as const
+
 const prose = (style: Style) => (style.inside === 'quote' ? { italic: true, color: style.theme.quote } : {})
 
 const bulletOf = (style: Style, item: { marker: string; depth: number }): string => {
@@ -983,7 +985,7 @@ const renderQuote = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
 const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'alert' }>, columns: number, key: string, copy?: CopyButton, fold?: Fold, tip?: Tip) => {
   const { Box, Text } = el
-  const color = ALERT_COLOR[block.level]
+  const color = style.theme[ALERT_TOKEN[block.level]] ?? ALERT_COLOR[block.level]
   const inner = columns - 4
   const hebrew = flowOf(style, leadInline(block.blocks), inner)?.base === 'R'
   const label = block.level[0]!.toUpperCase() + block.level.slice(1)

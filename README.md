@@ -72,7 +72,7 @@ prismantis also runs in OpenCode 2.2.5 and later, where it draws figure blocks i
 
 | Feature | What you get |
 | --- | --- |
-| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 17 themes and 26 color slots you can override |
+| [Themes](#themes) | `/prismantis theme <name>` switches on the spot. 17 themes and 31 color slots you can override |
 | [Tables](#tables) | colored headers, rules, column alignment, colored numbers, sized to the terminal |
 | [Code](#code) | a language header and copy button, Prism highlighting in two dozen languages, shell lines colored like a prompt |
 | [Diagrams and charts](#diagrams-and-charts) | flowcharts, sequence, state, class and ER diagrams, bar and line charts, one color per box, participant and bar |
@@ -302,7 +302,7 @@ Lists keep their numbers and nest with `•` and `◦`. `listMarker: dash` draws
 |---|---|
 | ![dots](docs/lists/dots.png) | ![dash](docs/lists/dash.png) |
 
-Quotes get an accent bar down every line and keep their paragraphs, lists, code, tables and nested quotes, and GitHub alerts (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) draw as colored boxes.
+Quotes get an accent bar down every line and keep their paragraphs, lists, code, tables and nested quotes, and GitHub alerts (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) draw as colored boxes, in the terminal's blue, green, magenta, yellow and red unless `alertNoteColor`, `alertTipColor`, `alertImportantColor`, `alertWarningColor` or `alertCautionColor` sets one.
 
 Task lists draw as `[ ]` and `[✓]`, with done items dimmed and struck through. `taskStyle` switches to `ticks` (`○` `✓`), `box` (`□` `✓`) or `progress`, which adds a done-count bar above each list.
 
@@ -417,6 +417,11 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 | `promptBorder` | the frame and `You ⬤` label of your prompts with `promptStyle: bubble`, and the hue of their default fill (the `diffAdded` green) |
 | `promptText` | the text of your prompts with `promptStyle: bubble` (the `heading` color, or `codeText` where that would not read on the fill) |
 | `replyFill` | the fill behind Claude's replies with `replyStyle: bubble` or `solid` (a midnight blue a step off the background, a pale one in a light theme) |
+| `alertNote` | the box, bar and label of `> [!NOTE]` alerts (the terminal's blue) |
+| `alertTip` | the box, bar and label of `> [!TIP]` alerts (the terminal's green) |
+| `alertImportant` | the box, bar and label of `> [!IMPORTANT]` alerts (the terminal's magenta) |
+| `alertWarning` | the box, bar and label of `> [!WARNING]` alerts (the terminal's yellow) |
+| `alertCaution` | the box, bar and label of `> [!CAUTION]` alerts (the terminal's red) |
 
 ## Troubleshooting
 

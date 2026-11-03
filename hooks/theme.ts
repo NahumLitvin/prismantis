@@ -8,7 +8,7 @@ import { TERMINALS } from './rtl'
 
 export const TOKENS = [
   'accent', 'heading', 'strong', 'emphasis', 'inlineCode', 'codeText', 'codeCommand', 'codeFlag', 'codeString', 'codeComment',
-  'link', 'path', 'number', 'quote', 'rule', 'tableHeader', 'tableRule', 'bullet', 'diagram', 'diagramText', 'diffAdded', 'diffRemoved', 'promptFill', 'promptBorder', 'promptText', 'replyFill',
+  'link', 'path', 'number', 'quote', 'rule', 'tableHeader', 'tableRule', 'bullet', 'diagram', 'diagramText', 'diffAdded', 'diffRemoved', 'promptFill', 'promptBorder', 'promptText', 'replyFill', 'alertNote', 'alertTip', 'alertImportant', 'alertWarning', 'alertCaution',
 ] as const
 
 export type Theme = Partial<Record<(typeof TOKENS)[number], string>>
