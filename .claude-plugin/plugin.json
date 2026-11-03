@@ -110,6 +110,19 @@
       "default": "chat",
       "options": ["chat", "tree-dim", "tree-bold", "classic"]
     },
+    "runningDot": {
+      "type": "string",
+      "title": "Running tool dot",
+      "description": "The dot of a tool call that is still running. ring: a still ◌. blink: ● blinking on and off every half second, as Claude Code's own does.",
+      "default": "ring",
+      "options": ["ring", "blink"]
+    },
+    "unreadPrompts": {
+      "type": "boolean",
+      "title": "Unread prompts",
+      "description": "Draw a prompt you sent in the comment grey, blinking to the rule color, until the model starts answering the request that carries it, like Claude Code's own grey queued prompts. Slash commands are left alone.",
+      "default": false
+    },
     "toolOutput": {
       "type": "string",
       "title": "Tool output",

@@ -385,6 +385,8 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('/tmp/app.ts open on click')
   expect(showcaseText([])).toContain('slash commands like /config stay text')
   expect(showcaseText([])).toContain('the file each one read or edited opens on click')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`runningDot: blink`')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`unreadPrompts`')
   expect(showcaseText([])).toContain('f(*args, **kwargs)')
   expect(showcaseText([])).toContain('Programs and launchers stay plain text')
   expect(showcaseText([])).toContain('[a note](obsidian://open?vault=notes&file=todo)')

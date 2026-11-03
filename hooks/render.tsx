@@ -1428,10 +1428,12 @@ const statusColor = (t: Theme, row: ToolRow) =>
 
 const toolDim = (style: Style) => style.toolStyle !== "classic"
 
+const runningDot = (style: Style, running: boolean) => (!running ? '●' : style.runningDot === 'ring' ? '◌' : style.dotDark ? ' ' : '●')
+
 const toolGutter = ({ Box, Text }: ElementTable, style: Style, color: string | undefined, running: boolean) =>
   style.toolStyle.startsWith("tree")
     ? <Box width={4} flexShrink={0}><Text color={color}>{'  ⎿ '}</Text></Box>
-    : <Box width={2} flexShrink={0}><Text color={color}>{running ? '◌' : '●'}</Text></Box>
+    : <Box width={2} flexShrink={0}><Text color={color}>{runningDot(style, running)}</Text></Box>
 
 const toolLayout = (el: ElementTable, style: Style, columns: number, label: string, color: string | undefined, running: boolean, text: RenderElement) => {
   const { Box, Text } = el
@@ -1439,7 +1441,7 @@ const toolLayout = (el: ElementTable, style: Style, columns: number, label: stri
   const w = Math.min(width(label) + 2, Math.max(20, Math.floor(columns * 0.6)))
   return (
     <Box flexDirection="row" justifyContent="flex-end" width="100%">
-      <Box width={w} flexDirection="row">{text}<Text color={color}>{running ? " ◌" : " ●"}</Text></Box>
+      <Box width={w} flexDirection="row">{text}<Text color={color}>{` ${runningDot(style, running)}`}</Text></Box>
     </Box>
   )
 }
@@ -2587,7 +2589,7 @@ const commandLine = (el: ElementTable, style: Style, row: ToolRow, line: string,
   ]
   return cells.map(({ text, cell }, k) => (
     <Box key={`c${i}.${k}`} flexDirection="row">
-      <Box width={COMMAND_LEAD} flexShrink={0}>{i === 0 && k === 0 ? <Text color={statusColor(style.theme, row)}>{row.isRunning ? '◌' : '●'}</Text> : <Text>{heldLabel(style, '  ', text)}</Text>}</Box>
+      <Box width={COMMAND_LEAD} flexShrink={0}>{i === 0 && k === 0 ? <Text color={statusColor(style.theme, row)}>{runningDot(style, row.isRunning)}</Text> : <Text>{heldLabel(style, '  ', text)}</Text>}</Box>
       <Text>{cell}</Text>
     </Box>
   ))

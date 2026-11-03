@@ -71,6 +71,63 @@ const setupAt = atom({ plugin: 'prismantis', key: 'setupAt' } as const, 0)
 const setupFocus = atom({ plugin: 'prismantis', key: 'setupFocus' } as const, '')
 const setupLand = atom({ plugin: 'prismantis', key: 'setupLand' } as const, '')
 const foundPaths = atom({ plugin: 'prismantis', key: 'foundPaths' } as const, [])
+const awaiting = atom({ plugin: 'prismantis', key: 'awaiting' } as const, [] as { key: string; at: number }[])
+const blink = atom({ plugin: 'prismantis', key: 'blink' } as const, false)
+const BLINK_MS = 500
+const HELD_TURNS = 2
+type Blinker = { timer?: ReturnType<EngineInterface['clock']['every']>; tools: number; ready: Set<string>; held: Map<string, number> }
+const stopBlink = (blinker: Blinker) => {
+  blinker.timer?.cancel()
+  blinker.timer = undefined
+}
+const darkDot = async ($: EngineInterface, style: Style, running: boolean): Promise<boolean> =>
+  style.runningDot === 'blink' && running && (await read($, blink))
+
+const unreadLook = async ($: EngineInterface, style: Style, shown: Style, text: string, requestId: string): Promise<Style> => {
+  if (!style.unreadPrompts) return shown
+  const drawnAt = await firstDrawn($, requestId)
+  const entry = (await read($, awaiting)).find(a => a.key === promptKey(text))
+  if (!entry || drawnAt < entry.at) return shown
+  const ink = (await read($, blink)) ? shown.theme.rule : shown.theme.codeComment
+  return { ...shown, theme: { ...shown.theme, heading: ink, accent: ink, promptText: ink } }
+}
+
+const markUnread = async ($: EngineInterface, style: Style, e: { text: string; command?: unknown; wait?: boolean; turnId?: string; origin: { kind: string } }, blinker: Blinker) => {
+  if (!style.unreadPrompts || style.promptStyle === 'off' || e.command || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return
+  const key = promptKey(e.text)
+  if (e.wait && e.turnId !== undefined) blinker.held.set(key, 0)
+  else blinker.ready.add(key)
+  const at = await $.clock.now()
+  await update($, awaiting, list => [...list.filter(a => a.key !== key), { key, at }].slice(-20))
+  await keepBlinking($, blinker)
+}
+
+const startTurn = (blinker: Blinker, key: string) => {
+  for (const [k, turns] of blinker.held) {
+    if (k === key) blinker.ready.add(k)
+    if (k === key || turns + 1 >= HELD_TURNS) blinker.held.delete(k)
+    else blinker.held.set(k, turns + 1)
+  }
+}
+
+const markRead = async ($: EngineInterface, asked: string[], blinker: Blinker) => {
+  for (const key of asked) blinker.ready.delete(key)
+  const list = await read($, awaiting)
+  const left = list.filter(a => blinker.ready.has(a.key) || blinker.held.has(a.key))
+  if (left.length !== list.length) await update($, awaiting, () => left)
+  await keepBlinking($, blinker)
+}
+
+const groupRunning = (props: { isActive: boolean; calls: readonly { isRunning: boolean }[] }): boolean => props.isActive && props.calls.some(c => c.isRunning)
+
+const keepBlinking = async ($: EngineInterface, blinker: Blinker) => {
+  const waiting = (await read($, awaiting)).length > 0 || blinker.tools > 0
+  if (waiting && !blinker.timer) blinker.timer = $.clock.every(BLINK_MS, () => void update($, blink, lit => !lit).catch(() => stopBlink(blinker)))
+  if (!waiting && blinker.timer) {
+    stopBlink(blinker)
+    await update($, blink, () => false)
+  }
+}
 
 const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
   const ref = { plugin: 'prismantis', key: 'drawn', id } as const
@@ -625,6 +682,7 @@ export const register: Register = (on, options) => {
   if (options.enabled === false) return
   const firstTheme = pickTheme(options.theme)
   const style = resolveStyle({ ...options, theme: firstTheme })
+  const blinker: Blinker = { tools: 0, ready: new Set(), held: new Map() }
   const parsed = new Map<string, ReturnType<typeof parse>>()
   const parseCached = (text: string, cache = parsed, limit?: number) => remember(cache, text, () => parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths }), limit)
   const shared = new Map<string, ReturnType<typeof parse>>()
@@ -659,15 +717,17 @@ export const register: Register = (on, options) => {
         for (const call of e.props.calls) if (call.tool_use_id) rememberCall(expandedCalls, call.tool_use_id, 500)
         return next(e)
       }
-      return renderToolGroup($.ui.resolve(e), forSurface(style, e, await linkReach($, probes, style)), e.props.calls, e.props.isActive, e.viewport?.columns)
+      const dotDark = await darkDot($, style, groupRunning(e.props))
+      return renderToolGroup($.ui.resolve(e), { ...forSurface(style, e, await linkReach($, probes, style)), dotDark }, e.props.calls, e.props.isActive, e.viewport?.columns)
     })
     on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
       await locate($, style)
       noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
-      if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), forSurface(style, e, await linkReach($, probes, style)), e.props, e.viewport?.columns)
+      const dotDark = await darkDot($, style, e.props.isRunning)
+      if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), { ...forSurface(style, e, await linkReach($, probes, style)), dotDark }, e.props, e.viewport?.columns)
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
-      return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), style, e.props, e.viewport?.columns) : next(e)
+      return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), { ...style, dotDark }, e.props, e.viewport?.columns) : next(e)
     })
     on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
       const cards = (): Style => ({ ...style, pressPreview: e.surface === 'terminal' })
@@ -695,10 +755,21 @@ export const register: Register = (on, options) => {
     })
   }
 
-  on('tool.call', async (_$, e, next) => {
-    const done = await next(e)
-    pathChecks.asked = new Set(pathChecks.found)
-    return done
+  on('tool.call', async ($, e, next) => {
+    if (style.runningDot !== 'blink') {
+      const done = await next(e)
+      pathChecks.asked = new Set(pathChecks.found)
+      return done
+    }
+    blinker.tools++
+    await keepBlinking($, blinker)
+    try {
+      return await next(e)
+    } finally {
+      blinker.tools--
+      await keepBlinking($, blinker)
+      pathChecks.asked = new Set(pathChecks.found)
+    }
   })
 
   on('session.start', async ($, e, next) => {
@@ -748,7 +819,21 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
+  on('turn.start', async (_$, e, next) => {
+    if ((e as { agentId?: string }).agentId === undefined) startTurn(blinker, promptKey(e.text))
+    return next(e)
+  })
+  on('turn.step', async function* ($, e, next) {
+    let asked = style.unreadPrompts && e.agentId === undefined ? [...blinker.ready] : undefined
+    for await (const chunk of next(e)) {
+      if (asked) await markRead($, asked, blinker)
+      asked = undefined
+      yield chunk
+    }
+  })
+
   on('prompt.submit', async ($, e, next) => {
+    await markUnread($, style, e, blinker)
     if (style.clock !== 'off' && (e.origin.kind === 'composer' || e.origin.kind === 'bridge')) {
       const at = await $.clock.now()
       await update($, sent, list => withRecord(list, { text: promptKey(e.text), at }))
@@ -827,7 +912,7 @@ export const register: Register = (on, options) => {
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
     if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
     const el = $.ui.resolve(e)
-    const drawn = forSurface(style, e, await linkReach($, probes, style))
+    const drawn = await unreadLook($, style, forSurface(style, e, await linkReach($, probes, style)), e.props.text, e.requestId)
     const columns = columnsOf(e.viewport, drawn)
     const open = await read($, unfolded)
     const paste: DrawPaste = (body, key) => {
