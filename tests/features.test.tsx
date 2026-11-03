@@ -184,6 +184,15 @@ test('the failure reason skips stack frames and runtime banners', () => {
   expect(errorReason('Exit code 1\nTypeError: boom\n    at run (app.js:3:9)\n    at main (app.js:9:1)\n\nNode.js v20.19.6')).toBe('TypeError: boom')
 })
 
+test('a skill row names the skill it loads', { options: { toolStyle: 'classic' } }, async ($, on) => {
+  engine(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const skill = await $.ui.mount({ plugin: 'prismantis', surface, component: 'ToolUse', props: call('Skill', { skill: 'kolibee:do-review', args: '--branch' }, `k-${surface}`) })
+    expect(await skill.find({ type: 'Text', text: /kolibee:do-review/ })).toBeDefined()
+    await skill.unmount()
+  }
+})
+
 test('toolOutput quiet labels skills and PowerShell, and hides the skill result', { options: { toolOutput: 'quiet', toolStyle: 'classic' } }, async ($, on) => {
   engine(on)
   for (const surface of ['terminal', 'desktop'] as const) {

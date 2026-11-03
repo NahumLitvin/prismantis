@@ -1350,7 +1350,7 @@ const field = (input: unknown, ...keys: string[]): string | undefined => {
   return undefined
 }
 
-const TARGET_FIELDS = ['file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description']
+const TARGET_FIELDS = ['file_path', 'notebook_path', 'path', 'pattern', 'url', 'query', 'description', 'skill']
 
 const statusColor = (t: Theme, row: ToolRow) =>
   row.isErrored ? t.codeFlag : row.isInterrupted ? t.codeComment : row.isRunning ? t.accent : t.number
@@ -2180,7 +2180,7 @@ const callPieces = (call: ToolRow, style: Style): LinkPiece[] => {
     if (pattern !== undefined) return path === undefined ? [{ text: `Searched . for "${pattern}"` }] : [{ text: 'Searched ' }, { text: shortTarget(style, path), path }, { text: ` for "${pattern}"` }]
   }
   const verb = call.tool === 'Skill' ? 'Loaded skill' : VERBS[call.tool] ?? call.tool.replace(/^mcp__([^_]+)__/, '$1 ')
-  const target = field(call.input, 'skill', ...TARGET_FIELDS)
+  const target = field(call.input, ...TARGET_FIELDS)
   const args = call.tool === 'Skill' ? field(call.input, 'args') : undefined
   if (target === undefined) return [{ text: verb }]
   const path = toolPath(call.tool, PATH_FIELDS.some(k => field(call.input, k) === target) ? target : undefined)
