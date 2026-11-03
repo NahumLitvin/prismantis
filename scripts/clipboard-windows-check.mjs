@@ -124,3 +124,8 @@ const hue = spawnSync(tinted.argv[0], ['-NoProfile', '-NonInteractive', '-STA', 
 assert.equal(hue.status, 0, hue.stderr || hue.error?.message)
 assert.equal(hue.stdout.trim(), '243,139,168', `a red █ drew as ${hue.stdout.trim()}`)
 console.log('A glyph with its own color draws in that color in the Windows bitmap')
+
+const styled = imageCommand('windows', 'Ab', { foreground: '#cdd6f4', background: '#1e1e2e' }, process.env.SystemRoot, [[{ color: '#f38ba8', bold: true }, { italic: true }]])
+const faced = spawnSync(styled.argv[0], styled.argv.slice(1), { input: styled.stdin, encoding: 'utf8', timeout: 30000 })
+assert.equal(faced.status, 0, faced.stderr || faced.error?.message)
+console.log('Bold and italic glyphs draw in the Windows bitmap')
