@@ -32,7 +32,7 @@ export const FIGURE_HINT = [
   `At most ${FIGURE_SAFE_COLUMNS} columns, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji or tabs; markup takes no columns, so align on the drawn text and pad box rows to the top border. CJK letters take two columns, count them twice. Draw a time axis with edge ticks like ▏───▏───▏, not ├┼┤: █ fills its cell, ├┼┤ sit mid-cell.`,
 ].join(' ')
 
-const MARKUP = new RegExp(`\\{(${FIGURE_ROLES.join('|')}):([^{}]*)\\}`, 'g')
+const MARKUP = new RegExp(`\\{(${FIGURE_ROLES.join('|')})(?::([^{}]*)\\}|\\}([^{}]*)\\{\\/\\1\\})`, 'g')
 const MARKER = /\{([A-Za-z][\w-]*):/g
 const TEXT_FORMS: Record<string, string> = { '▶': '►', '◀': '◄' }
 const ROLE_TOKENS: Record<FigureRole, keyof Theme> = { accent: 'diagram', warn: 'codeFlag', ok: 'codeString', note: 'heading', dim: 'codeComment', strong: 'strong' }
@@ -50,7 +50,8 @@ export const figureRuns = (line: string): FigureRun[] => {
   const runs: FigureRun[] = []
   let at = 0
   for (const match of line.matchAll(MARKUP)) {
-    const [whole, role, text = ''] = match
+    const [whole, role, colonText, tagText] = match
+    const text = colonText ?? tagText ?? ''
     if (match.index > at) runs.push({ text: textForm(line.slice(at, match.index)) })
     if (text && isRole(role)) runs.push({ text: textForm(text), role })
     at = match.index + whole.length
