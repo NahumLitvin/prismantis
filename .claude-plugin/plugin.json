@@ -328,6 +328,36 @@
       "description": "Fill behind Claude's replies with replyStyle bubble or solid. Hex, rgb(), ansi256() or a name. Empty uses a midnight blue a step off the theme's background, a pale one in a light theme.",
       "default": ""
     },
+    "alertNoteColor": {
+      "type": "string",
+      "title": "Note alert",
+      "description": "Box, bar and label of > [!NOTE] alerts. Hex, rgb(), ansi256() or a name. Empty uses the terminal's blue.",
+      "default": ""
+    },
+    "alertTipColor": {
+      "type": "string",
+      "title": "Tip alert",
+      "description": "Box, bar and label of > [!TIP] alerts. Hex, rgb(), ansi256() or a name. Empty uses the terminal's green.",
+      "default": ""
+    },
+    "alertImportantColor": {
+      "type": "string",
+      "title": "Important alert",
+      "description": "Box, bar and label of > [!IMPORTANT] alerts. Hex, rgb(), ansi256() or a name. Empty uses the terminal's magenta.",
+      "default": ""
+    },
+    "alertWarningColor": {
+      "type": "string",
+      "title": "Warning alert",
+      "description": "Box, bar and label of > [!WARNING] alerts. Hex, rgb(), ansi256() or a name. Empty uses the terminal's yellow.",
+      "default": ""
+    },
+    "alertCautionColor": {
+      "type": "string",
+      "title": "Caution alert",
+      "description": "Box, bar and label of > [!CAUTION] alerts. Hex, rgb(), ansi256() or a name. Empty uses the terminal's red.",
+      "default": ""
+    },
     "diffStyle": {
       "type": "string",
       "title": "Diff style",
