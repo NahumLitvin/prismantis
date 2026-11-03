@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.41.0] - 2026-11-03
+
+### Added
+
+- New option `surfaces` picks where prismantis draws, as a comma-separated list of `terminal`, `desktop`, `vscode` and `mobile`. Set `"surfaces": "terminal"` to keep Claude Code's own look in the desktop app. The default `all` is unchanged. Thanks @roman-ternovyi for the idea ([#371](https://github.com/NahumLitvin/prismantis/pull/371)).
+
+### Fixed
+
+- A flowchart with a two-node cycle and an outgoing edge, like `A --> B`, `B --> A`, `B --> C`, no longer hangs and stops the mod for the session. It shows as source instead. Thanks @xyangggx for the repro ([#370](https://github.com/NahumLitvin/prismantis/pull/370)).
+
 ## [0.40.0] - 2026-11-03
 
 ### Added
