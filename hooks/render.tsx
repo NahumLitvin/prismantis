@@ -2751,7 +2751,7 @@ export const replyRoom = (style: Style): number => ({ off: 0, solid: 0, bubble: 
 
 const solidEdge = (width: number, top: boolean): string => (width < 2 ? (top ? '▄' : '▀').repeat(width) : top ? `▗${'▄'.repeat(width - 2)}▖` : `▝${'▀'.repeat(width - 2)}▘`)
 
-const claudeColor = (theme: Theme): string | undefined => (theme.accent === undefined ? undefined : 'claude')
+const claudeColor = (theme: Theme): string | undefined => theme.replyBorder ?? (theme.accent === undefined ? undefined : 'claude')
 
 const replyFrame = (el: ElementTable, style: Style, body: RenderElement, columns: number): RenderElement => {
   const t = style.theme

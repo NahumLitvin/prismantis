@@ -1039,6 +1039,16 @@ test('alert color options set each alert kind, and an empty one keeps the termin
   }
 })
 
+test('replyBorderColor sets the frame and label of Claude\'s bubble, and empty keeps Claude\'s orange', { options: { replyBorderColor: '#c4b7dc', replyStyle: 'framed' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(answer('The test passes now.', true, surface))
+    expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.borderColor).toBe('#c4b7dc')
+    expect((await ui.find({ type: 'Text', text: /Claude$/ }))?.props.color).toBe('#c4b7dc')
+    await ui.unmount()
+  }
+  expect(resolveStyle({ replyBorderColor: '' }).theme.replyBorder).toBeUndefined()
+})
+
 test('replyStyle solid draws no frame on a code block, so a mouse selection copies only the code', { options: { replyStyle: 'solid' } }, async $ => {
   const ui = await $.ui.mount(answer('```bash\nls -la\n```'))
   expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle !== undefined)).toBe(false)
