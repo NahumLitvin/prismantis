@@ -120,7 +120,7 @@ A line that holds only a tag draws dim, so wrapper tags show the reply's structu
 { "theme": "dracula", "headingStyle": "banner", "mermaid": true }
 \`\`\`
 
-Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a \`+M more lines\` button, \`show less\` folds them back; \`⧉ copy\` still copies the whole block.
+Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a \`+M more lines\` button, \`show less\` folds them back; \`⧉ copy\` still copies the whole block. Set \`folds\` to \`open\` in \`/config\` and long blocks start whole instead, with \`show less\` to fold them again.
 
 \`\`\`ts
 type Item = { name: string; price: number; qty: number }
