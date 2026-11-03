@@ -29,7 +29,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
-| `/prismantis setup` | Pick a theme and how tables, tasks, headings, copy buttons, prompts, replies, times, tool rows, tool output, diffs and pie charts look, from drawn samples |
+| `/prismantis setup` | Pick a theme and how tables, tasks, headings, copy buttons, prompts, replies, bubble labels, times, tool rows, tool output, diffs and pie charts look, from drawn samples |
 | `/config` | Edit any option |
 
 > [!NOTE]
@@ -86,11 +86,11 @@ Set `listMarker` to dash in `/config` and bullets draw as `-`, so a list you sel
 
 ### Your prompts
 
-Scroll up: what you typed sits on the right under `You ⬤` and Claude's replies on the left under `⬤ Claude`, each in a bubble of its own, like a chat app. `promptStyle` switches to `wide`, `bar`, `chevron` or `off` in `/config`, which also brings back the dot before Claude's replies; `replyStyle` picks `solid`, `framed` or `off` for Claude's side. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
+Scroll up: what you typed sits on the right under `You ⬤` and Claude's replies on the left under `⬤ Claude`, each in a bubble of its own, like a chat app. `promptStyle` switches to `wide`, `bar`, `chevron` or `off` in `/config`, which also brings back the dot before Claude's replies; `replyStyle` picks `solid`, `framed` or `off` for Claude's side, and `bubbleLabels` draws both labels with a `small` dot or turns them `off`. Set `clock` to `24h` or `12h` and each prompt shows when you sent it, and each turn's last line when it finished. A paste of 4 lines or more draws in a double frame of its own, folded to one button that opens it as highlighted code.
 
 ### Tool rows
 
-Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set `toolStyle` in `/config` to `chat`, `tree-dim`, `tree-bold` or `classic`. `toolOutput: quiet` in `/config` hides what Claude only read and says in plain words what each call did: `Read src/app.ts lines 1–40`, `Searched src/ for "TODO"`.
+Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set `toolStyle` in `/config` to `chat`, `tree-dim`, `tree-bold` or `classic`. `toolOutput: quiet` in `/config` hides what Claude only read and says in plain words what each call did: `Read src/app.ts lines 1–40`, `Searched src/ for "TODO"`. A call still running shows a still `◌`; `runningDot: blink` makes it a `●` that blinks every half second, and `unreadPrompts` keeps each prompt you send grey and blinking until Claude starts on it, so one queued mid-turn stands out.
 
 Each edit draws as a diff card headed `+N −M`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a `+K more lines` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (`sed -i`, a script) get the same card, one per file, headed by its path. Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`.
 
@@ -118,7 +118,7 @@ A line that holds only a tag draws dim, so wrapper tags show the reply's structu
 { "theme": "dracula", "headingStyle": "banner", "mermaid": true }
 ```
 
-Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a `+M more lines` button, `show less` folds them back; `⧉ copy` still copies the whole block.
+Blocks of 10 lines or more get line numbers. Past 30 lines they fold to the first 20 and a `+M more lines` button, `show less` folds them back; `⧉ copy` still copies the whole block. Set `folds` to `open` in `/config` and long blocks start whole instead, with `show less` to fold them again.
 
 ```ts
 type Item = { name: string; price: number; qty: number }

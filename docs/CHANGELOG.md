@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.40.0] - 2026-11-03
+
+### Added
+
+- New option `bubbleLabels`: `large` (the default, as before), `small` draws `You ●` and `● Claude` with a small dot, and `off` drops both labels and keeps the frames. `/prismantis setup` has a "Bubble labels" step. Thanks @Nanako0129 ([#353](https://github.com/NahumLitvin/prismantis/pull/353)).
+- New option `folds`: set it to `open` and long code blocks, diff cards and pastes start whole, with `show less` to fold them. The default `closed` is unchanged. Thanks @Nanako0129 ([#354](https://github.com/NahumLitvin/prismantis/pull/354)).
+- New options `runningDot` and `unreadPrompts`: `runningDot: blink` makes a running tool's dot a `●` that blinks every half second, and `unreadPrompts` keeps each prompt you send grey and blinking until Claude starts on it. Both are off by default. Thanks @Nanako0129 ([#357](https://github.com/NahumLitvin/prismantis/pull/357)).
+- New options `alertNoteColor`, `alertTipColor`, `alertImportantColor`, `alertWarningColor` and `alertCautionColor` color each GitHub alert kind. Left empty, nothing changes. Thanks @Nanako0129 ([#352](https://github.com/NahumLitvin/prismantis/pull/352)).
+- New option `replyBorderColor` colors the frame and label of Claude's bubble. Left empty, nothing changes. Thanks @Nanako0129 ([#356](https://github.com/NahumLitvin/prismantis/pull/356)).
+- New option `pngBackgroundColor` sets the background of `▣ png` copies, for example to your terminal's own. Left empty, nothing changes. Thanks @Nanako0129 ([#355](https://github.com/NahumLitvin/prismantis/pull/355)).
+
+### Changed
+
+- A table copied with `▣ png` looks like the table on screen: colored rules and header, bold header, inline colors, bold and italic. New option `tableTextColor` sets the color of plain table text. Thanks @Nanako0129 ([#358](https://github.com/NahumLitvin/prismantis/pull/358)).
+- A Skill tool row names the skill it loaded, `Skill keybindings-help` instead of `Skill`. Thanks @Nanako0129 ([#351](https://github.com/NahumLitvin/prismantis/pull/351)).
+
+### Fixed
+
+- Under tmux, screen or Zellij the chat heads read `You ●` and `● Claude`, with no half dots left over the text. README Troubleshooting names `CLAUDE_CODE_TMUX_TRUECOLOR=1` for gray fills in tmux. Thanks @sworgkh ([#363](https://github.com/NahumLitvin/prismantis/pull/363)).
+
 ## [0.39.1] - 2026-11-02
 
 ### Fixed
