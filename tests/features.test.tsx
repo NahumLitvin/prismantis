@@ -2915,6 +2915,24 @@ test('/prismantis setup in the pane opens again on the last step when its save i
   await pane.unmount()
 })
 
+test('/prismantis setup in the pane leaves no rejection behind when reopening after a refused save fails', async ($, on) => {
+  on('config.set', (_, e) => (e.key === 'prismantis.pieStyle' ? { deny: 'managed' } : { value: e.value }))
+  on('ui.focus', () => ({}))
+  on('ui.toast', () => ({ value: undefined }))
+  on('session.surfaces', () => ({ value: ['terminal'] }))
+  let opens = 0
+  on('ui.open', () => {
+    if (opens++) throw new Error('mod reloaded')
+    return { value: { isPlaced: true as const } }
+  })
+  on('ui.close', () => ({ value: undefined }))
+  await setupRun($, 'setup')
+  const pane = await setupPane($, 'terminal')
+  for (const [step, value] of [['theme', 'nord'], ['tables', 'grid'], ['tasks', 'progress'], ['lists', 'dash'], ['headings', 'uppercase'], ['copy', 'hover'], ['prompts', 'bar'], ['replies', 'solid'], ['labels', 'small'], ['clock', '24h'], ['tools', 'tree-bold'], ['output', 'quiet'], ['diffs', 'bar'], ['pies', 'bars']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  expect(opens).toBe(2)
+  await pane.unmount()
+})
+
 test('/prismantis setup in the pane shows the next step and its toast before the save returns, since a save that changes a value reloads the mod', async ($, on) => {
   on('config.set', () => new Promise(() => undefined))
   on('ui.focus', () => ({}))
