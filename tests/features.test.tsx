@@ -865,7 +865,7 @@ test('/prismantis copy says so when there is nothing to copy', async ($, on) => 
   expect(copied).toEqual([])
 })
 
-const prompt = (text: string, kind: 'composer' | 'task-notification' = 'composer', surface: 'terminal' | 'desktop' = 'terminal') =>
+const prompt = (text: string, kind: 'composer' | 'task-notification' | 'sdk' = 'composer', surface: 'terminal' | 'desktop' = 'terminal') =>
   ({ plugin: 'prismantis', component: 'UserMessage' as const, props: { text, origin: { kind } as never, isExpanded: true }, viewport: { columns: 80, rows: 10 }, surface })
 
 test('your prompts draw on the right under You ⬤ by default, in a bubble of the theme green on a deep green fill', async $ => {
@@ -1314,6 +1314,27 @@ test('an unstamped prompt is yours, a teammate message is not', async ($, on) =>
   const peer = await $.ui.mount({ ...prompt('from a teammate', 'unclassified' as never), props: { text: 'from a teammate', origin: { kind: 'unclassified' } as never, isExpanded: true, from: { name: 'bob' } as never } })
   expect(await peer.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await peer.unmount()
+})
+
+test('a prompt an SDK host carries is yours, as the desktop app stamps every row it draws', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(prompt('how many frog raids?', 'sdk', surface))
+    const bubble = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')
+    expect(bubble?.props.borderColor).toBe(t.diffAdded)
+    expect(bubble?.props.backgroundColor).toBe('#1d3928')
+    expect((await ui.find({ type: 'Text', text: /^You {2}⬤ $/ }))?.props.color).toBe(t.diffAdded)
+    await ui.unmount()
+  }
+})
+
+test('a teammate message an SDK host carries is not yours', async ($, on) => {
+  engine(on)
+  const peer = await $.ui.mount({ ...prompt('from a teammate', 'sdk'), props: { text: 'from a teammate', origin: { kind: 'sdk' } as never, isExpanded: true, from: { name: 'bob' } as never } })
+  expect(await peer.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await peer.unmount()
+  const note = await $.ui.mount({ ...prompt('task done', 'sdk'), props: { text: 'task done', origin: { kind: 'sdk' } as never, isExpanded: true, task: { id: 't-1' } as never } })
+  expect(await note.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await note.unmount()
 })
 
 const readRow = { plugin: 'prismantis', component: 'ToolUse' as const, props: call('Read', { file_path: '/tmp/x' }, 'ts-1'), viewport: { columns: 100, rows: 10 }, surface: 'terminal' as const }
