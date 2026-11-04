@@ -378,6 +378,9 @@ const blockHeight = (block: Block, w: number): number => {
   }
 }
 
+const tintLook = (tint: string | undefined): { italic?: true; color?: string; dimColor?: true } =>
+  tint === 'italic' ? { italic: true } : tint && tint !== 'dim' ? { color: tint } : { dimColor: true }
+
 const wrapInline = (nodes: Inline[], w: number): Inline[][] => {
   const text = inlineText(nodes)
   return width(text) <= w && !text.includes('\n') ? [nodes] : wrapRanges(text, w).map(([a, b]) => sliceInline(nodes, a, b))
@@ -435,7 +438,7 @@ const renderInline = (el: ElementTable, style: Style, nodes: Inline[], keyBase: 
       case 'path':
         return <Text key={key} color={t.path}>{n.href === undefined ? n.text : <el.Link href={n.href} label={n.text} />}</Text>
       case 'dim':
-        return n === ROW_MARK ? <Text key={key} color={t.rule}>{n.text}</Text> : <Text key={key} dimColor>{n.text}</Text>
+        return n === ROW_MARK ? <Text key={key} color={t.rule}>{n.text}</Text> : <Text key={key} {...tintLook(n.tint)}>{n.text}</Text>
       case 'footnote':
         return <Text key={key} color={t.accent} {...noteHover(style, n.note)}>{n.text}</Text>
     }

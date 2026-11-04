@@ -726,3 +726,32 @@ for (const rtl of ['iterm', 'apple-terminal'] as const) for (const surface of ['
   }
   await ui.unmount()
 })
+
+test('a line break stays only before a tinted translation line', async () => {
+  const gray = (s: string) => `\u001b[90m${s}\u001b[39m`
+  const [plain, para, list] = parse(`one\ntwo\n\nHello world.\n${gray('你好世界。')}\n\n- item\n  ${gray('项目')}\n  more`, { numbers: false, paths: false })
+  if (plain?.kind !== 'paragraph' || para?.kind !== 'paragraph' || list?.kind !== 'list') throw new Error('unexpected blocks')
+  expect(plain.inline).toEqual([{ kind: 'text', text: 'one two' }])
+  expect(para.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['Hello world.\n', '你好世界。'])
+  expect(list.items[0]?.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['item', '\n', '项目', ' ', 'more'])
+})
+
+test('translation colors from BBilingual survive, other escape codes do not', async () => {
+  const gray = (s: string) => `\u001b[90m${s}\u001b[39m`
+  const [para, heading, other] = parse(`Hi **all**.\n${gray('你好')}**${gray('大家')}**\n\n## Results / ${gray('结果')}\n\nkeep \u001b[31mred\u001b[0m \u001b[36mcyan\u001b[39m`, { numbers: false, paths: false })
+  if (para?.kind !== 'paragraph' || heading?.kind !== 'heading' || other?.kind !== 'paragraph') throw new Error('unexpected blocks')
+  expect(para.inline.at(-2)).toEqual({ kind: 'dim', text: '你好', tint: 'gray' })
+  expect(para.inline.at(-1)).toEqual({ kind: 'strong', children: [{ kind: 'dim', text: '大家', tint: 'gray' }] })
+  expect(heading.inline.at(-1)).toEqual({ kind: 'dim', text: '结果', tint: 'gray' })
+  expect(other.inline).toEqual([{ kind: 'text', text: 'keep red ' }, { kind: 'dim', text: 'cyan', tint: 'cyan' }])
+  expect(JSON.stringify([para, heading, other])).not.toMatch(/[\u001b\uE000-\uE1FF]/)
+  expect(para.raw).toBe('Hi **all**.\n你好**大家**')
+})
+
+test('a tinted translation is drawn in its color', async $ => {
+  for (const [code, look] of [['90', { color: 'gray' }], ['36', { color: 'cyan' }], ['3', { italic: true }], ['2', { dimColor: true }]] as const) {
+    const ui = await $.ui.mount({ ...draw(`Hello.\n\u001b[${code}m你好\u001b[${code === '2' ? '22' : code === '3' ? '23' : '39'}m`), surface: 'terminal' })
+    expect((await ui.find({ type: 'Text', text: /^你好$/ }))?.props).toMatchObject(look)
+    await ui.unmount()
+  }
+})
