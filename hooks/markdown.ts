@@ -281,6 +281,7 @@ const keepTints = (raw: string): string =>
   raw.replace(/\u001b\[(\d+)m/g, (m, code: string) =>
     code in TINT_ON ? `\uE000${String.fromCharCode(0xe100 + TINT_KEYS.indexOf(code))}` : code === '22' || code === '23' || code === '39' ? '\uE001' : m)
 const TINTED = /\uE000([\uE100-\uE1FF])([^\uE000\uE001]*)\uE001?/g
+const breakBefore = (line: string) => (line.trimStart().startsWith('\uE000') ? '\n' : ' ')
 const dropTints = (text: string) => text.replace(/\uE000[\uE100-\uE1FF]?|\uE001/g, '')
 const tinted = (text: string, hl: Highlight): Inline[] => {
   if (!text.includes('\uE000') && !text.includes('\uE001')) return decorate(text, hl)
@@ -361,7 +362,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   let para: string[] = []
 
   const flush = (end: number) => {
-    if (para.length) add({ kind: 'paragraph', inline: parseInline(para.join('\n'), hl) }, paraStart, end)
+    if (para.length) add({ kind: 'paragraph', inline: parseInline(para.reduce((a, l) => `${a}${breakBefore(l)}${l}`), hl) }, paraStart, end)
     para = []
   }
 
@@ -475,12 +476,12 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
             }
             target.blocks = [...(target.blocks ?? []), { kind: 'code', lang: fence[2] ?? '', lines: body, ...(isOpen ? { isOpen: true as const } : {}), raw: lines.slice(from, i + 1).join('\n') }]
           } else if (last?.kind === 'paragraph') {
-            last.inline = [...last.inline, { kind: 'text', text: '\n' }, ...parseInline(at(i).trim(), hl)]
+            last.inline = [...last.inline, { kind: 'text', text: breakBefore(at(i).trim()) }, ...parseInline(at(i).trim(), hl)]
             last.raw += `\n${at(i)}`
           } else if (last) {
             target.blocks!.push({ kind: 'paragraph', inline: parseInline(at(i).trim(), hl), raw: at(i) })
           } else {
-            target.inline = [...target.inline, { kind: 'text', text: '\n' }, ...parseInline(at(i).trim(), hl)]
+            target.inline = [...target.inline, { kind: 'text', text: breakBefore(at(i).trim()) }, ...parseInline(at(i).trim(), hl)]
           }
         } else {
           break

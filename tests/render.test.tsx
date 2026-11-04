@@ -727,11 +727,13 @@ for (const rtl of ['iterm', 'apple-terminal'] as const) for (const surface of ['
   await ui.unmount()
 })
 
-test('a line break inside a paragraph or list item stays a line break', async () => {
-  const [para, list] = parse('Hello world.\n你好世界。\n\n- item\n  项目', { numbers: false, paths: false })
-  if (para?.kind !== 'paragraph' || list?.kind !== 'list') throw new Error('not a paragraph and a list')
-  expect(para.inline).toEqual([{ kind: 'text', text: 'Hello world.\n你好世界。' }])
-  expect(list.items[0]?.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['item', '\n', '项目'])
+test('a line break stays only before a tinted translation line', async () => {
+  const gray = (s: string) => `\u001b[90m${s}\u001b[39m`
+  const [plain, para, list] = parse(`one\ntwo\n\nHello world.\n${gray('你好世界。')}\n\n- item\n  ${gray('项目')}\n  more`, { numbers: false, paths: false })
+  if (plain?.kind !== 'paragraph' || para?.kind !== 'paragraph' || list?.kind !== 'list') throw new Error('unexpected blocks')
+  expect(plain.inline).toEqual([{ kind: 'text', text: 'one two' }])
+  expect(para.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['Hello world.\n', '你好世界。'])
+  expect(list.items[0]?.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['item', '\n', '项目', ' ', 'more'])
 })
 
 test('translation colors from BBilingual survive, other escape codes do not', async () => {

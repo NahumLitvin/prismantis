@@ -1972,8 +1972,8 @@ for (const surface of ['terminal', 'desktop'] as const) test(`a quote keeps its 
 
 for (const surface of ['terminal', 'desktop'] as const) test(`a nested quote draws with its own bar inside the outer one on ${surface}`, async $ => {
   const ui = await $.ui.mount({ ...mount('> outer\n>\n> > inner one\n> > inner two\n>\n> after'), surface })
-  for (const text of [/^outer$/, /^inner one\ninner two$/, /^after$/]) expect(await ui.find({ type: 'Text', text })).toBeDefined()
-  expect(await ui.find({ type: 'Box', text: /^│ \n│ inner one\ninner two$/ })).toBeDefined()
+  for (const text of [/^outer$/, /^inner one inner two$/, /^after$/]) expect(await ui.find({ type: 'Text', text })).toBeDefined()
+  expect(await ui.find({ type: 'Box', text: /^│ inner one inner two$/ })).toBeDefined()
   expect(Math.max(...(await barLines(ui))) >= 5).toBe(true)
   await ui.unmount()
 })
