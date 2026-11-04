@@ -84,9 +84,9 @@
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",
-      "description": "How the prompts you type draw in the transcript. bubble: on the right like a chat app, under You ⬤, in a rounded frame of the theme's green on a deep green fill, with Claude's replies in a bubble of their own while replyStyle is auto. wide: a rounded accent box across the full width, a divider between turns. bar: an accent bar on the left. chevron: a bold accent › before the text. off: Claude Code's own look.",
+      "description": "How the prompts you type draw in the transcript. bubble: on the right like a chat app, under You ⬤, in a rounded frame of the theme's green on a deep green fill, with Claude's replies in a bubble of their own while replyStyle is auto. framed: the same with no fill. wide: a rounded accent box across the full width, a divider between turns. bar: an accent bar on the left. chevron: a bold accent › before the text. off: Claude Code's own look.",
       "default": "bubble",
-      "options": ["bubble", "wide", "bar", "chevron", "off"]
+      "options": ["bubble", "framed", "wide", "bar", "chevron", "off"]
     },
     "replyStyle": {
       "type": "string",
@@ -345,13 +345,13 @@
     "promptBorderColor": {
       "type": "string",
       "title": "Your bubble frame",
-      "description": "Frame and You ⬤ label of your prompts with promptStyle bubble, and the hue of its default fill. Hex, rgb(), ansi256() or a name. Empty uses the theme's green (the diff added color).",
+      "description": "Frame and You ⬤ label of your prompts with promptStyle bubble or framed, and the hue of its default fill. Hex, rgb(), ansi256() or a name. Empty uses the theme's green (the diff added color).",
       "default": ""
     },
     "promptTextColor": {
       "type": "string",
       "title": "Your bubble text",
-      "description": "Text of your prompts with promptStyle bubble. Hex, rgb(), ansi256() or a name. Empty uses the heading color, or the code text color where the heading color would not read on the fill.",
+      "description": "Text of your prompts with promptStyle bubble or framed. Hex, rgb(), ansi256() or a name. Empty uses the heading color, or the code text color where the heading color would not read on the fill.",
       "default": ""
     },
     "replyFillColor": {

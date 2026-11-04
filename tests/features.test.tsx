@@ -1231,6 +1231,29 @@ test('the default bubble fits its text', async $ => {
   await ui.unmount()
 })
 
+test('promptStyle framed draws the bubble with no fill', { options: { promptStyle: 'framed' } }, async $ => {
+  const ui = await $.ui.mount(prompt('hi'))
+  const frame = (await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')
+  expect(frame?.props.borderColor).toBe(t.diffAdded)
+  expect(frame?.props.width).toBe(6)
+  expect(frame?.props.backgroundColor).toBe(undefined)
+  expect(await ui.find({ type: 'Text', text: /You/ })).toBeTruthy()
+  expect((await ui.find({ type: 'Text', text: /^hi$/ }))?.props.color).toBe(t.heading)
+  await ui.unmount()
+})
+
+test('promptStyle framed wraps a long prompt at three quarters of the width', { options: { promptStyle: 'framed' } }, async $ => {
+  const ui = await $.ui.mount(prompt('raid '.repeat(30).trim()))
+  expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBe(57)
+  await ui.unmount()
+})
+
+test('promptTextColor colors the text of a framed prompt', { options: { promptStyle: 'framed', promptTextColor: '#123456' } }, async $ => {
+  const ui = await $.ui.mount(prompt('hi'))
+  expect((await ui.find({ type: 'Text', text: /^hi$/ }))?.props.color).toBe('#123456')
+  await ui.unmount()
+})
+
 test('promptStyle bar draws an accent bar', { options: { promptStyle: 'bar' } }, async $ => {
   const ui = await $.ui.mount(prompt('hi'))
   expect((await ui.find({ type: 'Text', text: /^▌ $/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
@@ -3053,8 +3076,8 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   expect(await copy.findAll({ type: 'Button' })).toHaveLength(0)
   await copy.unmount()
   const prompts = await mount(6)
-  expect(await prompts.findAll({ type: 'Text', text: /fix the failing test/ })).toHaveLength(5)
-  expect((await prompts.findAll({ type: 'Text', text: /^You {2}⬤ $/ })).filter(n => n.props.bold)).toHaveLength(1)
+  expect(await prompts.findAll({ type: 'Text', text: /fix the failing test/ })).toHaveLength(6)
+  expect((await prompts.findAll({ type: 'Text', text: /^You {2}⬤ $/ })).filter(n => n.props.bold)).toHaveLength(2)
   await prompts.unmount()
   const replies = await mount(7)
   expect((await replies.findAll({ type: 'Text', text: /^⬤ {2}Claude$/ })).filter(n => n.props.bold)).toHaveLength(4)
