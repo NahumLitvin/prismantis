@@ -755,3 +755,21 @@ test('a tinted translation is drawn in its color', async $ => {
     await ui.unmount()
   }
 })
+
+const CODE = '```ts\nconst a = 1\n```'
+
+for (const surface of SURFACES) test(`a copy button stays primary by default on ${surface}`, async $ => {
+  const plain = await $.ui.mount({ ...draw(CODE), surface })
+  const bright = await plain.find({ key: 'copy0' })
+  expect(bright?.props.variant).toBe('primary')
+  expect(bright?.props.dimColor).toBe(undefined)
+  await plain.unmount()
+})
+
+for (const surface of SURFACES) test(`copyButtonDim on draws a copy button dim on ${surface}`, { options: { copyButtonDim: true } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface })
+  const button = await ui.find({ key: 'copy0' })
+  expect(button?.props.variant).toBe('secondary')
+  expect(button?.props.dimColor).toBe(true)
+  await ui.unmount()
+})

@@ -213,7 +213,7 @@ When tables, diagrams and figures follow each other, they share a row and wrap o
 - **Whole replies:** replies with more than one block, or any Hebrew or Arabic, end with `⧉ copy reply`, which copies the reply as Claude wrote it. Selecting right-to-left text on screen copies letters in drawn order, not reading order.
 - **No mouse:** `/prismantis copy` copies the last reply, `/prismantis copy code` its last code block.
 
-`copyButtonStyle` picks where the buttons sit. `inline`, the default, is the look above. `hover` puts a dim ⧉ beside each block's first row instead, at its left on a right-to-left block, and one in the reply's bottom-right corner for the whole reply. Pointing at a ⧉ draws its buttons over it, so they take no line and nothing moves when they show; the pointer on the block itself shows nothing. ctrl+x tab does not reach a hidden button, and the mobile app, which has no pointer, draws them inline.
+`copyButtonDim` draws the buttons dim, at full strength under the pointer or the focus. `copyButtonStyle` picks where the buttons sit. `inline`, the default, is the look above. `hover` puts a dim ⧉ beside each block's first row instead, at its left on a right-to-left block, and one in the reply's bottom-right corner for the whole reply. Pointing at a ⧉ draws its buttons over it, so they take no line and nothing moves when they show; the pointer on the block itself shows nothing. ctrl+x tab does not reach a hidden button, and the mobile app, which has no pointer, draws them inline.
 
 ![copyButtonStyle hover: at rest a table, a bash block and the reply each show a dim ⧉; with the pointer on the table's ⧉, its ⧉ md, ⧉ art and ⧉ html buttons draw over the marker and the end of the header row](docs/copy/hover.png)
 
@@ -389,6 +389,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `copyButtons` | `true`, `false` | `true` |
 | `copyButtonStyle` | `inline`, `hover` | `inline` |
 | `textCopyButtons` | `true`, `false` | `true` |
+| `copyButtonDim` | `true`, `false` | `false` |
 | `diagramHints` | `true`, `false` | `true` |
 | `issueHint` | `true`, `false` | `true` |
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |

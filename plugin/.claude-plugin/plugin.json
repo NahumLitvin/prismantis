@@ -442,6 +442,12 @@
       "default": "inline",
       "options": ["inline", "hover"]
     },
+    "copyButtonDim": {
+      "type": "boolean",
+      "title": "Dim copy buttons",
+      "description": "Draw copy buttons dim, at full strength under the pointer or the focus, in place of the accent color. Needs copyButtons on.",
+      "default": false
+    },
     "textCopyButtons": {
       "type": "boolean",
       "title": "Copy buttons on lists and quotes",
