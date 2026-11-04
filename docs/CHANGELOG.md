@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.42.0] - 2026-11-04
+
+### Added
+
+- PHP code blocks are highlighted, and a `.php` path resolves to the grammar. Thanks @chrislacey89 ([#373](https://github.com/NahumLitvin/prismantis/pull/373)).
+- With BBilingual installed, a translation starts on its own line in the colour set by `BBILINGUAL_STYLE`. Other line breaks inside a paragraph still join as before. Thanks @buaazp ([#368](https://github.com/NahumLitvin/prismantis/pull/368)).
+
+### Fixed
+
+- A figure role written as a closing tag, like `{ok}text{/ok}`, draws in colour and no longer counts toward the line's width. Thanks @berkay8987 ([#377](https://github.com/NahumLitvin/prismantis/pull/377)).
+- Installing from the marketplace works on a machine without a GitHub SSH key ([#379](https://github.com/NahumLitvin/prismantis/pull/379)).
+
 ## [0.41.0] - 2026-11-03
 
 ### Added
