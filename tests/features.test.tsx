@@ -1327,6 +1327,21 @@ test('a prompt an SDK host carries is yours, as the desktop app stamps every row
   }
 })
 
+test('the bubble hugs its text off the terminal, where a cell count misjudges a proportional face', async $ => {
+  const term = await $.ui.mount(prompt('short prompt', 'sdk', 'terminal'))
+  const termBoxes = await term.findAll({ type: 'Box' })
+  expect(termBoxes.find(b => b.props.borderStyle === 'round')?.props.width).toBe('short prompt'.length + 4)
+  expect(termBoxes.some(b => b.props.width === '75%')).toBe(false)
+  await term.unmount()
+  const desk = await $.ui.mount(prompt('short prompt', 'sdk', 'desktop'))
+  const deskBoxes = await desk.findAll({ type: 'Box' })
+  const bubble = deskBoxes.find(b => b.props.borderStyle === 'round')
+  expect(bubble?.props.width).toBeUndefined()
+  expect(bubble?.props.borderColor).toBe(t.diffAdded)
+  expect(deskBoxes.some(b => b.props.flexDirection === 'row' && b.props.justifyContent === 'flex-end' && b.props.width === '75%')).toBe(true)
+  await desk.unmount()
+})
+
 test('a teammate message an SDK host carries is not yours', async ($, on) => {
   engine(on)
   const peer = await $.ui.mount({ ...prompt('from a teammate', 'sdk'), props: { text: 'from a teammate', origin: { kind: 'sdk' } as never, isExpanded: true, from: { name: 'bob' } as never } })
