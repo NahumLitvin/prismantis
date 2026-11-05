@@ -30,6 +30,10 @@ jobs:
       - run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md prismantis-plugin.zip
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Move the release branch the Claude directory follows
+        run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/release" -f sha="$GITHUB_SHA" -F force=false
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   install:
     needs: release
