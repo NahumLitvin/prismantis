@@ -46,11 +46,12 @@ jobs:
       - run: npm install -g @anthropic-ai/claude-code@${{ matrix.claude }}
       - name: Install the release zip through a marketplace pinned to its sha256
         env:
-          URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/prismantis-plugin.zip
+          URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/prismantis-plugin.zip?ci=${{ github.run_id }}-${{ matrix.claude }}
         run: |
           export CLAUDE_CONFIG_DIR="$RUNNER_TEMP/cfg"
           mkdir -p "$CLAUDE_CONFIG_DIR" "$RUNNER_TEMP/m/.claude-plugin"
-          sha=$(curl -fsSL "$URL" | sha256sum | cut -d' ' -f1)
+          curl -fsSL --retry 6 --retry-all-errors --retry-delay 10 -o "$RUNNER_TEMP/plugin.zip" "$URL"
+          sha=$(sha256sum "$RUNNER_TEMP/plugin.zip" | cut -d' ' -f1)
           jq -n --arg url "$URL" --arg sha "$sha" '{name: "release", owner: {name: "ci"}, plugins: [{name: "prismantis", source: {source: "archive", url: $url, sha256: $sha}}]}' > "$RUNNER_TEMP/m/.claude-plugin/marketplace.json"
           claude plugin marketplace add "$RUNNER_TEMP/m"
           claude plugin install prismantis@release
