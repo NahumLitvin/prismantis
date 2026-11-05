@@ -1,4 +1,4 @@
-// ../hooks/markdown.ts
+// ../plugin/hooks/markdown.ts
 var FIGURE_ROLES = ["accent", "warn", "ok", "note", "dim", "strong"];
 var ROLE_MARKUP = new RegExp(`\\{(?:${FIGURE_ROLES.join("|")}):([^{}]*)\\}`, "g");
 var scriptMap = (from, to) => new Map(Array.from(from).map((c, i) => [c, Array.from(to)[i]]));
@@ -7,7 +7,7 @@ var SUB = scriptMap("0123456789+-\u2212=()aehijklmnoprstuvx", "\u2080\u2081\u208
 var TINT_ON = { "2": "dim", "3": "italic", "90": "gray", "36": "cyan", "32": "green", "33": "yellow" };
 var TINT_KEYS = Object.keys(TINT_ON);
 
-// ../hooks/figure.tsx
+// ../plugin/hooks/figure.tsx
 var FIGURE_MAX_COLUMNS = 100;
 var FIGURE_SAFE_COLUMNS = 74;
 var RAW_MAX_LINE = FIGURE_MAX_COLUMNS * 4;
@@ -21,7 +21,7 @@ var FIGURE_HINT = [
 ].join(" ");
 var MARKUP = new RegExp(`\\{(${FIGURE_ROLES.join("|")})(?::([^{}]*)\\}|\\}([^{}]*)\\{\\/\\1\\})`, "g");
 
-// ../hooks/presets.ts
+// ../plugin/hooks/presets.ts
 var PRESETS = {
   "catppuccin-mocha": {
     accent: "#cba6f7",
@@ -411,10 +411,10 @@ var PRESETS = {
 };
 var PRESET_NAMES = Object.keys(PRESETS);
 
-// ../hooks/theme.ts
+// ../plugin/hooks/theme.ts
 var RANDOM_THEMES = PRESET_NAMES.filter((t) => !/latte|light|dawn/.test(t) && t !== "mono");
 
-// ../hooks/help.ts
+// ../plugin/hooks/help.ts
 var HINT = [
   "Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.",
   "Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:",
@@ -471,7 +471,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 
 ### Copy tables
 
-Use \`\u29C9 md\` for Markdown, \`\u29C9 art\` for chat, or \`\u29C9 html\` for a formatted table. \`\u29C9 html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. \`\u25A3 png\` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. Set \`copyButtonStyle\` to \`hover\` in \`/config\` and each block shows a dim \u29C9 instead: point at it for its buttons. Set \`textCopyButtons\` to \`false\` to keep only the buttons on code, tables, diagrams and the reply.
+Use \`\u29C9 md\` for Markdown, \`\u29C9 art\` for chat, or \`\u29C9 html\` for a formatted table. \`\u29C9 html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. \`\u25A3 png\` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set \`copyButtonStyle\` to \`inline\` in \`/config\` for the accent color, or to \`hover\` and each block shows a dim \u29C9 instead: point at it for its buttons. Set \`textCopyButtons\` to \`false\` to keep only the buttons on code, tables, diagrams and the reply.
 
 | Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
