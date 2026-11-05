@@ -1242,6 +1242,19 @@ test('promptStyle framed draws the bubble with no fill', { options: { promptStyl
   await ui.unmount()
 })
 
+test('promptStyle framed has no fill on the terminal or the desktop', { options: { promptStyle: 'framed' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(prompt('short prompt', 'sdk', surface))
+    const boxes = await ui.findAll({ type: 'Box' })
+    const frame = boxes.find(b => b.props.borderStyle === 'round')
+    expect(frame?.props.borderColor).toBe(t.diffAdded)
+    expect(frame?.props.backgroundColor).toBe(undefined)
+    expect(frame?.props.width).toBe(surface === 'terminal' ? 'short prompt'.length + 4 : undefined)
+    expect(boxes.some(b => b.props.flexDirection === 'row' && b.props.justifyContent === 'flex-end' && b.props.width === '75%')).toBe(surface === 'desktop')
+    await ui.unmount()
+  }
+})
+
 test('promptStyle framed wraps a long prompt at three quarters of the width', { options: { promptStyle: 'framed' } }, async $ => {
   const ui = await $.ui.mount(prompt('raid '.repeat(30).trim()))
   expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBe(57)
