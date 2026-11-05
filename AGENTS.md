@@ -40,7 +40,7 @@ Claude Code refuses any tree over 20000 nodes and silently draws its own text, s
 
 ## Rules
 
-[SCOPE.md](SCOPE.md) says what prismantis takes, turns down, and leaves to the maintainer. Check a change against it before writing code.
+[SCOPE.md](SCOPE.md) says what fits in prismantis and what to ask about first. Check a change against it before writing code.
 
 Code:
 
