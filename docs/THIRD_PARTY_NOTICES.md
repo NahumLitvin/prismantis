@@ -1,6 +1,6 @@
 # Third-party notices
 
-`hooks/vendor/mermaid-text.js` is built from [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) 1.1.3 by `scripts/build-vendor.mjs`.
+`plugin/hooks/vendor/mermaid-text.js` is built from [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) 1.1.3 by `scripts/build-vendor.mjs`.
 
 ```
 MIT License
@@ -26,7 +26,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-`hooks/vendor/prism.js` is built from [Prism](https://github.com/PrismJS/prism) 1.30.0 (core and 24 language definitions) by `scripts/build-vendor.mjs`.
+`plugin/hooks/vendor/prism.js` is built from [Prism](https://github.com/PrismJS/prism) 1.30.0 (core and 24 language definitions) by `scripts/build-vendor.mjs`.
 
 ```
 MIT LICENSE
@@ -47,7 +47,7 @@ CopyQ is supplied by the user's system and is not bundled with prismantis.
 
 ## Color palettes
 
-Each preset in `hooks/presets.ts` maps a published palette onto prismantis tokens. All are MIT licensed.
+Each preset in `plugin/hooks/presets.ts` maps a published palette onto prismantis tokens. All are MIT licensed.
 
 | Preset | Source | Copyright |
 | --- | --- | --- |

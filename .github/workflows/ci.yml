@@ -32,8 +32,8 @@ jobs:
         with:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code@${{ matrix.claude }}
-      - run: claude plugin validate .
-      - run: claude plugin test .
+      - run: claude plugin validate plugin && claude plugin validate .
+      - run: node scripts/test.mjs
 
   typecheck:
     runs-on: ubuntu-latest
@@ -46,7 +46,7 @@ jobs:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code@2.1.294
       - name: Lay the mod API types
-        run: claude --plugin-dir . -p hi || test -d .claude-plugin/types/claude-code
+        run: claude --plugin-dir plugin -p hi || test -d plugin/.claude-plugin/types/claude-code
       - run: npx --yes -p typescript@5.9.3 tsc -p .
 
   vendor:
@@ -63,11 +63,11 @@ jobs:
       - run: npm ci --ignore-scripts
         working-directory: scripts
       - name: Bundle matches its source and holds only MIT packages
-        run: npm --prefix scripts run build:vendor && git diff --exit-code hooks/vendor
+        run: npm --prefix scripts run build:vendor && git diff --exit-code plugin/hooks/vendor
       - name: Codex marketplace pins the same release
         run: test "$(jq -c '.plugins[0].source|{ref,sha}' .claude-plugin/marketplace.json)" = "$(jq -c '.plugins[0].source|{ref,sha}' .agents/plugins/marketplace.json)"
       - name: Codex files match their Claude Code source on a release
-        run: git ls-remote --exit-code --tags origin "refs/tags/v$(jq -r .version .claude-plugin/plugin.json)" >/dev/null || { npm --prefix scripts run build:codex && test -z "$(git status --porcelain codex opencode .codex-plugin .agents)"; }
+        run: git ls-remote --exit-code --tags origin "refs/tags/v$(jq -r .version plugin/.claude-plugin/plugin.json)" >/dev/null || { npm --prefix scripts run build:codex && test -z "$(git status --porcelain codex opencode .codex-plugin .agents)"; }
       - name: Render snapshots match
         run: npm --prefix scripts run snapshot
       - name: Node counts stay within baseline (timings reported, not gated)
@@ -76,7 +76,7 @@ jobs:
         run: npm --prefix scripts run complexity:check
       - name: Bundles stay light
         run: |
-          size=$(cat hooks/vendor/*.js | wc -c)
+          size=$(cat plugin/hooks/vendor/*.js | wc -c)
           echo "vendor bytes: $size"
           test "$size" -lt 300000
 
@@ -141,7 +141,7 @@ jobs:
           exit $fail
       - name: Versions agree
         run: |
-          v=$(jq -r .version .claude-plugin/plugin.json)
+          v=$(jq -r .version plugin/.claude-plugin/plugin.json)
           m=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
           c=$(grep -m1 -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' docs/CHANGELOG.md | tr -d '#[] ')
           echo "plugin=$v marketplace=$m changelog=$c"

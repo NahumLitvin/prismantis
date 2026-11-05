@@ -8,13 +8,13 @@ description: Load the working copy of prismantis into a real Claude Code session
 Tests prove the tree. Only a real render proves the look.
 
 1. **Load the working copy:**
-   - From a new terminal: `claude --plugin-dir <repo path>`. Saving files hot-reloads it.
-   - From inside a session that loaded the `plugin-authoring` skill: copy `.claude-plugin/plugin.json`, `hooks/` and `types/` into that session's dev-mods folder. The person answers the one-time "Enable hot reloading" prompt, and the mod loads when the turn ends. Copy again after every edit.
+   - From a new terminal: `claude --plugin-dir <repo path>/plugin`. Saving files hot-reloads it.
+   - From inside a session that loaded the `plugin-authoring` skill: copy `plugin/.claude-plugin/plugin.json`, `plugin/hooks/` and `plugin/types/` into that session's dev-mods folder. The person answers the one-time "Enable hot reloading" prompt, and the mod loads when the turn ends. Copy again after every edit.
 2. **Print a sample reply** containing everything the change touches: a table with numbers and an aligned column, a `bash` block with flags and a quoted string, a path, a link, a heading and a `mermaid` block.
 3. **Render it, never screenshot.** Window captures are blocked for agents and grab whatever else is open. Instead run the session in a hidden terminal, record every byte it draws, and replay that into xterm.js in headless Chrome. This works with the screen locked and in parallel:
    ```
    npm i -s --prefix <scratch> @xterm/xterm
-   python3 .claude/skills/live-check/capture.py <scratch>/demo.bin <repo> 110 80 '[[45,""]]' claude --plugin-dir <repo> "/prismantis demo"
+   python3 .claude/skills/live-check/capture.py <scratch>/demo.bin <repo> 110 80 '[[45,""]]' claude --plugin-dir <repo>/plugin "/prismantis demo"
    node .claude/skills/live-check/render.mjs <scratch>/demo.bin <scratch>/demo.png 110 80 <scratch>/node_modules/@xterm/xterm
    ```
    Then read the PNG. `capture.py` takes the output file, working directory, columns, rows and a JSON list of `[seconds to wait, keys to type]` steps, then the command. It stops the command once the last step's wait is over, so it needs no `timeout` (which macOS does not ship). Raise the rows to see more of a long reply. `render.mjs` finds Chrome or Chromium itself, or reads `CHROME`. On Windows, ask the person for a Win+Shift+S capture. xterm.js draws no kitty images and no desktop surface, so say those are unchecked.

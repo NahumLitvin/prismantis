@@ -2,6 +2,6 @@
 
 ## Checks
 
-- [ ] `claude plugin validate .` passes
-- [ ] `claude plugin test .` passes
+- [ ] `claude plugin validate plugin` passes
+- [ ] `npm --prefix scripts test` passes
 - [ ] `live-check` render attached for any visual change

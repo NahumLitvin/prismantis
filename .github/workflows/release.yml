@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Tag matches the manifest
-        run: test "${GITHUB_REF_NAME#v}" = "$(jq -r .version .claude-plugin/plugin.json)"
+        run: test "${GITHUB_REF_NAME#v}" = "$(jq -r .version plugin/.claude-plugin/plugin.json)"
       - name: Tag is on main
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - name: Notes from the changelog
