@@ -1,6 +1,6 @@
-import { FIGURE_HINT } from '../../hooks/figure'
-import { HINT, showcaseText } from '../../hooks/help'
-import { PRESET_NAMES } from '../../hooks/presets'
+import { FIGURE_HINT } from '../../plugin/hooks/figure'
+import { HINT, showcaseText } from '../../plugin/hooks/help'
+import { PRESET_NAMES } from '../../plugin/hooks/presets'
 
 const OPENCODE = [
   'This session runs in OpenCode, not Claude Code. The notes after this paragraph are what prismantis tells Claude in Claude Code; follow them with these OpenCode differences.',

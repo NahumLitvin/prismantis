@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { bold, fg, StyledText, TextRenderable, type MarkdownCodeBlockRenderer, type RGBA, type TextChunk } from '@opentui/core'
 
-import { figureRuns, reframe } from '../../hooks/figure'
-import type { FIGURE_ROLES } from '../../hooks/markdown'
+import { figureRuns, reframe } from '../../plugin/hooks/figure'
+import type { FIGURE_ROLES } from '../../plugin/hooks/markdown'
 
 type Role = (typeof FIGURE_ROLES)[number]
 type Theme = {

@@ -1,5 +1,6 @@
-import { build } from 'esbuild'
+import { build, transformSync } from 'esbuild'
 import { readFileSync } from 'node:fs'
+import { basename } from 'node:path'
 
 const bundledPackages = new Set()
 const track = result => {
@@ -146,6 +147,7 @@ const CLEAR_LABEL_GAPS = `export function clearLabelGaps(canvas: Canvas, label: 
 const DRAW = /beautiful-mermaid\/src\/ascii\/draw\.ts$/
 const DRAW_ANCHOR = '  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...labelCanvases)'
 const DRAW_IMPORT = 'import { mkCanvas, copyCanvas,'
+const HEAP_LENGTH = '  get length(): number {'
 const PATHFINDER = /beautiful-mermaid\/src\/ascii\/pathfinder\.ts$/
 const PATH_LOOP = `  while (pq.length > 0) {
     const current = pq.pop()!.coord
@@ -155,6 +157,18 @@ const NODE_ID_START = 'const NODE_PATTERNS'
 const NODE_ID_END = 'const CLASS_SHORTHAND_REGEX'
 const NODE_ID = '[\\w-]+'
 const NODE_ID_BEFORE_ARROW = '(?:\\w|-(?![-.>]))+'
+
+const PRISM_SOURCE = /prismjs\/components\/prism-[\w-]+\.js$/
+const PRISM_PATCHES = {
+  'prism-core.js': [
+    ["\t\t\t\tif (!obj['__id']) {\n\t\t\t\t\tObject.defineProperty(obj, '__id', { value: ++uniqueId });\n\t\t\t\t}\n\t\t\t\treturn obj['__id'];", "\t\t\t\tif (!ids.has(obj)) {\n\t\t\t\t\tids.set(obj, ++uniqueId);\n\t\t\t\t}\n\t\t\t\treturn ids.get(obj);"],
+    ['\tvar uniqueId = 0;', '\tvar uniqueId = 0;\n\tvar ids = new WeakMap();'],
+    ["if (typeof global !== 'undefined') {\n\tglobal.Prism = Prism;\n}", ''],
+  ],
+  'prism-diff.js': [
+    ["\tObject.defineProperty(Prism.languages.diff, 'PREFIXES', {\n\t\tvalue: PREFIXES\n\t});", ''],
+  ],
+}
 
 const PRISM_LANGUAGES = ['clike', 'markup', 'markup-templating', 'php', 'css', 'javascript', 'typescript', 'jsx', 'tsx', 'python', 'go', 'rust', 'java', 'kotlin', 'swift', 'c', 'cpp', 'csharp', 'ruby', 'json', 'yaml', 'toml', 'sql', 'diff', 'docker', 'hcl', 'lua']
 
@@ -177,8 +191,21 @@ track(await build({
   target: 'es2023',
   minifySyntax: true,
   minifyIdentifiers: true,
-  outfile: '../hooks/vendor/prism.js',
+  outfile: '../plugin/hooks/vendor/prism.js',
   legalComments: 'none',
+  plugins: [{
+    name: 'prism-plain',
+    setup(api) {
+      api.onLoad({ filter: PRISM_SOURCE }, args => {
+        let src = readFileSync(args.path, 'utf8')
+        for (const [from, to] of PRISM_PATCHES[basename(args.path)] ?? []) {
+          if (!src.includes(from)) throw new Error(`${args.path} no longer has "${from.trim().split('\n')[0]}"`)
+          src = src.replace(from, to)
+        }
+        return { contents: transformSync(src, { loader: 'js', minifyWhitespace: true }).code, loader: 'js' }
+      })
+    },
+  }],
 }))
 
 track(await build({
@@ -197,7 +224,7 @@ track(await build({
   target: 'es2023',
   minifySyntax: true,
   minifyIdentifiers: true,
-  outfile: '../hooks/vendor/mermaid-text.js',
+  outfile: '../plugin/hooks/vendor/mermaid-text.js',
   legalComments: 'none',
   plugins: [{
     name: 'chart-size',
@@ -244,8 +271,9 @@ track(await build({
       api.onLoad({ filter: PATHFINDER }, args => {
         const src = readFileSync(args.path, 'utf8')
         if (!src.includes(PATH_LOOP)) throw new Error('pathfinder.ts getPath no longer pops the queue the same way')
-        const capped = `  let steps = 0\n  while (pq.length > 0) {\n    if (++steps > 50000) throw new Error('mermaid edge routing gave up')\n    const current = pq.pop()!.coord\n`
-        return { contents: src.replace(PATH_LOOP, capped), loader: 'ts' }
+        const capped = `  let steps = 0\n  while (pq.size() > 0) {\n    if (++steps > 50000) throw new Error('mermaid edge routing gave up')\n    const current = pq.pop()!.coord\n`
+        if (!src.includes(HEAP_LENGTH)) throw new Error('pathfinder.ts MinHeap no longer has a length getter')
+        return { contents: src.replace(PATH_LOOP, capped).replace(HEAP_LENGTH, '  size(): number {'), loader: 'ts' }
       })
       api.onLoad({ filter: PARSER }, args => {
         const src = readFileSync(args.path, 'utf8')

@@ -788,7 +788,7 @@ function ur(t, e, n) {
 // node_modules/beautiful-mermaid/src/ascii/pathfinder.ts
 var ue = class {
   items = [];
-  get length() {
+  size() {
     return this.items.length;
   }
   push(e) {
@@ -840,7 +840,7 @@ function Ht(t, e, n) {
   let r = /* @__PURE__ */ new Map();
   r.set(It(e), null);
   let i = 0;
-  for (; o.length > 0; ) {
+  for (; o.size() > 0; ) {
     if (++i > 5e4) throw new Error("mermaid edge routing gave up");
     let a = o.pop().coord;
     if (ae(a, n)) {

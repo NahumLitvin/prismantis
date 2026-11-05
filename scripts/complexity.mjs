@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const baselineFile = join(root, 'scripts', 'complexity-baseline.json')
 const MAX = 15
 
-const files = execFileSync('git', ['ls-files', 'hooks/*.ts', 'hooks/*.tsx'], { cwd: root, encoding: 'utf8' })
+const files = execFileSync('git', ['ls-files', 'plugin/hooks/*.ts', 'plugin/hooks/*.tsx'], { cwd: root, encoding: 'utf8' })
   .split('\n')
   .filter(file => file && !file.includes('/vendor/'))
 

@@ -10,7 +10,7 @@ if [ "$1" = setup ]; then
   [ -d "$X" ] || npm i -s --prefix "$S" @xterm/xterm >/dev/null
   jq --arg r "$repo" '{hasCompletedOnboarding, theme} | with_entries(select(.value != null)) + {projects: {($r): {hasTrustDialogAccepted: true, hasCompletedProjectOnboarding: true}}}' ~/.claude.json > "$S/cfg/.claude.json"
   echo '{}' > "$S/cfg/settings.json"
-  rsync -a --exclude .git --exclude node_modules "$repo/" "$S/mkt/prismantis/"
+  rsync -a --exclude node_modules "$repo/plugin/" "$S/mkt/prismantis/"
   echo '{"name":"drive","owner":{"name":"drive"},"plugins":[{"name":"prismantis","source":"./prismantis"}]}' > "$S/mkt/.claude-plugin/marketplace.json"
   CLAUDE_CONFIG_DIR="$S/cfg" claude plugin marketplace add "$S/mkt" >/dev/null
   CLAUDE_CONFIG_DIR="$S/cfg" claude plugin install prismantis@drive >/dev/null
