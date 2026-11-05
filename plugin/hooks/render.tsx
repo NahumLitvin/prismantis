@@ -3,7 +3,7 @@ import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'cl
 import type { Ink } from './clipboard'
 import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
-import type { Block, Inline } from './markdown'
+import type { Block, Inline, TableAlign } from './markdown'
 import { mathOf } from './latex'
 import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, parseInline, texParses, texText } from './markdown'
 import type { Flow } from './rtl'
@@ -413,7 +413,7 @@ const blockHeight = (block: Block, w: number): number => {
     case 'table': {
       const { natural, words } = tableSize(block)
       const widths = columnWidths(natural, w - 4, 3, words)
-      const tallest = (cells: Inline[][]) => Math.max(1, ...widths.map((cw, c) => textRows(displayText(cells[c] ?? []), cw)))
+      const tallest = (cells: Inline[][]) => Math.max(1, ...widths.map((cw, c) => textRows(displayText(cells[c]!), cw)))
       return block.rows.reduce((sum, row) => sum + 1 + tallest(row), 4 + tallest(block.header))
     }
     case 'quote':
@@ -779,7 +779,7 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
 const ART_WIDTH = 100
 
 const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
-  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c] ?? [])))
+  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c]!)))
   const column = (measure: (s: string) => number) => block.header.map((_, c) => Math.max(...cells.map(r => measure(r[c]!))))
   return { natural: column(widestLine), words: column(longestWord) }
 }
@@ -823,7 +823,7 @@ const placed = (piece: string, w: number, align: 'left' | 'right' | 'center') =>
 }
 
 const tablePicture = (block: Extract<Block, { kind: 'table' }>, screen: boolean, t: Theme = {}): { text: string; inks: Ink[][] } => {
-  const rows = [block.header, ...block.rows].map(r => block.header.map((_, c) => r[c] ?? []))
+  const rows = [block.header, ...block.rows].map(r => block.header.map((_, c) => r[c]!))
   const texts = rows.map(r => r.map(displayText))
   const { natural, words } = tableSize(block)
   const widths = columnWidths(natural, ART_WIDTH - 4, 3, words)
@@ -836,7 +836,7 @@ const tablePicture = (block: Extract<Block, { kind: 'table' }>, screen: boolean,
     lines.push(text)
     inks.push(cells(text).map(() => rule))
   }
-  const alignOf = (i: number, c: number) => (i === 0 && !screen ? 'center' : block.align[c] ?? 'left')
+  const alignOf = (i: number, c: number): TableAlign => (i === 0 && !screen ? 'center' : block.align[c]!)
   const paintOf = (i: number, c: number) => (i === 0 ? Array<Ink>(texts[i]![c]!.length).fill(header) : cellInks(t, rows[i]![c]!, own({ color: t.tableText })))
   const row = (i: number) => {
     const paints = texts[i]!.map((_, c) => paintOf(i, c))
@@ -992,8 +992,8 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     const parts: Inline[] = box ? [{ kind: 'dim', text: '│ ' }] : []
     order.forEach((c, i) => {
       if (i > 0) parts.push(box ? { kind: 'dim', text: ' │ ' } : { kind: 'text', text: ' '.repeat(gap) })
-      const cell = flowOf({ ...style, shape: 'visual' }, cells[c] ?? [], Infinity)
-      const content = cell ? cell.lines[0]! : (cells[c] ?? [])
+      const cell = flowOf({ ...style, shape: 'visual' }, cells[c]!, Infinity)
+      const content = cell ? cell.lines[0]! : cells[c]!
       const pad = Math.max(0, widths[c]! - width(inlineText(content)))
       const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
       const before = side === 'flex-end' ? pad : side === 'center' ? Math.floor(pad / 2) : 0
@@ -1009,8 +1009,8 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       {box && border(`${k}.l`, wall('│ '))}
       {order.map((c, i) => {
         const w = widths[c]!
-        const cell = cellFlow(style, cells[c] ?? [], held, marked)
-        const content = cell ? cell.lines[0]! : (cells[c] ?? [])
+        const cell = cellFlow(style, cells[c]!, held, marked)
+        const content = cell ? cell.lines[0]! : cells[c]!
         const side = mirror ? (block.align[c] === 'center' ? 'center' : 'flex-start') : cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
         const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
@@ -1030,9 +1030,9 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
   const wrappedRow = (cells: Inline[][], k: string, isHeader: boolean) => {
     if (style.gridFace) return [row(cells, k, isHeader, laidWall(el, style))]
-    if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(displayText(cells[c] ?? []), w)))))]
+    if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(displayText(cells[c]!), w)))))]
     const wrapped = widths.map((w, c) => {
-      const content = cells[c] ?? []
+      const content = cells[c]!
       if (natural[c]! <= w && !inlineText(content).includes('\n')) return [content]
       return wrapInline(isHeader ? headerRuns(content) : content, w)
     })
