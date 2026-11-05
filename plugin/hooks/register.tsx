@@ -422,10 +422,10 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     return style.copyButtons && offers(style, rich) ? (
       <Button
         key={key}
-        {...(style.copyButtonStyle !== 'dim' ? { variant: 'primary' as const } : style.buttonChildren ? { plain: true as const, dimColor: true } : { variant: 'secondary' as const, dimColor: true })}
+        {...(style.copyButtonStyle === 'dim' ? { plain: true as const, dimColor: true } : { variant: 'primary' as const })}
         label={label}
         onPress={async press => $.ui.toast(await copied(press.surface).catch(() => 'Copy failed'))}
-      >{style.copyButtonStyle === 'dim' && style.buttonChildren ? <el.Text>{`[ ${label} ]`}</el.Text> : undefined}</Button>
+      />
     ) : null
   }
   const drawn = drawDiagrams(el, style, blocks, columns - markerRoom(style))
@@ -608,7 +608,7 @@ const SETUP_TABLE = '| Item | Qty |\n|:-----|----:|\n| Apples | 3 |\n| Pears | 5
 const SETUP_SENT = new Date(2026, 0, 15, 14, 32).getTime()
 
 const copySample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, value: string, id: string, columns: number): RenderElement[] => {
-  const label: CopyButton = (_text, key, name = '⧉ copy', rich) => (offers(style, rich) ? <el.Text key={key} {...(style.copyButtonStyle === 'dim' ? { dimColor: true } : { bold: true })}>{`[ ${name} ]`}</el.Text> : null)
+  const label: CopyButton = (_text, key, name = '⧉ copy', rich) => (offers(style, rich) ? (style.copyButtonStyle === 'dim' ? <el.Text key={key} dimColor>{name}</el.Text> : <el.Text key={key} bold>{`[ ${name} ]`}</el.Text>) : null)
   const table = renderBlocks(el, style, parse(SETUP_TABLE, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns, new Map(), label)
   return [
     <el.Box key={`${id}t`} flexDirection="column">{table}</el.Box>,
@@ -714,8 +714,7 @@ export const register: Register = (on, options) => {
   const pathChecks: PathChecks = { asked: new Set(), batch: [], found: new Set() }
   const forSurface = (base: Style, { surface, viewport }: { surface: RenderSurface; viewport?: { isFullscreen?: boolean } }, links: LinkReach): Style => {
     const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor, obsidianLinks: links.editor && viewport?.isFullscreen === false, fileLinks: links.files, pathLinks: links.paths } : base) : { ...base, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop', monoFace: surface === 'desktop' && links.monoText }
-    const shaped = { ...drawn, buttonChildren: links.marks }
-    return surface === 'mobile' && shaped.copyButtonStyle === 'hover' ? { ...shaped, copyButtonStyle: 'inline' } : shaped
+    return surface === 'mobile' && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
   }
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
 

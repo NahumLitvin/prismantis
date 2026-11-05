@@ -6,7 +6,6 @@ import { MARK } from '../hooks/render'
 import { width } from '../hooks/layout'
 import { resolveStyle } from '../hooks/theme'
 import { clipboardEnv, startSession } from './clipboard-env'
-import { claudeAt } from './claude-version'
 
 const TABLE = [
   '| Service | Regions | Version |',
@@ -260,7 +259,6 @@ test('back-to-back tables and diagrams share a wrapping row', async $ => {
 })
 
 test('code blocks, tables and quotes get a copy button, tables an art button, the reply a copy reply button', async ($, on) => {
-  claudeAt(on, '2.1.295')
   const copied: string[] = []
   on('ui.copy', (_, e) => {
     copied.push(e.text)
@@ -760,21 +758,12 @@ test('a tinted translation is drawn in its color', async $ => {
 
 const CODE = '```ts\nconst a = 1\n```'
 
-for (const surface of SURFACES) test(`copyButtonStyle dim, the default, draws a copy button dim on ${surface}`, async ($, on) => {
-  claudeAt(on, '2.1.295')
+for (const surface of SURFACES) test(`copyButtonStyle dim, the default, draws a copy button dim on ${surface}`, async $ => {
   const ui = await $.ui.mount({ ...draw(CODE), surface })
   const button = await ui.find({ key: 'copy0' })
   expect(button?.props.plain).toBe(true)
   expect(button?.props.dimColor).toBe(true)
-  expect(button?.text).toBe('[ ⧉ copy ]')
-  await ui.unmount()
-})
-
-test('copyButtonStyle dim falls back to a dim secondary button before Claude Code 2.1.295, which draws no Button children', async ($, on) => {
-  claudeAt(on, '2.1.294')
-  const ui = await $.ui.mount({ ...draw(CODE), surface: 'terminal' })
-  const button = await ui.find({ key: 'copy0' })
-  expect([button?.props.plain, button?.props.variant, button?.props.dimColor]).toEqual([undefined, 'secondary', true])
+  expect(button?.props.label).toBe('⧉ copy')
   await ui.unmount()
 })
 

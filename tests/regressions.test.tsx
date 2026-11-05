@@ -2071,12 +2071,11 @@ test('footnotes follow quotes and fences: a quoted fence marker inside code make
   expect(marks('> a[^q]\n>\n> > [^q]: Nested note\n> >   continued')).toEqual(['¹ Nested note continued'])
 })
 
-for (const copyButtonStyle of ['dim', 'inline', 'hover'] as const) test(`a quote that opens with code puts its own ${copyButtonStyle} copy button on its last row`, { options: { copyButtonStyle } }, async ($, on) => {
-  claudeAt(on, '2.1.295')
+for (const copyButtonStyle of ['dim', 'inline', 'hover'] as const) test(`a quote that opens with code puts its own ${copyButtonStyle} copy button on its last row`, { options: { copyButtonStyle } }, async $ => {
   const ui = await $.ui.mount(mount('> ```bash\n> npm test\n> ```\n>\n> Run that first.\n\n> One line.'))
   const boxes = await ui.findAll({ type: 'Box' })
   const low = boxes.filter(b => (copyButtonStyle === 'hover' ? b.props.display === 'none' && b.props.bottom === 0 && b.props.right === 0 && b.text !== '⧉ copy reply' : b.props.alignSelf === 'flex-end' && b.key !== 'reply'))
-  expect(low.map(b => b.text)).toEqual([copyButtonStyle === 'dim' ? '[ ⧉ copy ]' : '⧉ copy'])
+  expect(low.map(b => b.text)).toEqual(['⧉ copy'])
   expect(boxes.filter(b => b.props.position === 'absolute' && b.props.top === 0 && b.props.display === 'none' && b.text !== '⧉ copy reply').map(b => b.text)).toEqual(copyButtonStyle === 'hover' ? ['⧉ copy', '⧉ copy'] : [])
   await ui.unmount()
 })
