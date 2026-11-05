@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
-import { MARK } from '../hooks/render'
+import { MARK, replyFill } from '../hooks/render'
 import { width } from '../hooks/layout'
 import { resolveStyle } from '../hooks/theme'
 import { clipboardEnv, startSession } from './clipboard-env'
@@ -772,5 +772,76 @@ for (const surface of SURFACES) test(`copyButtonStyle inline draws a copy button
   const button = await ui.find({ key: 'copy0' })
   expect(button?.props.variant).toBe('primary')
   expect(button?.props.dimColor).toBe(undefined)
+  await ui.unmount()
+})
+
+const FILL = '#1c2233'
+
+const codeLooks = [
+  { options: { codeStyle: 'plain' }, border: undefined, fill: undefined, padding: undefined },
+  { options: { codeStyle: 'framed' }, border: 'round', fill: undefined, padding: 1 },
+  { options: { codeStyle: 'filled' }, border: undefined, fill: FILL, padding: 1 },
+  { options: { codeStyle: 'card' }, border: 'round', fill: FILL, padding: 1 },
+  { options: { codeStyle: 'fancy' }, border: undefined, fill: undefined, padding: undefined },
+] as const
+
+for (const look of codeLooks) test(`codeStyle ${look.options.codeStyle} draws its frame and fill`, { options: { ...look.options, codeFillColor: FILL, replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface: 'terminal' })
+  const block = await ui.find({ key: 'b0' })
+  expect(block?.props.borderStyle).toBe(look.border)
+  expect(block?.props.backgroundColor).toBe(look.fill)
+  expect(block?.props.paddingX).toBe(look.padding)
+  await ui.unmount()
+})
+
+test('a code block is plain by default, so a code color alone draws nothing', { options: { codeFillColor: FILL, codeBorderColor: '#123456', replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface: 'terminal' })
+  const block = await ui.find({ key: 'b0' })
+  expect(block?.props.borderStyle).toBe(undefined)
+  expect(block?.props.backgroundColor).toBe(undefined)
+  expect(block?.props.paddingX).toBe(undefined)
+  await ui.unmount()
+})
+
+for (const codeStyle of ['framed', 'filled', 'card'] as const) test(`codeStyle ${codeStyle} leaves the native code block alone off the terminal`, { options: { codeStyle, replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface: 'desktop' })
+  const block = await ui.find({ key: 'b0' })
+  expect(block?.props.borderStyle).toBe(undefined)
+  expect(block?.props.backgroundColor).toBe(undefined)
+  await ui.unmount()
+})
+
+test('a code block fill defaults to a shade that differs from the reply fill', { options: { codeStyle: 'filled', replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface: 'terminal' })
+  const style = resolveStyle({})
+  const fill = (await ui.find({ key: 'b0' }))?.props.backgroundColor
+  expect(typeof fill).toBe('string')
+  expect(fill).not.toBe(replyFill(style.theme, style.background))
+  await ui.unmount()
+})
+
+test('codeStyle filled draws the frame in a theme with no colors to fill with', { options: { theme: 'mono', codeStyle: 'filled', replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface: 'terminal' })
+  const block = await ui.find({ key: 'b0' })
+  expect(block?.props.borderStyle).toBe('round')
+  expect(block?.props.backgroundColor).toBe(undefined)
+  await ui.unmount()
+})
+
+test('a code block frame takes the rule color', { options: { codeStyle: 'framed', ruleColor: '#654321', replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface: 'terminal' })
+  expect((await ui.find({ key: 'b0' }))?.props.borderColor).toBe('#654321')
+  await ui.unmount()
+})
+
+test('codeBorderColor colors a code block frame apart from the rule color', { options: { codeStyle: 'framed', ruleColor: '#654321', codeBorderColor: '#123456', replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface: 'terminal' })
+  expect((await ui.find({ key: 'b0' }))?.props.borderColor).toBe('#123456')
+  await ui.unmount()
+})
+
+test('a framed code block with hover buttons stays wide enough for its head inside the frame', { options: { codeStyle: 'framed', copyButtonStyle: 'hover', replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('```\nx\n```'), surface: 'terminal' })
+  expect((await ui.find({ key: 'b0' }))?.props.minWidth).toBe('── code [ ⧉ copy ]'.length + 4)
   await ui.unmount()
 })

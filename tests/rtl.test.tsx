@@ -916,6 +916,16 @@ test('on iTerm a long Hebrew line in a code block wraps into rows that each open
   await ui.unmount()
 })
 
+for (const [codeStyle, widest] of [['plain', 35], ['framed', 32], ['filled', 34], ['card', 32]] as const) test(`on iTerm a long Hebrew line wraps at ${widest} columns with codeStyle ${codeStyle}, so it stays inside the block`, { options: { rtl: 'iterm', codeStyle, replyStyle: 'off' } }, async $ => {
+  const words = Array(40).fill('אב').join(' ')
+  const ui = await $.ui.mount(mount(`\`\`\`ts\nconst a = 1\n${words}\n\`\`\``, 40))
+  const rows = (await ui.findAll({ type: 'Box' })).map(b => b.text).filter(t => /^ ⠀/.test(t))
+  expect(rows.length).toBeGreaterThan(1)
+  expect(rows.map(r => r.slice(2).trim()).join(' ')).toBe(words)
+  expect(Math.max(...rows.map(r => r.length))).toBe(widest)
+  await ui.unmount()
+})
+
 test('on iTerm a shell block whose Hebrew comes after the command keeps its shell colors and gets no braille blank, since the row already opens with English', { options: { rtl: 'iterm' } }, async $ => {
   const ui = await $.ui.mount(mount('```bash\nls -la # רשימת הקבצים\n```'))
   expect((await ui.findAll({ type: 'Text' })).some(t => t.text.includes('⠀'))).toBe(false)
