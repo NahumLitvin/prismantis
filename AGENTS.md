@@ -40,6 +40,8 @@ Claude Code refuses any tree over 20000 nodes and silently draws its own text, s
 
 ## Rules
 
+[SCOPE.md](SCOPE.md) says what fits in prismantis and what to ask about first. Check a change against it before writing code.
+
 Code:
 
 - No code comments. The why goes in the commit message or PR description.
