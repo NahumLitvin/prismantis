@@ -23,7 +23,7 @@ export type Terminal = keyof typeof TERMINALS
 type Fmt = { wrap: ('strong' | 'emphasis' | 'strike')[]; leaf: 'text' | 'code' | 'math' | 'number' | 'path' | 'link' | 'dim' | 'footnote'; href?: string }
 type Unit = { ch: string; fmt: Fmt }
 
-const R = /[֐-׿؀-ٟ٪-ۯۺ-ݿࢠ-ࣿיִ-﷿ﹰ-﻿]/
+const R = /[֐-׿؀-ٟ٪-ۯۺ-ݿࢠ-ࣿיִ-﷿ﹰ-\uFEFF]/
 const L = /[A-Za-z0-9À-ɏ٠-٩۰-۹]/
 const LATIN = /[A-Za-zÀ-ɏ]/
 const MARK = /\p{M}/u

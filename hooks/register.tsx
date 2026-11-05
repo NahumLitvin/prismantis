@@ -461,8 +461,27 @@ const THEME_ARGS = [...PRESET_NAMES, 'random']
 
 type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
 
-const saveOption = ($: EngineInterface, key: string, value: string): Promise<string | undefined> =>
-  $.config.set({ key: `${$.plugin.name}.${key}`, value }).then(
+const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => {
+  switch (key) {
+    case 'theme': return $.config.set({ key: 'prismantis.theme', value: value })
+    case 'tableStyle': return $.config.set({ key: 'prismantis.tableStyle', value: value })
+    case 'taskStyle': return $.config.set({ key: 'prismantis.taskStyle', value: value })
+    case 'listMarker': return $.config.set({ key: 'prismantis.listMarker', value: value })
+    case 'headingStyle': return $.config.set({ key: 'prismantis.headingStyle', value: value })
+    case 'copyButtonStyle': return $.config.set({ key: 'prismantis.copyButtonStyle', value: value })
+    case 'promptStyle': return $.config.set({ key: 'prismantis.promptStyle', value: value })
+    case 'replyStyle': return $.config.set({ key: 'prismantis.replyStyle', value: value })
+    case 'bubbleLabels': return $.config.set({ key: 'prismantis.bubbleLabels', value: value })
+    case 'clock': return $.config.set({ key: 'prismantis.clock', value: value })
+    case 'toolStyle': return $.config.set({ key: 'prismantis.toolStyle', value: value })
+    case 'toolOutput': return $.config.set({ key: 'prismantis.toolOutput', value: value })
+    case 'diffStyle': return $.config.set({ key: 'prismantis.diffStyle', value: value })
+    case 'pieStyle': return $.config.set({ key: 'prismantis.pieStyle', value: value })
+  }
+}
+
+const saveOption = ($: EngineInterface, key: SetupStep['key'], value: string): Promise<string | undefined> =>
+  setOption($, key, value).then(
     r => r.deny,
     (e: unknown) => `${e instanceof Error ? e.message : String(e)}. Set "${key}": "${value}" by hand in the ${$.plugin.name} options under pluginConfigs in ~/.claude/settings.json, then restart.`,
   )

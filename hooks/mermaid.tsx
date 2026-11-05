@@ -126,8 +126,8 @@ const seriesOf = (colored: string): number[][] => {
     return row
   })
   const legend = hues.find(row => row.some(Boolean)) ?? []
-  const order = [...new Set(legend.filter((h): h is string => h !== undefined))]
-  return hues.map(row => row.map(h => (h === undefined ? -1 : order.indexOf(h))))
+  const order = [...new Set(legend.filter((code): code is string => code !== undefined))]
+  return hues.map(row => row.map(code => (code === undefined ? -1 : order.indexOf(code))))
 }
 
 const seriesCache = new Map<string, number[][] | null>()
