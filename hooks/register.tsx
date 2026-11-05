@@ -463,20 +463,20 @@ type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
 
 const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => {
   switch (key) {
-    case 'theme': return $.config.set({ key: 'prismantis.theme', value })
-    case 'tableStyle': return $.config.set({ key: 'prismantis.tableStyle', value })
-    case 'taskStyle': return $.config.set({ key: 'prismantis.taskStyle', value })
-    case 'listMarker': return $.config.set({ key: 'prismantis.listMarker', value })
-    case 'headingStyle': return $.config.set({ key: 'prismantis.headingStyle', value })
-    case 'copyButtonStyle': return $.config.set({ key: 'prismantis.copyButtonStyle', value })
-    case 'promptStyle': return $.config.set({ key: 'prismantis.promptStyle', value })
-    case 'replyStyle': return $.config.set({ key: 'prismantis.replyStyle', value })
-    case 'bubbleLabels': return $.config.set({ key: 'prismantis.bubbleLabels', value })
-    case 'clock': return $.config.set({ key: 'prismantis.clock', value })
-    case 'toolStyle': return $.config.set({ key: 'prismantis.toolStyle', value })
-    case 'toolOutput': return $.config.set({ key: 'prismantis.toolOutput', value })
-    case 'diffStyle': return $.config.set({ key: 'prismantis.diffStyle', value })
-    case 'pieStyle': return $.config.set({ key: 'prismantis.pieStyle', value })
+    case 'theme': return $.config.set({ key: 'prismantis.theme', value: value })
+    case 'tableStyle': return $.config.set({ key: 'prismantis.tableStyle', value: value })
+    case 'taskStyle': return $.config.set({ key: 'prismantis.taskStyle', value: value })
+    case 'listMarker': return $.config.set({ key: 'prismantis.listMarker', value: value })
+    case 'headingStyle': return $.config.set({ key: 'prismantis.headingStyle', value: value })
+    case 'copyButtonStyle': return $.config.set({ key: 'prismantis.copyButtonStyle', value: value })
+    case 'promptStyle': return $.config.set({ key: 'prismantis.promptStyle', value: value })
+    case 'replyStyle': return $.config.set({ key: 'prismantis.replyStyle', value: value })
+    case 'bubbleLabels': return $.config.set({ key: 'prismantis.bubbleLabels', value: value })
+    case 'clock': return $.config.set({ key: 'prismantis.clock', value: value })
+    case 'toolStyle': return $.config.set({ key: 'prismantis.toolStyle', value: value })
+    case 'toolOutput': return $.config.set({ key: 'prismantis.toolOutput', value: value })
+    case 'diffStyle': return $.config.set({ key: 'prismantis.diffStyle', value: value })
+    case 'pieStyle': return $.config.set({ key: 'prismantis.pieStyle', value: value })
   }
 }
 

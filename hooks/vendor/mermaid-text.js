@@ -1,29 +1,25 @@
 // node_modules/beautiful-mermaid/src/multiline-utils.ts
-function normalizeBrTags(label) {
-  const unquoted = label.startsWith('"') && label.endsWith('"') ? label.slice(1, -1) : label;
-  return unquoted.replace(/<br\s*\/?>/gi, "\n").replace(/\\n/g, "\n").replace(/<\/?(?:sub|sup|small|mark)\s*>/gi, "").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/(?<!\*)\*([^\s*](?:[^*]*[^\s*])?)\*(?!\*)/g, "<i>$1</i>").replace(/~~(.+?)~~/g, "<s>$1</s>");
+function dt(t) {
+  return (t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t).replace(/<br\s*\/?>/gi, `
+`).replace(/\\n/g, `
+`).replace(/<\/?(?:sub|sup|small|mark)\s*>/gi, "").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/(?<!\*)\*([^\s*](?:[^*]*[^\s*])?)\*(?!\*)/g, "<i>$1</i>").replace(/~~(.+?)~~/g, "<s>$1</s>");
 }
 
 // node_modules/beautiful-mermaid/src/parser.ts
-function parseMermaid(text) {
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%"));
-  if (lines.length === 0) {
+function Le(t) {
+  let e = t.split(`
+`).map((o) => o.trim()).filter((o) => o.length > 0 && !o.startsWith("%%"));
+  if (e.length === 0)
     throw new Error("Empty mermaid diagram");
-  }
-  const header = lines[0];
-  if (/^stateDiagram(-v2)?\s*$/i.test(header)) {
-    return parseStateDiagram(lines);
-  }
-  return parseFlowchart(lines);
+  let n = e[0];
+  return /^stateDiagram(-v2)?\s*$/i.test(n) ? Un(e) : Jn(e);
 }
-function parseFlowchart(lines) {
-  const headerMatch = lines[0].match(/^(?:graph|flowchart)\s+(TD|TB|LR|BT|RL)\s*$/i);
-  if (!headerMatch) {
-    throw new Error(`Invalid mermaid header: "${lines[0]}". Expected "graph TD", "flowchart LR", "stateDiagram-v2", etc.`);
-  }
-  const direction = headerMatch[1].toUpperCase();
-  const graph = {
-    direction,
+function Jn(t) {
+  let e = t[0].match(/^(?:graph|flowchart)\s+(TD|TB|LR|BT|RL)\s*$/i);
+  if (!e)
+    throw new Error(`Invalid mermaid header: "${t[0]}". Expected "graph TD", "flowchart LR", "stateDiagram-v2", etc.`);
+  let o = {
+    direction: e[1].toUpperCase(),
     nodes: /* @__PURE__ */ new Map(),
     edges: [],
     subgraphs: [],
@@ -31,91 +27,64 @@ function parseFlowchart(lines) {
     classAssignments: /* @__PURE__ */ new Map(),
     nodeStyles: /* @__PURE__ */ new Map(),
     linkStyles: /* @__PURE__ */ new Map()
-  };
-  const subgraphStack = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    const classDefMatch = line.match(/^classDef\s+(\w+)\s+(.+)$/);
-    if (classDefMatch) {
-      const name = classDefMatch[1];
-      const propsStr = classDefMatch[2];
-      const props = parseStyleProps(propsStr);
-      graph.classDefs.set(name, props);
+  }, s = [];
+  for (let r = 1; r < t.length; r++) {
+    let i = t[r], a = i.match(/^classDef\s+(\w+)\s+(.+)$/);
+    if (a) {
+      let u = a[1], m = a[2], p = Vt(m);
+      o.classDefs.set(u, p);
       continue;
     }
-    const classAssignMatch = line.match(/^class\s+([\w,-]+)\s+(\w+)$/);
-    if (classAssignMatch) {
-      const nodeIds = classAssignMatch[1].split(",").map((s) => s.trim());
-      const className = classAssignMatch[2];
-      for (const id of nodeIds) {
-        graph.classAssignments.set(id, className);
+    let c = i.match(/^class\s+([\w,-]+)\s+(\w+)$/);
+    if (c) {
+      let u = c[1].split(",").map((p) => p.trim()), m = c[2];
+      for (let p of u)
+        o.classAssignments.set(p, m);
+      continue;
+    }
+    let l = i.match(/^style\s+([\w,-]+)\s+(.+)$/);
+    if (l) {
+      let u = l[1].split(",").map((p) => p.trim()), m = Vt(l[2]);
+      for (let p of u)
+        o.nodeStyles.set(p, { ...o.nodeStyles.get(p), ...m });
+      continue;
+    }
+    let d = i.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
+    if (d) {
+      let u = d[1].trim(), m = Vt(d[2]);
+      if (u === "default")
+        o.linkStyles.set("default", { ...o.linkStyles.get("default"), ...m });
+      else {
+        let p = u.split(",").map((b) => parseInt(b.trim(), 10));
+        for (let b of p)
+          isNaN(b) || o.linkStyles.set(b, { ...o.linkStyles.get(b), ...m });
       }
       continue;
     }
-    const styleMatch = line.match(/^style\s+([\w,-]+)\s+(.+)$/);
-    if (styleMatch) {
-      const nodeIds = styleMatch[1].split(",").map((s) => s.trim());
-      const props = parseStyleProps(styleMatch[2]);
-      for (const id of nodeIds) {
-        graph.nodeStyles.set(id, { ...graph.nodeStyles.get(id), ...props });
-      }
+    let h = i.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
+    if (h && s.length > 0) {
+      s[s.length - 1].direction = h[1].toUpperCase();
       continue;
     }
-    const linkStyleMatch = line.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
-    if (linkStyleMatch) {
-      const target = linkStyleMatch[1].trim();
-      const props = parseStyleProps(linkStyleMatch[2]);
-      if (target === "default") {
-        graph.linkStyles.set("default", { ...graph.linkStyles.get("default"), ...props });
-      } else {
-        const indices = target.split(",").map((s) => parseInt(s.trim(), 10));
-        for (const idx of indices) {
-          if (!isNaN(idx)) {
-            graph.linkStyles.set(idx, { ...graph.linkStyles.get(idx), ...props });
-          }
-        }
-      }
+    let f = i.match(/^subgraph\s+(.+)$/);
+    if (f) {
+      let u = f[1].trim(), m = u.match(/^([\w-]+)\s*\[(.+)\]$/), p, b;
+      m ? (p = m[1], b = dt(m[2])) : (b = dt(u), p = u.replace(/\s+/g, "_").replace(/[^\w]/g, ""));
+      let A = { id: p, label: b, nodeIds: [], children: [] };
+      s.push(A);
       continue;
     }
-    const dirMatch = line.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
-    if (dirMatch && subgraphStack.length > 0) {
-      subgraphStack[subgraphStack.length - 1].direction = dirMatch[1].toUpperCase();
+    if (i === "end") {
+      let u = s.pop();
+      u && (s.length > 0 ? s[s.length - 1].children.push(u) : o.subgraphs.push(u));
       continue;
     }
-    const subgraphMatch = line.match(/^subgraph\s+(.+)$/);
-    if (subgraphMatch) {
-      const rest = subgraphMatch[1].trim();
-      const bracketMatch = rest.match(/^([\w-]+)\s*\[(.+)\]$/);
-      let id;
-      let label;
-      if (bracketMatch) {
-        id = bracketMatch[1];
-        label = normalizeBrTags(bracketMatch[2]);
-      } else {
-        label = normalizeBrTags(rest);
-        id = rest.replace(/\s+/g, "_").replace(/[^\w]/g, "");
-      }
-      const sg = { id, label, nodeIds: [], children: [] };
-      subgraphStack.push(sg);
-      continue;
-    }
-    if (line === "end") {
-      const completed = subgraphStack.pop();
-      if (completed) {
-        if (subgraphStack.length > 0) {
-          subgraphStack[subgraphStack.length - 1].children.push(completed);
-        } else {
-          graph.subgraphs.push(completed);
-        }
-      }
-      continue;
-    }
-    parseEdgeLine(line, graph, subgraphStack);
+    tr(i, o, s);
   }
-  return graph;
+  return o;
 }
-function parseStateDiagram(lines) {
-  const graph = {
+function Un(t) {
+  let e = {
     direction: "TD",
     nodes: /* @__PURE__ */ new Map(),
     edges: [],
@@ -124,148 +93,90 @@ function parseStateDiagram(lines) {
     classAssignments: /* @__PURE__ */ new Map(),
     nodeStyles: /* @__PURE__ */ new Map(),
     linkStyles: /* @__PURE__ */ new Map()
-  };
-  const compositeStack = [];
-  const compositeStateIds = /* @__PURE__ */ new Set();
-  let startCount = 0;
-  let endCount = 0;
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    const dirMatch = line.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
-    if (dirMatch) {
-      if (compositeStack.length > 0) {
-        compositeStack[compositeStack.length - 1].direction = dirMatch[1].toUpperCase();
-      } else {
-        graph.direction = dirMatch[1].toUpperCase();
+  }, n = [], o = /* @__PURE__ */ new Set(), s = 0, r = 0;
+  for (let i = 1; i < t.length; i++) {
+    let a = t[i], c = a.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
+    if (c) {
+      n.length > 0 ? n[n.length - 1].direction = c[1].toUpperCase() : e.direction = c[1].toUpperCase();
+      continue;
+    }
+    let l = a.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
+    if (l) {
+      let m = l[1].trim(), p = Vt(l[2]);
+      if (m === "default")
+        e.linkStyles.set("default", { ...e.linkStyles.get("default"), ...p });
+      else {
+        let b = m.split(",").map((A) => parseInt(A.trim(), 10));
+        for (let A of b)
+          isNaN(A) || e.linkStyles.set(A, { ...e.linkStyles.get(A), ...p });
       }
       continue;
     }
-    const linkStyleMatch = line.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
-    if (linkStyleMatch) {
-      const target = linkStyleMatch[1].trim();
-      const props = parseStyleProps(linkStyleMatch[2]);
-      if (target === "default") {
-        graph.linkStyles.set("default", { ...graph.linkStyles.get("default"), ...props });
-      } else {
-        const indices = target.split(",").map((s) => parseInt(s.trim(), 10));
-        for (const idx of indices) {
-          if (!isNaN(idx)) {
-            graph.linkStyles.set(idx, { ...graph.linkStyles.get(idx), ...props });
-          }
-        }
-      }
+    let d = a.match(/^state\s+(?:"([^"]+)"\s+as\s+)?([\w\p{L}]+)\s*\{$/u);
+    if (d) {
+      let m = d[1] ?? d[2], p = d[2], b = { id: p, label: m, nodeIds: [], children: [] };
+      n.push(b), o.add(p), e.nodes.delete(p);
       continue;
     }
-    const compositeMatch = line.match(/^state\s+(?:"([^"]+)"\s+as\s+)?([\w\p{L}]+)\s*\{$/u);
-    if (compositeMatch) {
-      const label = compositeMatch[1] ?? compositeMatch[2];
-      const id = compositeMatch[2];
-      const sg = { id, label, nodeIds: [], children: [] };
-      compositeStack.push(sg);
-      compositeStateIds.add(id);
-      graph.nodes.delete(id);
+    if (a === "}") {
+      let m = n.pop();
+      m && (n.length > 0 ? n[n.length - 1].children.push(m) : e.subgraphs.push(m));
       continue;
     }
-    if (line === "}") {
-      const completed = compositeStack.pop();
-      if (completed) {
-        if (compositeStack.length > 0) {
-          compositeStack[compositeStack.length - 1].children.push(completed);
-        } else {
-          graph.subgraphs.push(completed);
-        }
-      }
+    let h = a.match(/^state\s+"([^"]+)"\s+as\s+([\w\p{L}]+)\s*$/u);
+    if (h) {
+      let m = dt(h[1]), p = h[2];
+      Ot(e, n, { id: p, label: m, shape: "rounded" });
       continue;
     }
-    const stateAliasMatch = line.match(/^state\s+"([^"]+)"\s+as\s+([\w\p{L}]+)\s*$/u);
-    if (stateAliasMatch) {
-      const label = normalizeBrTags(stateAliasMatch[1]);
-      const id = stateAliasMatch[2];
-      registerStateNode(graph, compositeStack, { id, label, shape: "rounded" });
-      continue;
-    }
-    const transitionMatch = line.match(/^(\[\*\]|[\w\p{L}-]+)\s*(-->)\s*(\[\*\]|[\w\p{L}-]+)(?:\s*:\s*(.+))?$/u);
-    if (transitionMatch) {
-      let sourceId = transitionMatch[1];
-      let targetId = transitionMatch[3];
-      const rawTransitionLabel = transitionMatch[4]?.trim();
-      const edgeLabel = rawTransitionLabel ? normalizeBrTags(rawTransitionLabel) : void 0;
-      if (sourceId === "[*]") {
-        startCount++;
-        sourceId = `_start${startCount > 1 ? startCount : ""}`;
-        registerStateNode(graph, compositeStack, { id: sourceId, label: "", shape: "state-start" });
-      } else if (!compositeStateIds.has(sourceId)) {
-        ensureStateNode(graph, compositeStack, sourceId);
-      }
-      if (targetId === "[*]") {
-        endCount++;
-        targetId = `_end${endCount > 1 ? endCount : ""}`;
-        registerStateNode(graph, compositeStack, { id: targetId, label: "", shape: "state-end" });
-      } else if (!compositeStateIds.has(targetId)) {
-        ensureStateNode(graph, compositeStack, targetId);
-      }
-      graph.edges.push({
-        source: sourceId,
-        target: targetId,
-        label: edgeLabel,
+    let f = a.match(/^(\[\*\]|[\w\p{L}-]+)\s*(-->)\s*(\[\*\]|[\w\p{L}-]+)(?:\s*:\s*(.+))?$/u);
+    if (f) {
+      let m = f[1], p = f[3], b = f[4]?.trim(), A = b ? dt(b) : void 0;
+      m === "[*]" ? (s++, m = `_start${s > 1 ? s : ""}`, Ot(e, n, { id: m, label: "", shape: "state-start" })) : o.has(m) || Se(e, n, m), p === "[*]" ? (r++, p = `_end${r > 1 ? r : ""}`, Ot(e, n, { id: p, label: "", shape: "state-end" })) : o.has(p) || Se(e, n, p), e.edges.push({
+        source: m,
+        target: p,
+        label: A,
         style: "solid",
-        hasArrowStart: false,
-        hasArrowEnd: true
+        hasArrowStart: !1,
+        hasArrowEnd: !0
       });
       continue;
     }
-    const stateDescMatch = line.match(/^([\w\p{L}-]+)\s*:\s*(.+)$/u);
-    if (stateDescMatch) {
-      const id = stateDescMatch[1];
-      const label = normalizeBrTags(stateDescMatch[2].trim());
-      registerStateNode(graph, compositeStack, { id, label, shape: "rounded" });
+    let u = a.match(/^([\w\p{L}-]+)\s*:\s*(.+)$/u);
+    if (u) {
+      let m = u[1], p = dt(u[2].trim());
+      Ot(e, n, { id: m, label: p, shape: "rounded" });
       continue;
     }
   }
-  return graph;
+  return e;
 }
-function registerStateNode(graph, compositeStack, node) {
-  const isNew = !graph.nodes.has(node.id);
-  if (isNew) {
-    graph.nodes.set(node.id, node);
+function Ot(t, e, n) {
+  if (!t.nodes.has(n.id) && t.nodes.set(n.id, n), e.length > 0) {
+    let s = e[e.length - 1];
+    s.nodeIds.includes(n.id) || s.nodeIds.push(n.id);
   }
-  if (compositeStack.length > 0) {
-    const current = compositeStack[compositeStack.length - 1];
-    if (!current.nodeIds.includes(node.id)) {
-      current.nodeIds.push(node.id);
+}
+function Se(t, e, n) {
+  if (!t.nodes.has(n))
+    Ot(t, e, { id: n, label: n, shape: "rounded" });
+  else if (e.length > 0) {
+    let o = e[e.length - 1];
+    o.nodeIds.includes(n) || o.nodeIds.push(n);
+  }
+}
+function Vt(t) {
+  let e = t.replace(/;\s*$/, ""), n = {};
+  for (let o of e.split(",")) {
+    let s = o.indexOf(":");
+    if (s > 0) {
+      let r = o.slice(0, s).trim(), i = o.slice(s + 1).trim();
+      r && i && (n[r] = i);
     }
   }
+  return n;
 }
-function ensureStateNode(graph, compositeStack, id) {
-  if (!graph.nodes.has(id)) {
-    registerStateNode(graph, compositeStack, { id, label: id, shape: "rounded" });
-  } else {
-    if (compositeStack.length > 0) {
-      const current = compositeStack[compositeStack.length - 1];
-      if (!current.nodeIds.includes(id)) {
-        current.nodeIds.push(id);
-      }
-    }
-  }
-}
-function parseStyleProps(propsStr) {
-  const cleaned = propsStr.replace(/;\s*$/, "");
-  const props = {};
-  for (const pair of cleaned.split(",")) {
-    const colonIdx = pair.indexOf(":");
-    if (colonIdx > 0) {
-      const key = pair.slice(0, colonIdx).trim();
-      const val = pair.slice(colonIdx + 1).trim();
-      if (key && val) {
-        props[key] = val;
-      }
-    }
-  }
-  return props;
-}
-var ARROW_REGEX = /^(<)?(-->|-.->|==>|---|-\.-|===)(?:\|([^|]*)\|)?/;
-var TEXT_ARROW_REGEX = /^(<)?(--|-\.|==)\s+(.+?)\s+(-->|---|\.\->|-\.\-|==>|===)/;
-var NODE_PATTERNS = [
+var qn = /^(<)?(-->|-.->|==>|---|-\.-|===)(?:\|([^|]*)\|)?/, Vn = /^(<)?(--|-\.|==)\s+(.+?)\s+(-->|---|\.\->|-\.\-|==>|===)/, Kn = [
   // Triple delimiters (must be first)
   { regex: /^((?:\w|-(?![-.>]))+)\(\(\((.+?)\)\)\)/, shape: "doublecircle" },
   // A(((text)))
@@ -296,158 +207,108 @@ var NODE_PATTERNS = [
   // A(text)
   { regex: /^((?:\w|-(?![-.>]))+)\{(.+?)\}/, shape: "diamond" }
   // A{text}
-];
-var BARE_NODE_REGEX = /^((?:\w|-(?![-.>]))+)/;
-var CLASS_SHORTHAND_REGEX = /^:::([\w][\w-]*)/;
-function parseEdgeLine(line, graph, subgraphStack) {
-  let remaining = line.trim();
-  const firstGroup = consumeNodeGroup(remaining, graph, subgraphStack);
-  if (!firstGroup || firstGroup.ids.length === 0) return;
-  remaining = firstGroup.remaining.trim();
-  let prevGroupIds = firstGroup.ids;
-  while (remaining.length > 0) {
-    let hasArrowStart;
-    let style;
-    let hasArrowEnd;
-    let edgeLabel;
-    const arrowMatch = remaining.match(ARROW_REGEX);
-    if (arrowMatch) {
-      hasArrowStart = Boolean(arrowMatch[1]);
-      const arrowOp = arrowMatch[2];
-      const rawEdgeLabel = arrowMatch[3]?.trim();
-      edgeLabel = rawEdgeLabel ? normalizeBrTags(rawEdgeLabel) : void 0;
-      remaining = remaining.slice(arrowMatch[0].length).trim();
-      style = arrowStyleFromOp(arrowOp);
-      hasArrowEnd = arrowOp.endsWith(">");
+], Qn = /^((?:\w|-(?![-.>]))+)/, Zn = /^:::([\w][\w-]*)/;
+function tr(t, e, n) {
+  let o = t.trim(), s = Re(o, e, n);
+  if (!s || s.ids.length === 0) return;
+  o = s.remaining.trim();
+  let r = s.ids;
+  for (; o.length > 0; ) {
+    let i, a, c, l, d = o.match(qn);
+    if (d) {
+      i = !!d[1];
+      let f = d[2], u = d[3]?.trim();
+      l = u ? dt(u) : void 0, o = o.slice(d[0].length).trim(), a = nr(f), c = f.endsWith(">");
     } else {
-      const textMatch = remaining.match(TEXT_ARROW_REGEX);
-      if (!textMatch) break;
-      hasArrowStart = Boolean(textMatch[1]);
-      const rawLabel = textMatch[3].trim();
-      edgeLabel = rawLabel ? normalizeBrTags(rawLabel) : void 0;
-      const openOp = textMatch[2];
-      const closeOp = textMatch[4];
-      remaining = remaining.slice(textMatch[0].length).trim();
-      style = textArrowStyleFromOps(openOp, closeOp);
-      hasArrowEnd = closeOp.endsWith(">");
+      let f = o.match(Vn);
+      if (!f) break;
+      i = !!f[1];
+      let u = f[3].trim();
+      l = u ? dt(u) : void 0;
+      let m = f[2], p = f[4];
+      o = o.slice(f[0].length).trim(), a = rr(m, p), c = p.endsWith(">");
     }
-    const nextGroup = consumeNodeGroup(remaining, graph, subgraphStack);
-    if (!nextGroup || nextGroup.ids.length === 0) break;
-    remaining = nextGroup.remaining.trim();
-    for (const sourceId of prevGroupIds) {
-      for (const targetId of nextGroup.ids) {
-        graph.edges.push({
-          source: sourceId,
-          target: targetId,
-          label: edgeLabel,
-          style,
-          hasArrowStart,
-          hasArrowEnd
+    let h = Re(o, e, n);
+    if (!h || h.ids.length === 0) break;
+    o = h.remaining.trim();
+    for (let f of r)
+      for (let u of h.ids)
+        e.edges.push({
+          source: f,
+          target: u,
+          label: l,
+          style: a,
+          hasArrowStart: i,
+          hasArrowEnd: c
         });
-      }
-    }
-    prevGroupIds = nextGroup.ids;
+    r = h.ids;
   }
 }
-function consumeNodeGroup(text, graph, subgraphStack) {
-  const first = consumeNode(text, graph, subgraphStack);
-  if (!first) return null;
-  const ids = [first.id];
-  let remaining = first.remaining.trim();
-  while (remaining.startsWith("&")) {
-    remaining = remaining.slice(1).trim();
-    const next = consumeNode(remaining, graph, subgraphStack);
-    if (!next) break;
-    ids.push(next.id);
-    remaining = next.remaining.trim();
+function Re(t, e, n) {
+  let o = De(t, e, n);
+  if (!o) return null;
+  let s = [o.id], r = o.remaining.trim();
+  for (; r.startsWith("&"); ) {
+    r = r.slice(1).trim();
+    let i = De(r, e, n);
+    if (!i) break;
+    s.push(i.id), r = i.remaining.trim();
   }
-  return { ids, remaining };
+  return { ids: s, remaining: r };
 }
-function consumeNode(text, graph, subgraphStack) {
-  let id = null;
-  let remaining = text;
-  for (const { regex, shape } of NODE_PATTERNS) {
-    const match = text.match(regex);
-    if (match) {
-      id = match[1];
-      const label = normalizeBrTags(match[2]);
-      registerNode(graph, subgraphStack, { id, label, shape });
-      remaining = text.slice(match[0].length);
+function De(t, e, n) {
+  let o = null, s = t;
+  for (let { regex: i, shape: a } of Kn) {
+    let c = t.match(i);
+    if (c) {
+      o = c[1];
+      let l = dt(c[2]);
+      Te(e, n, { id: o, label: l, shape: a }), s = t.slice(c[0].length);
       break;
     }
   }
-  if (id === null) {
-    const bareMatch = text.match(BARE_NODE_REGEX);
-    if (bareMatch) {
-      id = bareMatch[1];
-      if (!graph.nodes.has(id)) {
-        registerNode(graph, subgraphStack, { id, label: id, shape: "rectangle" });
-      }
-      remaining = text.slice(bareMatch[0].length);
-    }
+  if (o === null) {
+    let i = t.match(Qn);
+    i && (o = i[1], e.nodes.has(o) || Te(e, n, { id: o, label: o, shape: "rectangle" }), s = t.slice(i[0].length));
   }
-  if (id === null) return null;
-  const classMatch = remaining.match(CLASS_SHORTHAND_REGEX);
-  if (classMatch) {
-    graph.classAssignments.set(id, classMatch[1]);
-    remaining = remaining.slice(classMatch[0].length);
-  }
-  return { id, remaining };
+  if (o === null) return null;
+  let r = s.match(Zn);
+  return r && (e.classAssignments.set(o, r[1]), s = s.slice(r[0].length)), { id: o, remaining: s };
 }
-function registerNode(graph, subgraphStack, node) {
-  const isNew = !graph.nodes.has(node.id);
-  if (isNew) {
-    graph.nodes.set(node.id, node);
-  }
-  trackInSubgraph(subgraphStack, node.id);
+function Te(t, e, n) {
+  !t.nodes.has(n.id) && t.nodes.set(n.id, n), er(e, n.id);
 }
-function trackInSubgraph(subgraphStack, nodeId) {
-  if (subgraphStack.length > 0) {
-    const current = subgraphStack[subgraphStack.length - 1];
-    if (!current.nodeIds.includes(nodeId)) {
-      current.nodeIds.push(nodeId);
-    }
+function er(t, e) {
+  if (t.length > 0) {
+    let n = t[t.length - 1];
+    n.nodeIds.includes(e) || n.nodeIds.push(e);
   }
 }
-function arrowStyleFromOp(op) {
-  if (op === "-.->") return "dotted";
-  if (op === "-.-") return "dotted";
-  if (op === "==>") return "thick";
-  if (op === "===") return "thick";
-  return "solid";
+function nr(t) {
+  return t === "-.->" || t === "-.-" ? "dotted" : t === "==>" || t === "===" ? "thick" : "solid";
 }
-function textArrowStyleFromOps(openOp, closeOp) {
-  if (openOp === "-." || closeOp === ".->" || closeOp === "-.-") return "dotted";
-  if (openOp === "==" || closeOp === "==>" || closeOp === "===") return "thick";
-  return "solid";
+function rr(t, e) {
+  return t === "-." || e === ".->" || e === "-.-" ? "dotted" : t === "==" || e === "==>" || e === "===" ? "thick" : "solid";
 }
 
 // node_modules/beautiful-mermaid/src/ascii/types.ts
-var Up = { x: 1, y: 0 };
-var Down = { x: 1, y: 2 };
-var Left = { x: 0, y: 1 };
-var Right = { x: 2, y: 1 };
-var UpperRight = { x: 2, y: 0 };
-var UpperLeft = { x: 0, y: 0 };
-var LowerRight = { x: 2, y: 2 };
-var LowerLeft = { x: 0, y: 2 };
-var Middle = { x: 1, y: 1 };
-function gridCoordEquals(a, b) {
-  return a.x === b.x && a.y === b.y;
+var _ = { x: 1, y: 0 }, Y = { x: 1, y: 2 }, j = { x: 0, y: 1 }, P = { x: 2, y: 1 }, wt = { x: 2, y: 0 }, Mt = { x: 0, y: 0 }, Rt = { x: 2, y: 2 }, vt = { x: 0, y: 2 }, Gt = { x: 1, y: 1 };
+function ae(t, e) {
+  return t.x === e.x && t.y === e.y;
 }
-function drawingCoordEquals(a, b) {
-  return a.x === b.x && a.y === b.y;
+function Kt(t, e) {
+  return t.x === e.x && t.y === e.y;
 }
-function gridCoordDirection(c, dir) {
-  return { x: c.x + dir.x, y: c.y + dir.y };
+function Ft(t, e) {
+  return { x: t.x + e.x, y: t.y + e.y };
 }
-function gridKey(c) {
-  return `${c.x},${c.y}`;
+function It(t) {
+  return `${t.x},${t.y}`;
 }
-var EMPTY_STYLE = { name: "", styles: {} };
+var Ee = { name: "", styles: {} };
 
 // node_modules/beautiful-mermaid/src/ascii/ansi.ts
-var DEFAULT_ASCII_THEME = {
+var Zt = {
   fg: "#27272a",
   // zinc-800 — primary text
   border: "#a1a1aa",
@@ -461,297 +322,192 @@ var DEFAULT_ASCII_THEME = {
   junction: "#a1a1aa"
   // same as border
 };
-function detectColorMode() {
-  const proc = globalThis.process;
-  if (proc) {
-    if (!proc.stdout?.isTTY) {
+function ke() {
+  let t = globalThis.process;
+  if (t) {
+    if (!t.stdout?.isTTY)
       return "none";
-    }
-    const colorTerm = proc.env?.COLORTERM?.toLowerCase() ?? "";
-    const term = proc.env?.TERM?.toLowerCase() ?? "";
-    if (colorTerm === "truecolor" || colorTerm === "24bit") {
-      return "truecolor";
-    }
-    if (term.includes("256color") || term.includes("256")) {
-      return "ansi256";
-    }
-    if (term && term !== "dumb") {
-      return "ansi16";
-    }
-    return "none";
+    let e = t.env?.COLORTERM?.toLowerCase() ?? "", n = t.env?.TERM?.toLowerCase() ?? "";
+    return e === "truecolor" || e === "24bit" ? "truecolor" : n.includes("256color") || n.includes("256") ? "ansi256" : n && n !== "dumb" ? "ansi16" : "none";
   }
-  if (typeof document !== "undefined") {
-    return "html";
-  }
-  return "none";
+  return typeof document < "u" ? "html" : "none";
 }
-function parseHex(hex) {
-  const h = hex.replace("#", "");
-  if (h.length === 3) {
-    return {
-      r: parseInt(h[0] + h[0], 16),
-      g: parseInt(h[1] + h[1], 16),
-      b: parseInt(h[2] + h[2], 16)
-    };
-  }
-  return {
-    r: parseInt(h.substring(0, 2), 16),
-    g: parseInt(h.substring(2, 4), 16),
-    b: parseInt(h.substring(4, 6), 16)
+function le(t) {
+  let e = t.replace("#", "");
+  return e.length === 3 ? {
+    r: parseInt(e[0] + e[0], 16),
+    g: parseInt(e[1] + e[1], 16),
+    b: parseInt(e[2] + e[2], 16)
+  } : {
+    r: parseInt(e.substring(0, 2), 16),
+    g: parseInt(e.substring(2, 4), 16),
+    b: parseInt(e.substring(4, 6), 16)
   };
 }
-var ESC = "\x1B[";
-var RESET = `${ESC}0m`;
-function truecolorFg(hex) {
-  const { r, g, b } = parseHex(hex);
-  return `${ESC}38;2;${r};${g};${b}m`;
+var te = "\x1B[", Qt = `${te}0m`;
+function Ge(t) {
+  let { r: e, g: n, b: o } = le(t);
+  return `${te}38;2;${e};${n};${o}m`;
 }
-function rgbTo256(r, g, b) {
-  const avg = (r + g + b) / 3;
-  const maxDiff = Math.max(Math.abs(r - avg), Math.abs(g - avg), Math.abs(b - avg));
-  if (maxDiff < 10) {
-    const gray = Math.round(avg / 255 * 23);
-    return 232 + Math.min(23, Math.max(0, gray));
+function or(t, e, n) {
+  let o = (t + e + n) / 3;
+  if (Math.max(Math.abs(t - o), Math.abs(e - o), Math.abs(n - o)) < 10) {
+    let l = Math.round(o / 255 * 23);
+    return 232 + Math.min(23, Math.max(0, l));
   }
-  const toIndex = (v) => {
-    if (v < 48) return 0;
-    if (v < 115) return 1;
-    return Math.min(5, Math.floor((v - 35) / 40));
-  };
-  const ri = toIndex(r);
-  const gi = toIndex(g);
-  const bi = toIndex(b);
-  return 16 + 36 * ri + 6 * gi + bi;
+  let r = (l) => l < 48 ? 0 : l < 115 ? 1 : Math.min(5, Math.floor((l - 35) / 40)), i = r(t), a = r(e), c = r(n);
+  return 16 + 36 * i + 6 * a + c;
 }
-function ansi256Fg(hex) {
-  const { r, g, b } = parseHex(hex);
-  const index = rgbTo256(r, g, b);
-  return `${ESC}38;5;${index}m`;
+function Ie(t) {
+  let { r: e, g: n, b: o } = le(t), s = or(e, n, o);
+  return `${te}38;5;${s}m`;
 }
-function ansi16Fg(hex) {
-  const { r, g, b } = parseHex(hex);
-  const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-  const bright = luma > 100 ? 0 : 60;
-  let code;
-  if (r > 180 && g < 100 && b < 100) code = 31;
-  else if (g > 180 && r < 100 && b < 100) code = 32;
-  else if (r > 150 && g > 150 && b < 100) code = 33;
-  else if (b > 180 && r < 100 && g < 100) code = 34;
-  else if (r > 150 && b > 150 && g < 100) code = 35;
-  else if (g > 150 && b > 150 && r < 100) code = 36;
-  else if (luma > 200) code = 37;
-  else if (luma < 50) code = 30;
-  else code = 37;
-  return `${ESC}${code + bright}m`;
+function Ne(t) {
+  let { r: e, g: n, b: o } = le(t), s = 0.299 * e + 0.587 * n + 0.114 * o, r = s > 100 ? 0 : 60, i;
+  return e > 180 && n < 100 && o < 100 ? i = 31 : n > 180 && e < 100 && o < 100 ? i = 32 : e > 150 && n > 150 && o < 100 ? i = 33 : o > 180 && e < 100 && n < 100 ? i = 34 : e > 150 && o > 150 && n < 100 ? i = 35 : n > 150 && o > 150 && e < 100 ? i = 36 : s > 200 ? i = 37 : s < 50 ? i = 30 : i = 37, `${te}${i + r}m`;
 }
-function escapeHtml(text) {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function Ye(t) {
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-function htmlSpan(hex, text) {
-  return `<span style="color:${hex}">${escapeHtml(text)}</span>`;
+function $e(t, e) {
+  return `<span style="color:${t}">${Ye(e)}</span>`;
 }
-function getRoleColor(role, theme) {
-  switch (role) {
+function Be(t, e) {
+  switch (t) {
     case "text":
-      return theme.fg;
+      return e.fg;
     case "border":
-      return theme.border;
+      return e.border;
     case "line":
-      return theme.line;
+      return e.line;
     case "arrow":
-      return theme.arrow;
+      return e.arrow;
     case "corner":
-      return theme.corner ?? theme.line;
+      return e.corner ?? e.line;
     case "junction":
-      return theme.junction ?? theme.border;
+      return e.junction ?? e.border;
     default:
-      return theme.fg;
+      return e.fg;
   }
 }
-function getAnsiColor(role, theme, mode) {
-  if (mode === "none") return "";
-  const hex = getRoleColor(role, theme);
-  switch (mode) {
+function ce(t, e, n) {
+  if (n === "none") return "";
+  let o = Be(t, e);
+  switch (n) {
     case "truecolor":
-      return truecolorFg(hex);
+      return Ge(o);
     case "ansi256":
-      return ansi256Fg(hex);
+      return Ie(o);
     case "ansi16":
-      return ansi16Fg(hex);
+      return Ne(o);
     default:
       return "";
   }
 }
-function colorizeLine(chars, roles, theme, mode) {
-  if (mode === "none") {
-    return chars.join("");
-  }
-  if (mode === "html") {
-    return colorizeLineHtml(chars, roles, theme);
-  }
-  let result = "";
-  let currentRole = null;
-  let buffer = "";
-  for (let i = 0; i < chars.length; i++) {
-    const char = chars[i];
-    const role = roles[i] ?? null;
-    if (char === " ") {
-      if (buffer.length > 0) {
-        if (currentRole !== null) {
-          result += getAnsiColor(currentRole, theme, mode) + buffer + RESET;
-        } else {
-          result += buffer;
-        }
-        buffer = "";
-        currentRole = null;
-      }
-      result += char;
+function Xe(t, e, n, o) {
+  if (o === "none")
+    return t.join("");
+  if (o === "html")
+    return ir(t, e, n);
+  let s = "", r = null, i = "";
+  for (let a = 0; a < t.length; a++) {
+    let c = t[a], l = e[a] ?? null;
+    if (c === " ") {
+      i.length > 0 && (r !== null ? s += ce(r, n, o) + i + Qt : s += i, i = "", r = null), s += c;
       continue;
     }
-    if (role === currentRole) {
-      buffer += char;
+    if (l === r) {
+      i += c;
       continue;
     }
-    if (buffer.length > 0) {
-      if (currentRole !== null) {
-        result += getAnsiColor(currentRole, theme, mode) + buffer + RESET;
-      } else {
-        result += buffer;
-      }
-    }
-    buffer = char;
-    currentRole = role;
+    i.length > 0 && (r !== null ? s += ce(r, n, o) + i + Qt : s += i), i = c, r = l;
   }
-  if (buffer.length > 0 && currentRole !== null) {
-    result += getAnsiColor(currentRole, theme, mode) + buffer + RESET;
-  } else if (buffer.length > 0) {
-    result += buffer;
-  }
-  return result;
+  return i.length > 0 && r !== null ? s += ce(r, n, o) + i + Qt : i.length > 0 && (s += i), s;
 }
-function colorizeLineHtml(chars, roles, theme) {
-  let result = "";
-  let currentRole = null;
-  let buffer = "";
-  const flush = () => {
-    if (buffer.length === 0) return;
-    if (currentRole !== null) {
-      result += htmlSpan(getRoleColor(currentRole, theme), buffer);
-    } else {
-      result += escapeHtml(buffer);
-    }
-    buffer = "";
-    currentRole = null;
+function ir(t, e, n) {
+  let o = "", s = null, r = "", i = () => {
+    r.length !== 0 && (s !== null ? o += $e(Be(s, n), r) : o += Ye(r), r = "", s = null);
   };
-  for (let i = 0; i < chars.length; i++) {
-    const char = chars[i];
-    const role = roles[i] ?? null;
-    if (char === " ") {
-      flush();
-      result += " ";
+  for (let a = 0; a < t.length; a++) {
+    let c = t[a], l = e[a] ?? null;
+    if (c === " ") {
+      i(), o += " ";
       continue;
     }
-    if (role === currentRole) {
-      buffer += char;
+    if (l === s) {
+      r += c;
       continue;
     }
-    flush();
-    buffer = char;
-    currentRole = role;
+    i(), r = c, s = l;
   }
-  flush();
-  return result;
+  return i(), o;
 }
-function colorizeText(text, hex, mode) {
-  if (mode === "none" || text.length === 0) return text;
-  if (mode === "html") return htmlSpan(hex, text);
-  let code;
-  switch (mode) {
+function ee(t, e, n) {
+  if (n === "none" || t.length === 0) return t;
+  if (n === "html") return $e(e, t);
+  let o;
+  switch (n) {
     case "truecolor":
-      code = truecolorFg(hex);
+      o = Ge(e);
       break;
     case "ansi256":
-      code = ansi256Fg(hex);
+      o = Ie(e);
       break;
     case "ansi16":
-      code = ansi16Fg(hex);
+      o = Ne(e);
       break;
     default:
-      return text;
+      return t;
   }
-  return `${code}${text}${RESET}`;
+  return `${o}${t}${Qt}`;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/canvas.ts
-function mkCanvas(x, y) {
-  const canvas = [];
-  for (let i = 0; i <= x; i++) {
-    const col = [];
-    for (let j = 0; j <= y; j++) {
-      col.push(" ");
-    }
-    canvas.push(col);
+function it(t, e) {
+  let n = [];
+  for (let o = 0; o <= t; o++) {
+    let s = [];
+    for (let r = 0; r <= e; r++)
+      s.push(" ");
+    n.push(s);
   }
-  return canvas;
+  return n;
 }
-function copyCanvas(source) {
-  const [maxX, maxY] = getCanvasSize(source);
-  return mkCanvas(maxX, maxY);
+function ht(t) {
+  let [e, n] = Jt(t);
+  return it(e, n);
 }
-function mkRoleCanvas(x, y) {
-  const roleCanvas = [];
-  for (let i = 0; i <= x; i++) {
-    const col = [];
-    for (let j = 0; j <= y; j++) {
-      col.push(null);
-    }
-    roleCanvas.push(col);
+function $t(t, e) {
+  let n = [];
+  for (let o = 0; o <= t; o++) {
+    let s = [];
+    for (let r = 0; r <= e; r++)
+      s.push(null);
+    n.push(s);
   }
-  return roleCanvas;
+  return n;
 }
-function increaseRoleCanvasSize(roleCanvas, newX, newY) {
-  const currX = roleCanvas.length - 1;
-  const currY = (roleCanvas[0]?.length ?? 1) - 1;
-  const targetX = Math.max(newX, currX);
-  const targetY = Math.max(newY, currY);
-  const grown = mkRoleCanvas(targetX, targetY);
-  for (let x = 0; x < grown.length; x++) {
-    for (let y = 0; y < grown[0].length; y++) {
-      if (x < roleCanvas.length && y < roleCanvas[0].length) {
-        grown[x][y] = roleCanvas[x][y];
-      }
-    }
-  }
-  roleCanvas.length = 0;
-  roleCanvas.push(...grown);
-  return roleCanvas;
+function Nt(t, e, n) {
+  let o = t.length - 1, s = (t[0]?.length ?? 1) - 1, r = Math.max(e, o), i = Math.max(n, s), a = $t(r, i);
+  for (let c = 0; c < a.length; c++)
+    for (let l = 0; l < a[0].length; l++)
+      c < t.length && l < t[0].length && (a[c][l] = t[c][l]);
+  return t.length = 0, t.push(...a), t;
 }
-function setRole(roleCanvas, x, y, role) {
-  if (x >= roleCanvas.length || y >= (roleCanvas[0]?.length ?? 0)) {
-    increaseRoleCanvasSize(roleCanvas, x, y);
-  }
-  roleCanvas[x][y] = role;
+function Bt(t, e, n, o) {
+  (e >= t.length || n >= (t[0]?.length ?? 0)) && Nt(t, e, n), t[e][n] = o;
 }
-function getCanvasSize(canvas) {
-  return [canvas.length - 1, (canvas[0]?.length ?? 1) - 1];
+function Jt(t) {
+  return [t.length - 1, (t[0]?.length ?? 1) - 1];
 }
-function increaseSize(canvas, newX, newY) {
-  const [currX, currY] = getCanvasSize(canvas);
-  const targetX = Math.max(newX, currX);
-  const targetY = Math.max(newY, currY);
-  const grown = mkCanvas(targetX, targetY);
-  for (let x = 0; x < grown.length; x++) {
-    for (let y = 0; y < grown[0].length; y++) {
-      if (x < canvas.length && y < canvas[0].length) {
-        grown[x][y] = canvas[x][y];
-      }
-    }
-  }
-  canvas.length = 0;
-  canvas.push(...grown);
-  return canvas;
+function Tt(t, e, n) {
+  let [o, s] = Jt(t), r = Math.max(e, o), i = Math.max(n, s), a = it(r, i);
+  for (let c = 0; c < a.length; c++)
+    for (let l = 0; l < a[0].length; l++)
+      c < t.length && l < t[0].length && (a[c][l] = t[c][l]);
+  return t.length = 0, t.push(...a), t;
 }
-var JUNCTION_CHARS = /* @__PURE__ */ new Set([
+var sr = /* @__PURE__ */ new Set([
   "\u2500",
   "\u2502",
   "\u250C",
@@ -768,22 +524,21 @@ var JUNCTION_CHARS = /* @__PURE__ */ new Set([
   "\u2576",
   "\u2577"
 ]);
-function clearLabelGaps(canvas, label) {
-  for (let y = 0; y < (label[0]?.length ?? 0); y++) {
-    const xs = label.map((col, x) => col[y] !== " " ? x : -1).filter((x) => x >= 0);
-    if (xs.length === 0) continue;
-    for (let x = xs[0]; x <= xs[xs.length - 1]; x++) {
-      if (label[x][y] === " " && !isAlphanumeric(canvas[x][y])) canvas[x][y] = " ";
-    }
+function He(t, e) {
+  for (let n = 0; n < (e[0]?.length ?? 0); n++) {
+    let o = e.map((s, r) => s[n] !== " " ? r : -1).filter((s) => s >= 0);
+    if (o.length !== 0)
+      for (let s = o[0]; s <= o[o.length - 1]; s++)
+        e[s][n] === " " && !fe(t[s][n]) && (t[s][n] = " ");
   }
 }
-function isJunctionChar(c) {
-  return JUNCTION_CHARS.has(c);
+function Pe(t) {
+  return sr.has(t);
 }
-function isAlphanumeric(c) {
-  return /^[a-zA-Z0-9]$/.test(c);
+function fe(t) {
+  return /^[a-zA-Z0-9]$/.test(t);
 }
-var JUNCTION_MAP = {
+var ar = {
   "\u2500": { "\u2502": "\u253C", "\u250C": "\u252C", "\u2510": "\u252C", "\u2514": "\u2534", "\u2518": "\u2534", "\u251C": "\u253C", "\u2524": "\u253C", "\u252C": "\u252C", "\u2534": "\u2534" },
   "\u2502": { "\u2500": "\u253C", "\u250C": "\u251C", "\u2510": "\u2524", "\u2514": "\u251C", "\u2518": "\u2524", "\u251C": "\u251C", "\u2524": "\u2524", "\u252C": "\u253C", "\u2534": "\u253C" },
   "\u250C": { "\u2500": "\u252C", "\u2502": "\u251C", "\u2510": "\u252C", "\u2514": "\u251C", "\u2518": "\u253C", "\u251C": "\u251C", "\u2524": "\u253C", "\u252C": "\u252C", "\u2534": "\u253C" },
@@ -795,70 +550,48 @@ var JUNCTION_MAP = {
   "\u252C": { "\u2500": "\u252C", "\u2502": "\u253C", "\u250C": "\u252C", "\u2510": "\u252C", "\u2514": "\u253C", "\u2518": "\u253C", "\u251C": "\u253C", "\u2524": "\u253C", "\u2534": "\u253C" },
   "\u2534": { "\u2500": "\u2534", "\u2502": "\u253C", "\u250C": "\u253C", "\u2510": "\u253C", "\u2514": "\u2534", "\u2518": "\u2534", "\u251C": "\u253C", "\u2524": "\u253C", "\u252C": "\u253C" }
 };
-function mergeJunctions(c1, c2) {
-  return JUNCTION_MAP[c1]?.[c2] ?? c1;
+function cr(t, e) {
+  return ar[t]?.[e] ?? t;
 }
-function mergeCanvases(base, offset, useAscii, ...overlays) {
-  let [maxX, maxY] = getCanvasSize(base);
-  for (const overlay of overlays) {
-    const [oX, oY] = getCanvasSize(overlay);
-    maxX = Math.max(maxX, oX + offset.x);
-    maxY = Math.max(maxY, oY + offset.y);
+function Lt(t, e, n, ...o) {
+  let [s, r] = Jt(t);
+  for (let a of o) {
+    let [c, l] = Jt(a);
+    s = Math.max(s, c + e.x), r = Math.max(r, l + e.y);
   }
-  const merged = mkCanvas(maxX, maxY);
-  for (let x = 0; x <= maxX; x++) {
-    for (let y = 0; y <= maxY; y++) {
-      if (x < base.length && y < base[0].length) {
-        merged[x][y] = base[x][y];
-      }
-    }
-  }
-  for (const overlay of overlays) {
-    for (let x = 0; x < overlay.length; x++) {
-      for (let y = 0; y < overlay[0].length; y++) {
-        const c = overlay[x][y];
-        if (c !== " ") {
-          const mx = x + offset.x;
-          const my = y + offset.y;
-          const current = merged[mx][my];
-          if (!useAscii && isJunctionChar(c) && isJunctionChar(current)) {
-            merged[mx][my] = mergeJunctions(current, c);
-          } else if (isAlphanumeric(current) && isAlphanumeric(c)) {
-          } else {
-            merged[mx][my] = c;
-          }
+  let i = it(s, r);
+  for (let a = 0; a <= s; a++)
+    for (let c = 0; c <= r; c++)
+      a < t.length && c < t[0].length && (i[a][c] = t[a][c]);
+  for (let a of o)
+    for (let c = 0; c < a.length; c++)
+      for (let l = 0; l < a[0].length; l++) {
+        let d = a[c][l];
+        if (d !== " ") {
+          let h = c + e.x, f = l + e.y, u = i[h][f];
+          !n && Pe(d) && Pe(u) ? i[h][f] = cr(u, d) : fe(u) && fe(d) || (i[h][f] = d);
         }
       }
-    }
-  }
-  return merged;
+  return i;
 }
-function canvasToString(canvas, options) {
-  const [maxX, maxY] = getCanvasSize(canvas);
-  const lines = [];
-  const roleCanvas = options?.roleCanvas;
-  const colorMode = options?.colorMode ?? "none";
-  const theme = options?.theme ?? DEFAULT_ASCII_THEME;
-  for (let y = 0; y <= maxY; y++) {
-    if (colorMode === "none" || !roleCanvas) {
-      let line = "";
-      for (let x = 0; x <= maxX; x++) {
-        line += canvas[x][y];
-      }
-      lines.push(line);
+function Pt(t, e) {
+  let [n, o] = Jt(t), s = [], r = e?.roleCanvas, i = e?.colorMode ?? "none", a = e?.theme ?? Zt;
+  for (let c = 0; c <= o; c++)
+    if (i === "none" || !r) {
+      let l = "";
+      for (let d = 0; d <= n; d++)
+        l += t[d][c];
+      s.push(l);
     } else {
-      const chars = [];
-      const roles = [];
-      for (let x = 0; x <= maxX; x++) {
-        chars.push(canvas[x][y]);
-        roles.push(roleCanvas[x]?.[y] ?? null);
-      }
-      lines.push(colorizeLine(chars, roles, theme, colorMode));
+      let l = [], d = [];
+      for (let h = 0; h <= n; h++)
+        l.push(t[h][c]), d.push(r[h]?.[c] ?? null);
+      s.push(Xe(l, d, a, i));
     }
-  }
-  return lines.join("\n");
+  return s.join(`
+`);
 }
-var VERTICAL_FLIP_MAP = {
+var lr = {
   // Unicode arrows
   "\u25B2": "\u25BC",
   "\u25BC": "\u25B2",
@@ -868,7 +601,7 @@ var VERTICAL_FLIP_MAP = {
   "\u25E2": "\u25E5",
   // ASCII arrows
   "^": "v",
-  "v": "^",
+  v: "^",
   // Unicode corners
   "\u250C": "\u2514",
   "\u2514": "\u250C",
@@ -881,710 +614,448 @@ var VERTICAL_FLIP_MAP = {
   "\u2575": "\u2577",
   "\u2577": "\u2575"
 };
-function flipCanvasVertically(canvas) {
-  for (const col of canvas) {
-    col.reverse();
-  }
-  for (const col of canvas) {
-    for (let y = 0; y < col.length; y++) {
-      const flipped = VERTICAL_FLIP_MAP[col[y]];
-      if (flipped) col[y] = flipped;
+function We(t) {
+  for (let e of t)
+    e.reverse();
+  for (let e of t)
+    for (let n = 0; n < e.length; n++) {
+      let o = lr[e[n]];
+      o && (e[n] = o);
     }
-  }
-  return canvas;
+  return t;
 }
-function flipRoleCanvasVertically(roleCanvas) {
-  for (const col of roleCanvas) {
-    col.reverse();
-  }
-  return roleCanvas;
+function _e(t) {
+  for (let e of t)
+    e.reverse();
+  return t;
 }
-function drawText(canvas, start, text, forceOverwrite = false) {
-  increaseSize(canvas, start.x + text.length, start.y);
-  for (let i = 0; i < text.length; i++) {
-    const x = start.x + i;
-    const current = canvas[x][start.y];
-    if (forceOverwrite || current === " ") {
-      canvas[x][start.y] = text[i];
-    }
+function de(t, e, n, o = !1) {
+  Tt(t, e.x + n.length, e.y);
+  for (let s = 0; s < n.length; s++) {
+    let r = e.x + s, i = t[r][e.y];
+    (o || i === " ") && (t[r][e.y] = n[s]);
   }
 }
-function setCanvasSizeToGrid(canvas, columnWidth, rowHeight) {
-  let maxX = 0;
-  let maxY = 0;
-  for (const w of columnWidth.values()) maxX += w;
-  for (const h of rowHeight.values()) maxY += h;
-  increaseSize(canvas, maxX - 1, maxY - 1);
+function je(t, e, n) {
+  let o = 0, s = 0;
+  for (let r of e.values()) o += r;
+  for (let r of n.values()) s += r;
+  Tt(t, o - 1, s - 1);
 }
-function setRoleCanvasSizeToGrid(roleCanvas, columnWidth, rowHeight) {
-  let maxX = 0;
-  let maxY = 0;
-  for (const w of columnWidth.values()) maxX += w;
-  for (const h of rowHeight.values()) maxY += h;
-  increaseRoleCanvasSize(roleCanvas, maxX - 1, maxY - 1);
+function ze(t, e, n) {
+  let o = 0, s = 0;
+  for (let r of e.values()) o += r;
+  for (let r of n.values()) s += r;
+  Nt(t, o - 1, s - 1);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/converter.ts
-function convertToAsciiGraph(parsed, config) {
-  const nodeMap = /* @__PURE__ */ new Map();
-  let index = 0;
-  for (const [id, mNode] of parsed.nodes) {
-    const asciiNode = {
+function Oe(t, e) {
+  let n = /* @__PURE__ */ new Map(), o = 0;
+  for (let [a, c] of t.nodes) {
+    let l = {
       // Use the parser ID as the unique identity key to avoid collisions
       // when multiple nodes share the same label (e.g. A[Web Server], C[Web Server]).
-      name: id,
+      name: a,
       // The label is used for rendering inside the box.
-      displayLabel: mNode.label,
+      displayLabel: c.label,
       // Preserve shape from parser for shape-aware rendering
-      shape: mNode.shape,
-      index,
+      shape: c.shape,
+      index: o,
       gridCoord: null,
       drawingCoord: null,
       drawing: null,
-      drawn: false,
+      drawn: !1,
       styleClassName: "",
-      styleClass: EMPTY_STYLE
+      styleClass: Ee
     };
-    nodeMap.set(id, asciiNode);
-    index++;
+    n.set(a, l), o++;
   }
-  const nodes = [...nodeMap.values()];
-  const edges = [];
-  for (const mEdge of parsed.edges) {
-    const from = nodeMap.get(mEdge.source);
-    const to = nodeMap.get(mEdge.target);
-    if (!from || !to) continue;
-    edges.push({
-      from,
-      to,
-      text: mEdge.label ?? "",
+  let s = [...n.values()], r = [];
+  for (let a of t.edges) {
+    let c = n.get(a.source), l = n.get(a.target);
+    !c || !l || r.push({
+      from: c,
+      to: l,
+      text: a.label ?? "",
       path: [],
       labelLine: [],
       startDir: { x: 0, y: 0 },
       endDir: { x: 0, y: 0 },
-      style: mEdge.style,
-      hasArrowStart: mEdge.hasArrowStart,
-      hasArrowEnd: mEdge.hasArrowEnd
+      style: a.style,
+      hasArrowStart: a.hasArrowStart,
+      hasArrowEnd: a.hasArrowEnd
     });
   }
-  const subgraphs = [];
-  for (const mSg of parsed.subgraphs) {
-    convertSubgraph(mSg, null, nodeMap, subgraphs);
-  }
-  deduplicateSubgraphNodes(parsed.subgraphs, subgraphs, nodeMap, parsed);
-  for (const [nodeId, className] of parsed.classAssignments) {
-    const node = nodeMap.get(nodeId);
-    const classDef = parsed.classDefs.get(className);
-    if (node && classDef) {
-      node.styleClassName = className;
-      node.styleClass = { name: className, styles: classDef };
-    }
+  let i = [];
+  for (let a of t.subgraphs)
+    Fe(a, null, n, i);
+  fr(t.subgraphs, i, n, t);
+  for (let [a, c] of t.classAssignments) {
+    let l = n.get(a), d = t.classDefs.get(c);
+    l && d && (l.styleClassName = c, l.styleClass = { name: c, styles: d });
   }
   return {
-    nodes,
-    edges,
-    canvas: mkCanvas(0, 0),
-    roleCanvas: mkRoleCanvas(0, 0),
+    nodes: s,
+    edges: r,
+    canvas: it(0, 0),
+    roleCanvas: $t(0, 0),
     grid: /* @__PURE__ */ new Map(),
     columnWidth: /* @__PURE__ */ new Map(),
     rowHeight: /* @__PURE__ */ new Map(),
-    subgraphs,
-    config,
+    subgraphs: i,
+    config: e,
     offsetX: 0,
     offsetY: 0,
     bundles: []
     // Populated by analyzeEdgeBundles() during layout
   };
 }
-function convertSubgraph(mSg, parent, nodeMap, allSubgraphs) {
-  let normalizedDirection;
-  if (mSg.direction) {
-    normalizedDirection = mSg.direction === "LR" || mSg.direction === "RL" ? "LR" : "TD";
-  }
-  const sg = {
-    name: mSg.label,
+function Fe(t, e, n, o) {
+  let s;
+  t.direction && (s = t.direction === "LR" || t.direction === "RL" ? "LR" : "TD");
+  let r = {
+    name: t.label,
     nodes: [],
-    parent,
+    parent: e,
     children: [],
     minX: 0,
     minY: 0,
     maxX: 0,
     maxY: 0,
-    direction: normalizedDirection
+    direction: s
   };
-  for (const nodeId of mSg.nodeIds) {
-    const node = nodeMap.get(nodeId);
-    if (node) sg.nodes.push(node);
+  for (let i of t.nodeIds) {
+    let a = n.get(i);
+    a && r.nodes.push(a);
   }
-  allSubgraphs.push(sg);
-  for (const childMSg of mSg.children) {
-    const child = convertSubgraph(childMSg, sg, nodeMap, allSubgraphs);
-    sg.children.push(child);
-    for (const childNode of child.nodes) {
-      if (!sg.nodes.includes(childNode)) {
-        sg.nodes.push(childNode);
-      }
-    }
+  o.push(r);
+  for (let i of t.children) {
+    let a = Fe(i, r, n, o);
+    r.children.push(a);
+    for (let c of a.nodes)
+      r.nodes.includes(c) || r.nodes.push(c);
   }
-  return sg;
+  return r;
 }
-function deduplicateSubgraphNodes(mermaidSubgraphs, asciiSubgraphs, nodeMap, parsed) {
-  const sgMap = /* @__PURE__ */ new Map();
-  buildSgMap(mermaidSubgraphs, asciiSubgraphs, sgMap);
-  const nodeOwner = /* @__PURE__ */ new Map();
-  function claimNodes(mSg) {
-    const asciiSg = sgMap.get(mSg);
-    if (!asciiSg) return;
-    for (const child of mSg.children) {
-      claimNodes(child);
-    }
-    for (const nodeId of mSg.nodeIds) {
-      if (!nodeOwner.has(nodeId)) {
-        nodeOwner.set(nodeId, asciiSg);
-      }
+function fr(t, e, n, o) {
+  let s = /* @__PURE__ */ new Map();
+  ur(t, e, s);
+  let r = /* @__PURE__ */ new Map();
+  function i(a) {
+    let c = s.get(a);
+    if (c) {
+      for (let l of a.children)
+        i(l);
+      for (let l of a.nodeIds)
+        r.has(l) || r.set(l, c);
     }
   }
-  for (const mSg of mermaidSubgraphs) {
-    claimNodes(mSg);
-  }
-  for (const asciiSg of asciiSubgraphs) {
-    asciiSg.nodes = asciiSg.nodes.filter((node) => {
-      let nodeId;
-      for (const [id, n] of nodeMap) {
-        if (n === node) {
-          nodeId = id;
+  for (let a of t)
+    i(a);
+  for (let a of e)
+    a.nodes = a.nodes.filter((c) => {
+      let l;
+      for (let [h, f] of n)
+        if (f === c) {
+          l = h;
           break;
         }
-      }
-      if (!nodeId) return false;
-      const owner = nodeOwner.get(nodeId);
-      if (!owner) return true;
-      return isAncestorOrSelf(asciiSg, owner);
+      if (!l) return !1;
+      let d = r.get(l);
+      return d ? dr(a, d) : !0;
     });
-  }
 }
-function isAncestorOrSelf(candidate, target) {
-  let current = target;
-  while (current !== null) {
-    if (current === candidate) return true;
-    current = current.parent;
+function dr(t, e) {
+  let n = e;
+  for (; n !== null; ) {
+    if (n === t) return !0;
+    n = n.parent;
   }
-  return false;
+  return !1;
 }
-function buildSgMap(mSgs, aSgs, result) {
-  const flatMermaid = [];
-  function flatten(sgs) {
-    for (const sg of sgs) {
-      flatMermaid.push(sg);
-      flatten(sg.children);
-    }
+function ur(t, e, n) {
+  let o = [];
+  function s(r) {
+    for (let i of r)
+      o.push(i), s(i.children);
   }
-  flatten(mSgs);
-  for (let i = 0; i < flatMermaid.length && i < aSgs.length; i++) {
-    result.set(flatMermaid[i], aSgs[i]);
-  }
+  s(t);
+  for (let r = 0; r < o.length && r < e.length; r++)
+    n.set(o[r], e[r]);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/pathfinder.ts
-var MinHeap = class {
+var ue = class {
   items = [];
   get length() {
     return this.items.length;
   }
-  push(item) {
-    this.items.push(item);
-    this.bubbleUp(this.items.length - 1);
+  push(e) {
+    this.items.push(e), this.bubbleUp(this.items.length - 1);
   }
   pop() {
-    if (this.items.length === 0) return void 0;
-    const top = this.items[0];
-    const last = this.items.pop();
-    if (this.items.length > 0) {
-      this.items[0] = last;
-      this.sinkDown(0);
-    }
-    return top;
+    if (this.items.length === 0) return;
+    let e = this.items[0], n = this.items.pop();
+    return this.items.length > 0 && (this.items[0] = n, this.sinkDown(0)), e;
   }
-  bubbleUp(i) {
-    while (i > 0) {
-      const parent = i - 1 >> 1;
-      if (this.items[i].priority < this.items[parent].priority) {
-        ;
-        [this.items[i], this.items[parent]] = [this.items[parent], this.items[i]];
-        i = parent;
-      } else {
+  bubbleUp(e) {
+    for (; e > 0; ) {
+      let n = e - 1 >> 1;
+      if (this.items[e].priority < this.items[n].priority)
+        [this.items[e], this.items[n]] = [this.items[n], this.items[e]], e = n;
+      else
         break;
-      }
     }
   }
-  sinkDown(i) {
-    const n = this.items.length;
-    while (true) {
-      let smallest = i;
-      const left = 2 * i + 1;
-      const right = 2 * i + 2;
-      if (left < n && this.items[left].priority < this.items[smallest].priority) {
-        smallest = left;
-      }
-      if (right < n && this.items[right].priority < this.items[smallest].priority) {
-        smallest = right;
-      }
-      if (smallest !== i) {
-        ;
-        [this.items[i], this.items[smallest]] = [this.items[smallest], this.items[i]];
-        i = smallest;
-      } else {
+  sinkDown(e) {
+    let n = this.items.length;
+    for (; ; ) {
+      let o = e, s = 2 * e + 1, r = 2 * e + 2;
+      if (s < n && this.items[s].priority < this.items[o].priority && (o = s), r < n && this.items[r].priority < this.items[o].priority && (o = r), o !== e)
+        [this.items[e], this.items[o]] = [this.items[o], this.items[e]], e = o;
+      else
         break;
-      }
     }
   }
 };
-function heuristic(a, b) {
-  const absX = Math.abs(a.x - b.x);
-  const absY = Math.abs(a.y - b.y);
-  if (absX === 0 || absY === 0) {
-    return absX + absY;
-  }
-  return absX + absY + 1;
+function hr(t, e) {
+  let n = Math.abs(t.x - e.x), o = Math.abs(t.y - e.y);
+  return n === 0 || o === 0 ? n + o : n + o + 1;
 }
-var MOVE_DIRS = [
+var gr = [
   { x: 1, y: 0 },
   { x: -1, y: 0 },
   { x: 0, y: 1 },
   { x: 0, y: -1 }
 ];
-function isFreeInGrid(grid, c) {
-  if (c.x < 0 || c.y < 0) return false;
-  return !grid.has(gridKey(c));
+function mr(t, e) {
+  return e.x < 0 || e.y < 0 ? !1 : !t.has(It(e));
 }
-function getPath(grid, from, to) {
-  const pq = new MinHeap();
-  pq.push({ coord: from, priority: 0 });
-  const costSoFar = /* @__PURE__ */ new Map();
-  costSoFar.set(gridKey(from), 0);
-  const cameFrom = /* @__PURE__ */ new Map();
-  cameFrom.set(gridKey(from), null);
-  let steps = 0;
-  while (pq.length > 0) {
-    if (++steps > 5e4) throw new Error("mermaid edge routing gave up");
-    const current = pq.pop().coord;
-    if (gridCoordEquals(current, to)) {
-      const path = [];
-      let c = current;
-      while (c !== null) {
-        path.unshift(c);
-        c = cameFrom.get(gridKey(c)) ?? null;
-      }
-      return path;
+function Ht(t, e, n) {
+  let o = new ue();
+  o.push({ coord: e, priority: 0 });
+  let s = /* @__PURE__ */ new Map();
+  s.set(It(e), 0);
+  let r = /* @__PURE__ */ new Map();
+  r.set(It(e), null);
+  let i = 0;
+  for (; o.length > 0; ) {
+    if (++i > 5e4) throw new Error("mermaid edge routing gave up");
+    let a = o.pop().coord;
+    if (ae(a, n)) {
+      let l = [], d = a;
+      for (; d !== null; )
+        l.unshift(d), d = r.get(It(d)) ?? null;
+      return l;
     }
-    const currentCost = costSoFar.get(gridKey(current));
-    for (const dir of MOVE_DIRS) {
-      const next = { x: current.x + dir.x, y: current.y + dir.y };
-      if (!isFreeInGrid(grid, next) && !gridCoordEquals(next, to)) {
+    let c = s.get(It(a));
+    for (let l of gr) {
+      let d = { x: a.x + l.x, y: a.y + l.y };
+      if (!mr(t, d) && !ae(d, n))
         continue;
-      }
-      const newCost = currentCost + 1;
-      const nextKey = gridKey(next);
-      const existingCost = costSoFar.get(nextKey);
-      if (existingCost === void 0 || newCost < existingCost) {
-        costSoFar.set(nextKey, newCost);
-        const priority = newCost + heuristic(next, to);
-        pq.push({ coord: next, priority });
-        cameFrom.set(nextKey, current);
+      let h = c + 1, f = It(d), u = s.get(f);
+      if (u === void 0 || h < u) {
+        s.set(f, h);
+        let m = h + hr(d, n);
+        o.push({ coord: d, priority: m }), r.set(f, a);
       }
     }
   }
   return null;
 }
-function mergePath(path) {
-  if (path.length <= 2) return path;
-  const toRemove = /* @__PURE__ */ new Set();
-  let step0 = path[0];
-  let step1 = path[1];
-  for (let idx = 2; idx < path.length; idx++) {
-    const step2 = path[idx];
-    const prevDx = step1.x - step0.x;
-    const prevDy = step1.y - step0.y;
-    const dx = step2.x - step1.x;
-    const dy = step2.y - step1.y;
-    if (prevDx === dx && prevDy === dy) {
-      toRemove.add(idx - 1);
-    }
-    step0 = step1;
-    step1 = step2;
+function Yt(t) {
+  if (t.length <= 2) return t;
+  let e = /* @__PURE__ */ new Set(), n = t[0], o = t[1];
+  for (let s = 2; s < t.length; s++) {
+    let r = t[s], i = o.x - n.x, a = o.y - n.y, c = r.x - o.x, l = r.y - o.y;
+    i === c && a === l && e.add(s - 1), n = o, o = r;
   }
-  return path.filter((_, i) => !toRemove.has(i));
+  return t.filter((s, r) => !e.has(r));
 }
 
 // node_modules/beautiful-mermaid/src/ascii/edge-routing.ts
-function getOpposite(d) {
-  if (d === Up) return Down;
-  if (d === Down) return Up;
-  if (d === Left) return Right;
-  if (d === Right) return Left;
-  if (d === UpperRight) return LowerLeft;
-  if (d === UpperLeft) return LowerRight;
-  if (d === LowerRight) return UpperLeft;
-  if (d === LowerLeft) return UpperRight;
-  return Middle;
+function ne(t) {
+  return t === _ ? Y : t === Y ? _ : t === j ? P : t === P ? j : t === wt ? vt : t === Mt ? Rt : t === Rt ? Mt : t === vt ? wt : Gt;
 }
-function dirEquals(a, b) {
-  return a.x === b.x && a.y === b.y;
+function x(t, e) {
+  return t.x === e.x && t.y === e.y;
 }
-function determineDirection(from, to) {
-  if (from.x === to.x) {
-    return from.y < to.y ? Down : Up;
-  } else if (from.y === to.y) {
-    return from.x < to.x ? Right : Left;
-  } else if (from.x < to.x) {
-    return from.y < to.y ? LowerRight : UpperRight;
-  } else {
-    return from.y < to.y ? LowerLeft : UpperLeft;
-  }
+function pt(t, e) {
+  return t.x === e.x ? t.y < e.y ? Y : _ : t.y === e.y ? t.x < e.x ? P : j : t.x < e.x ? t.y < e.y ? Rt : wt : t.y < e.y ? vt : Mt;
 }
-function selfReferenceDirection(graphDirection) {
-  if (graphDirection === "LR") return [Right, Down, Down, Right];
-  return [Down, Right, Right, Down];
+function pr(t) {
+  return t === "LR" ? [P, Y, Y, P] : [Y, P, P, Y];
 }
-function determineStartAndEndDir(edge, graphDirection) {
-  if (edge.from === edge.to) return selfReferenceDirection(graphDirection);
-  const d = determineDirection(edge.from.gridCoord, edge.to.gridCoord);
-  let preferredDir;
-  let preferredOppositeDir;
-  let alternativeDir;
-  let alternativeOppositeDir;
-  const isBackwards = graphDirection === "LR" ? dirEquals(d, Left) || dirEquals(d, UpperLeft) || dirEquals(d, LowerLeft) : dirEquals(d, Up) || dirEquals(d, UpperLeft) || dirEquals(d, UpperRight);
-  if (dirEquals(d, LowerRight)) {
-    if (graphDirection === "LR") {
-      preferredDir = Down;
-      preferredOppositeDir = Left;
-      alternativeDir = Right;
-      alternativeOppositeDir = Up;
-    } else {
-      preferredDir = Right;
-      preferredOppositeDir = Up;
-      alternativeDir = Down;
-      alternativeOppositeDir = Left;
-    }
-  } else if (dirEquals(d, UpperRight)) {
-    if (graphDirection === "LR") {
-      preferredDir = Up;
-      preferredOppositeDir = Left;
-      alternativeDir = Right;
-      alternativeOppositeDir = Down;
-    } else {
-      preferredDir = Right;
-      preferredOppositeDir = Down;
-      alternativeDir = Up;
-      alternativeOppositeDir = Left;
-    }
-  } else if (dirEquals(d, LowerLeft)) {
-    if (graphDirection === "LR") {
-      preferredDir = Down;
-      preferredOppositeDir = Down;
-      alternativeDir = Left;
-      alternativeOppositeDir = Up;
-    } else {
-      preferredDir = Left;
-      preferredOppositeDir = Up;
-      alternativeDir = Down;
-      alternativeOppositeDir = Right;
-    }
-  } else if (dirEquals(d, UpperLeft)) {
-    if (graphDirection === "LR") {
-      preferredDir = Down;
-      preferredOppositeDir = Down;
-      alternativeDir = Left;
-      alternativeOppositeDir = Down;
-    } else {
-      preferredDir = Right;
-      preferredOppositeDir = Right;
-      alternativeDir = Up;
-      alternativeOppositeDir = Right;
-    }
-  } else if (isBackwards) {
-    if (graphDirection === "LR" && dirEquals(d, Left)) {
-      preferredDir = Down;
-      preferredOppositeDir = Down;
-      alternativeDir = Left;
-      alternativeOppositeDir = Right;
-    } else if (graphDirection === "TD" && dirEquals(d, Up)) {
-      preferredDir = Right;
-      preferredOppositeDir = Right;
-      alternativeDir = Up;
-      alternativeOppositeDir = Down;
-    } else {
-      preferredDir = d;
-      preferredOppositeDir = getOpposite(d);
-      alternativeDir = d;
-      alternativeOppositeDir = getOpposite(d);
-    }
-  } else {
-    preferredDir = d;
-    preferredOppositeDir = getOpposite(d);
-    alternativeDir = d;
-    alternativeOppositeDir = getOpposite(d);
-  }
-  return [preferredDir, preferredOppositeDir, alternativeDir, alternativeOppositeDir];
+function xr(t, e) {
+  if (t.from === t.to) return pr(e);
+  let n = pt(t.from.gridCoord, t.to.gridCoord), o, s, r, i, a = e === "LR" ? x(n, j) || x(n, Mt) || x(n, vt) : x(n, _) || x(n, Mt) || x(n, wt);
+  return x(n, Rt) ? e === "LR" ? (o = Y, s = j, r = P, i = _) : (o = P, s = _, r = Y, i = j) : x(n, wt) ? e === "LR" ? (o = _, s = j, r = P, i = Y) : (o = P, s = Y, r = _, i = j) : x(n, vt) ? e === "LR" ? (o = Y, s = Y, r = j, i = _) : (o = j, s = _, r = Y, i = P) : x(n, Mt) ? e === "LR" ? (o = Y, s = Y, r = j, i = Y) : (o = P, s = P, r = _, i = P) : a ? e === "LR" && x(n, j) ? (o = Y, s = Y, r = j, i = P) : e === "TD" && x(n, _) ? (o = P, s = P, r = _, i = Y) : (o = n, s = ne(n), r = n, i = ne(n)) : (o = n, s = ne(n), r = n, i = ne(n)), [o, s, r, i];
 }
-function determinePath(graph, edge) {
-  const sourceSg = getNodeSubgraph(graph, edge.from);
-  const targetSg = getNodeSubgraph(graph, edge.to);
-  const effectiveDir = sourceSg && sourceSg === targetSg && sourceSg.direction ? sourceSg.direction : graph.config.graphDirection;
-  const [preferredDir, preferredOppositeDir, alternativeDir, alternativeOppositeDir] = determineStartAndEndDir(edge, effectiveDir);
-  const prefFrom = gridCoordDirection(edge.from.gridCoord, preferredDir);
-  const prefTo = gridCoordDirection(edge.to.gridCoord, preferredOppositeDir);
-  let preferredPath = getPath(graph.grid, prefFrom, prefTo);
-  const altFrom = gridCoordDirection(edge.from.gridCoord, alternativeDir);
-  const altTo = gridCoordDirection(edge.to.gridCoord, alternativeOppositeDir);
-  let alternativePath = getPath(graph.grid, altFrom, altTo);
-  if (preferredPath !== null && alternativePath !== null) {
-    preferredPath = mergePath(preferredPath);
-    alternativePath = mergePath(alternativePath);
-    if (preferredPath.length <= alternativePath.length) {
-      edge.startDir = preferredDir;
-      edge.endDir = preferredOppositeDir;
-      edge.path = preferredPath;
-    } else {
-      edge.startDir = alternativeDir;
-      edge.endDir = alternativeOppositeDir;
-      edge.path = alternativePath;
-    }
+function Je(t, e) {
+  let n = yt(t, e.from), o = yt(t, e.to), s = n && n === o && n.direction ? n.direction : t.config.graphDirection, [r, i, a, c] = xr(e, s), l = Ft(e.from.gridCoord, r), d = Ft(e.to.gridCoord, i), h = Ht(t.grid, l, d), f = Ft(e.from.gridCoord, a), u = Ft(e.to.gridCoord, c), m = Ht(t.grid, f, u);
+  if (h !== null && m !== null) {
+    h = Yt(h), m = Yt(m), h.length <= m.length ? (e.startDir = r, e.endDir = i, e.path = h) : (e.startDir = a, e.endDir = c, e.path = m);
     return;
   }
-  if (preferredPath !== null) {
-    edge.startDir = preferredDir;
-    edge.endDir = preferredOppositeDir;
-    edge.path = mergePath(preferredPath);
+  if (h !== null) {
+    e.startDir = r, e.endDir = i, e.path = Yt(h);
     return;
   }
-  if (alternativePath !== null) {
-    edge.startDir = alternativeDir;
-    edge.endDir = alternativeOppositeDir;
-    edge.path = mergePath(alternativePath);
+  if (m !== null) {
+    e.startDir = a, e.endDir = c, e.path = Yt(m);
     return;
   }
-  edge.startDir = preferredDir;
-  edge.endDir = preferredOppositeDir;
-  edge.path = [prefFrom, prefTo];
+  e.startDir = r, e.endDir = i, e.path = [l, d];
 }
-function determineLabelLine(graph, edge) {
-  if (edge.text.length === 0) return;
-  const lenLabel = edge.text.length;
-  const pathLen = edge.path.length;
-  const isVerticalFlow = graph.config.graphDirection === "TD";
-  const segments = [];
-  for (let i = 1; i < pathLen; i++) {
-    const p1 = edge.path[i - 1];
-    const p2 = edge.path[i];
-    const line = [p1, p2];
-    const width = calculateLineWidth(graph, line);
-    const isVertical = p1.x === p2.x;
-    segments.push({ line, width, index: i, isVertical });
+function he(t, e) {
+  if (e.text.length === 0) return;
+  let n = e.text.length, o = e.path.length, s = t.config.graphDirection === "TD", r = [];
+  for (let f = 1; f < o; f++) {
+    let u = e.path[f - 1], m = e.path[f], p = [u, m], b = br(t, p), A = u.x === m.x;
+    r.push({ line: p, width: b, index: f, isVertical: A });
   }
-  const suitableSegments = segments.filter((s) => s.width >= lenLabel && s.index > 1);
-  let largestLine;
-  if (suitableSegments.length > 0) {
-    suitableSegments.sort((a, b) => b.index - a.index);
-    largestLine = suitableSegments[0].line;
-  } else {
-    const fallbackSegments = segments.filter((s) => s.width >= lenLabel);
-    if (fallbackSegments.length > 0) {
-      fallbackSegments.sort((a, b) => b.index - a.index);
-      largestLine = fallbackSegments[0].line;
-    } else {
-      segments.sort((a, b) => b.width - a.width);
-      largestLine = segments[0]?.line ?? [edge.path[0], edge.path[1]];
-    }
+  let i = r.filter((f) => f.width >= n && f.index > 1), a;
+  if (i.length > 0)
+    i.sort((f, u) => u.index - f.index), a = i[0].line;
+  else {
+    let f = r.filter((u) => u.width >= n);
+    f.length > 0 ? (f.sort((u, m) => m.index - u.index), a = f[0].line) : (r.sort((u, m) => m.width - u.width), a = r[0]?.line ?? [e.path[0], e.path[1]]);
   }
-  const minX = Math.min(largestLine[0].x, largestLine[1].x);
-  const maxX = Math.max(largestLine[0].x, largestLine[1].x);
-  const middleX = minX + Math.floor((maxX - minX) / 2);
-  const current = graph.columnWidth.get(middleX) ?? 0;
-  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2));
-  edge.labelLine = [largestLine[0], largestLine[1]];
+  let c = Math.min(a[0].x, a[1].x), l = Math.max(a[0].x, a[1].x), d = c + Math.floor((l - c) / 2), h = t.columnWidth.get(d) ?? 0;
+  t.columnWidth.set(d, Math.max(h, n + 2)), e.labelLine = [a[0], a[1]];
 }
-function calculateLineWidth(graph, line) {
-  let total = 0;
-  const startX = Math.min(line[0].x, line[1].x);
-  const endX = Math.max(line[0].x, line[1].x);
-  for (let x = startX; x <= endX; x++) {
-    total += graph.columnWidth.get(x) ?? 0;
-  }
-  return total;
+function br(t, e) {
+  let n = 0, o = Math.min(e[0].x, e[1].x), s = Math.max(e[0].x, e[1].x);
+  for (let r = o; r <= s; r++)
+    n += t.columnWidth.get(r) ?? 0;
+  return n;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/edge-bundling.ts
-function analyzeEdgeBundles(graph) {
-  if (graph.config.graphDirection !== "TD") {
+function qe(t) {
+  if (t.config.graphDirection !== "TD")
     return [];
+  let e = [], n = /* @__PURE__ */ new Set(), o = /* @__PURE__ */ new Map();
+  for (let r of t.edges) {
+    if (r.from === r.to) continue;
+    let i = o.get(r.to) ?? [];
+    i.push(r), o.set(r.to, i);
   }
-  const bundles = [];
-  const bundledEdges = /* @__PURE__ */ new Set();
-  const edgesByTarget = /* @__PURE__ */ new Map();
-  for (const edge of graph.edges) {
-    if (edge.from === edge.to) continue;
-    const existing = edgesByTarget.get(edge.to) ?? [];
-    existing.push(edge);
-    edgesByTarget.set(edge.to, existing);
-  }
-  for (const [target, edges] of edgesByTarget) {
-    if (edges.length < 2) continue;
-    if (!canBundle(edges, graph)) continue;
-    if (edges.some((e) => bundledEdges.has(e))) continue;
-    const bundle = {
+  for (let [r, i] of o) {
+    if (i.length < 2 || !Ue(i, t) || i.some((c) => n.has(c))) continue;
+    let a = {
       type: "fan-in",
-      edges: [...edges],
-      sharedNode: target,
-      otherNodes: edges.map((e) => e.from),
+      edges: [...i],
+      sharedNode: r,
+      otherNodes: i.map((c) => c.from),
       junctionPoint: null,
       sharedPath: [],
-      junctionDir: Middle,
-      sharedNodeDir: Middle
+      junctionDir: Gt,
+      sharedNodeDir: Gt
     };
-    for (const edge of edges) {
-      edge.bundle = bundle;
-      bundledEdges.add(edge);
-    }
-    bundles.push(bundle);
+    for (let c of i)
+      c.bundle = a, n.add(c);
+    e.push(a);
   }
-  const edgesBySource = /* @__PURE__ */ new Map();
-  for (const edge of graph.edges) {
-    if (edge.from === edge.to) continue;
-    if (bundledEdges.has(edge)) continue;
-    const existing = edgesBySource.get(edge.from) ?? [];
-    existing.push(edge);
-    edgesBySource.set(edge.from, existing);
+  let s = /* @__PURE__ */ new Map();
+  for (let r of t.edges) {
+    if (r.from === r.to || n.has(r)) continue;
+    let i = s.get(r.from) ?? [];
+    i.push(r), s.set(r.from, i);
   }
-  for (const [source, edges] of edgesBySource) {
-    if (edges.length < 2) continue;
-    if (!canBundle(edges, graph)) continue;
-    const bundle = {
+  for (let [r, i] of s) {
+    if (i.length < 2 || !Ue(i, t)) continue;
+    let a = {
       type: "fan-out",
-      edges: [...edges],
-      sharedNode: source,
-      otherNodes: edges.map((e) => e.to),
+      edges: [...i],
+      sharedNode: r,
+      otherNodes: i.map((c) => c.to),
       junctionPoint: null,
       sharedPath: [],
-      junctionDir: Middle,
-      sharedNodeDir: Middle
+      junctionDir: Gt,
+      sharedNodeDir: Gt
     };
-    for (const edge of edges) {
-      edge.bundle = bundle;
-      bundledEdges.add(edge);
-    }
-    bundles.push(bundle);
+    for (let c of i)
+      c.bundle = a, n.add(c);
+    e.push(a);
   }
-  return bundles;
+  return e;
 }
-function canBundle(edges, graph) {
-  if (edges.length < 2) return false;
-  const firstStyle = edges[0].style;
-  const firstFromSg = getNodeSubgraph(graph, edges[0].from);
-  const firstToSg = getNodeSubgraph(graph, edges[0].to);
-  for (const edge of edges) {
-    if (edge.style !== firstStyle) return false;
-    if (edge.text.length > 0) return false;
-    const fromSg = getNodeSubgraph(graph, edge.from);
-    const toSg = getNodeSubgraph(graph, edge.to);
-    if (fromSg !== firstFromSg || toSg !== firstToSg) return false;
-    if (fromSg !== toSg) return false;
+function Ue(t, e) {
+  if (t.length < 2) return !1;
+  let n = t[0].style, o = yt(e, t[0].from), s = yt(e, t[0].to);
+  for (let r of t) {
+    if (r.style !== n || r.text.length > 0) return !1;
+    let i = yt(e, r.from), a = yt(e, r.to);
+    if (i !== o || a !== s || i !== a) return !1;
   }
-  return true;
+  return !0;
 }
-function calculateJunctionPoint(graph, bundle) {
-  const dir = graph.config.graphDirection;
-  const sharedCoord = bundle.sharedNode.gridCoord;
-  const otherCoords = bundle.otherNodes.map((n) => n.gridCoord);
-  if (bundle.type === "fan-in") {
-    const minX = Math.min(...otherCoords.map((c) => c.x));
-    const maxX = Math.max(...otherCoords.map((c) => c.x));
-    const minY = Math.min(...otherCoords.map((c) => c.y));
-    const maxY = Math.max(...otherCoords.map((c) => c.y));
-    if (dir === "TD") {
-      const junctionY = sharedCoord.y - 1;
-      const centerX = Math.floor((minX + maxX) / 2) + 1;
-      const junctionX = sharedCoord.x + 1;
-      return { x: junctionX, y: junctionY };
+function yr(t, e) {
+  let n = t.config.graphDirection, o = e.sharedNode.gridCoord, s = e.otherNodes.map((r) => r.gridCoord);
+  if (e.type === "fan-in") {
+    let r = Math.min(...s.map((l) => l.x)), i = Math.max(...s.map((l) => l.x)), a = Math.min(...s.map((l) => l.y)), c = Math.max(...s.map((l) => l.y));
+    if (n === "TD") {
+      let l = o.y - 1, d = Math.floor((r + i) / 2) + 1;
+      return { x: o.x + 1, y: l };
     } else {
-      const junctionX = sharedCoord.x - 1;
-      const junctionY = sharedCoord.y + 1;
-      return { x: junctionX, y: junctionY };
+      let l = o.x - 1, d = o.y + 1;
+      return { x: l, y: d };
     }
   } else {
-    const minX = Math.min(...otherCoords.map((c) => c.x));
-    const maxX = Math.max(...otherCoords.map((c) => c.x));
-    const minY = Math.min(...otherCoords.map((c) => c.y));
-    const maxY = Math.max(...otherCoords.map((c) => c.y));
-    if (dir === "TD") {
-      const junctionY = sharedCoord.y + 3;
-      const junctionX = sharedCoord.x + 1;
-      return { x: junctionX, y: junctionY };
+    let r = Math.min(...s.map((l) => l.x)), i = Math.max(...s.map((l) => l.x)), a = Math.min(...s.map((l) => l.y)), c = Math.max(...s.map((l) => l.y));
+    if (n === "TD") {
+      let l = o.y + 3;
+      return { x: o.x + 1, y: l };
     } else {
-      const junctionX = sharedCoord.x + 3;
-      const junctionY = sharedCoord.y + 1;
-      return { x: junctionX, y: junctionY };
+      let l = o.x + 3, d = o.y + 1;
+      return { x: l, y: d };
     }
   }
 }
-function routeBundledEdges(graph, bundle) {
-  const dir = graph.config.graphDirection;
-  bundle.junctionPoint = calculateJunctionPoint(graph, bundle);
-  const junction = bundle.junctionPoint;
-  if (bundle.type === "fan-in") {
-    bundle.junctionDir = dir === "TD" ? Up : Left;
-    bundle.sharedNodeDir = dir === "TD" ? Down : Right;
-    const targetCoord = bundle.sharedNode.gridCoord;
-    const targetEntry = dir === "TD" ? { x: targetCoord.x + 1, y: targetCoord.y } : { x: targetCoord.x, y: targetCoord.y + 1 };
-    const sharedPath = getPath(graph.grid, junction, targetEntry);
-    bundle.sharedPath = sharedPath ? mergePath(sharedPath) : [junction, targetEntry];
-    for (const edge of bundle.edges) {
-      const sourceCoord = edge.from.gridCoord;
-      const sourceExit = dir === "TD" ? { x: sourceCoord.x + 1, y: sourceCoord.y + 2 } : { x: sourceCoord.x + 2, y: sourceCoord.y + 1 };
-      const pathToJunction = getPath(graph.grid, sourceExit, junction);
-      edge.pathToJunction = pathToJunction ? mergePath(pathToJunction) : [sourceExit, junction];
-      edge.startDir = dir === "TD" ? Down : Right;
-      edge.endDir = dir === "TD" ? Up : Left;
-      edge.path = [...edge.pathToJunction, ...bundle.sharedPath.slice(1)];
+function Cr(t, e) {
+  let n = t.config.graphDirection;
+  e.junctionPoint = yr(t, e);
+  let o = e.junctionPoint;
+  if (e.type === "fan-in") {
+    e.junctionDir = n === "TD" ? _ : j, e.sharedNodeDir = n === "TD" ? Y : P;
+    let s = e.sharedNode.gridCoord, r = n === "TD" ? { x: s.x + 1, y: s.y } : { x: s.x, y: s.y + 1 }, i = Ht(t.grid, o, r);
+    e.sharedPath = i ? Yt(i) : [o, r];
+    for (let a of e.edges) {
+      let c = a.from.gridCoord, l = n === "TD" ? { x: c.x + 1, y: c.y + 2 } : { x: c.x + 2, y: c.y + 1 }, d = Ht(t.grid, l, o);
+      a.pathToJunction = d ? Yt(d) : [l, o], a.startDir = n === "TD" ? Y : P, a.endDir = n === "TD" ? _ : j, a.path = [...a.pathToJunction, ...e.sharedPath.slice(1)];
     }
   } else {
-    bundle.junctionDir = dir === "TD" ? Down : Right;
-    bundle.sharedNodeDir = dir === "TD" ? Up : Left;
-    const sourceCoord = bundle.sharedNode.gridCoord;
-    const sourceExit = dir === "TD" ? { x: sourceCoord.x + 1, y: sourceCoord.y + 2 } : { x: sourceCoord.x + 2, y: sourceCoord.y + 1 };
-    const sharedPath = getPath(graph.grid, sourceExit, junction);
-    bundle.sharedPath = sharedPath ? mergePath(sharedPath) : [sourceExit, junction];
-    for (const edge of bundle.edges) {
-      const targetCoord = edge.to.gridCoord;
-      const targetEntry = dir === "TD" ? { x: targetCoord.x + 1, y: targetCoord.y } : { x: targetCoord.x, y: targetCoord.y + 1 };
-      const pathToJunction = getPath(graph.grid, junction, targetEntry);
-      edge.pathToJunction = pathToJunction ? mergePath(pathToJunction) : [junction, targetEntry];
-      edge.startDir = dir === "TD" ? Down : Right;
-      edge.endDir = dir === "TD" ? Up : Left;
-      edge.path = [...bundle.sharedPath, ...edge.pathToJunction.slice(1)];
+    e.junctionDir = n === "TD" ? Y : P, e.sharedNodeDir = n === "TD" ? _ : j;
+    let s = e.sharedNode.gridCoord, r = n === "TD" ? { x: s.x + 1, y: s.y + 2 } : { x: s.x + 2, y: s.y + 1 }, i = Ht(t.grid, r, o);
+    e.sharedPath = i ? Yt(i) : [r, o];
+    for (let a of e.edges) {
+      let c = a.to.gridCoord, l = n === "TD" ? { x: c.x + 1, y: c.y } : { x: c.x, y: c.y + 1 }, d = Ht(t.grid, o, l);
+      a.pathToJunction = d ? Yt(d) : [o, l], a.startDir = n === "TD" ? Y : P, a.endDir = n === "TD" ? _ : j, a.path = [...e.sharedPath, ...a.pathToJunction.slice(1)];
     }
   }
 }
-function processBundles(graph) {
-  for (const bundle of graph.bundles) {
-    routeBundledEdges(graph, bundle);
-  }
+function Ve(t) {
+  for (let e of t.bundles)
+    Cr(t, e);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/multiline-utils.ts
-function splitLines(label) {
-  return label.split("\n");
+function rt(t) {
+  return t.split(`
+`);
 }
-function maxLineWidth(label) {
-  const lines = splitLines(label);
-  return Math.max(...lines.map((l) => l.length), 0);
+function re(t) {
+  let e = rt(t);
+  return Math.max(...e.map((n) => n.length), 0);
 }
-function lineCount(label) {
-  return splitLines(label).length;
+function ge(t) {
+  return rt(t).length;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/corners.ts
-var SHAPE_CORNERS = {
+var Ke = {
   // Standard rectangular shapes
   rectangle: {
     unicode: { tl: "\u250C", tr: "\u2510", bl: "\u2514", br: "\u2518" },
@@ -1653,617 +1124,388 @@ var SHAPE_CORNERS = {
     ascii: { tl: "@", tr: "@", bl: "@", br: "@" }
   }
 };
-function getCorners(shape, useAscii) {
-  const corners = SHAPE_CORNERS[shape] ?? SHAPE_CORNERS.rectangle;
-  return useAscii ? corners.ascii : corners.unicode;
+function xt(t, e) {
+  let n = Ke[t] ?? Ke.rectangle;
+  return e ? n.ascii : n.unicode;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/rectangle.ts
-function getBoxDimensions(label, options) {
-  const lines = splitLines(label);
-  const maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0);
-  const lineCount2 = lines.length;
-  const innerWidth = 2 * options.padding + maxLineWidth2;
-  const width = innerWidth + 2;
-  const rawInnerHeight = lineCount2 + 2 * options.padding;
-  const innerHeight = rawInnerHeight % 2 === 0 ? rawInnerHeight + 1 : rawInnerHeight;
-  const height = innerHeight + 2;
+function At(t, e) {
+  let n = rt(t), o = Math.max(...n.map((d) => d.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 2, a = s + 2 * e.padding, c = a % 2 === 0 ? a + 1 : a, l = c + 2;
   return {
-    width,
-    height,
+    width: i,
+    height: l,
     labelArea: {
-      x: 1 + options.padding,
-      y: 1 + options.padding,
-      width: maxLineWidth2,
-      height: lineCount2
+      x: 1 + e.padding,
+      y: 1 + e.padding,
+      width: o,
+      height: s
     },
     // Grid layout: [border=1, content, border=1]
-    gridColumns: [1, innerWidth, 1],
-    gridRows: [1, innerHeight, 1]
+    gridColumns: [1, r, 1],
+    gridRows: [1, c, 1]
   };
 }
-function renderBox(label, dimensions, corners, useAscii) {
-  const { width, height } = dimensions;
-  const canvas = mkCanvas(width - 1, height - 1);
-  const from = { x: 0, y: 0 };
-  const to = { x: width - 1, y: height - 1 };
-  const hLine = useAscii ? "-" : "\u2500";
-  const vLine = useAscii ? "|" : "\u2502";
-  for (let x = from.x + 1; x < to.x; x++) {
-    canvas[x][from.y] = hLine;
-    canvas[x][to.y] = hLine;
-  }
-  for (let y = from.y + 1; y < to.y; y++) {
-    canvas[from.x][y] = vLine;
-    canvas[to.x][y] = vLine;
-  }
-  canvas[from.x][from.y] = corners.tl;
-  canvas[to.x][from.y] = corners.tr;
-  canvas[from.x][to.y] = corners.bl;
-  canvas[to.x][to.y] = corners.br;
-  const lines = splitLines(label);
-  const w = width - 1;
-  const h = height - 1;
-  const centerY = Math.floor(h / 2);
-  const startY = centerY - Math.floor((lines.length - 1) / 2);
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const textX = Math.floor(w / 2) - Math.ceil(line.length / 2) + 1;
-    for (let j = 0; j < line.length; j++) {
-      const x = textX + j;
-      const y = startY + i;
-      if (x >= 0 && x < canvas.length && y >= 0 && y < canvas[0].length) {
-        canvas[x][y] = line[j];
-      }
+function St(t, e, n, o) {
+  let { width: s, height: r } = e, i = it(s - 1, r - 1), a = { x: 0, y: 0 }, c = { x: s - 1, y: r - 1 }, l = o ? "-" : "\u2500", d = o ? "|" : "\u2502";
+  for (let b = a.x + 1; b < c.x; b++)
+    i[b][a.y] = l, i[b][c.y] = l;
+  for (let b = a.y + 1; b < c.y; b++)
+    i[a.x][b] = d, i[c.x][b] = d;
+  i[a.x][a.y] = n.tl, i[c.x][a.y] = n.tr, i[a.x][c.y] = n.bl, i[c.x][c.y] = n.br;
+  let h = rt(t), f = s - 1, u = r - 1, p = Math.floor(u / 2) - Math.floor((h.length - 1) / 2);
+  for (let b = 0; b < h.length; b++) {
+    let A = h[b], B = Math.floor(f / 2) - Math.ceil(A.length / 2) + 1;
+    for (let v = 0; v < A.length; v++) {
+      let H = B + v, L = p + b;
+      H >= 0 && H < i.length && L >= 0 && L < i[0].length && (i[H][L] = A[v]);
     }
   }
-  return canvas;
+  return i;
 }
-function getBoxAttachmentPoint(dir, dimensions, baseCoord) {
-  const { width, height } = dimensions;
-  const centerX = baseCoord.x + Math.floor(width / 2);
-  const centerY = baseCoord.y + Math.floor(height / 2);
-  if (dirEquals(dir, Up)) return { x: centerX, y: baseCoord.y };
-  if (dirEquals(dir, Down)) return { x: centerX, y: baseCoord.y + height - 1 };
-  if (dirEquals(dir, Left)) return { x: baseCoord.x, y: centerY };
-  if (dirEquals(dir, Right)) return { x: baseCoord.x + width - 1, y: centerY };
-  if (dirEquals(dir, UpperLeft)) return { x: baseCoord.x, y: baseCoord.y };
-  if (dirEquals(dir, UpperRight)) return { x: baseCoord.x + width - 1, y: baseCoord.y };
-  if (dirEquals(dir, LowerLeft)) return { x: baseCoord.x, y: baseCoord.y + height - 1 };
-  if (dirEquals(dir, LowerRight)) return { x: baseCoord.x + width - 1, y: baseCoord.y + height - 1 };
-  return { x: centerX, y: centerY };
+function gt(t, e, n) {
+  let { width: o, height: s } = e, r = n.x + Math.floor(o / 2), i = n.y + Math.floor(s / 2);
+  return x(t, _) ? { x: r, y: n.y } : x(t, Y) ? { x: r, y: n.y + s - 1 } : x(t, j) ? { x: n.x, y: i } : x(t, P) ? { x: n.x + o - 1, y: i } : x(t, Mt) ? { x: n.x, y: n.y } : x(t, wt) ? { x: n.x + o - 1, y: n.y } : x(t, vt) ? { x: n.x, y: n.y + s - 1 } : x(t, Rt) ? { x: n.x + o - 1, y: n.y + s - 1 } : { x: r, y: i };
 }
-var rectangleRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("rectangle", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+var me = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("rectangle", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
+  getAttachmentPoint: gt
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/diamond.ts
-var diamondRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("diamond", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+var Qe = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("diamond", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
+  getAttachmentPoint: gt
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/circle.ts
-var circleRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("circle", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+var Ze = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("circle", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
+  getAttachmentPoint: gt
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/state.ts
-var stateStartRenderer = {
-  getDimensions(_label, _options) {
-    const width = 5;
-    const height = 3;
+var tn = {
+  getDimensions(t, e) {
     return {
-      width,
-      height,
+      width: 5,
+      height: 3,
       labelArea: { x: 2, y: 1, width: 1, height: 1 },
       gridColumns: [1, 3, 1],
       gridRows: [1, 1, 1]
     };
   },
-  render(_label, dimensions, options) {
-    const { width, height } = dimensions;
-    const canvas = mkCanvas(width - 1, height - 1);
-    const centerX = Math.floor(width / 2);
-    if (!options.useAscii) {
-      canvas[0][0] = "\u256D";
-      canvas[1][0] = "\u2500";
-      canvas[2][0] = "\u2500";
-      canvas[3][0] = "\u2500";
-      canvas[4][0] = "\u256E";
-      canvas[0][1] = "\u2502";
-      canvas[centerX][1] = "\u25CF";
-      canvas[4][1] = "\u2502";
-      canvas[0][2] = "\u2570";
-      canvas[1][2] = "\u2500";
-      canvas[2][2] = "\u2500";
-      canvas[3][2] = "\u2500";
-      canvas[4][2] = "\u256F";
-    } else {
-      canvas[0][0] = ".";
-      canvas[1][0] = "-";
-      canvas[2][0] = "-";
-      canvas[3][0] = "-";
-      canvas[4][0] = ".";
-      canvas[0][1] = "|";
-      canvas[centerX][1] = "*";
-      canvas[4][1] = "|";
-      canvas[0][2] = "'";
-      canvas[1][2] = "-";
-      canvas[2][2] = "-";
-      canvas[3][2] = "-";
-      canvas[4][2] = "'";
-    }
-    return canvas;
+  render(t, e, n) {
+    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = Math.floor(o / 2);
+    return n.useAscii ? (r[0][0] = ".", r[1][0] = "-", r[2][0] = "-", r[3][0] = "-", r[4][0] = ".", r[0][1] = "|", r[i][1] = "*", r[4][1] = "|", r[0][2] = "'", r[1][2] = "-", r[2][2] = "-", r[3][2] = "-", r[4][2] = "'") : (r[0][0] = "\u256D", r[1][0] = "\u2500", r[2][0] = "\u2500", r[3][0] = "\u2500", r[4][0] = "\u256E", r[0][1] = "\u2502", r[i][1] = "\u25CF", r[4][1] = "\u2502", r[0][2] = "\u2570", r[1][2] = "\u2500", r[2][2] = "\u2500", r[3][2] = "\u2500", r[4][2] = "\u256F"), r;
   },
-  getAttachmentPoint(dir, dimensions, baseCoord) {
-    const { width, height } = dimensions;
-    const centerX = baseCoord.x + Math.floor(width / 2);
-    const centerY = baseCoord.y + Math.floor(height / 2);
-    if (dirEquals(dir, Up)) return { x: centerX, y: baseCoord.y };
-    if (dirEquals(dir, Down)) return { x: centerX, y: baseCoord.y + height - 1 };
-    if (dirEquals(dir, Left)) return { x: baseCoord.x, y: centerY };
-    if (dirEquals(dir, Right)) return { x: baseCoord.x + width - 1, y: centerY };
-    return { x: centerX, y: centerY };
+  getAttachmentPoint(t, e, n) {
+    let { width: o, height: s } = e, r = n.x + Math.floor(o / 2), i = n.y + Math.floor(s / 2);
+    return x(t, _) ? { x: r, y: n.y } : x(t, Y) ? { x: r, y: n.y + s - 1 } : x(t, j) ? { x: n.x, y: i } : x(t, P) ? { x: n.x + o - 1, y: i } : { x: r, y: i };
   }
-};
-var stateEndRenderer = {
-  getDimensions(_label, _options) {
-    const width = 5;
-    const height = 3;
+}, en = {
+  getDimensions(t, e) {
     return {
-      width,
-      height,
+      width: 5,
+      height: 3,
       labelArea: { x: 2, y: 1, width: 1, height: 1 },
       gridColumns: [1, 3, 1],
       gridRows: [1, 1, 1]
     };
   },
-  render(_label, dimensions, options) {
-    const { width, height } = dimensions;
-    const canvas = mkCanvas(width - 1, height - 1);
-    const centerX = Math.floor(width / 2);
-    if (!options.useAscii) {
-      canvas[0][0] = "\u2554";
-      canvas[1][0] = "\u2550";
-      canvas[2][0] = "\u2550";
-      canvas[3][0] = "\u2550";
-      canvas[4][0] = "\u2557";
-      canvas[0][1] = "\u2551";
-      canvas[centerX][1] = "\u25CE";
-      canvas[4][1] = "\u2551";
-      canvas[0][2] = "\u255A";
-      canvas[1][2] = "\u2550";
-      canvas[2][2] = "\u2550";
-      canvas[3][2] = "\u2550";
-      canvas[4][2] = "\u255D";
-    } else {
-      canvas[0][0] = "#";
-      canvas[1][0] = "=";
-      canvas[2][0] = "=";
-      canvas[3][0] = "=";
-      canvas[4][0] = "#";
-      canvas[0][1] = "#";
-      canvas[centerX][1] = "*";
-      canvas[4][1] = "#";
-      canvas[0][2] = "#";
-      canvas[1][2] = "=";
-      canvas[2][2] = "=";
-      canvas[3][2] = "=";
-      canvas[4][2] = "#";
-    }
-    return canvas;
+  render(t, e, n) {
+    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = Math.floor(o / 2);
+    return n.useAscii ? (r[0][0] = "#", r[1][0] = "=", r[2][0] = "=", r[3][0] = "=", r[4][0] = "#", r[0][1] = "#", r[i][1] = "*", r[4][1] = "#", r[0][2] = "#", r[1][2] = "=", r[2][2] = "=", r[3][2] = "=", r[4][2] = "#") : (r[0][0] = "\u2554", r[1][0] = "\u2550", r[2][0] = "\u2550", r[3][0] = "\u2550", r[4][0] = "\u2557", r[0][1] = "\u2551", r[i][1] = "\u25CE", r[4][1] = "\u2551", r[0][2] = "\u255A", r[1][2] = "\u2550", r[2][2] = "\u2550", r[3][2] = "\u2550", r[4][2] = "\u255D"), r;
   },
-  getAttachmentPoint(dir, dimensions, baseCoord) {
-    const { width, height } = dimensions;
-    const centerX = baseCoord.x + Math.floor(width / 2);
-    const centerY = baseCoord.y + Math.floor(height / 2);
-    if (dirEquals(dir, Up)) return { x: centerX, y: baseCoord.y };
-    if (dirEquals(dir, Down)) return { x: centerX, y: baseCoord.y + height - 1 };
-    if (dirEquals(dir, Left)) return { x: baseCoord.x, y: centerY };
-    if (dirEquals(dir, Right)) return { x: baseCoord.x + width - 1, y: centerY };
-    return { x: centerX, y: centerY };
+  getAttachmentPoint(t, e, n) {
+    let { width: o, height: s } = e, r = n.x + Math.floor(o / 2), i = n.y + Math.floor(s / 2);
+    return x(t, _) ? { x: r, y: n.y } : x(t, Y) ? { x: r, y: n.y + s - 1 } : x(t, j) ? { x: n.x, y: i } : x(t, P) ? { x: n.x + o - 1, y: i } : { x: r, y: i };
   }
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/rounded.ts
-var roundedRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("rounded", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+var nn = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("rounded", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
+  getAttachmentPoint: gt
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/stadium.ts
-var stadiumRenderer = {
-  getDimensions(label, options) {
-    const lines = splitLines(label);
-    const maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0);
-    const lineCount2 = lines.length;
-    const innerWidth = 2 * options.padding + maxLineWidth2;
-    const width = innerWidth + 4;
-    const innerHeight = lineCount2 + 2 * options.padding;
-    const height = Math.max(innerHeight + 2, 3);
+var rn = {
+  getDimensions(t, e) {
+    let n = rt(t), o = Math.max(...n.map((l) => l.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 4, a = s + 2 * e.padding, c = Math.max(a + 2, 3);
     return {
-      width,
-      height,
+      width: i,
+      height: c,
       labelArea: {
-        x: 2 + options.padding,
-        y: 1 + options.padding,
-        width: maxLineWidth2,
-        height: lineCount2
+        x: 2 + e.padding,
+        y: 1 + e.padding,
+        width: o,
+        height: s
       },
-      gridColumns: [2, innerWidth, 2],
-      gridRows: [1, innerHeight, 1]
+      gridColumns: [2, r, 2],
+      gridRows: [1, a, 1]
     };
   },
-  render(label, dimensions, options) {
-    const { width, height } = dimensions;
-    const canvas = mkCanvas(width - 1, height - 1);
-    const centerY = Math.floor(height / 2);
-    const hChar = options.useAscii ? "-" : "\u2500";
-    if (height === 3) {
-      canvas[0][centerY] = "(";
-      canvas[width - 1][centerY] = ")";
-    } else if (!options.useAscii) {
-      canvas[0][0] = "\u256D";
-      for (let x = 1; x < width - 1; x++) canvas[x][0] = hChar;
-      canvas[width - 1][0] = "\u256E";
-      for (let y = 1; y < height - 1; y++) {
-        canvas[0][y] = "\u2502";
-        canvas[width - 1][y] = "\u2502";
-      }
-      canvas[0][height - 1] = "\u2570";
-      for (let x = 1; x < width - 1; x++) canvas[x][height - 1] = hChar;
-      canvas[width - 1][height - 1] = "\u256F";
+  render(t, e, n) {
+    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = Math.floor(s / 2), a = n.useAscii ? "-" : "\u2500";
+    if (s === 3)
+      r[0][i] = "(", r[o - 1][i] = ")";
+    else if (n.useAscii) {
+      for (let d = 0; d < s; d++)
+        r[0][d] = "(", r[o - 1][d] = ")";
+      for (let d = 1; d < o - 1; d++)
+        r[d][0] = a, r[d][s - 1] = a;
     } else {
-      for (let y = 0; y < height; y++) {
-        canvas[0][y] = "(";
-        canvas[width - 1][y] = ")";
-      }
-      for (let x = 1; x < width - 1; x++) {
-        canvas[x][0] = hChar;
-        canvas[x][height - 1] = hChar;
+      r[0][0] = "\u256D";
+      for (let d = 1; d < o - 1; d++) r[d][0] = a;
+      r[o - 1][0] = "\u256E";
+      for (let d = 1; d < s - 1; d++)
+        r[0][d] = "\u2502", r[o - 1][d] = "\u2502";
+      r[0][s - 1] = "\u2570";
+      for (let d = 1; d < o - 1; d++) r[d][s - 1] = a;
+      r[o - 1][s - 1] = "\u256F";
+    }
+    let c = rt(t), l = i - Math.floor((c.length - 1) / 2);
+    for (let d = 0; d < c.length; d++) {
+      let h = c[d], f = Math.floor(o / 2) - Math.floor(h.length / 2);
+      for (let u = 0; u < h.length; u++) {
+        let m = f + u, p = l + d;
+        m > 0 && m < o - 1 && p >= 0 && p < s && (r[m][p] = h[u]);
       }
     }
-    const lines = splitLines(label);
-    const startY = centerY - Math.floor((lines.length - 1) / 2);
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const textX = Math.floor(width / 2) - Math.floor(line.length / 2);
-      for (let j = 0; j < line.length; j++) {
-        const x = textX + j;
-        const y = startY + i;
-        if (x > 0 && x < width - 1 && y >= 0 && y < height) {
-          canvas[x][y] = line[j];
-        }
-      }
-    }
-    return canvas;
+    return r;
   },
-  getAttachmentPoint: getBoxAttachmentPoint
+  getAttachmentPoint: gt
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/hexagon.ts
-var hexagonRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("hexagon", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+var on = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("hexagon", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
+  getAttachmentPoint: gt
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/special.ts
-var subroutineRenderer = {
-  getDimensions(label, options) {
-    const lines = splitLines(label);
-    const maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0);
-    const lineCount2 = lines.length;
-    const innerWidth = 2 * options.padding + maxLineWidth2;
-    const width = innerWidth + 4;
-    const innerHeight = lineCount2 + 2 * options.padding;
-    const height = innerHeight + 2;
+var sn = {
+  getDimensions(t, e) {
+    let n = rt(t), o = Math.max(...n.map((l) => l.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 4, a = s + 2 * e.padding, c = a + 2;
     return {
-      width,
-      height,
+      width: i,
+      height: c,
       labelArea: {
-        x: 2 + options.padding,
-        y: 1 + options.padding,
-        width: maxLineWidth2,
-        height: lineCount2
+        x: 2 + e.padding,
+        y: 1 + e.padding,
+        width: o,
+        height: s
       },
-      gridColumns: [2, innerWidth, 2],
-      gridRows: [1, innerHeight, 1]
+      gridColumns: [2, r, 2],
+      gridRows: [1, a, 1]
     };
   },
-  render(label, dimensions, options) {
-    const { width, height } = dimensions;
-    const canvas = mkCanvas(width - 1, height - 1);
-    const hChar = options.useAscii ? "-" : "\u2500";
-    const vChar = options.useAscii ? "|" : "\u2502";
-    canvas[0][0] = options.useAscii ? "+" : "\u250C";
-    canvas[1][0] = options.useAscii ? "+" : "\u252C";
-    for (let x = 2; x < width - 2; x++) canvas[x][0] = hChar;
-    canvas[width - 2][0] = options.useAscii ? "+" : "\u252C";
-    canvas[width - 1][0] = options.useAscii ? "+" : "\u2510";
-    for (let y = 1; y < height - 1; y++) {
-      canvas[0][y] = vChar;
-      canvas[1][y] = vChar;
-      canvas[width - 2][y] = vChar;
-      canvas[width - 1][y] = vChar;
-    }
-    canvas[0][height - 1] = options.useAscii ? "+" : "\u2514";
-    canvas[1][height - 1] = options.useAscii ? "+" : "\u2534";
-    for (let x = 2; x < width - 2; x++) canvas[x][height - 1] = hChar;
-    canvas[width - 2][height - 1] = options.useAscii ? "+" : "\u2534";
-    canvas[width - 1][height - 1] = options.useAscii ? "+" : "\u2518";
-    const lines = splitLines(label);
-    const centerY = Math.floor(height / 2);
-    const startY = centerY - Math.floor((lines.length - 1) / 2);
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const textX = Math.floor(width / 2) - Math.floor(line.length / 2);
-      for (let j = 0; j < line.length; j++) {
-        const x = textX + j;
-        const y = startY + i;
-        if (x > 1 && x < width - 2 && y > 0 && y < height - 1) {
-          canvas[x][y] = line[j];
-        }
+  render(t, e, n) {
+    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = n.useAscii ? "-" : "\u2500", a = n.useAscii ? "|" : "\u2502";
+    r[0][0] = n.useAscii ? "+" : "\u250C", r[1][0] = n.useAscii ? "+" : "\u252C";
+    for (let h = 2; h < o - 2; h++) r[h][0] = i;
+    r[o - 2][0] = n.useAscii ? "+" : "\u252C", r[o - 1][0] = n.useAscii ? "+" : "\u2510";
+    for (let h = 1; h < s - 1; h++)
+      r[0][h] = a, r[1][h] = a, r[o - 2][h] = a, r[o - 1][h] = a;
+    r[0][s - 1] = n.useAscii ? "+" : "\u2514", r[1][s - 1] = n.useAscii ? "+" : "\u2534";
+    for (let h = 2; h < o - 2; h++) r[h][s - 1] = i;
+    r[o - 2][s - 1] = n.useAscii ? "+" : "\u2534", r[o - 1][s - 1] = n.useAscii ? "+" : "\u2518";
+    let c = rt(t), d = Math.floor(s / 2) - Math.floor((c.length - 1) / 2);
+    for (let h = 0; h < c.length; h++) {
+      let f = c[h], u = Math.floor(o / 2) - Math.floor(f.length / 2);
+      for (let m = 0; m < f.length; m++) {
+        let p = u + m, b = d + h;
+        p > 1 && p < o - 2 && b > 0 && b < s - 1 && (r[p][b] = f[m]);
       }
     }
-    return canvas;
+    return r;
   },
-  getAttachmentPoint: getBoxAttachmentPoint
-};
-var doublecircleRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("doublecircle", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+  getAttachmentPoint: gt
+}, an = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("doublecircle", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
-};
-var cylinderRenderer = {
-  getDimensions(label, options) {
-    const lines = splitLines(label);
-    const maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0);
-    const lineCount2 = lines.length;
-    const innerWidth = 2 * options.padding + maxLineWidth2;
-    const width = innerWidth + 2;
-    const innerHeight = lineCount2 + 2 * options.padding + 2;
-    const height = innerHeight + 2;
+  getAttachmentPoint: gt
+}, cn = {
+  getDimensions(t, e) {
+    let n = rt(t), o = Math.max(...n.map((l) => l.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 2, a = s + 2 * e.padding + 2, c = a + 2;
     return {
-      width,
-      height,
+      width: i,
+      height: c,
       labelArea: {
-        x: 1 + options.padding,
-        y: 2 + options.padding,
-        width: maxLineWidth2,
-        height: lineCount2
+        x: 1 + e.padding,
+        y: 2 + e.padding,
+        width: o,
+        height: s
       },
-      gridColumns: [1, innerWidth, 1],
-      gridRows: [2, innerHeight - 2, 2]
+      gridColumns: [1, r, 1],
+      gridRows: [2, a - 2, 2]
     };
   },
-  render(label, dimensions, options) {
-    const { width, height } = dimensions;
-    const canvas = mkCanvas(width - 1, height - 1);
-    const hChar = options.useAscii ? "-" : "\u2500";
-    const vChar = options.useAscii ? "|" : "\u2502";
-    canvas[0][0] = options.useAscii ? "." : "\u256D";
-    for (let x = 1; x < width - 1; x++) canvas[x][0] = hChar;
-    canvas[width - 1][0] = options.useAscii ? "." : "\u256E";
-    canvas[0][1] = vChar;
-    for (let x = 1; x < width - 1; x++) canvas[x][1] = hChar;
-    canvas[width - 1][1] = vChar;
-    for (let y = 2; y < height - 2; y++) {
-      canvas[0][y] = vChar;
-      canvas[width - 1][y] = vChar;
-    }
-    canvas[0][height - 2] = vChar;
-    for (let x = 1; x < width - 1; x++) canvas[x][height - 2] = hChar;
-    canvas[width - 1][height - 2] = vChar;
-    canvas[0][height - 1] = options.useAscii ? "'" : "\u2570";
-    for (let x = 1; x < width - 1; x++) canvas[x][height - 1] = hChar;
-    canvas[width - 1][height - 1] = options.useAscii ? "'" : "\u256F";
-    const lines = splitLines(label);
-    const centerY = Math.floor(height / 2);
-    const startY = centerY - Math.floor((lines.length - 1) / 2);
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const textX = Math.floor(width / 2) - Math.floor(line.length / 2);
-      for (let j = 0; j < line.length; j++) {
-        const x = textX + j;
-        const y = startY + i;
-        if (x > 0 && x < width - 1 && y > 1 && y < height - 2) {
-          canvas[x][y] = line[j];
-        }
+  render(t, e, n) {
+    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = n.useAscii ? "-" : "\u2500", a = n.useAscii ? "|" : "\u2502";
+    r[0][0] = n.useAscii ? "." : "\u256D";
+    for (let h = 1; h < o - 1; h++) r[h][0] = i;
+    r[o - 1][0] = n.useAscii ? "." : "\u256E", r[0][1] = a;
+    for (let h = 1; h < o - 1; h++) r[h][1] = i;
+    r[o - 1][1] = a;
+    for (let h = 2; h < s - 2; h++)
+      r[0][h] = a, r[o - 1][h] = a;
+    r[0][s - 2] = a;
+    for (let h = 1; h < o - 1; h++) r[h][s - 2] = i;
+    r[o - 1][s - 2] = a, r[0][s - 1] = n.useAscii ? "'" : "\u2570";
+    for (let h = 1; h < o - 1; h++) r[h][s - 1] = i;
+    r[o - 1][s - 1] = n.useAscii ? "'" : "\u256F";
+    let c = rt(t), d = Math.floor(s / 2) - Math.floor((c.length - 1) / 2);
+    for (let h = 0; h < c.length; h++) {
+      let f = c[h], u = Math.floor(o / 2) - Math.floor(f.length / 2);
+      for (let m = 0; m < f.length; m++) {
+        let p = u + m, b = d + h;
+        p > 0 && p < o - 1 && b > 1 && b < s - 2 && (r[p][b] = f[m]);
       }
     }
-    return canvas;
+    return r;
   },
-  getAttachmentPoint: getBoxAttachmentPoint
-};
-var asymmetricRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("asymmetric", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+  getAttachmentPoint: gt
+}, ln = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("asymmetric", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
-};
-var trapezoidRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("trapezoid", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+  getAttachmentPoint: gt
+}, fn = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("trapezoid", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
-};
-var trapezoidAltRenderer = {
-  getDimensions: getBoxDimensions,
-  render(label, dimensions, options) {
-    const corners = getCorners("trapezoid-alt", options.useAscii);
-    return renderBox(label, dimensions, corners, options.useAscii);
+  getAttachmentPoint: gt
+}, dn = {
+  getDimensions: At,
+  render(t, e, n) {
+    let o = xt("trapezoid-alt", n.useAscii);
+    return St(t, e, o, n.useAscii);
   },
-  getAttachmentPoint: getBoxAttachmentPoint
+  getAttachmentPoint: gt
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/index.ts
-var shapeRegistry = /* @__PURE__ */ new Map([
+var Mr = /* @__PURE__ */ new Map([
   // Core shapes
-  ["rectangle", rectangleRenderer],
-  ["rounded", roundedRenderer],
-  ["diamond", diamondRenderer],
-  ["stadium", stadiumRenderer],
-  ["circle", circleRenderer],
+  ["rectangle", me],
+  ["rounded", nn],
+  ["diamond", Qe],
+  ["stadium", rn],
+  ["circle", Ze],
   // Batch 1 additions
-  ["subroutine", subroutineRenderer],
-  ["doublecircle", doublecircleRenderer],
-  ["hexagon", hexagonRenderer],
+  ["subroutine", sn],
+  ["doublecircle", an],
+  ["hexagon", on],
   // Batch 2 additions
-  ["cylinder", cylinderRenderer],
-  ["asymmetric", asymmetricRenderer],
-  ["trapezoid", trapezoidRenderer],
-  ["trapezoid-alt", trapezoidAltRenderer],
+  ["cylinder", cn],
+  ["asymmetric", ln],
+  ["trapezoid", fn],
+  ["trapezoid-alt", dn],
   // State diagram pseudo-states
-  ["state-start", stateStartRenderer],
-  ["state-end", stateEndRenderer]
+  ["state-start", tn],
+  ["state-end", en]
 ]);
-function getShapeRenderer(shape) {
-  return shapeRegistry.get(shape) ?? rectangleRenderer;
+function un(t) {
+  return Mr.get(t) ?? me;
 }
-function getShapeDimensions(shape, label, options) {
-  const renderer = getShapeRenderer(shape);
-  return renderer.getDimensions(label, options);
+function hn(t, e, n) {
+  return un(t).getDimensions(e, n);
 }
-function getShapeAttachmentPoint(shape, dir, dimensions, baseCoord) {
-  const renderer = getShapeRenderer(shape);
-  return renderer.getAttachmentPoint(dir, dimensions, baseCoord);
+function gn(t, e, n, o) {
+  return un(t).getAttachmentPoint(e, n, o);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/draw.ts
-function drawNode(node, graph) {
-  return drawBoxWithGridDimensions(node, graph);
+function wr(t, e) {
+  return vr(t, e);
 }
-function drawBoxWithGridDimensions(node, graph) {
-  const gc = node.gridCoord;
-  const useAscii = graph.config.useAscii;
-  let w = 0;
-  for (let i = 0; i < 2; i++) {
-    w += graph.columnWidth.get(gc.x + i) ?? 0;
+function vr(t, e) {
+  let n = t.gridCoord, o = e.config.useAscii, s = 0;
+  for (let v = 0; v < 2; v++)
+    s += e.columnWidth.get(n.x + v) ?? 0;
+  let r = 0;
+  for (let v = 0; v < 2; v++)
+    r += e.rowHeight.get(n.y + v) ?? 0;
+  let i = { x: 0, y: 0 }, a = { x: s, y: r }, c = it(Math.max(i.x, a.x), Math.max(i.y, a.y)), l = xt(t.shape, o), d = t.shape === "state-end", h = o ? d ? "=" : "-" : d ? "\u2550" : "\u2500", f = o ? d ? "\u2016" : "|" : d ? "\u2551" : "\u2502", m = d ? o ? { tl: "#", tr: "#", bl: "#", br: "#" } : { tl: "\u2554", tr: "\u2557", bl: "\u255A", br: "\u255D" } : l;
+  for (let v = i.x + 1; v < a.x; v++) c[v][i.y] = h;
+  for (let v = i.x + 1; v < a.x; v++) c[v][a.y] = h;
+  for (let v = i.y + 1; v < a.y; v++) c[i.x][v] = f;
+  for (let v = i.y + 1; v < a.y; v++) c[a.x][v] = f;
+  c[i.x][i.y] = m.tl, c[a.x][i.y] = m.tr, c[i.x][a.y] = m.bl, c[a.x][a.y] = m.br;
+  let p = t.displayLabel, b = rt(p), B = i.y + Math.floor(r / 2) - Math.floor((b.length - 1) / 2);
+  for (let v = 0; v < b.length; v++) {
+    let H = b[v], L = i.x + Math.floor(s / 2) - Math.ceil(H.length / 2) + 1;
+    for (let q = 0; q < H.length; q++)
+      L + q >= 0 && L + q < c.length && B + v >= 0 && B + v < c[0].length && (c[L + q][B + v] = H[q]);
   }
-  let h = 0;
-  for (let i = 0; i < 2; i++) {
-    h += graph.rowHeight.get(gc.y + i) ?? 0;
-  }
-  const from = { x: 0, y: 0 };
-  const to = { x: w, y: h };
-  const box = mkCanvas(Math.max(from.x, to.x), Math.max(from.y, to.y));
-  const corners = getCorners(node.shape, useAscii);
-  const isDoubleBox = node.shape === "state-end";
-  const hChar = useAscii ? isDoubleBox ? "=" : "-" : isDoubleBox ? "\u2550" : "\u2500";
-  const vChar = useAscii ? isDoubleBox ? "\u2016" : "|" : isDoubleBox ? "\u2551" : "\u2502";
-  const doubleCorners = useAscii ? { tl: "#", tr: "#", bl: "#", br: "#" } : { tl: "\u2554", tr: "\u2557", bl: "\u255A", br: "\u255D" };
-  const effectiveCorners = isDoubleBox ? doubleCorners : corners;
-  for (let x = from.x + 1; x < to.x; x++) box[x][from.y] = hChar;
-  for (let x = from.x + 1; x < to.x; x++) box[x][to.y] = hChar;
-  for (let y = from.y + 1; y < to.y; y++) box[from.x][y] = vChar;
-  for (let y = from.y + 1; y < to.y; y++) box[to.x][y] = vChar;
-  box[from.x][from.y] = effectiveCorners.tl;
-  box[to.x][from.y] = effectiveCorners.tr;
-  box[from.x][to.y] = effectiveCorners.bl;
-  box[to.x][to.y] = effectiveCorners.br;
-  const label = node.displayLabel;
-  const lines = splitLines(label);
-  const textCenterY = from.y + Math.floor(h / 2);
-  const startY = textCenterY - Math.floor((lines.length - 1) / 2);
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const textX = from.x + Math.floor(w / 2) - Math.ceil(line.length / 2) + 1;
-    for (let j = 0; j < line.length; j++) {
-      if (textX + j >= 0 && textX + j < box.length && startY + i >= 0 && startY + i < box[0].length) {
-        box[textX + j][startY + i] = line[j];
-      }
+  return c;
+}
+function pn(t, e) {
+  return wr(t, e);
+}
+function oe(t, e, n = 1) {
+  let o = 0;
+  for (let v of t)
+    for (let H of v)
+      o = Math.max(o, H.length);
+  let r = o + 2 * n + 2, i = 0;
+  for (let v of t)
+    i += Math.max(v.length, 1);
+  let a = t.length - 1, c = i + a + 2, l = e ? "-" : "\u2500", d = e ? "|" : "\u2502", h = e ? "+" : "\u250C", f = e ? "+" : "\u2510", u = e ? "+" : "\u2514", m = e ? "+" : "\u2518", p = e ? "+" : "\u251C", b = e ? "+" : "\u2524", A = it(r - 1, c - 1);
+  A[0][0] = h;
+  for (let v = 1; v < r - 1; v++) A[v][0] = l;
+  A[r - 1][0] = f, A[0][c - 1] = u;
+  for (let v = 1; v < r - 1; v++) A[v][c - 1] = l;
+  A[r - 1][c - 1] = m;
+  for (let v = 1; v < c - 1; v++)
+    A[0][v] = d, A[r - 1][v] = d;
+  let B = 1;
+  for (let v = 0; v < t.length; v++) {
+    let H = t[v], L = H.length > 0 ? H : [""];
+    for (let q of L) {
+      let ut = 1 + n;
+      for (let O = 0; O < q.length; O++)
+        A[ut + O][B] = q[O];
+      B++;
+    }
+    if (v < t.length - 1) {
+      A[0][B] = p;
+      for (let q = 1; q < r - 1; q++) A[q][B] = l;
+      A[r - 1][B] = b, B++;
     }
   }
-  return box;
+  return A;
 }
-function drawBox(node, graph) {
-  return drawNode(node, graph);
-}
-function drawMultiBox(sections, useAscii, padding = 1) {
-  let maxTextWidth = 0;
-  for (const section of sections) {
-    for (const line of section) {
-      maxTextWidth = Math.max(maxTextWidth, line.length);
-    }
-  }
-  const innerWidth = maxTextWidth + 2 * padding;
-  const boxWidth = innerWidth + 2;
-  let totalLines = 0;
-  for (const section of sections) {
-    totalLines += Math.max(section.length, 1);
-  }
-  const numDividers = sections.length - 1;
-  const boxHeight = totalLines + numDividers + 2;
-  const hLine = useAscii ? "-" : "\u2500";
-  const vLine = useAscii ? "|" : "\u2502";
-  const tl = useAscii ? "+" : "\u250C";
-  const tr = useAscii ? "+" : "\u2510";
-  const bl = useAscii ? "+" : "\u2514";
-  const br = useAscii ? "+" : "\u2518";
-  const divL = useAscii ? "+" : "\u251C";
-  const divR = useAscii ? "+" : "\u2524";
-  const canvas = mkCanvas(boxWidth - 1, boxHeight - 1);
-  canvas[0][0] = tl;
-  for (let x = 1; x < boxWidth - 1; x++) canvas[x][0] = hLine;
-  canvas[boxWidth - 1][0] = tr;
-  canvas[0][boxHeight - 1] = bl;
-  for (let x = 1; x < boxWidth - 1; x++) canvas[x][boxHeight - 1] = hLine;
-  canvas[boxWidth - 1][boxHeight - 1] = br;
-  for (let y = 1; y < boxHeight - 1; y++) {
-    canvas[0][y] = vLine;
-    canvas[boxWidth - 1][y] = vLine;
-  }
-  let row = 1;
-  for (let s = 0; s < sections.length; s++) {
-    const section = sections[s];
-    const lines = section.length > 0 ? section : [""];
-    for (const line of lines) {
-      const startX = 1 + padding;
-      for (let i = 0; i < line.length; i++) {
-        canvas[startX + i][row] = line[i];
-      }
-      row++;
-    }
-    if (s < sections.length - 1) {
-      canvas[0][row] = divL;
-      for (let x = 1; x < boxWidth - 1; x++) canvas[x][row] = hLine;
-      canvas[boxWidth - 1][row] = divR;
-      row++;
-    }
-  }
-  return canvas;
-}
-var LINE_CHARS = {
+var Ar = {
   solid: {
     h: { unicode: "\u2500", ascii: "-" },
     v: { unicode: "\u2502", ascii: "|" }
@@ -2277,1682 +1519,933 @@ var LINE_CHARS = {
     v: { unicode: "\u2503", ascii: "\u2016" }
   }
 };
-function drawLine(canvas, from, to, offsetFrom, offsetTo, useAscii, style = "solid") {
-  const dir = determineDirection(from, to);
-  const drawnCoords = [];
-  const chars = LINE_CHARS[style];
-  const hChar = useAscii ? chars.h.ascii : chars.h.unicode;
-  const vChar = useAscii ? chars.v.ascii : chars.v.unicode;
-  if (dirEquals(dir, Up)) {
-    for (let y = from.y - offsetFrom; y >= to.y - offsetTo; y--) {
-      drawnCoords.push({ x: from.x, y });
-      canvas[from.x][y] = vChar;
+function xe(t, e, n, o, s, r, i = "solid") {
+  let a = pt(e, n), c = [], l = Ar[i], d = r ? l.h.ascii : l.h.unicode, h = r ? l.v.ascii : l.v.unicode;
+  if (x(a, _))
+    for (let f = e.y - o; f >= n.y - s; f--)
+      c.push({ x: e.x, y: f }), t[e.x][f] = h;
+  else if (x(a, Y))
+    for (let f = e.y + o; f <= n.y + s; f++)
+      c.push({ x: e.x, y: f }), t[e.x][f] = h;
+  else if (x(a, j))
+    for (let f = e.x - o; f >= n.x - s; f--)
+      c.push({ x: f, y: e.y }), t[f][e.y] = d;
+  else if (x(a, P))
+    for (let f = e.x + o; f <= n.x + s; f++)
+      c.push({ x: f, y: e.y }), t[f][e.y] = d;
+  else if (x(a, Mt)) {
+    for (let f = e.x - o; f >= n.x; f--)
+      c.push({ x: f, y: e.y }), t[f][e.y] = d;
+    for (let f = e.y - 1; f >= n.y - s; f--)
+      c.push({ x: n.x, y: f }), t[n.x][f] = h;
+  } else if (x(a, wt)) {
+    for (let f = e.x + o; f <= n.x; f++)
+      c.push({ x: f, y: e.y }), t[f][e.y] = d;
+    for (let f = e.y - 1; f >= n.y - s; f--)
+      c.push({ x: n.x, y: f }), t[n.x][f] = h;
+  } else if (x(a, vt)) {
+    for (let f = e.x - o; f >= n.x; f--)
+      c.push({ x: f, y: e.y }), t[f][e.y] = d;
+    for (let f = e.y + 1; f <= n.y + s; f++)
+      c.push({ x: n.x, y: f }), t[n.x][f] = h;
+  } else if (x(a, Rt))
+    if (n.x - e.x <= 1)
+      for (let u = e.y + o; u <= n.y + s; u++)
+        c.push({ x: e.x, y: u }), t[e.x][u] = h;
+    else {
+      for (let u = e.x + o; u <= n.x; u++)
+        c.push({ x: u, y: e.y }), t[u][e.y] = d;
+      for (let u = e.y + 1; u <= n.y + s; u++)
+        c.push({ x: n.x, y: u }), t[n.x][u] = h;
     }
-  } else if (dirEquals(dir, Down)) {
-    for (let y = from.y + offsetFrom; y <= to.y + offsetTo; y++) {
-      drawnCoords.push({ x: from.x, y });
-      canvas[from.x][y] = vChar;
-    }
-  } else if (dirEquals(dir, Left)) {
-    for (let x = from.x - offsetFrom; x >= to.x - offsetTo; x--) {
-      drawnCoords.push({ x, y: from.y });
-      canvas[x][from.y] = hChar;
-    }
-  } else if (dirEquals(dir, Right)) {
-    for (let x = from.x + offsetFrom; x <= to.x + offsetTo; x++) {
-      drawnCoords.push({ x, y: from.y });
-      canvas[x][from.y] = hChar;
-    }
-  } else if (dirEquals(dir, UpperLeft)) {
-    for (let x = from.x - offsetFrom; x >= to.x; x--) {
-      drawnCoords.push({ x, y: from.y });
-      canvas[x][from.y] = hChar;
-    }
-    for (let y = from.y - 1; y >= to.y - offsetTo; y--) {
-      drawnCoords.push({ x: to.x, y });
-      canvas[to.x][y] = vChar;
-    }
-  } else if (dirEquals(dir, UpperRight)) {
-    for (let x = from.x + offsetFrom; x <= to.x; x++) {
-      drawnCoords.push({ x, y: from.y });
-      canvas[x][from.y] = hChar;
-    }
-    for (let y = from.y - 1; y >= to.y - offsetTo; y--) {
-      drawnCoords.push({ x: to.x, y });
-      canvas[to.x][y] = vChar;
-    }
-  } else if (dirEquals(dir, LowerLeft)) {
-    for (let x = from.x - offsetFrom; x >= to.x; x--) {
-      drawnCoords.push({ x, y: from.y });
-      canvas[x][from.y] = hChar;
-    }
-    for (let y = from.y + 1; y <= to.y + offsetTo; y++) {
-      drawnCoords.push({ x: to.x, y });
-      canvas[to.x][y] = vChar;
-    }
-  } else if (dirEquals(dir, LowerRight)) {
-    const dx = to.x - from.x;
-    if (dx <= 1) {
-      for (let y = from.y + offsetFrom; y <= to.y + offsetTo; y++) {
-        drawnCoords.push({ x: from.x, y });
-        canvas[from.x][y] = vChar;
-      }
-    } else {
-      for (let x = from.x + offsetFrom; x <= to.x; x++) {
-        drawnCoords.push({ x, y: from.y });
-        canvas[x][from.y] = hChar;
-      }
-      for (let y = from.y + 1; y <= to.y + offsetTo; y++) {
-        drawnCoords.push({ x: to.x, y });
-        canvas[to.x][y] = vChar;
-      }
-    }
-  }
-  return drawnCoords;
+  return c;
 }
-function drawArrow(graph, edge) {
-  if (edge.path.length === 0) {
-    const empty = copyCanvas(graph.canvas);
-    return [empty, empty, empty, empty, empty, empty];
+function Sr(t, e) {
+  if (e.path.length === 0) {
+    let d = ht(t.canvas);
+    return [d, d, d, d, d, d];
   }
-  const labelCanvas = drawArrowLabel(graph, edge);
-  const [pathCanvas, linesDrawn, lineDirs] = drawPath(graph, edge.path, edge.style);
-  const boxStartCanvas = drawBoxStart(graph, edge.path, linesDrawn[0], edge.from.shape);
-  let arrowHeadEndCanvas;
-  if (edge.hasArrowEnd) {
-    arrowHeadEndCanvas = drawArrowHead(
-      graph,
-      linesDrawn[linesDrawn.length - 1],
-      lineDirs[lineDirs.length - 1]
-    );
-  } else {
-    arrowHeadEndCanvas = copyCanvas(graph.canvas);
-  }
-  let arrowHeadStartCanvas;
-  if (edge.hasArrowStart && linesDrawn.length > 0) {
-    const firstLine = linesDrawn[0];
-    const firstPoint = firstLine[0];
-    const startDir = reverseDirection(lineDirs[0]);
-    const arrowPos = { x: firstPoint.x, y: firstPoint.y };
-    if (dirEquals(lineDirs[0], Right)) arrowPos.x = firstPoint.x - 1;
-    else if (dirEquals(lineDirs[0], Left)) arrowPos.x = firstPoint.x + 1;
-    else if (dirEquals(lineDirs[0], Down)) arrowPos.y = firstPoint.y - 1;
-    else if (dirEquals(lineDirs[0], Up)) arrowPos.y = firstPoint.y + 1;
-    const syntheticLine = [firstPoint, arrowPos];
-    arrowHeadStartCanvas = drawArrowHead(graph, syntheticLine, startDir);
-  } else {
-    arrowHeadStartCanvas = copyCanvas(graph.canvas);
-  }
-  const cornersCanvas = drawCorners(graph, edge.path);
-  return [pathCanvas, boxStartCanvas, arrowHeadEndCanvas, arrowHeadStartCanvas, cornersCanvas, labelCanvas];
+  let n = Er(t, e), [o, s, r] = Dr(t, e.path, e.style), i = Tr(t, e.path, s[0], e.from.shape), a;
+  e.hasArrowEnd ? a = mn(
+    t,
+    s[s.length - 1],
+    r[r.length - 1]
+  ) : a = ht(t.canvas);
+  let c;
+  if (e.hasArrowStart && s.length > 0) {
+    let h = s[0][0], f = Rr(r[0]), u = { x: h.x, y: h.y };
+    x(r[0], P) ? u.x = h.x - 1 : x(r[0], j) ? u.x = h.x + 1 : x(r[0], Y) ? u.y = h.y - 1 : x(r[0], _) && (u.y = h.y + 1), c = mn(t, [h, u], f);
+  } else
+    c = ht(t.canvas);
+  let l = Lr(t, e.path);
+  return [o, i, a, c, l, n];
 }
-function reverseDirection(dir) {
-  if (dirEquals(dir, Up)) return Down;
-  if (dirEquals(dir, Down)) return Up;
-  if (dirEquals(dir, Left)) return Right;
-  if (dirEquals(dir, Right)) return Left;
-  if (dirEquals(dir, UpperLeft)) return LowerRight;
-  if (dirEquals(dir, UpperRight)) return LowerLeft;
-  if (dirEquals(dir, LowerLeft)) return UpperRight;
-  if (dirEquals(dir, LowerRight)) return UpperLeft;
-  return Middle;
+function Rr(t) {
+  return x(t, _) ? Y : x(t, Y) ? _ : x(t, j) ? P : x(t, P) ? j : x(t, Mt) ? Rt : x(t, wt) ? vt : x(t, vt) ? wt : x(t, Rt) ? Mt : Gt;
 }
-function drawPath(graph, path, style = "solid") {
-  const canvas = copyCanvas(graph.canvas);
-  let previousCoord = path[0];
-  const linesDrawn = [];
-  const lineDirs = [];
-  for (let i = 1; i < path.length; i++) {
-    const nextCoord = path[i];
-    const prevDC = gridToDrawingCoord(graph, previousCoord);
-    const nextDC = gridToDrawingCoord(graph, nextCoord);
-    if (drawingCoordEquals(prevDC, nextDC)) {
-      previousCoord = nextCoord;
+function Dr(t, e, n = "solid") {
+  let o = ht(t.canvas), s = e[0], r = [], i = [];
+  for (let a = 1; a < e.length; a++) {
+    let c = e[a], l = Et(t, s), d = Et(t, c);
+    if (Kt(l, d)) {
+      s = c;
       continue;
     }
-    const dir = determineDirection(previousCoord, nextCoord);
-    const segment = drawLine(canvas, prevDC, nextDC, 1, -1, graph.config.useAscii, style);
-    if (segment.length === 0) segment.push(prevDC);
-    linesDrawn.push(segment);
-    lineDirs.push(dir);
-    previousCoord = nextCoord;
+    let h = pt(s, c), f = xe(o, l, d, 1, -1, t.config.useAscii, n);
+    f.length === 0 && f.push(l), r.push(f), i.push(h), s = c;
   }
-  return [canvas, linesDrawn, lineDirs];
+  return [o, r, i];
 }
-function drawBoxStart(graph, path, firstLine, sourceShape) {
-  const canvas = copyCanvas(graph.canvas);
-  if (graph.config.useAscii) return canvas;
-  if (sourceShape === "state-start" || sourceShape === "state-end") {
-    return canvas;
-  }
-  const from = firstLine[0];
-  const dir = determineDirection(path[0], path[1]);
-  if (dirEquals(dir, Up)) canvas[from.x][from.y + 1] = "\u2534";
-  else if (dirEquals(dir, Down)) canvas[from.x][from.y - 1] = "\u252C";
-  else if (dirEquals(dir, Left)) canvas[from.x + 1][from.y] = "\u2524";
-  else if (dirEquals(dir, Right)) canvas[from.x - 1][from.y] = "\u251C";
-  return canvas;
+function Tr(t, e, n, o) {
+  let s = ht(t.canvas);
+  if (t.config.useAscii || o === "state-start" || o === "state-end")
+    return s;
+  let r = n[0], i = pt(e[0], e[1]);
+  return x(i, _) ? s[r.x][r.y + 1] = "\u2534" : x(i, Y) ? s[r.x][r.y - 1] = "\u252C" : x(i, j) ? s[r.x + 1][r.y] = "\u2524" : x(i, P) && (s[r.x - 1][r.y] = "\u251C"), s;
 }
-function drawArrowHead(graph, lastLine, fallbackDir) {
-  const canvas = copyCanvas(graph.canvas);
-  if (lastLine.length === 0) return canvas;
-  const from = lastLine[0];
-  const lastPos = lastLine[lastLine.length - 1];
-  let dir = determineDirection(from, lastPos);
-  if (lastLine.length === 1 || dirEquals(dir, Middle)) dir = fallbackDir;
-  let char;
-  if (!graph.config.useAscii) {
-    if (dirEquals(dir, Up)) char = "\u25B2";
-    else if (dirEquals(dir, Down)) char = "\u25BC";
-    else if (dirEquals(dir, Left)) char = "\u25C4";
-    else if (dirEquals(dir, Right)) char = "\u25BA";
-    else if (dirEquals(dir, UpperRight)) char = "\u25E5";
-    else if (dirEquals(dir, UpperLeft)) char = "\u25E4";
-    else if (dirEquals(dir, LowerRight)) char = "\u25E2";
-    else if (dirEquals(dir, LowerLeft)) char = "\u25E3";
-    else {
-      if (dirEquals(fallbackDir, Up)) char = "\u25B2";
-      else if (dirEquals(fallbackDir, Down)) char = "\u25BC";
-      else if (dirEquals(fallbackDir, Left)) char = "\u25C4";
-      else if (dirEquals(fallbackDir, Right)) char = "\u25BA";
-      else if (dirEquals(fallbackDir, UpperRight)) char = "\u25E5";
-      else if (dirEquals(fallbackDir, UpperLeft)) char = "\u25E4";
-      else if (dirEquals(fallbackDir, LowerRight)) char = "\u25E2";
-      else if (dirEquals(fallbackDir, LowerLeft)) char = "\u25E3";
-      else char = "\u25CF";
-    }
-  } else {
-    if (dirEquals(dir, Up)) char = "^";
-    else if (dirEquals(dir, Down)) char = "v";
-    else if (dirEquals(dir, Left)) char = "<";
-    else if (dirEquals(dir, Right)) char = ">";
-    else {
-      if (dirEquals(fallbackDir, Up)) char = "^";
-      else if (dirEquals(fallbackDir, Down)) char = "v";
-      else if (dirEquals(fallbackDir, Left)) char = "<";
-      else if (dirEquals(fallbackDir, Right)) char = ">";
-      else char = "*";
-    }
-  }
-  canvas[lastPos.x][lastPos.y] = char;
-  return canvas;
+function mn(t, e, n) {
+  let o = ht(t.canvas);
+  if (e.length === 0) return o;
+  let s = e[0], r = e[e.length - 1], i = pt(s, r);
+  (e.length === 1 || x(i, Gt)) && (i = n);
+  let a;
+  return t.config.useAscii ? x(i, _) ? a = "^" : x(i, Y) ? a = "v" : x(i, j) ? a = "<" : x(i, P) ? a = ">" : x(n, _) ? a = "^" : x(n, Y) ? a = "v" : x(n, j) ? a = "<" : x(n, P) ? a = ">" : a = "*" : x(i, _) ? a = "\u25B2" : x(i, Y) ? a = "\u25BC" : x(i, j) ? a = "\u25C4" : x(i, P) ? a = "\u25BA" : x(i, wt) ? a = "\u25E5" : x(i, Mt) ? a = "\u25E4" : x(i, Rt) ? a = "\u25E2" : x(i, vt) ? a = "\u25E3" : x(n, _) ? a = "\u25B2" : x(n, Y) ? a = "\u25BC" : x(n, j) ? a = "\u25C4" : x(n, P) ? a = "\u25BA" : x(n, wt) ? a = "\u25E5" : x(n, Mt) ? a = "\u25E4" : x(n, Rt) ? a = "\u25E2" : x(n, vt) ? a = "\u25E3" : a = "\u25CF", o[r.x][r.y] = a, o;
 }
-function drawCorners(graph, path) {
-  const canvas = copyCanvas(graph.canvas);
-  for (let idx = 1; idx < path.length - 1; idx++) {
-    const coord = path[idx];
-    const dc = gridToDrawingCoord(graph, coord);
-    const prevDir = determineDirection(path[idx - 1], coord);
-    const nextDir = determineDirection(coord, path[idx + 1]);
-    let corner;
-    if (!graph.config.useAscii) {
-      if (dirEquals(prevDir, Right) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Left)) {
-        corner = "\u2510";
-      } else if (dirEquals(prevDir, Right) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Left)) {
-        corner = "\u2518";
-      } else if (dirEquals(prevDir, Left) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Right)) {
-        corner = "\u250C";
-      } else if (dirEquals(prevDir, Left) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Right)) {
-        corner = "\u2514";
-      } else {
-        corner = "+";
-      }
-    } else {
-      corner = "+";
-    }
-    canvas[dc.x][dc.y] = corner;
+function Lr(t, e) {
+  let n = ht(t.canvas);
+  for (let o = 1; o < e.length - 1; o++) {
+    let s = e[o], r = Et(t, s), i = pt(e[o - 1], s), a = pt(s, e[o + 1]), c;
+    t.config.useAscii ? c = "+" : x(i, P) && x(a, Y) || x(i, _) && x(a, j) ? c = "\u2510" : x(i, P) && x(a, _) || x(i, Y) && x(a, j) ? c = "\u2518" : x(i, j) && x(a, Y) || x(i, _) && x(a, P) ? c = "\u250C" : x(i, j) && x(a, _) || x(i, Y) && x(a, P) ? c = "\u2514" : c = "+", n[r.x][r.y] = c;
   }
-  return canvas;
+  return n;
 }
-function drawArrowLabel(graph, edge) {
-  const canvas = copyCanvas(graph.canvas);
-  if (edge.text.length === 0) return canvas;
-  const drawingLine = lineToDrawing(graph, edge.labelLine);
-  let isUpwardEdge;
-  if (edge.path.length >= 2) {
-    const startY = edge.path[0].y;
-    const endY = edge.path[edge.path.length - 1].y;
-    if (endY < startY) {
-      isUpwardEdge = true;
-    } else if (endY > startY) {
-      isUpwardEdge = false;
-    }
+function Er(t, e) {
+  let n = ht(t.canvas);
+  if (e.text.length === 0) return n;
+  let o = bn(t, e.labelLine), s;
+  if (e.path.length >= 2) {
+    let r = e.path[0].y, i = e.path[e.path.length - 1].y;
+    i < r ? s = !0 : i > r && (s = !1);
   }
-  drawTextOnLine(canvas, drawingLine, edge.text, isUpwardEdge);
-  return canvas;
+  return kr(n, o, e.text, s), n;
 }
-function drawTextOnLine(canvas, line, label, isUpwardEdge) {
-  if (line.length < 2) return;
-  const minX = Math.min(line[0].x, line[1].x);
-  const maxX = Math.max(line[0].x, line[1].x);
-  const minY = Math.min(line[0].y, line[1].y);
-  const maxY = Math.max(line[0].y, line[1].y);
-  const middleX = minX + Math.floor((maxX - minX) / 2);
-  let middleY = minY + Math.floor((maxY - minY) / 2);
-  if (isUpwardEdge !== void 0 && minX === maxX) {
-    const segmentHeight = maxY - minY;
-    const offset = Math.max(1, Math.floor(segmentHeight / 4));
-    if (isUpwardEdge) {
-      middleY = middleY + offset;
-    } else {
-      middleY = middleY - offset;
-    }
+function kr(t, e, n, o) {
+  if (e.length < 2) return;
+  let s = Math.min(e[0].x, e[1].x), r = Math.max(e[0].x, e[1].x), i = Math.min(e[0].y, e[1].y), a = Math.max(e[0].y, e[1].y), c = s + Math.floor((r - s) / 2), l = i + Math.floor((a - i) / 2);
+  if (o !== void 0 && s === r) {
+    let f = a - i, u = Math.max(1, Math.floor(f / 4));
+    o ? l = l + u : l = l - u;
   }
-  const lines = splitLines(label);
-  const startY = middleY - Math.floor((lines.length - 1) / 2);
-  for (let i = 0; i < lines.length; i++) {
-    const lineText = lines[i];
-    const startX = middleX - Math.floor(lineText.length / 2);
-    drawText(canvas, { x: startX, y: startY + i }, lineText);
+  let d = rt(n), h = l - Math.floor((d.length - 1) / 2);
+  for (let f = 0; f < d.length; f++) {
+    let u = d[f], m = c - Math.floor(u.length / 2);
+    de(t, { x: m, y: h + f }, u);
   }
 }
-function getNodeAttachmentPoint(graph, node, dir) {
-  const gc = node.gridCoord;
-  let w = 0;
-  for (let i = 0; i < 2; i++) {
-    w += graph.columnWidth.get(gc.x + i) ?? 0;
-  }
-  let h = 0;
-  for (let i = 0; i < 2; i++) {
-    h += graph.rowHeight.get(gc.y + i) ?? 0;
-  }
-  const gridDimensions = {
-    width: w + 1,
-    height: h + 1,
+function jt(t, e, n) {
+  let o = e.gridCoord, s = 0;
+  for (let c = 0; c < 2; c++)
+    s += t.columnWidth.get(o.x + c) ?? 0;
+  let r = 0;
+  for (let c = 0; c < 2; c++)
+    r += t.rowHeight.get(o.y + c) ?? 0;
+  let i = {
+    width: s + 1,
+    height: r + 1,
     labelArea: { x: 0, y: 0, width: 0, height: 0 },
     gridColumns: [0, 0, 0],
     gridRows: [0, 0, 0]
-  };
-  const baseCoord = node.drawingCoord;
-  return getShapeAttachmentPoint(node.shape, dir, gridDimensions, baseCoord);
+  }, a = e.drawingCoord;
+  return gn(e.shape, n, i, a);
 }
-function drawBundledEdgeSegment(graph, edge, bundle) {
-  const empty = copyCanvas(graph.canvas);
-  if (!edge.pathToJunction || edge.pathToJunction.length === 0) {
-    return [empty, empty, empty, empty, empty, empty];
+function Gr(t, e, n) {
+  let o = ht(t.canvas);
+  if (!e.pathToJunction || e.pathToJunction.length === 0)
+    return [o, o, o, o, o, o];
+  let s = ht(t.canvas), r = t.config.useAscii, i = e.pathToJunction.map((d, h) => n.type === "fan-in" && h === 0 ? jt(t, e.from, e.startDir) : n.type === "fan-out" && h === e.pathToJunction.length - 1 ? jt(t, e.to, e.endDir) : Et(t, d));
+  for (let d = 1; d < i.length; d++) {
+    let h = i[d - 1], f = i[d];
+    Kt(h, f) || xe(s, h, f, 1, -1, r, e.style);
   }
-  const pathCanvas = copyCanvas(graph.canvas);
-  const useAscii = graph.config.useAscii;
-  const drawingPath = edge.pathToJunction.map((gc, idx) => {
-    if (bundle.type === "fan-in" && idx === 0) {
-      return getNodeAttachmentPoint(graph, edge.from, edge.startDir);
+  let a = ht(t.canvas);
+  for (let d = 1; d < e.pathToJunction.length - 1; d++) {
+    let h = e.pathToJunction[d], f = Et(t, h), u = pt(e.pathToJunction[d - 1], h), m = pt(h, e.pathToJunction[d + 1]), p;
+    r ? p = "+" : x(u, P) && x(m, Y) || x(u, _) && x(m, j) ? p = "\u2510" : x(u, P) && x(m, _) || x(u, Y) && x(m, j) ? p = "\u2518" : x(u, j) && x(m, Y) || x(u, _) && x(m, P) ? p = "\u250C" : x(u, j) && x(m, _) || x(u, Y) && x(m, P) ? p = "\u2514" : p = "+", a[f.x][f.y] = p;
+  }
+  let c = ht(t.canvas);
+  if (n.type === "fan-in" && e.pathToJunction.length >= 2) {
+    let d = i[0], h = pt(e.pathToJunction[0], e.pathToJunction[1]);
+    r || (x(h, _) ? c[d.x][d.y] = "\u2534" : x(h, Y) ? c[d.x][d.y] = "\u252C" : x(h, j) ? c[d.x][d.y] = "\u2524" : x(h, P) && (c[d.x][d.y] = "\u251C"));
+  }
+  let l = ht(t.canvas);
+  return [s, c, o, o, a, l];
+}
+function Ir(t, e) {
+  let n = ht(t.canvas), o = ht(t.canvas);
+  if (e.sharedPath.length < 2)
+    return [n, o];
+  let s = t.config.useAscii, r = e.edges[0]?.style ?? "solid", i = t.config.graphDirection, a = e.sharedPath.map((c, l) => {
+    if (e.type === "fan-in" && l === e.sharedPath.length - 1) {
+      let d = i === "TD" ? _ : j;
+      return jt(t, e.sharedNode, d);
     }
-    if (bundle.type === "fan-out" && idx === edge.pathToJunction.length - 1) {
-      return getNodeAttachmentPoint(graph, edge.to, edge.endDir);
+    if (e.type === "fan-out" && l === 0) {
+      let d = i === "TD" ? Y : P;
+      return jt(t, e.sharedNode, d);
     }
-    return gridToDrawingCoord(graph, gc);
+    return Et(t, c);
   });
-  for (let i = 1; i < drawingPath.length; i++) {
-    const from = drawingPath[i - 1];
-    const to = drawingPath[i];
-    if (!drawingCoordEquals(from, to)) {
-      drawLine(pathCanvas, from, to, 1, -1, useAscii, edge.style);
-    }
+  for (let c = 1; c < a.length; c++) {
+    let l = a[c - 1], d = a[c];
+    Kt(l, d) || xe(n, l, d, 1, -1, s, r);
   }
-  const cornersCanvas = copyCanvas(graph.canvas);
-  for (let idx = 1; idx < edge.pathToJunction.length - 1; idx++) {
-    const coord = edge.pathToJunction[idx];
-    const dc = gridToDrawingCoord(graph, coord);
-    const prevDir = determineDirection(edge.pathToJunction[idx - 1], coord);
-    const nextDir = determineDirection(coord, edge.pathToJunction[idx + 1]);
-    let corner;
-    if (!useAscii) {
-      if (dirEquals(prevDir, Right) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Left)) {
-        corner = "\u2510";
-      } else if (dirEquals(prevDir, Right) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Left)) {
-        corner = "\u2518";
-      } else if (dirEquals(prevDir, Left) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Right)) {
-        corner = "\u250C";
-      } else if (dirEquals(prevDir, Left) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Right)) {
-        corner = "\u2514";
-      } else {
-        corner = "+";
-      }
-    } else {
-      corner = "+";
-    }
-    cornersCanvas[dc.x][dc.y] = corner;
+  for (let c = 1; c < e.sharedPath.length - 1; c++) {
+    let l = e.sharedPath[c], d = Et(t, l), h = pt(e.sharedPath[c - 1], l), f = pt(l, e.sharedPath[c + 1]), u;
+    s ? u = "+" : x(h, P) && x(f, Y) || x(h, _) && x(f, j) ? u = "\u2510" : x(h, P) && x(f, _) || x(h, Y) && x(f, j) ? u = "\u2518" : x(h, j) && x(f, Y) || x(h, _) && x(f, P) ? u = "\u250C" : x(h, j) && x(f, _) || x(h, Y) && x(f, P) ? u = "\u2514" : u = "+", o[d.x][d.y] = u;
   }
-  const boxStartCanvas = copyCanvas(graph.canvas);
-  if (bundle.type === "fan-in" && edge.pathToJunction.length >= 2) {
-    const firstPoint = drawingPath[0];
-    const dir = determineDirection(edge.pathToJunction[0], edge.pathToJunction[1]);
-    if (!useAscii) {
-      if (dirEquals(dir, Up)) boxStartCanvas[firstPoint.x][firstPoint.y] = "\u2534";
-      else if (dirEquals(dir, Down)) boxStartCanvas[firstPoint.x][firstPoint.y] = "\u252C";
-      else if (dirEquals(dir, Left)) boxStartCanvas[firstPoint.x][firstPoint.y] = "\u2524";
-      else if (dirEquals(dir, Right)) boxStartCanvas[firstPoint.x][firstPoint.y] = "\u251C";
-    }
-  }
-  const labelCanvas = copyCanvas(graph.canvas);
-  return [pathCanvas, boxStartCanvas, empty, empty, cornersCanvas, labelCanvas];
+  return [n, o];
 }
-function drawBundleSharedPath(graph, bundle) {
-  const pathCanvas = copyCanvas(graph.canvas);
-  const cornersCanvas = copyCanvas(graph.canvas);
-  if (bundle.sharedPath.length < 2) {
-    return [pathCanvas, cornersCanvas];
-  }
-  const useAscii = graph.config.useAscii;
-  const style = bundle.edges[0]?.style ?? "solid";
-  const graphDir = graph.config.graphDirection;
-  const drawingPath = bundle.sharedPath.map((gc, idx) => {
-    if (bundle.type === "fan-in" && idx === bundle.sharedPath.length - 1) {
-      const entryDir = graphDir === "TD" ? Up : Left;
-      return getNodeAttachmentPoint(graph, bundle.sharedNode, entryDir);
-    }
-    if (bundle.type === "fan-out" && idx === 0) {
-      const exitDir = graphDir === "TD" ? Down : Right;
-      return getNodeAttachmentPoint(graph, bundle.sharedNode, exitDir);
-    }
-    return gridToDrawingCoord(graph, gc);
-  });
-  for (let i = 1; i < drawingPath.length; i++) {
-    const from = drawingPath[i - 1];
-    const to = drawingPath[i];
-    if (!drawingCoordEquals(from, to)) {
-      drawLine(pathCanvas, from, to, 1, -1, useAscii, style);
-    }
-  }
-  for (let idx = 1; idx < bundle.sharedPath.length - 1; idx++) {
-    const coord = bundle.sharedPath[idx];
-    const dc = gridToDrawingCoord(graph, coord);
-    const prevDir = determineDirection(bundle.sharedPath[idx - 1], coord);
-    const nextDir = determineDirection(coord, bundle.sharedPath[idx + 1]);
-    let corner;
-    if (!useAscii) {
-      if (dirEquals(prevDir, Right) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Left)) {
-        corner = "\u2510";
-      } else if (dirEquals(prevDir, Right) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Left)) {
-        corner = "\u2518";
-      } else if (dirEquals(prevDir, Left) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Right)) {
-        corner = "\u250C";
-      } else if (dirEquals(prevDir, Left) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Right)) {
-        corner = "\u2514";
-      } else {
-        corner = "+";
-      }
-    } else {
-      corner = "+";
-    }
-    cornersCanvas[dc.x][dc.y] = corner;
-  }
-  return [pathCanvas, cornersCanvas];
+function Nr(t, e) {
+  let n = ht(t.canvas);
+  if (e.sharedPath.length < 2) return n;
+  let o = e.sharedPath.length - 1, s = e.sharedPath[o - 1], r = e.sharedPath[o], i = pt(s, r), a = t.config.graphDirection, c = a === "TD" ? _ : j, l = jt(t, e.sharedNode, c);
+  a === "TD" ? l.y -= 1 : l.x -= 1;
+  let d;
+  return t.config.useAscii ? x(i, _) ? d = "^" : x(i, Y) ? d = "v" : x(i, j) ? d = "<" : x(i, P) ? d = ">" : d = "v" : x(i, _) ? d = "\u25B2" : x(i, Y) ? d = "\u25BC" : x(i, j) ? d = "\u25C4" : x(i, P) ? d = "\u25BA" : d = "\u25BC", n[l.x][l.y] = d, n;
 }
-function drawBundleArrowhead(graph, bundle) {
-  const canvas = copyCanvas(graph.canvas);
-  if (bundle.sharedPath.length < 2) return canvas;
-  const lastIdx = bundle.sharedPath.length - 1;
-  const secondLast = bundle.sharedPath[lastIdx - 1];
-  const last = bundle.sharedPath[lastIdx];
-  const dir = determineDirection(secondLast, last);
-  const graphDir = graph.config.graphDirection;
-  const entryDir = graphDir === "TD" ? Up : Left;
-  const dc = getNodeAttachmentPoint(graph, bundle.sharedNode, entryDir);
-  if (graphDir === "TD") dc.y -= 1;
-  else dc.x -= 1;
-  let char;
-  if (!graph.config.useAscii) {
-    if (dirEquals(dir, Up)) char = "\u25B2";
-    else if (dirEquals(dir, Down)) char = "\u25BC";
-    else if (dirEquals(dir, Left)) char = "\u25C4";
-    else if (dirEquals(dir, Right)) char = "\u25BA";
-    else char = "\u25BC";
-  } else {
-    if (dirEquals(dir, Up)) char = "^";
-    else if (dirEquals(dir, Down)) char = "v";
-    else if (dirEquals(dir, Left)) char = "<";
-    else if (dirEquals(dir, Right)) char = ">";
-    else char = "v";
-  }
-  canvas[dc.x][dc.y] = char;
-  return canvas;
+function Yr(t, e) {
+  let n = ht(t.canvas);
+  if (!e.pathToJunction || e.pathToJunction.length < 2) return n;
+  let o = e.pathToJunction.length - 1, s = e.pathToJunction[o - 1], r = e.pathToJunction[o], i = pt(s, r), a = t.config.graphDirection, c = a === "TD" ? _ : j, l = jt(t, e.to, c);
+  a === "TD" ? l.y -= 1 : l.x -= 1;
+  let d;
+  return t.config.useAscii ? x(i, _) ? d = "^" : x(i, Y) ? d = "v" : x(i, j) ? d = "<" : x(i, P) ? d = ">" : d = "v" : x(i, _) ? d = "\u25B2" : x(i, Y) ? d = "\u25BC" : x(i, j) ? d = "\u25C4" : x(i, P) ? d = "\u25BA" : d = "\u25BC", n[l.x][l.y] = d, n;
 }
-function drawBundledEdgeArrowhead(graph, edge) {
-  const canvas = copyCanvas(graph.canvas);
-  if (!edge.pathToJunction || edge.pathToJunction.length < 2) return canvas;
-  const lastIdx = edge.pathToJunction.length - 1;
-  const secondLast = edge.pathToJunction[lastIdx - 1];
-  const last = edge.pathToJunction[lastIdx];
-  const dir = determineDirection(secondLast, last);
-  const graphDir = graph.config.graphDirection;
-  const entryDir = graphDir === "TD" ? Up : Left;
-  const dc = getNodeAttachmentPoint(graph, edge.to, entryDir);
-  if (graphDir === "TD") dc.y -= 1;
-  else dc.x -= 1;
-  let char;
-  if (!graph.config.useAscii) {
-    if (dirEquals(dir, Up)) char = "\u25B2";
-    else if (dirEquals(dir, Down)) char = "\u25BC";
-    else if (dirEquals(dir, Left)) char = "\u25C4";
-    else if (dirEquals(dir, Right)) char = "\u25BA";
-    else char = "\u25BC";
-  } else {
-    if (dirEquals(dir, Up)) char = "^";
-    else if (dirEquals(dir, Down)) char = "v";
-    else if (dirEquals(dir, Left)) char = "<";
-    else if (dirEquals(dir, Right)) char = ">";
-    else char = "v";
-  }
-  canvas[dc.x][dc.y] = char;
-  return canvas;
-}
-function drawJunctionCharacter(graph, bundle) {
-  const canvas = copyCanvas(graph.canvas);
-  if (!bundle.junctionPoint) return canvas;
-  const dc = gridToDrawingCoord(graph, bundle.junctionPoint);
-  const useAscii = graph.config.useAscii;
-  let hasUp = false;
-  let hasDown = false;
-  let hasLeft = false;
-  let hasRight = false;
-  if (bundle.sharedPath.length >= 2) {
-    const junctionIdx = bundle.type === "fan-in" ? 0 : bundle.sharedPath.length - 1;
-    const adjacentIdx = bundle.type === "fan-in" ? 1 : bundle.sharedPath.length - 2;
-    const sharedDir = determineDirection(
-      bundle.sharedPath[junctionIdx],
-      bundle.sharedPath[adjacentIdx]
+function $r(t, e) {
+  let n = ht(t.canvas);
+  if (!e.junctionPoint) return n;
+  let o = Et(t, e.junctionPoint), s = t.config.useAscii, r = !1, i = !1, a = !1, c = !1;
+  if (e.sharedPath.length >= 2) {
+    let d = e.type === "fan-in" ? 0 : e.sharedPath.length - 1, h = e.type === "fan-in" ? 1 : e.sharedPath.length - 2, f = pt(
+      e.sharedPath[d],
+      e.sharedPath[h]
     );
-    if (dirEquals(sharedDir, Down)) hasDown = true;
-    else if (dirEquals(sharedDir, Up)) hasUp = true;
-    else if (dirEquals(sharedDir, Right)) hasRight = true;
-    else if (dirEquals(sharedDir, Left)) hasLeft = true;
+    x(f, Y) ? i = !0 : x(f, _) ? r = !0 : x(f, P) ? c = !0 : x(f, j) && (a = !0);
   }
-  for (const edge of bundle.edges) {
-    if (edge.pathToJunction && edge.pathToJunction.length >= 2) {
-      const junctionIdx = bundle.type === "fan-in" ? edge.pathToJunction.length - 1 : 0;
-      const adjacentIdx = bundle.type === "fan-in" ? edge.pathToJunction.length - 2 : 1;
-      const arrivalDir = determineDirection(
-        edge.pathToJunction[adjacentIdx],
-        edge.pathToJunction[junctionIdx]
+  for (let d of e.edges)
+    if (d.pathToJunction && d.pathToJunction.length >= 2) {
+      let h = e.type === "fan-in" ? d.pathToJunction.length - 1 : 0, f = e.type === "fan-in" ? d.pathToJunction.length - 2 : 1, u = pt(
+        d.pathToJunction[f],
+        d.pathToJunction[h]
       );
-      if (dirEquals(arrivalDir, Down)) hasUp = true;
-      else if (dirEquals(arrivalDir, Up)) hasDown = true;
-      else if (dirEquals(arrivalDir, Right)) hasLeft = true;
-      else if (dirEquals(arrivalDir, Left)) hasRight = true;
+      x(u, Y) ? r = !0 : x(u, _) ? i = !0 : x(u, P) ? a = !0 : x(u, j) && (c = !0);
     }
-  }
-  let char;
-  if (!useAscii) {
-    if (hasUp && hasDown && hasLeft && hasRight) {
-      char = "\u253C";
-    } else if (hasDown && hasLeft && hasRight && !hasUp) {
-      char = "\u252C";
-    } else if (hasUp && hasLeft && hasRight && !hasDown) {
-      char = "\u2534";
-    } else if (hasUp && hasDown && hasRight && !hasLeft) {
-      char = "\u251C";
-    } else if (hasUp && hasDown && hasLeft && !hasRight) {
-      char = "\u2524";
-    } else if (hasLeft && hasRight) {
-      char = "\u2500";
-    } else if (hasUp && hasDown) {
-      char = "\u2502";
-    } else if (hasDown && hasRight) {
-      char = "\u250C";
-    } else if (hasDown && hasLeft) {
-      char = "\u2510";
-    } else if (hasUp && hasRight) {
-      char = "\u2514";
-    } else if (hasUp && hasLeft) {
-      char = "\u2518";
-    } else {
-      char = "\u253C";
-    }
+  let l;
+  return s ? l = "+" : r && i && a && c ? l = "\u253C" : i && a && c && !r ? l = "\u252C" : r && a && c && !i ? l = "\u2534" : r && i && c && !a ? l = "\u251C" : r && i && a && !c ? l = "\u2524" : a && c ? l = "\u2500" : r && i ? l = "\u2502" : i && c ? l = "\u250C" : i && a ? l = "\u2510" : r && c ? l = "\u2514" : r && a ? l = "\u2518" : l = "\u253C", n[o.x][o.y] = l, n;
+}
+function Br(t, e) {
+  let n = t.maxX - t.minX, o = t.maxY - t.minY;
+  if (n <= 0 || o <= 0) return it(0, 0);
+  let s = { x: 0, y: 0 }, r = { x: n, y: o }, i = it(n, o);
+  if (e.config.useAscii) {
+    for (let a = s.x + 1; a < r.x; a++) i[a][s.y] = "-";
+    for (let a = s.x + 1; a < r.x; a++) i[a][r.y] = "-";
+    for (let a = s.y + 1; a < r.y; a++) i[s.x][a] = "|";
+    for (let a = s.y + 1; a < r.y; a++) i[r.x][a] = "|";
+    i[s.x][s.y] = "+", i[r.x][s.y] = "+", i[s.x][r.y] = "+", i[r.x][r.y] = "+";
   } else {
-    char = "+";
+    for (let a = s.x + 1; a < r.x; a++) i[a][s.y] = "\u2500";
+    for (let a = s.x + 1; a < r.x; a++) i[a][r.y] = "\u2500";
+    for (let a = s.y + 1; a < r.y; a++) i[s.x][a] = "\u2502";
+    for (let a = s.y + 1; a < r.y; a++) i[r.x][a] = "\u2502";
+    i[s.x][s.y] = "\u250C", i[r.x][s.y] = "\u2510", i[s.x][r.y] = "\u2514", i[r.x][r.y] = "\u2518";
   }
-  canvas[dc.x][dc.y] = char;
-  return canvas;
+  return i;
 }
-function drawSubgraphBox(sg, graph) {
-  const width = sg.maxX - sg.minX;
-  const height = sg.maxY - sg.minY;
-  if (width <= 0 || height <= 0) return mkCanvas(0, 0);
-  const from = { x: 0, y: 0 };
-  const to = { x: width, y: height };
-  const canvas = mkCanvas(width, height);
-  if (!graph.config.useAscii) {
-    for (let x = from.x + 1; x < to.x; x++) canvas[x][from.y] = "\u2500";
-    for (let x = from.x + 1; x < to.x; x++) canvas[x][to.y] = "\u2500";
-    for (let y = from.y + 1; y < to.y; y++) canvas[from.x][y] = "\u2502";
-    for (let y = from.y + 1; y < to.y; y++) canvas[to.x][y] = "\u2502";
-    canvas[from.x][from.y] = "\u250C";
-    canvas[to.x][from.y] = "\u2510";
-    canvas[from.x][to.y] = "\u2514";
-    canvas[to.x][to.y] = "\u2518";
-  } else {
-    for (let x = from.x + 1; x < to.x; x++) canvas[x][from.y] = "-";
-    for (let x = from.x + 1; x < to.x; x++) canvas[x][to.y] = "-";
-    for (let y = from.y + 1; y < to.y; y++) canvas[from.x][y] = "|";
-    for (let y = from.y + 1; y < to.y; y++) canvas[to.x][y] = "|";
-    canvas[from.x][from.y] = "+";
-    canvas[to.x][from.y] = "+";
-    canvas[from.x][to.y] = "+";
-    canvas[to.x][to.y] = "+";
+function Xr(t, e) {
+  let n = t.maxX - t.minX, o = t.maxY - t.minY;
+  if (n <= 0 || o <= 0) return [it(0, 0), { x: 0, y: 0 }];
+  let s = it(n, o), r = rt(t.name);
+  for (let i = 0; i < r.length; i++) {
+    let a = r[i], c = 1 + i, l = Math.floor(n / 2) - Math.floor(a.length / 2);
+    l < 1 && (l = 1);
+    for (let d = 0; d < a.length; d++)
+      l + d < n && c < o && (s[l + d][c] = a[d]);
   }
-  return canvas;
+  return [s, { x: t.minX, y: t.minY }];
 }
-function drawSubgraphLabel(sg, graph) {
-  const width = sg.maxX - sg.minX;
-  const height = sg.maxY - sg.minY;
-  if (width <= 0 || height <= 0) return [mkCanvas(0, 0), { x: 0, y: 0 }];
-  const canvas = mkCanvas(width, height);
-  const lines = splitLines(sg.name);
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const labelY = 1 + i;
-    let labelX = Math.floor(width / 2) - Math.floor(line.length / 2);
-    if (labelX < 1) labelX = 1;
-    for (let j = 0; j < line.length; j++) {
-      if (labelX + j < width && labelY < height) {
-        canvas[labelX + j][labelY] = line[j];
+function Pr(t) {
+  function e(o) {
+    return o.parent === null ? 0 : 1 + e(o.parent);
+  }
+  let n = [...t];
+  return n.sort((o, s) => e(o) - e(s)), n;
+}
+function pe(t, e, n, o) {
+  for (let s = 0; s < e.length; s++)
+    for (let r = 0; r < (e[0]?.length ?? 0); r++) {
+      let i = e[s]?.[r];
+      if (i && i !== " ") {
+        let a = s + n.x, c = r + n.y;
+        a >= 0 && c >= 0 && Bt(t, a, c, o);
       }
     }
-  }
-  return [canvas, { x: sg.minX, y: sg.minY }];
 }
-function sortSubgraphsByDepth(subgraphs) {
-  function getDepth(sg) {
-    return sg.parent === null ? 0 : 1 + getDepth(sg.parent);
-  }
-  const sorted = [...subgraphs];
-  sorted.sort((a, b) => getDepth(a) - getDepth(b));
-  return sorted;
+function _t(t, e, n, o) {
+  for (let s of e)
+    pe(t, s, n, o);
 }
-function fillRolesFromCanvas(roleCanvas, canvas, offset, role) {
-  for (let x = 0; x < canvas.length; x++) {
-    for (let y = 0; y < (canvas[0]?.length ?? 0); y++) {
-      const char = canvas[x]?.[y];
-      if (char && char !== " ") {
-        const rx = x + offset.x;
-        const ry = y + offset.y;
-        if (rx >= 0 && ry >= 0) {
-          setRole(roleCanvas, rx, ry, role);
+function Hr(t, e, n) {
+  let o = (s) => /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|.':]$/.test(s);
+  for (let s = 0; s < e.length; s++)
+    for (let r = 0; r < (e[0]?.length ?? 0); r++) {
+      let i = e[s]?.[r];
+      if (i && i !== " ") {
+        let a = s + n.x, c = r + n.y;
+        a >= 0 && c >= 0 && Bt(t, a, c, o(i) ? "border" : "text");
+      }
+    }
+}
+function xn(t) {
+  let e = t.config.useAscii, n = { x: 0, y: 0 }, o = Pr(t.subgraphs);
+  for (let f of o) {
+    let u = Br(f, t), m = { x: f.minX, y: f.minY };
+    t.canvas = Lt(t.canvas, m, e, u), pe(t.roleCanvas, u, m, "border");
+  }
+  for (let f of t.nodes)
+    !f.drawn && f.drawingCoord && f.drawing && (t.canvas = Lt(t.canvas, f.drawingCoord, e, f.drawing), Hr(t.roleCanvas, f.drawing, f.drawingCoord), f.drawn = !0);
+  let s = [], r = [], i = [], a = [], c = [], l = [], d = [], h = /* @__PURE__ */ new Set();
+  for (let f of t.edges)
+    if (f.bundle && f.pathToJunction) {
+      let u = f.bundle, [m, p, , , b, A] = Gr(t, f, u);
+      if (s.push(m), r.push(b), c.push(p), l.push(A), !h.has(u)) {
+        h.add(u);
+        let [B, v] = Ir(t, u);
+        if (s.push(B), r.push(v), u.type === "fan-in") {
+          let L = Nr(t, u);
+          i.push(L);
         }
+        let H = $r(t, u);
+        d.push(H);
       }
-    }
-  }
-}
-function fillRolesFromCanvases(roleCanvas, canvases, offset, role) {
-  for (const canvas of canvases) {
-    fillRolesFromCanvas(roleCanvas, canvas, offset, role);
-  }
-}
-function fillRolesForNodeBox(roleCanvas, canvas, offset) {
-  const isBorderChar = (c) => /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|.':]$/.test(c);
-  for (let x = 0; x < canvas.length; x++) {
-    for (let y = 0; y < (canvas[0]?.length ?? 0); y++) {
-      const char = canvas[x]?.[y];
-      if (char && char !== " ") {
-        const rx = x + offset.x;
-        const ry = y + offset.y;
-        if (rx >= 0 && ry >= 0) {
-          setRole(roleCanvas, rx, ry, isBorderChar(char) ? "border" : "text");
-        }
-      }
-    }
-  }
-}
-function drawGraph(graph) {
-  const useAscii = graph.config.useAscii;
-  const zero = { x: 0, y: 0 };
-  const sortedSgs = sortSubgraphsByDepth(graph.subgraphs);
-  for (const sg of sortedSgs) {
-    const sgCanvas = drawSubgraphBox(sg, graph);
-    const offset = { x: sg.minX, y: sg.minY };
-    graph.canvas = mergeCanvases(graph.canvas, offset, useAscii, sgCanvas);
-    fillRolesFromCanvas(graph.roleCanvas, sgCanvas, offset, "border");
-  }
-  for (const node of graph.nodes) {
-    if (!node.drawn && node.drawingCoord && node.drawing) {
-      graph.canvas = mergeCanvases(graph.canvas, node.drawingCoord, useAscii, node.drawing);
-      fillRolesForNodeBox(graph.roleCanvas, node.drawing, node.drawingCoord);
-      node.drawn = true;
-    }
-  }
-  const lineCanvases = [];
-  const cornerCanvases = [];
-  const arrowHeadEndCanvases = [];
-  const arrowHeadStartCanvases = [];
-  const boxStartCanvases = [];
-  const labelCanvases = [];
-  const junctionCanvases = [];
-  const processedBundles = /* @__PURE__ */ new Set();
-  for (const edge of graph.edges) {
-    if (edge.bundle && edge.pathToJunction) {
-      const bundle = edge.bundle;
-      const [pathC, boxStartC, , , cornersC, labelC] = drawBundledEdgeSegment(graph, edge, bundle);
-      lineCanvases.push(pathC);
-      cornerCanvases.push(cornersC);
-      boxStartCanvases.push(boxStartC);
-      labelCanvases.push(labelC);
-      if (!processedBundles.has(bundle)) {
-        processedBundles.add(bundle);
-        const [sharedPathC, sharedCornersC] = drawBundleSharedPath(graph, bundle);
-        lineCanvases.push(sharedPathC);
-        cornerCanvases.push(sharedCornersC);
-        if (bundle.type === "fan-in") {
-          const arrowHeadC = drawBundleArrowhead(graph, bundle);
-          arrowHeadEndCanvases.push(arrowHeadC);
-        }
-        const junctionC = drawJunctionCharacter(graph, bundle);
-        junctionCanvases.push(junctionC);
-      }
-      if (bundle.type === "fan-out" && edge.hasArrowEnd) {
-        const arrowHeadC = drawBundledEdgeArrowhead(graph, edge);
-        arrowHeadEndCanvases.push(arrowHeadC);
+      if (u.type === "fan-out" && f.hasArrowEnd) {
+        let B = Yr(t, f);
+        i.push(B);
       }
     } else {
-      const [pathC, boxStartC, arrowHeadEndC, arrowHeadStartC, cornersC, labelC] = drawArrow(graph, edge);
-      lineCanvases.push(pathC);
-      cornerCanvases.push(cornersC);
-      arrowHeadEndCanvases.push(arrowHeadEndC);
-      arrowHeadStartCanvases.push(arrowHeadStartC);
-      boxStartCanvases.push(boxStartC);
-      labelCanvases.push(labelC);
+      let [u, m, p, b, A, B] = Sr(t, f);
+      s.push(u), r.push(A), i.push(p), a.push(b), c.push(m), l.push(B);
     }
+  t.canvas = Lt(t.canvas, n, e, ...s), _t(t.roleCanvas, s, n, "line"), t.canvas = Lt(t.canvas, n, e, ...r), _t(t.roleCanvas, r, n, "corner"), t.canvas = Lt(t.canvas, n, e, ...d), _t(t.roleCanvas, d, n, "junction"), t.canvas = Lt(t.canvas, n, e, ...i), _t(t.roleCanvas, i, n, "arrow"), t.canvas = Lt(t.canvas, n, e, ...c), _t(t.roleCanvas, c, n, "junction"), t.canvas = Lt(t.canvas, n, e, ...a), _t(t.roleCanvas, a, n, "arrow"), t.canvas = Lt(t.canvas, n, e, ...l);
+  for (let f of l) He(t.canvas, f);
+  _t(t.roleCanvas, l, n, "text");
+  for (let f of t.subgraphs) {
+    if (f.nodes.length === 0) continue;
+    let [u, m] = Xr(f, t);
+    t.canvas = Lt(t.canvas, m, e, u), pe(t.roleCanvas, u, m, "text");
   }
-  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...lineCanvases);
-  fillRolesFromCanvases(graph.roleCanvas, lineCanvases, zero, "line");
-  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...cornerCanvases);
-  fillRolesFromCanvases(graph.roleCanvas, cornerCanvases, zero, "corner");
-  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...junctionCanvases);
-  fillRolesFromCanvases(graph.roleCanvas, junctionCanvases, zero, "junction");
-  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...arrowHeadEndCanvases);
-  fillRolesFromCanvases(graph.roleCanvas, arrowHeadEndCanvases, zero, "arrow");
-  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...boxStartCanvases);
-  fillRolesFromCanvases(graph.roleCanvas, boxStartCanvases, zero, "junction");
-  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...arrowHeadStartCanvases);
-  fillRolesFromCanvases(graph.roleCanvas, arrowHeadStartCanvases, zero, "arrow");
-  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...labelCanvases);
-  for (const label of labelCanvases) clearLabelGaps(graph.canvas, label);
-  fillRolesFromCanvases(graph.roleCanvas, labelCanvases, zero, "text");
-  for (const sg of graph.subgraphs) {
-    if (sg.nodes.length === 0) continue;
-    const [labelCanvas, offset] = drawSubgraphLabel(sg, graph);
-    graph.canvas = mergeCanvases(graph.canvas, offset, useAscii, labelCanvas);
-    fillRolesFromCanvas(graph.roleCanvas, labelCanvas, offset, "text");
-  }
-  return graph.canvas;
+  return t.canvas;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/grid.ts
-function gridToDrawingCoord(graph, c, dir) {
-  const target = dir ? { x: c.x + dir.x, y: c.y + dir.y } : c;
-  let x = 0;
-  for (let col = 0; col < target.x; col++) {
-    x += graph.columnWidth.get(col) ?? 0;
-  }
-  let y = 0;
-  for (let row = 0; row < target.y; row++) {
-    y += graph.rowHeight.get(row) ?? 0;
-  }
-  const colW = graph.columnWidth.get(target.x) ?? 0;
-  const rowH = graph.rowHeight.get(target.y) ?? 0;
+function Et(t, e, n) {
+  let o = n ? { x: e.x + n.x, y: e.y + n.y } : e, s = 0;
+  for (let c = 0; c < o.x; c++)
+    s += t.columnWidth.get(c) ?? 0;
+  let r = 0;
+  for (let c = 0; c < o.y; c++)
+    r += t.rowHeight.get(c) ?? 0;
+  let i = t.columnWidth.get(o.x) ?? 0, a = t.rowHeight.get(o.y) ?? 0;
   return {
-    x: x + Math.floor(colW / 2) + graph.offsetX,
-    y: y + Math.floor(rowH / 2) + graph.offsetY
+    x: s + Math.floor(i / 2) + t.offsetX,
+    y: r + Math.floor(a / 2) + t.offsetY
   };
 }
-function lineToDrawing(graph, line) {
-  return line.map((c) => gridToDrawingCoord(graph, c));
+function bn(t, e) {
+  return e.map((n) => Et(t, n));
 }
-function reserveSpotInGrid(graph, node, requested, effectiveDir) {
-  const dir = effectiveDir ?? getEffectiveDirection2(graph, node);
-  if (graph.grid.has(gridKey(requested))) {
-    if (dir === "LR") {
-      return reserveSpotInGrid(graph, node, { x: requested.x, y: requested.y + 4 }, dir);
-    } else {
-      return reserveSpotInGrid(graph, node, { x: requested.x + 4, y: requested.y }, dir);
+function Ut(t, e, n, o) {
+  let s = o ?? jr(t, e);
+  if (t.grid.has(It(n)))
+    return s === "LR" ? Ut(t, e, { x: n.x, y: n.y + 4 }, s) : Ut(t, e, { x: n.x + 4, y: n.y }, s);
+  for (let r = 0; r < 3; r++)
+    for (let i = 0; i < 3; i++) {
+      let a = { x: n.x + r, y: n.y + i };
+      t.grid.set(It(a), e);
     }
+  return e.gridCoord = n, n;
+}
+function Wr(t, e) {
+  let n = e.gridCoord, o = t.config.boxBorderPadding, s = hn(e.shape, e.displayLabel, {
+    useAscii: t.config.useAscii,
+    padding: o
+  }), r = s.gridColumns, i = s.gridRows;
+  for (let a = 0; a < r.length; a++) {
+    let c = n.x + a, l = t.columnWidth.get(c) ?? 0;
+    t.columnWidth.set(c, Math.max(l, r[a]));
   }
-  for (let dx = 0; dx < 3; dx++) {
-    for (let dy = 0; dy < 3; dy++) {
-      const reserved = { x: requested.x + dx, y: requested.y + dy };
-      graph.grid.set(gridKey(reserved), node);
+  for (let a = 0; a < i.length; a++) {
+    let c = n.y + a, l = t.rowHeight.get(c) ?? 0;
+    t.rowHeight.set(c, Math.max(l, i[a]));
+  }
+  if (n.x > 0) {
+    let a = t.columnWidth.get(n.x - 1) ?? 0;
+    t.columnWidth.set(n.x - 1, Math.max(a, t.config.paddingX));
+  }
+  if (n.y > 0) {
+    let a = t.config.paddingY;
+    zr(t, e) && (a += 4);
+    let c = t.rowHeight.get(n.y - 1) ?? 0;
+    t.rowHeight.set(n.y - 1, Math.max(c, a));
+  }
+}
+function yn(t, e) {
+  for (let n of e)
+    t.columnWidth.has(n.x) || t.columnWidth.set(n.x, Math.floor(t.config.paddingX / 2)), t.rowHeight.has(n.y) || t.rowHeight.set(n.y, Math.floor(t.config.paddingY / 2));
+}
+function be(t, e) {
+  return t.subgraphs.some((n) => n.nodes.includes(e));
+}
+function yt(t, e) {
+  let n = null;
+  for (let o of t.subgraphs)
+    o.nodes.includes(e) && (!n || _r(n, o)) && (n = o);
+  return n;
+}
+function _r(t, e) {
+  let n = e;
+  for (; n !== null; ) {
+    if (n === t) return !0;
+    n = n.parent;
+  }
+  return !1;
+}
+function jr(t, e) {
+  let n = yt(t, e);
+  return n?.direction ? n.direction : t.config.graphDirection;
+}
+function zr(t, e) {
+  let n = yt(t, e);
+  if (!n) return !1;
+  let o = !1;
+  for (let s of t.edges)
+    if (s.to === e && yt(t, s.from) !== n) {
+      o = !0;
+      break;
     }
-  }
-  node.gridCoord = requested;
-  return requested;
-}
-function setColumnWidth(graph, node) {
-  const gc = node.gridCoord;
-  const padding = graph.config.boxBorderPadding;
-  const shapeDims = getShapeDimensions(node.shape, node.displayLabel, {
-    useAscii: graph.config.useAscii,
-    padding
-  });
-  const colWidths = shapeDims.gridColumns;
-  const rowHeights = shapeDims.gridRows;
-  for (let idx = 0; idx < colWidths.length; idx++) {
-    const xCoord = gc.x + idx;
-    const current = graph.columnWidth.get(xCoord) ?? 0;
-    graph.columnWidth.set(xCoord, Math.max(current, colWidths[idx]));
-  }
-  for (let idx = 0; idx < rowHeights.length; idx++) {
-    const yCoord = gc.y + idx;
-    const current = graph.rowHeight.get(yCoord) ?? 0;
-    graph.rowHeight.set(yCoord, Math.max(current, rowHeights[idx]));
-  }
-  if (gc.x > 0) {
-    const current = graph.columnWidth.get(gc.x - 1) ?? 0;
-    graph.columnWidth.set(gc.x - 1, Math.max(current, graph.config.paddingX));
-  }
-  if (gc.y > 0) {
-    let basePadding = graph.config.paddingY;
-    if (hasIncomingEdgeFromOutsideSubgraph(graph, node)) {
-      const subgraphOverhead = 4;
-      basePadding += subgraphOverhead;
-    }
-    const current = graph.rowHeight.get(gc.y - 1) ?? 0;
-    graph.rowHeight.set(gc.y - 1, Math.max(current, basePadding));
-  }
-}
-function increaseGridSizeForPath(graph, path) {
-  for (const c of path) {
-    if (!graph.columnWidth.has(c.x)) {
-      graph.columnWidth.set(c.x, Math.floor(graph.config.paddingX / 2));
-    }
-    if (!graph.rowHeight.has(c.y)) {
-      graph.rowHeight.set(c.y, Math.floor(graph.config.paddingY / 2));
-    }
-  }
-}
-function isNodeInAnySubgraph(graph, node) {
-  return graph.subgraphs.some((sg) => sg.nodes.includes(node));
-}
-function getNodeSubgraph(graph, node) {
-  let innermost = null;
-  for (const sg of graph.subgraphs) {
-    if (sg.nodes.includes(node)) {
-      if (!innermost || isAncestorOrSelf2(innermost, sg)) {
-        innermost = sg;
-      }
-    }
-  }
-  return innermost;
-}
-function isAncestorOrSelf2(candidate, target) {
-  let current = target;
-  while (current !== null) {
-    if (current === candidate) return true;
-    current = current.parent;
-  }
-  return false;
-}
-function getEffectiveDirection2(graph, node) {
-  const sg = getNodeSubgraph(graph, node);
-  if (sg?.direction) {
-    return sg.direction;
-  }
-  return graph.config.graphDirection;
-}
-function hasIncomingEdgeFromOutsideSubgraph(graph, node) {
-  const nodeSg = getNodeSubgraph(graph, node);
-  if (!nodeSg) return false;
-  let hasExternalEdge = false;
-  for (const edge of graph.edges) {
-    if (edge.to === node) {
-      const sourceSg = getNodeSubgraph(graph, edge.from);
-      if (sourceSg !== nodeSg) {
-        hasExternalEdge = true;
+  if (!o) return !1;
+  for (let s of n.nodes) {
+    if (s === e || !s.gridCoord) continue;
+    let r = !1;
+    for (let i of t.edges)
+      if (i.to === s && yt(t, i.from) !== n) {
+        r = !0;
         break;
       }
-    }
+    if (r && s.gridCoord.y < e.gridCoord.y)
+      return !1;
   }
-  if (!hasExternalEdge) return false;
-  for (const otherNode of nodeSg.nodes) {
-    if (otherNode === node || !otherNode.gridCoord) continue;
-    let otherHasExternal = false;
-    for (const edge of graph.edges) {
-      if (edge.to === otherNode) {
-        const sourceSg = getNodeSubgraph(graph, edge.from);
-        if (sourceSg !== nodeSg) {
-          otherHasExternal = true;
-          break;
-        }
-      }
-    }
-    if (otherHasExternal && otherNode.gridCoord.y < node.gridCoord.y) {
-      return false;
-    }
-  }
-  return true;
+  return !0;
 }
-function calculateSubgraphBoundingBox(graph, sg) {
-  if (sg.nodes.length === 0) return;
-  let minX = 1e6;
-  let minY = 1e6;
-  let maxX = -1e6;
-  let maxY = -1e6;
-  for (const child of sg.children) {
-    calculateSubgraphBoundingBox(graph, child);
-    if (child.nodes.length > 0) {
-      minX = Math.min(minX, child.minX);
-      minY = Math.min(minY, child.minY);
-      maxX = Math.max(maxX, child.maxX);
-      maxY = Math.max(maxY, child.maxY);
-    }
+function Cn(t, e) {
+  if (e.nodes.length === 0) return;
+  let n = 1e6, o = 1e6, s = -1e6, r = -1e6;
+  for (let c of e.children)
+    Cn(t, c), c.nodes.length > 0 && (n = Math.min(n, c.minX), o = Math.min(o, c.minY), s = Math.max(s, c.maxX), r = Math.max(r, c.maxY));
+  for (let c of e.nodes) {
+    if (!c.drawingCoord || !c.drawing) continue;
+    let l = c.drawingCoord.x, d = c.drawingCoord.y, h = l + c.drawing.length - 1, f = d + c.drawing[0].length - 1;
+    n = Math.min(n, l), o = Math.min(o, d), s = Math.max(s, h), r = Math.max(r, f);
   }
-  for (const node of sg.nodes) {
-    if (!node.drawingCoord || !node.drawing) continue;
-    const nodeMinX = node.drawingCoord.x;
-    const nodeMinY = node.drawingCoord.y;
-    const nodeMaxX = nodeMinX + node.drawing.length - 1;
-    const nodeMaxY = nodeMinY + node.drawing[0].length - 1;
-    minX = Math.min(minX, nodeMinX);
-    minY = Math.min(minY, nodeMinY);
-    maxX = Math.max(maxX, nodeMaxX);
-    maxY = Math.max(maxY, nodeMaxY);
-  }
-  const subgraphPadding = 2;
-  const subgraphLabelSpace = 2;
-  sg.minX = minX - subgraphPadding;
-  sg.minY = minY - subgraphPadding - subgraphLabelSpace;
-  sg.maxX = maxX + subgraphPadding;
-  sg.maxY = maxY + subgraphPadding;
+  let i = 2, a = 2;
+  e.minX = n - i, e.minY = o - i - a, e.maxX = s + i, e.maxY = r + i;
 }
-function ensureSubgraphSpacing(graph) {
-  const minSpacing = 1;
-  const rootSubgraphs = graph.subgraphs.filter((sg) => sg.parent === null && sg.nodes.length > 0);
-  for (let i = 0; i < rootSubgraphs.length; i++) {
-    for (let j = i + 1; j < rootSubgraphs.length; j++) {
-      const sg1 = rootSubgraphs[i];
-      const sg2 = rootSubgraphs[j];
-      if (sg1.minX < sg2.maxX && sg1.maxX > sg2.minX) {
-        if (sg1.maxY >= sg2.minY - minSpacing && sg1.minY < sg2.minY) {
-          sg2.minY = sg1.maxY + minSpacing + 1;
-        } else if (sg2.maxY >= sg1.minY - minSpacing && sg2.minY < sg1.minY) {
-          sg1.minY = sg2.maxY + minSpacing + 1;
-        }
-      }
-      if (sg1.minY < sg2.maxY && sg1.maxY > sg2.minY) {
-        if (sg1.maxX >= sg2.minX - minSpacing && sg1.minX < sg2.minX) {
-          sg2.minX = sg1.maxX + minSpacing + 1;
-        } else if (sg2.maxX >= sg1.minX - minSpacing && sg2.minX < sg1.minX) {
-          sg1.minX = sg2.maxX + minSpacing + 1;
-        }
-      }
+function Or(t) {
+  let n = t.subgraphs.filter((o) => o.parent === null && o.nodes.length > 0);
+  for (let o = 0; o < n.length; o++)
+    for (let s = o + 1; s < n.length; s++) {
+      let r = n[o], i = n[s];
+      r.minX < i.maxX && r.maxX > i.minX && (r.maxY >= i.minY - 1 && r.minY < i.minY ? i.minY = r.maxY + 1 + 1 : i.maxY >= r.minY - 1 && i.minY < r.minY && (r.minY = i.maxY + 1 + 1)), r.minY < i.maxY && r.maxY > i.minY && (r.maxX >= i.minX - 1 && r.minX < i.minX ? i.minX = r.maxX + 1 + 1 : i.maxX >= r.minX - 1 && i.minX < r.minX && (r.minX = i.maxX + 1 + 1));
     }
+}
+function Fr(t) {
+  for (let e of t.subgraphs)
+    Cn(t, e);
+  Or(t);
+}
+function Jr(t) {
+  if (t.subgraphs.length === 0) return;
+  let e = 0, n = 0;
+  for (let r of t.subgraphs)
+    e = Math.min(e, r.minX), n = Math.min(n, r.minY);
+  let o = -e, s = -n;
+  if (!(o === 0 && s === 0)) {
+    t.offsetX = o, t.offsetY = s;
+    for (let r of t.subgraphs)
+      r.minX += o, r.minY += s, r.maxX += o, r.maxY += s;
+    for (let r of t.nodes)
+      r.drawingCoord && (r.drawingCoord.x += o, r.drawingCoord.y += s);
   }
 }
-function calculateSubgraphBoundingBoxes(graph) {
-  for (const sg of graph.subgraphs) {
-    calculateSubgraphBoundingBox(graph, sg);
+function Mn(t) {
+  let e = t.config.graphDirection, n = new Array(100).fill(0), o = /* @__PURE__ */ new Set(), s = [];
+  for (let f of t.nodes) {
+    o.has(f.name) || s.push(f), o.add(f.name);
+    for (let u of ye(t, f))
+      o.add(u.name);
   }
-  ensureSubgraphSpacing(graph);
-}
-function offsetDrawingForSubgraphs(graph) {
-  if (graph.subgraphs.length === 0) return;
-  let minX = 0;
-  let minY = 0;
-  for (const sg of graph.subgraphs) {
-    minX = Math.min(minX, sg.minX);
-    minY = Math.min(minY, sg.minY);
+  let r = s.filter((f) => {
+    let u = yt(t, f);
+    if (!u) return !0;
+    for (let m of t.edges)
+      if (m.to === f && yt(t, m.from) !== u)
+        return !1;
+    return !0;
+  }), i = !1, a = !1;
+  for (let f of r)
+    be(t, f) ? ye(t, f).length > 0 && (a = !0) : i = !0;
+  let c = e === "LR" && i && a, l, d = [];
+  c ? (l = r.filter((f) => !be(t, f)), d = r.filter((f) => be(t, f))) : l = r;
+  for (let f of l) {
+    let u = e === "LR" ? { x: 0, y: n[0] } : { x: n[0], y: 0 };
+    Ut(t, t.nodes[f.index], u), n[0] = n[0] + 4;
   }
-  const offsetX = -minX;
-  const offsetY = -minY;
-  if (offsetX === 0 && offsetY === 0) return;
-  graph.offsetX = offsetX;
-  graph.offsetY = offsetY;
-  for (const sg of graph.subgraphs) {
-    sg.minX += offsetX;
-    sg.minY += offsetY;
-    sg.maxX += offsetX;
-    sg.maxY += offsetY;
-  }
-  for (const node of graph.nodes) {
-    if (node.drawingCoord) {
-      node.drawingCoord.x += offsetX;
-      node.drawingCoord.y += offsetY;
+  if (c && d.length > 0)
+    for (let u of d) {
+      let m = e === "LR" ? { x: 4, y: n[4] } : { x: n[4], y: 4 };
+      Ut(t, t.nodes[u.index], m), n[4] = n[4] + 4;
     }
-  }
-}
-function createMapping(graph) {
-  const dir = graph.config.graphDirection;
-  const highestPositionPerLevel = new Array(100).fill(0);
-  const nodesFound = /* @__PURE__ */ new Set();
-  const initialRoots = [];
-  for (const node of graph.nodes) {
-    if (!nodesFound.has(node.name)) {
-      initialRoots.push(node);
-    }
-    nodesFound.add(node.name);
-    for (const child of getChildren(graph, node)) {
-      nodesFound.add(child.name);
-    }
-  }
-  const rootNodes = initialRoots.filter((node) => {
-    const nodeSg = getNodeSubgraph(graph, node);
-    if (!nodeSg) return true;
-    for (const edge of graph.edges) {
-      if (edge.to === node) {
-        const sourceSg = getNodeSubgraph(graph, edge.from);
-        if (sourceSg !== nodeSg) {
-          return false;
-        }
+  let h = l.length + d.length;
+  for (; h < t.nodes.length; ) {
+    let f = h;
+    for (let u of t.nodes) {
+      if (u.gridCoord === null) continue;
+      let m = u.gridCoord;
+      for (let p of ye(t, u)) {
+        if (p.gridCoord !== null) continue;
+        let b = yt(t, u), A = yt(t, p), B = b && b === A && b.direction ? b.direction : t.config.graphDirection, v = B === "LR" ? m.x + 4 : m.y + 4, H;
+        B !== t.config.graphDirection ? H = B === "LR" ? m.y : m.x : H = n[v];
+        let L = B === "LR" ? { x: v, y: H } : { x: H, y: v };
+        Ut(t, t.nodes[p.index], L, B), B === t.config.graphDirection && (n[v] = H + 4), h++;
       }
     }
-    return true;
-  });
-  let hasExternalRoots = false;
-  let hasSubgraphRootsWithEdges = false;
-  for (const node of rootNodes) {
-    if (isNodeInAnySubgraph(graph, node)) {
-      if (getChildren(graph, node).length > 0) hasSubgraphRootsWithEdges = true;
-    } else {
-      hasExternalRoots = true;
-    }
+    if (h === f) break;
   }
-  const shouldSeparate = dir === "LR" && hasExternalRoots && hasSubgraphRootsWithEdges;
-  let externalRootNodes;
-  let subgraphRootNodes = [];
-  if (shouldSeparate) {
-    externalRootNodes = rootNodes.filter((n) => !isNodeInAnySubgraph(graph, n));
-    subgraphRootNodes = rootNodes.filter((n) => isNodeInAnySubgraph(graph, n));
-  } else {
-    externalRootNodes = rootNodes;
-  }
-  for (const node of externalRootNodes) {
-    const requested = dir === "LR" ? { x: 0, y: highestPositionPerLevel[0] } : { x: highestPositionPerLevel[0], y: 0 };
-    reserveSpotInGrid(graph, graph.nodes[node.index], requested);
-    highestPositionPerLevel[0] = highestPositionPerLevel[0] + 4;
-  }
-  if (shouldSeparate && subgraphRootNodes.length > 0) {
-    const subgraphLevel = 4;
-    for (const node of subgraphRootNodes) {
-      const requested = dir === "LR" ? { x: subgraphLevel, y: highestPositionPerLevel[subgraphLevel] } : { x: highestPositionPerLevel[subgraphLevel], y: subgraphLevel };
-      reserveSpotInGrid(graph, graph.nodes[node.index], requested);
-      highestPositionPerLevel[subgraphLevel] = highestPositionPerLevel[subgraphLevel] + 4;
-    }
-  }
-  let placedCount = externalRootNodes.length + subgraphRootNodes.length;
-  while (placedCount < graph.nodes.length) {
-    const prevCount = placedCount;
-    for (const node of graph.nodes) {
-      if (node.gridCoord === null) continue;
-      const gc = node.gridCoord;
-      for (const child of getChildren(graph, node)) {
-        if (child.gridCoord !== null) continue;
-        const parentSg = getNodeSubgraph(graph, node);
-        const childSg = getNodeSubgraph(graph, child);
-        const edgeDir = parentSg && parentSg === childSg && parentSg.direction ? parentSg.direction : graph.config.graphDirection;
-        const childLevel = edgeDir === "LR" ? gc.x + 4 : gc.y + 4;
-        let highestPosition;
-        if (edgeDir !== graph.config.graphDirection) {
-          highestPosition = edgeDir === "LR" ? gc.y : gc.x;
-        } else {
-          highestPosition = highestPositionPerLevel[childLevel];
-        }
-        const requested = edgeDir === "LR" ? { x: childLevel, y: highestPosition } : { x: highestPosition, y: childLevel };
-        reserveSpotInGrid(graph, graph.nodes[child.index], requested, edgeDir);
-        if (edgeDir === graph.config.graphDirection) {
-          highestPositionPerLevel[childLevel] = highestPosition + 4;
-        }
-        placedCount++;
-      }
-    }
-    if (placedCount === prevCount) break;
-  }
-  for (const node of graph.nodes) {
-    setColumnWidth(graph, node);
-  }
-  graph.bundles = analyzeEdgeBundles(graph);
-  processBundles(graph);
-  for (const edge of graph.edges) {
-    if (edge.bundle && edge.path.length > 0) {
-      increaseGridSizeForPath(graph, edge.path);
-      determineLabelLine(graph, edge);
+  for (let f of t.nodes)
+    Wr(t, f);
+  t.bundles = qe(t), Ve(t);
+  for (let f of t.edges) {
+    if (f.bundle && f.path.length > 0) {
+      yn(t, f.path), he(t, f);
       continue;
     }
-    determinePath(graph, edge);
-    increaseGridSizeForPath(graph, edge.path);
-    determineLabelLine(graph, edge);
+    Je(t, f), yn(t, f.path), he(t, f);
   }
-  for (const node of graph.nodes) {
-    node.drawingCoord = gridToDrawingCoord(graph, node.gridCoord);
-    node.drawing = drawBox(node, graph);
-  }
-  setCanvasSizeToGrid(graph.canvas, graph.columnWidth, graph.rowHeight);
-  setRoleCanvasSizeToGrid(graph.roleCanvas, graph.columnWidth, graph.rowHeight);
-  calculateSubgraphBoundingBoxes(graph);
-  offsetDrawingForSubgraphs(graph);
+  for (let f of t.nodes)
+    f.drawingCoord = Et(t, f.gridCoord), f.drawing = pn(f, t);
+  je(t.canvas, t.columnWidth, t.rowHeight), ze(t.roleCanvas, t.columnWidth, t.rowHeight), Fr(t), Jr(t);
 }
-function getEdgesFromNode(graph, node) {
-  return graph.edges.filter((e) => e.from.name === node.name);
+function Ur(t, e) {
+  return t.edges.filter((n) => n.from.name === e.name);
 }
-function getChildren(graph, node) {
-  return getEdgesFromNode(graph, node).map((e) => e.to);
+function ye(t, e) {
+  return Ur(t, e).map((n) => n.to);
 }
 
 // node_modules/beautiful-mermaid/src/sequence/parser.ts
-function parseSequenceDiagram(lines) {
-  const diagram = {
+function wn(t) {
+  let e = {
     actors: [],
     messages: [],
     blocks: [],
     notes: []
-  };
-  const actorIds = /* @__PURE__ */ new Set();
-  const blockStack = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    const actorMatch = line.match(/^(participant|actor)\s+(\S+?)(?:\s+as\s+(.+))?$/);
-    if (actorMatch) {
-      const type = actorMatch[1];
-      const id = actorMatch[2];
-      const rawLabel = actorMatch[3]?.trim() ?? id;
-      const label = normalizeBrTags(rawLabel);
-      if (!actorIds.has(id)) {
-        actorIds.add(id);
-        diagram.actors.push({ id, label, type });
-      }
+  }, n = /* @__PURE__ */ new Set(), o = [];
+  for (let s = 1; s < t.length; s++) {
+    let r = t[s], i = r.match(/^(participant|actor)\s+(\S+?)(?:\s+as\s+(.+))?$/);
+    if (i) {
+      let f = i[1], u = i[2], m = i[3]?.trim() ?? u, p = dt(m);
+      n.has(u) || (n.add(u), e.actors.push({ id: u, label: p, type: f }));
       continue;
     }
-    const noteMatch = line.match(/^Note\s+(left of|right of|over)\s+([^:]+):\s*(.+)$/i);
-    if (noteMatch) {
-      const posStr = noteMatch[1].toLowerCase();
-      const actorsStr = noteMatch[2].trim();
-      const text = normalizeBrTags(noteMatch[3].trim());
-      const noteActorIds = actorsStr.split(",").map((s) => s.trim());
-      for (const aid of noteActorIds) {
-        ensureActor(diagram, actorIds, aid);
-      }
-      let position = "over";
-      if (posStr === "left of") position = "left";
-      else if (posStr === "right of") position = "right";
-      diagram.notes.push({
-        actorIds: noteActorIds,
-        text,
-        position,
-        afterIndex: diagram.messages.length - 1
+    let a = r.match(/^Note\s+(left of|right of|over)\s+([^:]+):\s*(.+)$/i);
+    if (a) {
+      let f = a[1].toLowerCase(), u = a[2].trim(), m = dt(a[3].trim()), p = u.split(",").map((A) => A.trim());
+      for (let A of p)
+        qt(e, n, A);
+      let b = "over";
+      f === "left of" ? b = "left" : f === "right of" && (b = "right"), e.notes.push({
+        actorIds: p,
+        text: m,
+        position: b,
+        afterIndex: e.messages.length - 1
       });
       continue;
     }
-    const blockMatch = line.match(/^(loop|alt|opt|par|critical|break|rect)\s*(.*)$/);
-    if (blockMatch) {
-      const blockType = blockMatch[1];
-      const rawBlockLabel = blockMatch[2]?.trim() ?? "";
-      const label = normalizeBrTags(rawBlockLabel);
-      blockStack.push({
-        type: blockType,
-        label,
-        startIndex: diagram.messages.length,
+    let c = r.match(/^(loop|alt|opt|par|critical|break|rect)\s*(.*)$/);
+    if (c) {
+      let f = c[1], u = c[2]?.trim() ?? "", m = dt(u);
+      o.push({
+        type: f,
+        label: m,
+        startIndex: e.messages.length,
         dividers: []
       });
       continue;
     }
-    const dividerMatch = line.match(/^(else|and)\s*(.*)$/);
-    if (dividerMatch && blockStack.length > 0) {
-      const rawDividerLabel = dividerMatch[2]?.trim() ?? "";
-      const label = normalizeBrTags(rawDividerLabel);
-      blockStack[blockStack.length - 1].dividers.push({
-        index: diagram.messages.length,
-        label
+    let l = r.match(/^(else|and)\s*(.*)$/);
+    if (l && o.length > 0) {
+      let f = l[2]?.trim() ?? "", u = dt(f);
+      o[o.length - 1].dividers.push({
+        index: e.messages.length,
+        label: u
       });
       continue;
     }
-    if (line === "end" && blockStack.length > 0) {
-      const completed = blockStack.pop();
-      diagram.blocks.push({
-        type: completed.type,
-        label: completed.label,
-        startIndex: completed.startIndex,
-        endIndex: Math.max(diagram.messages.length - 1, completed.startIndex),
-        dividers: completed.dividers
+    if (r === "end" && o.length > 0) {
+      let f = o.pop();
+      e.blocks.push({
+        type: f.type,
+        label: f.label,
+        startIndex: f.startIndex,
+        endIndex: Math.max(e.messages.length - 1, f.startIndex),
+        dividers: f.dividers
       });
       continue;
     }
-    const msgMatch = line.match(
+    let d = r.match(
       /^(\S+?)\s*(--?>?>|--?[)x]|--?>>|--?>)\s*([+-]?)(\S+?)\s*:\s*(.+)$/
     );
-    if (msgMatch) {
-      const from = msgMatch[1];
-      const arrow = msgMatch[2];
-      const activationMark = msgMatch[3];
-      const to = msgMatch[4];
-      const label = normalizeBrTags(msgMatch[5].trim());
-      ensureActor(diagram, actorIds, from);
-      ensureActor(diagram, actorIds, to);
-      const lineStyle = arrow.startsWith("--") ? "dashed" : "solid";
-      const arrowHead = arrow.includes(">>") || arrow.includes("x") ? "filled" : "open";
-      const msg = {
-        from,
-        to,
-        label,
-        lineStyle,
-        arrowHead
+    if (d) {
+      let f = d[1], u = d[2], m = d[3], p = d[4], b = dt(d[5].trim());
+      qt(e, n, f), qt(e, n, p);
+      let A = u.startsWith("--") ? "dashed" : "solid", B = u.includes(">>") || u.includes("x") ? "filled" : "open", v = {
+        from: f,
+        to: p,
+        label: b,
+        lineStyle: A,
+        arrowHead: B
       };
-      if (activationMark === "+") msg.activate = true;
-      if (activationMark === "-") msg.deactivate = true;
-      diagram.messages.push(msg);
+      m === "+" && (v.activate = !0), m === "-" && (v.deactivate = !0), e.messages.push(v);
       continue;
     }
-    const simpleMsgMatch = line.match(
+    let h = r.match(
       /^(\S+?)\s*(->>|-->>|-\)|--\)|-x|--x|->|-->)\s*([+-]?)(\S+?)\s*:\s*(.+)$/
     );
-    if (simpleMsgMatch) {
-      const from = simpleMsgMatch[1];
-      const arrow = simpleMsgMatch[2];
-      const activationMark = simpleMsgMatch[3];
-      const to = simpleMsgMatch[4];
-      const label = normalizeBrTags(simpleMsgMatch[5].trim());
-      ensureActor(diagram, actorIds, from);
-      ensureActor(diagram, actorIds, to);
-      const lineStyle = arrow.startsWith("--") ? "dashed" : "solid";
-      const arrowHead = arrow.includes(">>") || arrow.includes("x") ? "filled" : "open";
-      const msg = { from, to, label, lineStyle, arrowHead };
-      if (activationMark === "+") msg.activate = true;
-      if (activationMark === "-") msg.deactivate = true;
-      diagram.messages.push(msg);
+    if (h) {
+      let f = h[1], u = h[2], m = h[3], p = h[4], b = dt(h[5].trim());
+      qt(e, n, f), qt(e, n, p);
+      let A = u.startsWith("--") ? "dashed" : "solid", B = u.includes(">>") || u.includes("x") ? "filled" : "open", v = { from: f, to: p, label: b, lineStyle: A, arrowHead: B };
+      m === "+" && (v.activate = !0), m === "-" && (v.deactivate = !0), e.messages.push(v);
       continue;
     }
   }
-  return diagram;
+  return e;
 }
-function ensureActor(diagram, actorIds, id) {
-  if (!actorIds.has(id)) {
-    actorIds.add(id);
-    diagram.actors.push({ id, label: id, type: "participant" });
-  }
+function qt(t, e, n) {
+  e.has(n) || (e.add(n), t.actors.push({ id: n, label: n, type: "participant" }));
 }
 
 // node_modules/beautiful-mermaid/src/ascii/sequence.ts
-function renderSequenceAscii(text, config, colorMode, theme) {
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%"));
-  const diagram = parseSequenceDiagram(lines);
-  if (diagram.actors.length === 0) return "";
-  const useAscii = config.useAscii;
-  const H = useAscii ? "-" : "\u2500";
-  const V = useAscii ? "|" : "\u2502";
-  const TL = useAscii ? "+" : "\u250C";
-  const TR = useAscii ? "+" : "\u2510";
-  const BL = useAscii ? "+" : "\u2514";
-  const BR = useAscii ? "+" : "\u2518";
-  const JT = useAscii ? "+" : "\u252C";
-  const JB = useAscii ? "+" : "\u2534";
-  const JL = useAscii ? "+" : "\u251C";
-  const JR = useAscii ? "+" : "\u2524";
-  const actorIdx = /* @__PURE__ */ new Map();
-  diagram.actors.forEach((a, i) => actorIdx.set(a.id, i));
-  const boxPad = 1;
-  const actorBoxWidths = diagram.actors.map((a) => maxLineWidth(a.label) + 2 * boxPad + 2);
-  const halfBox = actorBoxWidths.map((w) => Math.ceil(w / 2));
-  const actorBoxHeights = diagram.actors.map((a) => lineCount(a.label) + 2);
-  const actorBoxH = Math.max(...actorBoxHeights, 3);
-  const adjMaxWidth = new Array(Math.max(diagram.actors.length - 1, 0)).fill(0);
-  for (const msg of diagram.messages) {
-    const fi = actorIdx.get(msg.from);
-    const ti = actorIdx.get(msg.to);
-    if (fi === ti) continue;
-    const lo = Math.min(fi, ti);
-    const hi = Math.max(fi, ti);
-    const needed = maxLineWidth(msg.label) + 4;
-    const numGaps = hi - lo;
-    const perGap = Math.ceil(needed / numGaps);
-    for (let g = lo; g < hi; g++) {
-      adjMaxWidth[g] = Math.max(adjMaxWidth[g], perGap);
-    }
+function vn(t, e, n, o) {
+  let s = t.split(`
+`).map((g) => g.trim()).filter((g) => g.length > 0 && !g.startsWith("%%")), r = wn(s);
+  if (r.actors.length === 0) return "";
+  let i = e.useAscii, a = i ? "-" : "\u2500", c = i ? "|" : "\u2502", l = i ? "+" : "\u250C", d = i ? "+" : "\u2510", h = i ? "+" : "\u2514", f = i ? "+" : "\u2518", u = i ? "+" : "\u252C", m = i ? "+" : "\u2534", p = i ? "+" : "\u251C", b = i ? "+" : "\u2524", A = /* @__PURE__ */ new Map();
+  r.actors.forEach((g, y) => A.set(g.id, y));
+  let B = 1, H = r.actors.map((g) => re(g.label) + 2 * B + 2).map((g) => Math.ceil(g / 2)), L = r.actors.map((g) => ge(g.label) + 2), q = Math.max(...L, 3), ut = new Array(Math.max(r.actors.length - 1, 0)).fill(0);
+  for (let g of r.messages) {
+    let y = A.get(g.from), E = A.get(g.to);
+    if (y === E) continue;
+    let T = Math.min(y, E), k = Math.max(y, E), R = re(g.label) + 4, J = k - T, G = Math.ceil(R / J);
+    for (let S = T; S < k; S++)
+      ut[S] = Math.max(ut[S], G);
   }
-  const llX = [halfBox[0]];
-  for (let i = 1; i < diagram.actors.length; i++) {
-    const gap = Math.max(
-      halfBox[i - 1] + halfBox[i] + 2,
-      adjMaxWidth[i - 1] + 2,
+  let O = [H[0]];
+  for (let g = 1; g < r.actors.length; g++) {
+    let y = Math.max(
+      H[g - 1] + H[g] + 2,
+      ut[g - 1] + 2,
       10
     );
-    llX[i] = llX[i - 1] + gap;
+    O[g] = O[g - 1] + y;
   }
-  const msgArrowY = [];
-  const msgLabelY = [];
-  const blockStartY = /* @__PURE__ */ new Map();
-  const blockEndY = /* @__PURE__ */ new Map();
-  const divYMap = /* @__PURE__ */ new Map();
-  const notePositions = [];
-  let curY = actorBoxH;
-  for (let m = 0; m < diagram.messages.length; m++) {
-    for (let b = 0; b < diagram.blocks.length; b++) {
-      if (diagram.blocks[b].startIndex === m) {
-        curY += 2;
-        blockStartY.set(b, curY - 1);
+  let ft = [], I = [], U = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new Map(), F = /* @__PURE__ */ new Map(), V = [], K = q;
+  for (let g = 0; g < r.messages.length; g++) {
+    for (let k = 0; k < r.blocks.length; k++)
+      r.blocks[k].startIndex === g && (K += 2, U.set(k, K - 1));
+    for (let k = 0; k < r.blocks.length; k++)
+      for (let R = 0; R < r.blocks[k].dividers.length; R++)
+        r.blocks[k].dividers[R].index === g && (K += 1, F.set(`${k}:${R}`, K), K += 1);
+    K += 1;
+    let y = r.messages[g], E = y.from === y.to, T = ge(y.label);
+    E ? (I[g] = K + 1, ft[g] = K, K += 2 + T) : (I[g] = K, ft[g] = K + T, K += T + 1);
+    for (let k = 0; k < r.notes.length; k++)
+      if (r.notes[k].afterIndex === g) {
+        K += 1;
+        let R = r.notes[k], J = rt(R.text), G = Math.max(...J.map(($) => $.length)) + 4, S = J.length + 2, z = A.get(R.actorIds[0]) ?? 0, D;
+        if (R.position === "left")
+          D = O[z] - G - 1;
+        else if (R.position === "right")
+          D = O[z] + 2;
+        else if (R.actorIds.length >= 2) {
+          let $ = A.get(R.actorIds[1]) ?? z;
+          D = Math.floor((O[z] + O[$]) / 2) - Math.floor(G / 2);
+        } else
+          D = O[z] - Math.floor(G / 2);
+        D = Math.max(0, D), V.push({ x: D, y: K, width: G, height: S, lines: J }), K += S;
       }
+    for (let k = 0; k < r.blocks.length; k++)
+      r.blocks[k].endIndex === g && (K += 1, C.set(k, K), K += 1);
+  }
+  K += 1;
+  let at = K, ct = at + q, ot = O[O.length - 1] ?? 0, st = H[H.length - 1] ?? 0, w = ot + st + 2;
+  for (let g = 0; g < r.messages.length; g++) {
+    let y = r.messages[g];
+    if (y.from === y.to) {
+      let E = A.get(y.from), T = O[E] + 6 + 2 + y.label.length;
+      w = Math.max(w, T + 1);
     }
-    for (let b = 0; b < diagram.blocks.length; b++) {
-      for (let d = 0; d < diagram.blocks[b].dividers.length; d++) {
-        if (diagram.blocks[b].dividers[d].index === m) {
-          curY += 1;
-          divYMap.set(`${b}:${d}`, curY);
-          curY += 1;
-        }
-      }
+  }
+  for (let g of V)
+    w = Math.max(w, g.x + g.width + 1);
+  let X = it(w, ct - 1), N = $t(w, ct - 1);
+  function M(g, y, E, T) {
+    g >= 0 && g < X.length && y >= 0 && y < (X[0]?.length ?? 0) && (X[g][y] = E, Bt(N, g, y, T));
+  }
+  function W(g, y, E) {
+    let T = rt(E), k = re(E), R = k + 2 * B + 2, J = T.length + 2, G = g - Math.floor(R / 2);
+    M(G, y, l, "border");
+    for (let z = 1; z < R - 1; z++) M(G + z, y, a, "border");
+    M(G + R - 1, y, d, "border");
+    for (let z = 0; z < T.length; z++) {
+      let D = y + 1 + z;
+      M(G, D, c, "border"), M(G + R - 1, D, c, "border");
+      let $ = T[z], tt = G + 1 + B + Math.floor((k - $.length) / 2);
+      for (let Z = 0; Z < $.length; Z++)
+        M(tt + Z, D, $[Z], "text");
     }
-    curY += 1;
-    const msg = diagram.messages[m];
-    const isSelf = msg.from === msg.to;
-    const msgLineCount = lineCount(msg.label);
-    if (isSelf) {
-      msgLabelY[m] = curY + 1;
-      msgArrowY[m] = curY;
-      curY += 2 + msgLineCount;
+    let S = y + J - 1;
+    M(G, S, h, "border");
+    for (let z = 1; z < R - 1; z++) M(G + z, S, a, "border");
+    M(G + R - 1, S, f, "border");
+  }
+  for (let g = 0; g < r.actors.length; g++) {
+    let y = O[g];
+    for (let E = q; E <= at; E++)
+      M(y, E, c, "line");
+  }
+  for (let g = 0; g < r.actors.length; g++) {
+    let y = r.actors[g];
+    W(O[g], 0, y.label), W(O[g], at, y.label), i || (M(O[g], q - 1, u, "junction"), M(O[g], at, m, "junction"));
+  }
+  for (let g = 0; g < r.messages.length; g++) {
+    let y = r.messages[g], E = A.get(y.from), T = A.get(y.to), k = O[E], R = O[T], J = E === T, G = y.lineStyle === "dashed", S = y.arrowHead === "filled", z = G ? i ? "." : "\u254C" : a;
+    if (J) {
+      let D = ft[g], $ = Math.max(4, 4);
+      M(k, D, p, "junction");
+      for (let et = k + 1; et < k + $; et++) M(et, D, z, "line");
+      M(k + $, D, i ? "+" : "\u2510", "corner"), M(k + $, D + 1, c, "line");
+      let tt = k + $ + 2;
+      for (let et = 0; et < y.label.length; et++)
+        tt + et < w && M(tt + et, D + 1, y.label[et], "text");
+      let Z = S ? i ? "<" : "\u25C0" : i ? "<" : "\u25C1";
+      M(k, D + 2, Z, "arrow");
+      for (let et = k + 1; et < k + $; et++) M(et, D + 2, z, "line");
+      M(k + $, D + 2, i ? "+" : "\u2518", "corner");
     } else {
-      msgLabelY[m] = curY;
-      msgArrowY[m] = curY + msgLineCount;
-      curY += msgLineCount + 1;
-    }
-    for (let n = 0; n < diagram.notes.length; n++) {
-      if (diagram.notes[n].afterIndex === m) {
-        curY += 1;
-        const note = diagram.notes[n];
-        const nLines = splitLines(note.text);
-        const nWidth = Math.max(...nLines.map((l) => l.length)) + 4;
-        const nHeight = nLines.length + 2;
-        const aIdx = actorIdx.get(note.actorIds[0]) ?? 0;
-        let nx;
-        if (note.position === "left") {
-          nx = llX[aIdx] - nWidth - 1;
-        } else if (note.position === "right") {
-          nx = llX[aIdx] + 2;
-        } else {
-          if (note.actorIds.length >= 2) {
-            const aIdx2 = actorIdx.get(note.actorIds[1]) ?? aIdx;
-            nx = Math.floor((llX[aIdx] + llX[aIdx2]) / 2) - Math.floor(nWidth / 2);
-          } else {
-            nx = llX[aIdx] - Math.floor(nWidth / 2);
-          }
-        }
-        nx = Math.max(0, nx);
-        notePositions.push({ x: nx, y: curY, width: nWidth, height: nHeight, lines: nLines });
-        curY += nHeight;
-      }
-    }
-    for (let b = 0; b < diagram.blocks.length; b++) {
-      if (diagram.blocks[b].endIndex === m) {
-        curY += 1;
-        blockEndY.set(b, curY);
-        curY += 1;
-      }
-    }
-  }
-  curY += 1;
-  const footerY = curY;
-  const totalH = footerY + actorBoxH;
-  const lastLL = llX[llX.length - 1] ?? 0;
-  const lastHalf = halfBox[halfBox.length - 1] ?? 0;
-  let totalW = lastLL + lastHalf + 2;
-  for (let m = 0; m < diagram.messages.length; m++) {
-    const msg = diagram.messages[m];
-    if (msg.from === msg.to) {
-      const fi = actorIdx.get(msg.from);
-      const selfRight = llX[fi] + 6 + 2 + msg.label.length;
-      totalW = Math.max(totalW, selfRight + 1);
-    }
-  }
-  for (const np of notePositions) {
-    totalW = Math.max(totalW, np.x + np.width + 1);
-  }
-  const canvas = mkCanvas(totalW, totalH - 1);
-  const rc = mkRoleCanvas(totalW, totalH - 1);
-  function setC(x, y, ch, role) {
-    if (x >= 0 && x < canvas.length && y >= 0 && y < (canvas[0]?.length ?? 0)) {
-      canvas[x][y] = ch;
-      setRole(rc, x, y, role);
-    }
-  }
-  function drawActorBox(cx, topY, label) {
-    const lines2 = splitLines(label);
-    const maxW = maxLineWidth(label);
-    const w = maxW + 2 * boxPad + 2;
-    const h = lines2.length + 2;
-    const left = cx - Math.floor(w / 2);
-    setC(left, topY, TL, "border");
-    for (let x = 1; x < w - 1; x++) setC(left + x, topY, H, "border");
-    setC(left + w - 1, topY, TR, "border");
-    for (let i = 0; i < lines2.length; i++) {
-      const row = topY + 1 + i;
-      setC(left, row, V, "border");
-      setC(left + w - 1, row, V, "border");
-      const line = lines2[i];
-      const ls = left + 1 + boxPad + Math.floor((maxW - line.length) / 2);
-      for (let j = 0; j < line.length; j++) {
-        setC(ls + j, row, line[j], "text");
-      }
-    }
-    const bottomY = topY + h - 1;
-    setC(left, bottomY, BL, "border");
-    for (let x = 1; x < w - 1; x++) setC(left + x, bottomY, H, "border");
-    setC(left + w - 1, bottomY, BR, "border");
-  }
-  for (let i = 0; i < diagram.actors.length; i++) {
-    const x = llX[i];
-    for (let y = actorBoxH; y <= footerY; y++) {
-      setC(x, y, V, "line");
-    }
-  }
-  for (let i = 0; i < diagram.actors.length; i++) {
-    const actor = diagram.actors[i];
-    drawActorBox(llX[i], 0, actor.label);
-    drawActorBox(llX[i], footerY, actor.label);
-    if (!useAscii) {
-      setC(llX[i], actorBoxH - 1, JT, "junction");
-      setC(llX[i], footerY, JB, "junction");
-    }
-  }
-  for (let m = 0; m < diagram.messages.length; m++) {
-    const msg = diagram.messages[m];
-    const fi = actorIdx.get(msg.from);
-    const ti = actorIdx.get(msg.to);
-    const fromX = llX[fi];
-    const toX = llX[ti];
-    const isSelf = fi === ti;
-    const isDashed = msg.lineStyle === "dashed";
-    const isFilled = msg.arrowHead === "filled";
-    const lineChar = isDashed ? useAscii ? "." : "\u254C" : H;
-    if (isSelf) {
-      const y0 = msgArrowY[m];
-      const loopW = Math.max(4, 4);
-      setC(fromX, y0, JL, "junction");
-      for (let x = fromX + 1; x < fromX + loopW; x++) setC(x, y0, lineChar, "line");
-      setC(fromX + loopW, y0, useAscii ? "+" : "\u2510", "corner");
-      setC(fromX + loopW, y0 + 1, V, "line");
-      const labelX = fromX + loopW + 2;
-      for (let i = 0; i < msg.label.length; i++) {
-        if (labelX + i < totalW) setC(labelX + i, y0 + 1, msg.label[i], "text");
-      }
-      const arrowChar = isFilled ? useAscii ? "<" : "\u25C0" : useAscii ? "<" : "\u25C1";
-      setC(fromX, y0 + 2, arrowChar, "arrow");
-      for (let x = fromX + 1; x < fromX + loopW; x++) setC(x, y0 + 2, lineChar, "line");
-      setC(fromX + loopW, y0 + 2, useAscii ? "+" : "\u2518", "corner");
-    } else {
-      const labelY = msgLabelY[m];
-      const arrowY = msgArrowY[m];
-      const leftToRight = fromX < toX;
-      const midX = Math.floor((fromX + toX) / 2);
-      const msgLines = splitLines(msg.label);
-      for (let lineIdx = 0; lineIdx < msgLines.length; lineIdx++) {
-        const line = msgLines[lineIdx];
-        const labelStart = midX - Math.floor(line.length / 2);
-        const y = labelY + lineIdx;
-        for (let i = 0; i < line.length; i++) {
-          const lx = labelStart + i;
-          if (lx >= 0 && lx < totalW) setC(lx, y, line[i], "text");
+      let D = I[g], $ = ft[g], tt = k < R, Z = Math.floor((k + R) / 2), et = rt(y.label);
+      for (let nt = 0; nt < et.length; nt++) {
+        let lt = et[nt], mt = Z - Math.floor(lt.length / 2), Dt = D + nt;
+        for (let Ct = 0; Ct < lt.length; Ct++) {
+          let kt = mt + Ct;
+          kt >= 0 && kt < w && M(kt, Dt, lt[Ct], "text");
         }
       }
-      if (leftToRight) {
-        for (let x = fromX + 1; x < toX; x++) setC(x, arrowY, lineChar, "line");
-        const ah = isFilled ? useAscii ? ">" : "\u25B6" : useAscii ? ">" : "\u25B7";
-        setC(toX, arrowY, ah, "arrow");
+      if (tt) {
+        for (let lt = k + 1; lt < R; lt++) M(lt, $, z, "line");
+        M(R, $, S ? i ? ">" : "\u25B6" : i ? ">" : "\u25B7", "arrow");
       } else {
-        for (let x = toX + 1; x < fromX; x++) setC(x, arrowY, lineChar, "line");
-        const ah = isFilled ? useAscii ? "<" : "\u25C0" : useAscii ? "<" : "\u25C1";
-        setC(toX, arrowY, ah, "arrow");
+        for (let lt = R + 1; lt < k; lt++) M(lt, $, z, "line");
+        M(R, $, S ? i ? "<" : "\u25C0" : i ? "<" : "\u25C1", "arrow");
       }
     }
   }
-  for (let b = 0; b < diagram.blocks.length; b++) {
-    const block = diagram.blocks[b];
-    const topY = blockStartY.get(b);
-    const botY = blockEndY.get(b);
-    if (topY === void 0 || botY === void 0) continue;
-    let minLX = totalW;
-    let maxLX = 0;
-    for (let m = block.startIndex; m <= block.endIndex; m++) {
-      if (m >= diagram.messages.length) break;
-      const msg = diagram.messages[m];
-      const f = actorIdx.get(msg.from) ?? 0;
-      const t = actorIdx.get(msg.to) ?? 0;
-      minLX = Math.min(minLX, llX[Math.min(f, t)]);
-      maxLX = Math.max(maxLX, llX[Math.max(f, t)]);
+  for (let g = 0; g < r.blocks.length; g++) {
+    let y = r.blocks[g], E = U.get(g), T = C.get(g);
+    if (E === void 0 || T === void 0) continue;
+    let k = w, R = 0;
+    for (let D = y.startIndex; D <= y.endIndex && !(D >= r.messages.length); D++) {
+      let $ = r.messages[D], tt = A.get($.from) ?? 0, Z = A.get($.to) ?? 0;
+      k = Math.min(k, O[Math.min(tt, Z)]), R = Math.max(R, O[Math.max(tt, Z)]);
     }
-    const bLeft = Math.max(0, minLX - 4);
-    const bRight = Math.min(totalW - 1, maxLX + 4);
-    setC(bLeft, topY, TL, "border");
-    for (let x = bLeft + 1; x < bRight; x++) setC(x, topY, H, "border");
-    setC(bRight, topY, TR, "border");
-    const hdrLabel = block.label ? `${block.type} [${block.label}]` : block.type;
-    const hdrLines = splitLines(hdrLabel);
-    for (let lineIdx = 0; lineIdx < hdrLines.length && topY + lineIdx < botY; lineIdx++) {
-      const line = hdrLines[lineIdx];
-      for (let i = 0; i < line.length && bLeft + 1 + i < bRight; i++) {
-        setC(bLeft + 1 + i, topY + lineIdx, line[i], "text");
-      }
+    let J = Math.max(0, k - 4), G = Math.min(w - 1, R + 4);
+    M(J, E, l, "border");
+    for (let D = J + 1; D < G; D++) M(D, E, a, "border");
+    M(G, E, d, "border");
+    let S = y.label ? `${y.type} [${y.label}]` : y.type, z = rt(S);
+    for (let D = 0; D < z.length && E + D < T; D++) {
+      let $ = z[D];
+      for (let tt = 0; tt < $.length && J + 1 + tt < G; tt++)
+        M(J + 1 + tt, E + D, $[tt], "text");
     }
-    setC(bLeft, botY, BL, "border");
-    for (let x = bLeft + 1; x < bRight; x++) setC(x, botY, H, "border");
-    setC(bRight, botY, BR, "border");
-    for (let y = topY + 1; y < botY; y++) {
-      setC(bLeft, y, V, "border");
-      setC(bRight, y, V, "border");
-    }
-    for (let d = 0; d < block.dividers.length; d++) {
-      const dY = divYMap.get(`${b}:${d}`);
-      if (dY === void 0) continue;
-      const dashChar = isDashedH();
-      setC(bLeft, dY, JL, "junction");
-      for (let x = bLeft + 1; x < bRight; x++) setC(x, dY, dashChar, "line");
-      setC(bRight, dY, JR, "junction");
-      const dLabel = block.dividers[d].label;
-      if (dLabel) {
-        const dStr = `[${dLabel}]`;
-        for (let i = 0; i < dStr.length && bLeft + 1 + i < bRight; i++) {
-          setC(bLeft + 1 + i, dY, dStr[i], "text");
-        }
+    M(J, T, h, "border");
+    for (let D = J + 1; D < G; D++) M(D, T, a, "border");
+    M(G, T, f, "border");
+    for (let D = E + 1; D < T; D++)
+      M(J, D, c, "border"), M(G, D, c, "border");
+    for (let D = 0; D < y.dividers.length; D++) {
+      let $ = F.get(`${g}:${D}`);
+      if ($ === void 0) continue;
+      let tt = Q();
+      M(J, $, p, "junction");
+      for (let et = J + 1; et < G; et++) M(et, $, tt, "line");
+      M(G, $, b, "junction");
+      let Z = y.dividers[D].label;
+      if (Z) {
+        let et = `[${Z}]`;
+        for (let nt = 0; nt < et.length && J + 1 + nt < G; nt++)
+          M(J + 1 + nt, $, et[nt], "text");
       }
     }
   }
-  for (const np of notePositions) {
-    increaseSize(canvas, np.x + np.width, np.y + np.height);
-    increaseRoleCanvasSize(rc, np.x + np.width, np.y + np.height);
-    setC(np.x, np.y, TL, "border");
-    for (let x = 1; x < np.width - 1; x++) setC(np.x + x, np.y, H, "border");
-    setC(np.x + np.width - 1, np.y, TR, "border");
-    for (let l = 0; l < np.lines.length; l++) {
-      const ly = np.y + 1 + l;
-      setC(np.x, ly, V, "border");
-      setC(np.x + np.width - 1, ly, V, "border");
-      for (let i = 0; i < np.lines[l].length; i++) {
-        setC(np.x + 2 + i, ly, np.lines[l][i], "text");
-      }
+  for (let g of V) {
+    Tt(X, g.x + g.width, g.y + g.height), Nt(N, g.x + g.width, g.y + g.height), M(g.x, g.y, l, "border");
+    for (let E = 1; E < g.width - 1; E++) M(g.x + E, g.y, a, "border");
+    M(g.x + g.width - 1, g.y, d, "border");
+    for (let E = 0; E < g.lines.length; E++) {
+      let T = g.y + 1 + E;
+      M(g.x, T, c, "border"), M(g.x + g.width - 1, T, c, "border");
+      for (let k = 0; k < g.lines[E].length; k++)
+        M(g.x + 2 + k, T, g.lines[E][k], "text");
     }
-    const by = np.y + np.height - 1;
-    setC(np.x, by, BL, "border");
-    for (let x = 1; x < np.width - 1; x++) setC(np.x + x, by, H, "border");
-    setC(np.x + np.width - 1, by, BR, "border");
+    let y = g.y + g.height - 1;
+    M(g.x, y, h, "border");
+    for (let E = 1; E < g.width - 1; E++) M(g.x + E, y, a, "border");
+    M(g.x + g.width - 1, y, f, "border");
   }
-  return canvasToString(canvas, { roleCanvas: rc, colorMode, theme });
-  function isDashedH() {
-    return useAscii ? "-" : "\u254C";
+  return Pt(X, { roleCanvas: N, colorMode: n, theme: o });
+  function Q() {
+    return i ? "-" : "\u254C";
   }
 }
 
 // node_modules/beautiful-mermaid/src/class/parser.ts
-function parseClassDiagram(lines) {
-  const diagram = {
+function Sn(t) {
+  let e = {
     classes: [],
     relationships: [],
     namespaces: []
-  };
-  const classMap = /* @__PURE__ */ new Map();
-  let currentNamespace = null;
-  let currentClass = null;
-  let braceDepth = 0;
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (currentClass && braceDepth > 0) {
-      if (line === "}") {
-        braceDepth--;
-        if (braceDepth === 0) {
-          currentClass = null;
-        }
+  }, n = /* @__PURE__ */ new Map(), o = null, s = null, r = 0;
+  for (let i = 1; i < t.length; i++) {
+    let a = t[i];
+    if (s && r > 0) {
+      if (a === "}") {
+        r--, r === 0 && (s = null);
         continue;
       }
-      const annotMatch = line.match(/^<<(\w+)>>$/);
-      if (annotMatch) {
-        currentClass.annotation = annotMatch[1];
+      let m = a.match(/^<<(\w+)>>$/);
+      if (m) {
+        s.annotation = m[1];
         continue;
       }
-      const member = parseMember(line);
-      if (member) {
-        if (member.isMethod) {
-          currentClass.methods.push(member.member);
-        } else {
-          currentClass.attributes.push(member.member);
-        }
-      }
+      let p = An(a);
+      p && (p.isMethod ? s.methods.push(p.member) : s.attributes.push(p.member));
       continue;
     }
-    const nsMatch = line.match(/^namespace\s+(\S+)\s*\{$/);
-    if (nsMatch) {
-      currentNamespace = { name: nsMatch[1], classIds: [] };
+    let c = a.match(/^namespace\s+(\S+)\s*\{$/);
+    if (c) {
+      o = { name: c[1], classIds: [] };
       continue;
     }
-    if (line === "}" && currentNamespace) {
-      diagram.namespaces.push(currentNamespace);
-      currentNamespace = null;
+    if (a === "}" && o) {
+      e.namespaces.push(o), o = null;
       continue;
     }
-    const classBlockMatch = line.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*\{$/);
-    if (classBlockMatch) {
-      const id = classBlockMatch[1];
-      const generic = classBlockMatch[2];
-      const cls = ensureClass(classMap, id);
-      if (generic) {
-        cls.label = `${id}<${generic}>`;
-      }
-      currentClass = cls;
-      braceDepth = 1;
-      if (currentNamespace) {
-        currentNamespace.classIds.push(id);
-      }
+    let l = a.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*\{$/);
+    if (l) {
+      let m = l[1], p = l[2], b = zt(n, m);
+      p && (b.label = `${m}<${p}>`), s = b, r = 1, o && o.classIds.push(m);
       continue;
     }
-    const classOnlyMatch = line.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*$/);
-    if (classOnlyMatch) {
-      const id = classOnlyMatch[1];
-      const generic = classOnlyMatch[2];
-      const cls = ensureClass(classMap, id);
-      if (generic) {
-        cls.label = `${id}<${generic}>`;
-      }
-      if (currentNamespace) {
-        currentNamespace.classIds.push(id);
-      }
+    let d = a.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*$/);
+    if (d) {
+      let m = d[1], p = d[2], b = zt(n, m);
+      p && (b.label = `${m}<${p}>`), o && o.classIds.push(m);
       continue;
     }
-    const inlineAnnotMatch = line.match(/^class\s+(\S+?)\s*\{\s*<<(\w+)>>\s*\}$/);
-    if (inlineAnnotMatch) {
-      const cls = ensureClass(classMap, inlineAnnotMatch[1]);
-      cls.annotation = inlineAnnotMatch[2];
+    let h = a.match(/^class\s+(\S+?)\s*\{\s*<<(\w+)>>\s*\}$/);
+    if (h) {
+      let m = zt(n, h[1]);
+      m.annotation = h[2];
       continue;
     }
-    const inlineAttrMatch = line.match(/^(\S+?)\s*:\s*(.+)$/);
-    if (inlineAttrMatch) {
-      const rest = inlineAttrMatch[2];
-      if (!rest.match(/<\|--|--|\*--|o--|-->|\.\.>|\.\.\|>/)) {
-        const cls = ensureClass(classMap, inlineAttrMatch[1]);
-        const member = parseMember(rest);
-        if (member) {
-          if (member.isMethod) {
-            cls.methods.push(member.member);
-          } else {
-            cls.attributes.push(member.member);
-          }
-        }
+    let f = a.match(/^(\S+?)\s*:\s*(.+)$/);
+    if (f) {
+      let m = f[2];
+      if (!m.match(/<\|--|--|\*--|o--|-->|\.\.>|\.\.\|>/)) {
+        let p = zt(n, f[1]), b = An(m);
+        b && (b.isMethod ? p.methods.push(b.member) : p.attributes.push(b.member));
         continue;
       }
     }
-    const rel = parseRelationship(line);
-    if (rel) {
-      ensureClass(classMap, rel.from);
-      ensureClass(classMap, rel.to);
-      diagram.relationships.push(rel);
+    let u = qr(a);
+    if (u) {
+      zt(n, u.from), zt(n, u.to), e.relationships.push(u);
       continue;
     }
   }
-  diagram.classes = [...classMap.values()];
-  return diagram;
+  return e.classes = [...n.values()], e;
 }
-function ensureClass(classMap, id) {
-  let cls = classMap.get(id);
-  if (!cls) {
-    cls = { id, label: id, attributes: [], methods: [] };
-    classMap.set(id, cls);
-  }
-  return cls;
+function zt(t, e) {
+  let n = t.get(e);
+  return n || (n = { id: e, label: e, attributes: [], methods: [] }, t.set(e, n)), n;
 }
-function parseMember(line) {
-  const trimmed = line.trim().replace(/;$/, "");
-  if (!trimmed) return null;
-  let visibility = "";
-  let rest = trimmed;
-  if (/^[+\-#~]/.test(rest)) {
-    visibility = rest[0];
-    rest = rest.slice(1).trim();
-  }
-  const methodMatch = rest.match(/^(.+?)\(([^)]*)\)(?:\s*(.+))?$/);
-  if (methodMatch) {
-    const name2 = methodMatch[1].trim();
-    const params = methodMatch[2]?.trim() || void 0;
-    const type2 = methodMatch[3]?.trim();
-    const isStatic2 = name2.endsWith("$") || rest.includes("$");
-    const isAbstract2 = name2.endsWith("*") || rest.includes("*");
+function An(t) {
+  let e = t.trim().replace(/;$/, "");
+  if (!e) return null;
+  let n = "", o = e;
+  /^[+\-#~]/.test(o) && (n = o[0], o = o.slice(1).trim());
+  let s = o.match(/^(.+?)\(([^)]*)\)(?:\s*(.+))?$/);
+  if (s) {
+    let d = s[1].trim(), h = s[2]?.trim() || void 0, f = s[3]?.trim(), u = d.endsWith("$") || o.includes("$"), m = d.endsWith("*") || o.includes("*");
     return {
       member: {
-        visibility,
-        name: name2.replace(/[$*]$/, ""),
-        type: type2 || void 0,
-        isStatic: isStatic2,
-        isAbstract: isAbstract2,
-        isMethod: true,
-        params
+        visibility: n,
+        name: d.replace(/[$*]$/, ""),
+        type: f || void 0,
+        isStatic: u,
+        isAbstract: m,
+        isMethod: !0,
+        params: h
       },
-      isMethod: true
+      isMethod: !0
     };
   }
-  const parts = rest.split(/\s+/);
-  let name;
-  let type;
-  if (parts.length >= 2) {
-    type = parts[0];
-    name = parts.slice(1).join(" ");
-  } else {
-    name = parts[0] ?? rest;
-  }
-  const isStatic = name.endsWith("$");
-  const isAbstract = name.endsWith("*");
+  let r = o.split(/\s+/), i, a;
+  r.length >= 2 ? (a = r[0], i = r.slice(1).join(" ")) : i = r[0] ?? o;
+  let c = i.endsWith("$"), l = i.endsWith("*");
   return {
     member: {
-      visibility,
-      name: name.replace(/[$*]$/, ""),
-      type: type || void 0,
-      isStatic,
-      isAbstract,
-      isMethod: false
+      visibility: n,
+      name: i.replace(/[$*]$/, ""),
+      type: a || void 0,
+      isStatic: c,
+      isAbstract: l,
+      isMethod: !1
     },
-    isMethod: false
+    isMethod: !1
   };
 }
-function parseRelationship(line) {
-  const match = line.match(
+function qr(t) {
+  let e = t.match(
     /^(\S+?)\s+(?:"([^"]*?)"\s+)?(<\|--|<\|\.\.|\*--|o--|-->|--\*|--o|--\|>|\.\.>|\.\.\|>|<--|<\.\.?|--)\s+(?:"([^"]*?)"\s+)?(\S+?)(?:\s*:\s*(.+))?$/
   );
-  if (!match) return null;
-  const from = match[1];
-  const rawFromCardinality = match[2];
-  const fromCardinality = rawFromCardinality ? normalizeBrTags(rawFromCardinality) : void 0;
-  const arrow = match[3].trim();
-  const rawToCardinality = match[4];
-  const toCardinality = rawToCardinality ? normalizeBrTags(rawToCardinality) : void 0;
-  const to = match[5];
-  const rawLabel = match[6]?.trim();
-  const label = rawLabel ? normalizeBrTags(rawLabel) : void 0;
-  const parsed = parseArrow(arrow);
-  if (!parsed) return null;
-  return { from, to, type: parsed.type, markerAt: parsed.markerAt, label, fromCardinality, toCardinality };
+  if (!e) return null;
+  let n = e[1], o = e[2], s = o ? dt(o) : void 0, r = e[3].trim(), i = e[4], a = i ? dt(i) : void 0, c = e[5], l = e[6]?.trim(), d = l ? dt(l) : void 0, h = Vr(r);
+  return h ? { from: n, to: c, type: h.type, markerAt: h.markerAt, label: d, fromCardinality: s, toCardinality: a } : null;
 }
-function parseArrow(arrow) {
-  const a = arrow.trim();
-  switch (a) {
+function Vr(t) {
+  switch (t.trim()) {
     case "<|--":
       return { type: "inheritance", markerAt: "from" };
     case "--|>":
@@ -3985,978 +2478,604 @@ function parseArrow(arrow) {
 }
 
 // node_modules/beautiful-mermaid/src/ascii/class-diagram.ts
-function classifyBoxChar(ch) {
-  if (/^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(ch)) return "border";
-  return "text";
+function Kr(t) {
+  return /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(t) ? "border" : "text";
 }
-function formatMember(m) {
-  const vis = m.visibility || "";
-  const type = m.type ? `: ${m.type}` : "";
-  return `${vis}${m.name}${type}`;
+function Rn(t) {
+  let e = t.visibility || "", n = t.type ? `: ${t.type}` : "";
+  return `${e}${t.name}${n}`;
 }
-function buildClassSections(cls) {
-  const header = [];
-  if (cls.annotation) header.push(`<<${cls.annotation}>>`);
-  const nameLines = splitLines(cls.label);
-  header.push(...nameLines);
-  const attrs = cls.attributes.map(formatMember);
-  const methods = cls.methods.map(formatMember);
-  if (attrs.length === 0 && methods.length === 0) return [header];
-  if (methods.length === 0) return [header, attrs];
-  return [header, attrs, methods];
+function Qr(t) {
+  let e = [];
+  t.annotation && e.push(`<<${t.annotation}>>`);
+  let n = rt(t.label);
+  e.push(...n);
+  let o = t.attributes.map(Rn), s = t.methods.map(Rn);
+  return o.length === 0 && s.length === 0 ? [e] : s.length === 0 ? [e, o] : [e, o, s];
 }
-function getRelMarker(type, markerAt) {
-  const dashed = type === "dependency" || type === "realization";
-  return { type, markerAt, dashed };
+function Zr(t, e) {
+  return { type: t, markerAt: e, dashed: t === "dependency" || t === "realization" };
 }
-function getMarkerShape(type, useAscii, direction) {
-  switch (type) {
+function Wt(t, e, n) {
+  switch (t) {
     case "inheritance":
     case "realization":
-      if (direction === "down") {
-        return useAscii ? "^" : "\u25B3";
-      } else if (direction === "up") {
-        return useAscii ? "v" : "\u25BD";
-      } else if (direction === "left") {
-        return useAscii ? ">" : "\u25C1";
-      } else {
-        return useAscii ? "<" : "\u25B7";
-      }
+      return n === "down" ? e ? "^" : "\u25B3" : n === "up" ? e ? "v" : "\u25BD" : n === "left" ? e ? ">" : "\u25C1" : e ? "<" : "\u25B7";
     case "composition":
-      return useAscii ? "*" : "\u25C6";
+      return e ? "*" : "\u25C6";
     case "aggregation":
-      return useAscii ? "o" : "\u25C7";
+      return e ? "o" : "\u25C7";
     case "association":
     case "dependency":
-      if (direction === "down") {
-        return useAscii ? "v" : "\u25BC";
-      } else if (direction === "up") {
-        return useAscii ? "^" : "\u25B2";
-      } else if (direction === "left") {
-        return useAscii ? "<" : "\u25C0";
-      } else {
-        return useAscii ? ">" : "\u25B6";
-      }
+      return n === "down" ? e ? "v" : "\u25BC" : n === "up" ? e ? "^" : "\u25B2" : n === "left" ? e ? "<" : "\u25C0" : e ? ">" : "\u25B6";
   }
 }
-function renderClassAscii(text, config, colorMode, theme) {
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%"));
-  const diagram = parseClassDiagram(lines);
-  if (diagram.classes.length === 0) return "";
-  const useAscii = config.useAscii;
-  const hGap = 4;
-  const vGap = 3;
-  const classSections = /* @__PURE__ */ new Map();
-  const classBoxW = /* @__PURE__ */ new Map();
-  const classBoxH = /* @__PURE__ */ new Map();
-  for (const cls of diagram.classes) {
-    const sections = buildClassSections(cls);
-    classSections.set(cls.id, sections);
-    let maxTextW = 0;
-    for (const section of sections) {
-      for (const line of section) maxTextW = Math.max(maxTextW, line.length);
-    }
-    const boxW = maxTextW + 4;
-    let totalLines = 0;
-    for (const section of sections) totalLines += Math.max(section.length, 1);
-    const boxH = totalLines + (sections.length - 1) + 2;
-    classBoxW.set(cls.id, boxW);
-    classBoxH.set(cls.id, boxH);
+function Dn(t, e, n, o) {
+  let s = t.split(`
+`).map((w) => w.trim()).filter((w) => w.length > 0 && !w.startsWith("%%")), r = Sn(s);
+  if (r.classes.length === 0) return "";
+  let i = e.useAscii, a = 4, c = 3, l = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map();
+  for (let w of r.classes) {
+    let X = Qr(w);
+    l.set(w.id, X);
+    let N = 0;
+    for (let g of X)
+      for (let y of g) N = Math.max(N, y.length);
+    let M = N + 4, W = 0;
+    for (let g of X) W += Math.max(g.length, 1);
+    let Q = W + (X.length - 1) + 2;
+    d.set(w.id, M), h.set(w.id, Q);
   }
-  const classById = /* @__PURE__ */ new Map();
-  for (const cls of diagram.classes) classById.set(cls.id, cls);
-  const parents = /* @__PURE__ */ new Map();
-  const children = /* @__PURE__ */ new Map();
-  for (const rel of diagram.relationships) {
-    const isHierarchical = rel.type === "inheritance" || rel.type === "realization";
-    const parentId = isHierarchical && rel.markerAt === "to" ? rel.to : rel.from;
-    const childId = isHierarchical && rel.markerAt === "to" ? rel.from : rel.to;
-    if (!parents.has(childId)) parents.set(childId, /* @__PURE__ */ new Set());
-    parents.get(childId).add(parentId);
-    if (!children.has(parentId)) children.set(parentId, /* @__PURE__ */ new Set());
-    children.get(parentId).add(childId);
+  let f = /* @__PURE__ */ new Map();
+  for (let w of r.classes) f.set(w.id, w);
+  let u = /* @__PURE__ */ new Map(), m = /* @__PURE__ */ new Map();
+  for (let w of r.relationships) {
+    let X = w.type === "inheritance" || w.type === "realization", N = X && w.markerAt === "to" ? w.to : w.from, M = X && w.markerAt === "to" ? w.from : w.to;
+    u.has(M) || u.set(M, /* @__PURE__ */ new Set()), u.get(M).add(N), m.has(N) || m.set(N, /* @__PURE__ */ new Set()), m.get(N).add(M);
   }
-  const level = /* @__PURE__ */ new Map();
-  const roots = diagram.classes.filter((c) => !parents.has(c.id) || parents.get(c.id).size === 0);
-  const queue = roots.map((c) => c.id);
-  for (const id of queue) level.set(id, 0);
-  const levelCap = diagram.classes.length - 1;
-  let qi = 0;
-  while (qi < queue.length) {
-    const id = queue[qi++];
-    const childSet = children.get(id);
-    if (!childSet) continue;
-    for (const childId of childSet) {
-      const newLevel = (level.get(id) ?? 0) + 1;
-      if (newLevel > levelCap) continue;
-      if (!level.has(childId) || level.get(childId) < newLevel) {
-        level.set(childId, newLevel);
-        queue.push(childId);
+  let p = /* @__PURE__ */ new Map(), A = r.classes.filter((w) => !u.has(w.id) || u.get(w.id).size === 0).map((w) => w.id);
+  for (let w of A) p.set(w, 0);
+  let B = r.classes.length - 1, v = 0;
+  for (; v < A.length; ) {
+    let w = A[v++], X = m.get(w);
+    if (X)
+      for (let N of X) {
+        let M = (p.get(w) ?? 0) + 1;
+        M > B || (!p.has(N) || p.get(N) < M) && (p.set(N, M), A.push(N));
       }
+  }
+  for (let w of r.classes)
+    p.has(w.id) || p.set(w.id, 0);
+  let H = Math.max(...p.values(), 0), L = Array.from({ length: H + 1 }, () => []);
+  for (let w of r.classes)
+    L[p.get(w.id)].push(w.id);
+  let q = /* @__PURE__ */ new Map(), ut = 0;
+  for (let w = 0; w <= H; w++) {
+    let X = L[w];
+    if (X.length === 0) continue;
+    let N = 0, M = 0;
+    for (let W of X) {
+      let Q = f.get(W), g = d.get(W), y = h.get(W);
+      q.set(W, {
+        cls: Q,
+        sections: l.get(W),
+        x: N,
+        y: ut,
+        width: g,
+        height: y
+      }), N += g + a, M = Math.max(M, y);
     }
+    ut += M + c;
   }
-  for (const cls of diagram.classes) {
-    if (!level.has(cls.id)) level.set(cls.id, 0);
+  let O = 0, ft = 0;
+  for (let w of q.values())
+    O = Math.max(O, w.x + w.width), ft = Math.max(ft, w.y + w.height);
+  O += 4, ft += 2;
+  let I = it(O - 1, ft - 1), U = $t(O - 1, ft - 1);
+  function C(w, X, N, M) {
+    w >= 0 && w < I.length && X >= 0 && X < (I[0]?.length ?? 0) && (I[w][X] = N, Bt(U, w, X, M));
   }
-  const maxLevel = Math.max(...[...level.values()], 0);
-  const levelGroups = Array.from({ length: maxLevel + 1 }, () => []);
-  for (const cls of diagram.classes) {
-    levelGroups[level.get(cls.id)].push(cls.id);
-  }
-  const placed = /* @__PURE__ */ new Map();
-  let currentY = 0;
-  for (let lv = 0; lv <= maxLevel; lv++) {
-    const group = levelGroups[lv];
-    if (group.length === 0) continue;
-    let currentX = 0;
-    let maxH = 0;
-    for (const id of group) {
-      const cls = classById.get(id);
-      const w = classBoxW.get(id);
-      const h = classBoxH.get(id);
-      placed.set(id, {
-        cls,
-        sections: classSections.get(id),
-        x: currentX,
-        y: currentY,
-        width: w,
-        height: h
-      });
-      currentX += w + hGap;
-      maxH = Math.max(maxH, h);
-    }
-    currentY += maxH + vGap;
-  }
-  let totalW = 0;
-  let totalH = 0;
-  for (const p of placed.values()) {
-    totalW = Math.max(totalW, p.x + p.width);
-    totalH = Math.max(totalH, p.y + p.height);
-  }
-  totalW += 4;
-  totalH += 2;
-  const canvas = mkCanvas(totalW - 1, totalH - 1);
-  const rc = mkRoleCanvas(totalW - 1, totalH - 1);
-  function setC(x, y, ch, role) {
-    if (x >= 0 && x < canvas.length && y >= 0 && y < (canvas[0]?.length ?? 0)) {
-      canvas[x][y] = ch;
-      setRole(rc, x, y, role);
-    }
-  }
-  for (const p of placed.values()) {
-    const boxCanvas = drawMultiBox(p.sections, useAscii);
-    for (let bx = 0; bx < boxCanvas.length; bx++) {
-      for (let by = 0; by < boxCanvas[0].length; by++) {
-        const ch = boxCanvas[bx][by];
-        if (ch !== " ") {
-          const cx = p.x + bx;
-          const cy = p.y + by;
-          if (cx < totalW && cy < totalH) {
-            setC(cx, cy, ch, classifyBoxChar(ch));
-          }
+  for (let w of q.values()) {
+    let X = oe(w.sections, i);
+    for (let N = 0; N < X.length; N++)
+      for (let M = 0; M < X[0].length; M++) {
+        let W = X[N][M];
+        if (W !== " ") {
+          let Q = w.x + N, g = w.y + M;
+          Q < O && g < ft && C(Q, g, W, Kr(W));
         }
       }
-    }
   }
-  const boxOccupancy = [];
-  for (const p of placed.values()) {
-    boxOccupancy.push({
-      x1: p.x,
-      x2: p.x + p.width - 1,
-      y1: p.y,
-      y2: p.y + p.height - 1
+  let F = [];
+  for (let w of q.values())
+    F.push({
+      x1: w.x,
+      x2: w.x + w.width - 1,
+      y1: w.y,
+      y2: w.y + w.height - 1
     });
+  function V(w, X, N) {
+    for (let [M, W] of q.entries())
+      if (!N?.has(M) && w >= W.x && w <= W.x + W.width - 1 && X >= W.y && X <= W.y + W.height - 1)
+        return !0;
+    return !1;
   }
-  function isInsideBox(x, y, excludeIds) {
-    for (const [id, p] of placed.entries()) {
-      if (excludeIds?.has(id)) continue;
-      if (x >= p.x && x <= p.x + p.width - 1 && y >= p.y && y <= p.y + p.height - 1) {
-        return true;
-      }
-    }
-    return false;
-  }
-  function findClearColumn(startX, y1, y2, excludeIds) {
-    let clear = true;
-    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-      if (isInsideBox(startX, y, excludeIds)) {
-        clear = false;
+  function K(w, X, N, M) {
+    let W = !0;
+    for (let Q = Math.min(X, N); Q <= Math.max(X, N); Q++)
+      if (V(w, Q, M)) {
+        W = !1;
         break;
       }
-    }
-    if (clear) return startX;
-    for (let offset = 1; offset < totalW + 10; offset++) {
-      const rightX = startX + offset;
-      clear = true;
-      for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-        if (isInsideBox(rightX, y, excludeIds)) {
-          clear = false;
+    if (W) return w;
+    for (let Q = 1; Q < O + 10; Q++) {
+      let g = w + Q;
+      W = !0;
+      for (let E = Math.min(X, N); E <= Math.max(X, N); E++)
+        if (V(g, E, M)) {
+          W = !1;
           break;
         }
-      }
-      if (clear) return rightX;
-      const leftX = startX - offset;
-      if (leftX >= 0) {
-        clear = true;
-        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-          if (isInsideBox(leftX, y, excludeIds)) {
-            clear = false;
+      if (W) return g;
+      let y = w - Q;
+      if (y >= 0) {
+        W = !0;
+        for (let E = Math.min(X, N); E <= Math.max(X, N); E++)
+          if (V(y, E, M)) {
+            W = !1;
             break;
           }
-        }
-        if (clear) return leftX;
+        if (W) return y;
       }
     }
-    return totalW + 2;
+    return O + 2;
   }
-  const H = useAscii ? "-" : "\u2500";
-  const V = useAscii ? "|" : "\u2502";
-  const dashH = useAscii ? "." : "\u254C";
-  const dashV = useAscii ? ":" : "\u250A";
-  for (const rel of diagram.relationships) {
-    const fromP = placed.get(rel.from);
-    const toP = placed.get(rel.to);
-    if (!fromP || !toP) continue;
-    const marker = getRelMarker(rel.type, rel.markerAt);
-    const lineH = marker.dashed ? dashH : H;
-    const lineV = marker.dashed ? dashV : V;
-    const excludeIds = /* @__PURE__ */ new Set([rel.from, rel.to]);
-    const fromCX = fromP.x + Math.floor(fromP.width / 2);
-    const fromBY = fromP.y + fromP.height - 1;
-    const toCX = toP.x + Math.floor(toP.width / 2);
-    const toTY = toP.y;
-    if (fromBY < toTY) {
-      const routeX = findClearColumn(fromCX, fromBY + 1, toTY - 1, excludeIds);
-      const needsDetour = routeX !== fromCX;
-      if (routeX >= totalW) {
-        increaseSize(canvas, routeX + 2, totalH);
-      }
-      if (needsDetour) {
-        const exitY = fromBY + 1;
-        const entryY = toTY - 1;
-        const lx1 = Math.min(fromCX, routeX);
-        const rx1 = Math.max(fromCX, routeX);
-        for (let x = lx1; x <= rx1; x++) {
-          setC(x, exitY, lineH, "line");
+  let at = i ? "-" : "\u2500", ct = i ? "|" : "\u2502", ot = i ? "." : "\u254C", st = i ? ":" : "\u250A";
+  for (let w of r.relationships) {
+    let X = q.get(w.from), N = q.get(w.to);
+    if (!X || !N) continue;
+    let M = Zr(w.type, w.markerAt), W = M.dashed ? ot : at, Q = M.dashed ? st : ct, g = /* @__PURE__ */ new Set([w.from, w.to]), y = X.x + Math.floor(X.width / 2), E = X.y + X.height - 1, T = N.x + Math.floor(N.width / 2), k = N.y;
+    if (E < k) {
+      let R = K(y, E + 1, k - 1, g), J = R !== y;
+      if (R >= O && Tt(I, R + 2, ft), J) {
+        let G = E + 1, S = k - 1, z = Math.min(y, R), D = Math.max(y, R);
+        for (let $ = z; $ <= D; $++)
+          C($, G, W, "line");
+        !i && G < (I[0]?.length ?? 0) && (y < R ? (C(y, G, "\u2514", "corner"), C(R, G, "\u2510", "corner")) : (C(y, G, "\u2518", "corner"), C(R, G, "\u250C", "corner")));
+        for (let $ = G + 1; $ <= S; $++)
+          C(R, $, Q, "line");
+        if (R !== T) {
+          let $ = Math.min(R, T), tt = Math.max(R, T);
+          for (let Z = $; Z <= tt; Z++)
+            C(Z, S, W, "line");
+          !i && S < (I[0]?.length ?? 0) && (R < T ? (C(R, S, "\u2514", "corner"), C(T, S, "\u2510", "corner")) : (C(R, S, "\u2518", "corner"), C(T, S, "\u250C", "corner")));
         }
-        if (!useAscii && exitY < (canvas[0]?.length ?? 0)) {
-          if (fromCX < routeX) {
-            setC(fromCX, exitY, "\u2514", "corner");
-            setC(routeX, exitY, "\u2510", "corner");
-          } else {
-            setC(fromCX, exitY, "\u2518", "corner");
-            setC(routeX, exitY, "\u250C", "corner");
-          }
+        if (M.markerAt === "to") {
+          let $ = Wt(M.type, i, "down");
+          C(T, S, $, "arrow");
         }
-        for (let y = exitY + 1; y <= entryY; y++) {
-          setC(routeX, y, lineV, "line");
-        }
-        if (routeX !== toCX) {
-          const lx2 = Math.min(routeX, toCX);
-          const rx2 = Math.max(routeX, toCX);
-          for (let x = lx2; x <= rx2; x++) {
-            setC(x, entryY, lineH, "line");
-          }
-          if (!useAscii && entryY < (canvas[0]?.length ?? 0)) {
-            if (routeX < toCX) {
-              setC(routeX, entryY, "\u2514", "corner");
-              setC(toCX, entryY, "\u2510", "corner");
-            } else {
-              setC(routeX, entryY, "\u2518", "corner");
-              setC(toCX, entryY, "\u250C", "corner");
-            }
-          }
-        }
-        if (marker.markerAt === "to") {
-          const markerChar = getMarkerShape(marker.type, useAscii, "down");
-          setC(toCX, entryY, markerChar, "arrow");
-        }
-        if (marker.markerAt === "from") {
-          const markerChar = getMarkerShape(marker.type, useAscii, "down");
-          setC(fromCX, fromBY + 1, markerChar, "arrow");
+        if (M.markerAt === "from") {
+          let $ = Wt(M.type, i, "down");
+          C(y, E + 1, $, "arrow");
         }
       } else {
-        const midY = fromBY + Math.floor((toTY - fromBY) / 2);
-        for (let y = fromBY + 1; y <= midY; y++) {
-          setC(fromCX, y, lineV, "line");
+        let G = E + Math.floor((k - E) / 2);
+        for (let S = E + 1; S <= G; S++)
+          C(y, S, Q, "line");
+        if (y !== T && G < (I[0]?.length ?? 0)) {
+          let S = Math.min(y, T), z = Math.max(y, T);
+          for (let D = S; D <= z; D++)
+            C(D, G, W, "line");
+          i || (C(y, G, y < T ? "\u2514" : "\u2518", "corner"), C(T, G, y < T ? "\u2510" : "\u250C", "corner"));
         }
-        if (fromCX !== toCX && midY < (canvas[0]?.length ?? 0)) {
-          const lx = Math.min(fromCX, toCX);
-          const rx = Math.max(fromCX, toCX);
-          for (let x = lx; x <= rx; x++) {
-            setC(x, midY, lineH, "line");
-          }
-          if (!useAscii) {
-            setC(fromCX, midY, fromCX < toCX ? "\u2514" : "\u2518", "corner");
-            setC(toCX, midY, fromCX < toCX ? "\u2510" : "\u250C", "corner");
-          }
-        }
-        for (let y = midY + 1; y < toTY; y++) {
-          setC(toCX, y, lineV, "line");
-        }
-        if (marker.markerAt === "to") {
-          setC(toCX, toTY - 1, getMarkerShape(marker.type, useAscii, "down"), "arrow");
-        }
-        if (marker.markerAt === "from") {
-          setC(fromCX, fromBY + 1, getMarkerShape(marker.type, useAscii, "down"), "arrow");
-        }
+        for (let S = G + 1; S < k; S++)
+          C(T, S, Q, "line");
+        M.markerAt === "to" && C(T, k - 1, Wt(M.type, i, "down"), "arrow"), M.markerAt === "from" && C(y, E + 1, Wt(M.type, i, "down"), "arrow");
       }
-    } else if (toP.y + toP.height - 1 < fromP.y) {
-      const fromTY = fromP.y;
-      const toBY = toP.y + toP.height - 1;
-      const midY = toBY + Math.floor((fromTY - toBY) / 2);
-      for (let y = fromTY - 1; y >= midY; y--) {
-        setC(fromCX, y, lineV, "line");
+    } else if (N.y + N.height - 1 < X.y) {
+      let R = X.y, J = N.y + N.height - 1, G = J + Math.floor((R - J) / 2);
+      for (let S = R - 1; S >= G; S--)
+        C(y, S, Q, "line");
+      if (y !== T) {
+        let S = Math.min(y, T), z = Math.max(y, T);
+        for (let D = S; D <= z; D++)
+          C(D, G, W, "line");
+        !i && G >= 0 && G < ft && (C(y, G, y < T ? "\u250C" : "\u2510", "corner"), C(T, G, y < T ? "\u2518" : "\u2514", "corner"));
       }
-      if (fromCX !== toCX) {
-        const lx = Math.min(fromCX, toCX);
-        const rx = Math.max(fromCX, toCX);
-        for (let x = lx; x <= rx; x++) {
-          setC(x, midY, lineH, "line");
-        }
-        if (!useAscii && midY >= 0 && midY < totalH) {
-          setC(fromCX, midY, fromCX < toCX ? "\u250C" : "\u2510", "corner");
-          setC(toCX, midY, fromCX < toCX ? "\u2518" : "\u2514", "corner");
-        }
+      for (let S = G - 1; S > J; S--)
+        C(T, S, Q, "line");
+      if (M.markerAt === "from") {
+        let S = Wt(M.type, i, "up"), z = R - 1;
+        for (let D = 0; D < S.length; D++)
+          C(y - Math.floor(S.length / 2) + D, z, S[D], "arrow");
       }
-      for (let y = midY - 1; y > toBY; y--) {
-        setC(toCX, y, lineV, "line");
-      }
-      if (marker.markerAt === "from") {
-        const markerChar = getMarkerShape(marker.type, useAscii, "up");
-        const my = fromTY - 1;
-        for (let i = 0; i < markerChar.length; i++) {
-          setC(fromCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
-        }
-      }
-      if (marker.markerAt === "to") {
-        const isHierarchical = marker.type === "inheritance" || marker.type === "realization";
-        const markerDir = isHierarchical ? "down" : "up";
-        const markerChar = getMarkerShape(marker.type, useAscii, markerDir);
-        const my = toBY + 1;
-        for (let i = 0; i < markerChar.length; i++) {
-          setC(toCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
-        }
+      if (M.markerAt === "to") {
+        let z = M.type === "inheritance" || M.type === "realization" ? "down" : "up", D = Wt(M.type, i, z), $ = J + 1;
+        for (let tt = 0; tt < D.length; tt++)
+          C(T - Math.floor(D.length / 2) + tt, $, D[tt], "arrow");
       }
     } else {
-      const detourY = Math.max(fromBY, toP.y + toP.height - 1) + 2;
-      increaseSize(canvas, totalW, detourY + 1);
-      increaseRoleCanvasSize(rc, totalW, detourY + 1);
-      for (let y = fromBY + 1; y <= detourY; y++) {
-        setC(fromCX, y, lineV, "line");
+      let R = Math.max(E, N.y + N.height - 1) + 2;
+      Tt(I, O, R + 1), Nt(U, O, R + 1);
+      for (let S = E + 1; S <= R; S++)
+        C(y, S, Q, "line");
+      let J = Math.min(y, T), G = Math.max(y, T);
+      for (let S = J; S <= G; S++)
+        C(S, R, W, "line");
+      for (let S = R - 1; S >= N.y + N.height; S--)
+        C(T, S, Q, "line");
+      if (M.markerAt === "from") {
+        let S = Wt(M.type, i, "down"), z = E + 1;
+        for (let D = 0; D < S.length; D++)
+          C(y - Math.floor(S.length / 2) + D, z, S[D], "arrow");
       }
-      const lx = Math.min(fromCX, toCX);
-      const rx = Math.max(fromCX, toCX);
-      for (let x = lx; x <= rx; x++) {
-        setC(x, detourY, lineH, "line");
-      }
-      for (let y = detourY - 1; y >= toP.y + toP.height; y--) {
-        setC(toCX, y, lineV, "line");
-      }
-      if (marker.markerAt === "from") {
-        const markerChar = getMarkerShape(marker.type, useAscii, "down");
-        const my = fromBY + 1;
-        for (let i = 0; i < markerChar.length; i++) {
-          setC(fromCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
-        }
-      }
-      if (marker.markerAt === "to") {
-        const markerChar = getMarkerShape(marker.type, useAscii, "up");
-        const my = toP.y + toP.height;
-        for (let i = 0; i < markerChar.length; i++) {
-          setC(toCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
-        }
+      if (M.markerAt === "to") {
+        let S = Wt(M.type, i, "up"), z = N.y + N.height;
+        for (let D = 0; D < S.length; D++)
+          C(T - Math.floor(S.length / 2) + D, z, S[D], "arrow");
       }
     }
-    if (rel.label) {
-      const lines2 = splitLines(rel.label);
-      const maxLabelWidth = Math.max(...lines2.map((l) => l.length)) + 2;
-      let baseMidY;
-      let idealMidX;
-      if (fromBY < toTY) {
-        baseMidY = Math.floor((fromBY + 1 + toTY - 1) / 2);
-        idealMidX = Math.floor((fromCX + toCX) / 2);
-      } else if (toP.y + toP.height - 1 < fromP.y) {
-        const toBY = toP.y + toP.height - 1;
-        baseMidY = Math.floor((toBY + 1 + fromP.y - 1) / 2);
-        idealMidX = Math.floor((fromCX + toCX) / 2);
-      } else {
-        baseMidY = Math.max(fromBY, toP.y + toP.height - 1) + 2;
-        idealMidX = Math.floor((fromCX + toCX) / 2);
-      }
-      let labelY = baseMidY;
-      const halfHeight = Math.floor(lines2.length / 2);
-      let labelInBox = false;
-      for (let i = 0; i < lines2.length; i++) {
-        const y = labelY - halfHeight + i;
-        const idealLabelStart = idealMidX - Math.floor(maxLabelWidth / 2);
-        const labelStart = Math.max(0, idealLabelStart);
-        for (let x = labelStart; x < labelStart + maxLabelWidth; x++) {
-          if (isInsideBox(x, y, excludeIds)) {
-            labelInBox = true;
+    if (w.label) {
+      let R = rt(w.label), J = Math.max(...R.map((Z) => Z.length)) + 2, G, S;
+      if (E < k)
+        G = Math.floor((E + 1 + k - 1) / 2), S = Math.floor((y + T) / 2);
+      else if (N.y + N.height - 1 < X.y) {
+        let Z = N.y + N.height - 1;
+        G = Math.floor((Z + 1 + X.y - 1) / 2), S = Math.floor((y + T) / 2);
+      } else
+        G = Math.max(E, N.y + N.height - 1) + 2, S = Math.floor((y + T) / 2);
+      let z = G, D = Math.floor(R.length / 2), $ = !1;
+      for (let Z = 0; Z < R.length; Z++) {
+        let et = z - D + Z, nt = S - Math.floor(J / 2), lt = Math.max(0, nt);
+        for (let mt = lt; mt < lt + J; mt++)
+          if (V(mt, et, g)) {
+            $ = !0;
             break;
           }
-        }
-        if (labelInBox) break;
+        if ($) break;
       }
-      if (labelInBox) {
-        const gapTop = fromBY + 1;
-        const gapBottom = toTY - 1;
-        for (let y = gapTop; y <= gapBottom; y++) {
-          let clearRow = true;
-          const idealLabelStart = idealMidX - Math.floor(maxLabelWidth / 2);
-          const labelStart = Math.max(0, idealLabelStart);
-          for (let x = labelStart; x < labelStart + maxLabelWidth; x++) {
-            if (isInsideBox(x, y, excludeIds)) {
-              clearRow = false;
+      if ($) {
+        let Z = E + 1, et = k - 1;
+        for (let nt = Z; nt <= et; nt++) {
+          let lt = !0, mt = S - Math.floor(J / 2), Dt = Math.max(0, mt);
+          for (let Ct = Dt; Ct < Dt + J; Ct++)
+            if (V(Ct, nt, g)) {
+              lt = !1;
               break;
             }
-          }
-          if (clearRow) {
-            labelY = y;
+          if (lt) {
+            z = nt;
             break;
           }
         }
       }
-      const startY = labelY - halfHeight;
-      for (let lineIdx = 0; lineIdx < lines2.length; lineIdx++) {
-        const paddedLine = ` ${lines2[lineIdx]} `;
-        const idealLabelStart = idealMidX - Math.floor(paddedLine.length / 2);
-        const labelStart = Math.max(0, idealLabelStart);
-        const y = startY + lineIdx;
-        const labelEnd = labelStart + paddedLine.length;
-        if (labelEnd > 0 && y >= 0) {
-          increaseSize(canvas, Math.max(labelEnd, 1), Math.max(y + 1, 1));
-          increaseRoleCanvasSize(rc, Math.max(labelEnd, 1), Math.max(y + 1, 1));
-        }
-        for (let i = 0; i < paddedLine.length; i++) {
-          const lx = labelStart + i;
-          if (lx >= 0 && y >= 0) {
-            setC(lx, y, paddedLine[i], "text");
-          }
+      let tt = z - D;
+      for (let Z = 0; Z < R.length; Z++) {
+        let et = ` ${R[Z]} `, nt = S - Math.floor(et.length / 2), lt = Math.max(0, nt), mt = tt + Z, Dt = lt + et.length;
+        Dt > 0 && mt >= 0 && (Tt(I, Math.max(Dt, 1), Math.max(mt + 1, 1)), Nt(U, Math.max(Dt, 1), Math.max(mt + 1, 1)));
+        for (let Ct = 0; Ct < et.length; Ct++) {
+          let kt = lt + Ct;
+          kt >= 0 && mt >= 0 && C(kt, mt, et[Ct], "text");
         }
       }
     }
   }
-  return canvasToString(canvas, { roleCanvas: rc, colorMode, theme });
+  return Pt(I, { roleCanvas: U, colorMode: n, theme: o });
 }
 
 // node_modules/beautiful-mermaid/src/er/parser.ts
-function parseErDiagram(lines) {
-  const diagram = {
+function Ln(t) {
+  let e = {
     entities: [],
     relationships: []
-  };
-  const entityMap = /* @__PURE__ */ new Map();
-  let currentEntity = null;
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (currentEntity) {
-      if (line === "}") {
-        currentEntity = null;
+  }, n = /* @__PURE__ */ new Map(), o = null;
+  for (let s = 1; s < t.length; s++) {
+    let r = t[s];
+    if (o) {
+      if (r === "}") {
+        o = null;
         continue;
       }
-      const attr = parseAttribute(line);
-      if (attr) {
-        currentEntity.attributes.push(attr);
-      }
+      let c = to(r);
+      c && o.attributes.push(c);
       continue;
     }
-    const entityBlockMatch = line.match(/^(\S+)\s*\{$/);
-    if (entityBlockMatch) {
-      const id = entityBlockMatch[1];
-      const entity = ensureEntity(entityMap, id);
-      currentEntity = entity;
+    let i = r.match(/^(\S+)\s*\{$/);
+    if (i) {
+      let c = i[1];
+      o = Ce(n, c);
       continue;
     }
-    const rel = parseRelationshipLine(line);
-    if (rel) {
-      ensureEntity(entityMap, rel.entity1);
-      ensureEntity(entityMap, rel.entity2);
-      diagram.relationships.push(rel);
+    let a = eo(r);
+    if (a) {
+      Ce(n, a.entity1), Ce(n, a.entity2), e.relationships.push(a);
       continue;
     }
   }
-  diagram.entities = [...entityMap.values()];
-  return diagram;
+  return e.entities = [...n.values()], e;
 }
-function ensureEntity(entityMap, id) {
-  let entity = entityMap.get(id);
-  if (!entity) {
-    entity = { id, label: id, attributes: [] };
-    entityMap.set(id, entity);
+function Ce(t, e) {
+  let n = t.get(e);
+  return n || (n = { id: e, label: e, attributes: [] }, t.set(e, n)), n;
+}
+function to(t) {
+  let e = t.match(/^(\S+)\s+(\S+)(?:\s+(.+))?$/);
+  if (!e) return null;
+  let n = e[1], o = e[2], s = e[3]?.trim() ?? "", r = [], i, a = s.match(/"([^"]*)"/);
+  a && (i = dt(a[1]));
+  let c = s.replace(/"[^"]*"/, "").trim();
+  for (let l of c.split(/\s+/)) {
+    let d = l.toUpperCase();
+    (d === "PK" || d === "FK" || d === "UK") && r.push(d);
   }
-  return entity;
+  return { type: n, name: o, keys: r, comment: i };
 }
-function parseAttribute(line) {
-  const match = line.match(/^(\S+)\s+(\S+)(?:\s+(.+))?$/);
-  if (!match) return null;
-  const type = match[1];
-  const name = match[2];
-  const rest = match[3]?.trim() ?? "";
-  const keys = [];
-  let comment;
-  const commentMatch = rest.match(/"([^"]*)"/);
-  if (commentMatch) {
-    comment = normalizeBrTags(commentMatch[1]);
-  }
-  const restWithoutComment = rest.replace(/"[^"]*"/, "").trim();
-  for (const part of restWithoutComment.split(/\s+/)) {
-    const upper = part.toUpperCase();
-    if (upper === "PK" || upper === "FK" || upper === "UK") {
-      keys.push(upper);
-    }
-  }
-  return { type, name, keys, comment };
+function eo(t) {
+  let e = t.match(/^(\S+)\s+([|o}{]+(?:--|\.\.)[|o}{]+)\s+(\S+)\s*:\s*(.+)$/);
+  if (!e) return null;
+  let n = e[1], o = e[2], s = e[3], r = e[4].trim().replace(/^["']|["']$/g, ""), i = dt(r), a = o.match(/^([|o}{]+)(--|\.\.?)([|o}{]+)$/);
+  if (!a) return null;
+  let c = a[1], l = a[2], d = a[3], h = Tn(c), f = Tn(d), u = l === "--";
+  return !h || !f ? null : { entity1: n, entity2: s, cardinality1: h, cardinality2: f, label: i, identifying: u };
 }
-function parseRelationshipLine(line) {
-  const match = line.match(/^(\S+)\s+([|o}{]+(?:--|\.\.)[|o}{]+)\s+(\S+)\s*:\s*(.+)$/);
-  if (!match) return null;
-  const entity1 = match[1];
-  const cardinalityStr = match[2];
-  const entity2 = match[3];
-  const rawLabel = match[4].trim().replace(/^["']|["']$/g, "");
-  const label = normalizeBrTags(rawLabel);
-  const lineMatch = cardinalityStr.match(/^([|o}{]+)(--|\.\.?)([|o}{]+)$/);
-  if (!lineMatch) return null;
-  const leftStr = lineMatch[1];
-  const lineStyle = lineMatch[2];
-  const rightStr = lineMatch[3];
-  const cardinality1 = parseCardinality(leftStr);
-  const cardinality2 = parseCardinality(rightStr);
-  const identifying = lineStyle === "--";
-  if (!cardinality1 || !cardinality2) return null;
-  return { entity1, entity2, cardinality1, cardinality2, label, identifying };
-}
-function parseCardinality(str) {
-  const sorted = str.split("").sort().join("");
-  if (sorted === "||") return "one";
-  if (sorted === "o|") return "zero-one";
-  if (sorted === "|}" || sorted === "{|") return "many";
-  if (sorted === "{o" || sorted === "o{") return "zero-many";
-  return null;
+function Tn(t) {
+  let e = t.split("").sort().join("");
+  return e === "||" ? "one" : e === "o|" ? "zero-one" : e === "|}" || e === "{|" ? "many" : e === "{o" || e === "o{" ? "zero-many" : null;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/er-diagram.ts
-function classifyBoxChar2(ch) {
-  if (/^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(ch)) return "border";
-  return "text";
+function no(t) {
+  return /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(t) ? "border" : "text";
 }
-function formatAttribute(attr) {
-  const keyStr = attr.keys.length > 0 ? attr.keys.join(",") + " " : "   ";
-  return `${keyStr}${attr.type} ${attr.name}`;
+function ro(t) {
+  return `${t.keys.length > 0 ? t.keys.join(",") + " " : "   "}${t.type} ${t.name}`;
 }
-function buildEntitySections(entity) {
-  const header = splitLines(entity.label);
-  const attrs = entity.attributes.map(formatAttribute);
-  if (attrs.length === 0) return [header];
-  return [header, attrs];
+function oo(t) {
+  let e = rt(t.label), n = t.attributes.map(ro);
+  return n.length === 0 ? [e] : [e, n];
 }
-function getCrowsFootChars(card, useAscii, isRight = false) {
-  if (useAscii) {
-    switch (card) {
+function ie(t, e, n = !1) {
+  if (e)
+    switch (t) {
       case "one":
         return "|";
       case "zero-one":
         return "o|";
       case "many":
-        return isRight ? "<" : ">";
+        return n ? "<" : ">";
       case "zero-many":
-        return isRight ? "o<" : ">o";
+        return n ? "o<" : ">o";
     }
-  } else {
-    switch (card) {
+  else
+    switch (t) {
       case "one":
         return "\u2502";
       case "zero-one":
         return "\u25CB\u2502";
       case "many":
-        return isRight ? "\u255F" : "\u2562";
+        return n ? "\u255F" : "\u2562";
       case "zero-many":
-        return isRight ? "\u25CB\u255F" : "\u2562\u25CB";
+        return n ? "\u25CB\u255F" : "\u2562\u25CB";
+    }
+}
+function io(t) {
+  let e = /* @__PURE__ */ new Set(), n = [], o = /* @__PURE__ */ new Map();
+  for (let r of t.entities)
+    o.set(r.id, /* @__PURE__ */ new Set());
+  for (let r of t.relationships)
+    o.get(r.entity1)?.add(r.entity2), o.get(r.entity2)?.add(r.entity1);
+  function s(r, i) {
+    let a = [r];
+    for (; a.length > 0; ) {
+      let c = a.pop();
+      if (!e.has(c)) {
+        e.add(c), i.add(c);
+        for (let l of o.get(c) ?? [])
+          e.has(l) || a.push(l);
+      }
     }
   }
+  for (let r of t.entities)
+    if (!e.has(r.id)) {
+      let i = /* @__PURE__ */ new Set();
+      s(r.id, i), i.size > 0 && n.push(i);
+    }
+  return n;
 }
-function findConnectedComponents(diagram) {
-  const visited = /* @__PURE__ */ new Set();
-  const components = [];
-  const neighbors = /* @__PURE__ */ new Map();
-  for (const ent of diagram.entities) {
-    neighbors.set(ent.id, /* @__PURE__ */ new Set());
+function En(t, e, n, o) {
+  let s = t.split(`
+`).map((I) => I.trim()).filter((I) => I.length > 0 && !I.startsWith("%%")), r = Ln(s);
+  if (r.entities.length === 0) return "";
+  let i = e.useAscii, a = 6, c = 4, l = 6, d = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map(), f = /* @__PURE__ */ new Map(), u = /* @__PURE__ */ new Map();
+  for (let I of r.entities) {
+    u.set(I.id, I);
+    let U = oo(I);
+    d.set(I.id, U);
+    let C = 0;
+    for (let at of U)
+      for (let ct of at) C = Math.max(C, ct.length);
+    let F = C + 4, V = 0;
+    for (let at of U) V += Math.max(at.length, 1);
+    let K = V + (U.length - 1) + 2;
+    h.set(I.id, F), f.set(I.id, K);
   }
-  for (const rel of diagram.relationships) {
-    neighbors.get(rel.entity1)?.add(rel.entity2);
-    neighbors.get(rel.entity2)?.add(rel.entity1);
+  let m = io(r), p = /* @__PURE__ */ new Map(), b = 0;
+  for (let I of m) {
+    let U = r.entities.filter((ct) => I.has(ct.id)), C = Math.max(2, Math.ceil(Math.sqrt(U.length))), F = 0, V = 0, K = 0, at = b;
+    for (let ct of U) {
+      let ot = h.get(ct.id), st = f.get(ct.id);
+      K >= C && (b += V + c, F = 0, V = 0, K = 0), p.set(ct.id, {
+        entity: ct,
+        sections: d.get(ct.id),
+        x: F,
+        y: b,
+        width: ot,
+        height: st
+      }), F += ot + a, V = Math.max(V, st), K++;
+    }
+    b += V + l;
   }
-  function dfs(startId, component) {
-    const stack = [startId];
-    while (stack.length > 0) {
-      const nodeId = stack.pop();
-      if (visited.has(nodeId)) continue;
-      visited.add(nodeId);
-      component.add(nodeId);
-      for (const neighbor of neighbors.get(nodeId) ?? []) {
-        if (!visited.has(neighbor)) {
-          stack.push(neighbor);
+  let A = 0, B = 0;
+  for (let I of p.values())
+    A = Math.max(A, I.x + I.width), B = Math.max(B, I.y + I.height);
+  A += 4, B += 2;
+  let v = it(A - 1, B - 1), H = $t(A - 1, B - 1);
+  function L(I, U, C, F) {
+    I >= 0 && I < v.length && U >= 0 && U < (v[0]?.length ?? 0) && (v[I][U] = C, Bt(H, I, U, F));
+  }
+  for (let I of p.values()) {
+    let U = oe(I.sections, i);
+    for (let C = 0; C < U.length; C++)
+      for (let F = 0; F < U[0].length; F++) {
+        let V = U[C][F];
+        if (V !== " ") {
+          let K = I.x + C, at = I.y + F;
+          K < A && at < B && L(K, at, V, no(V));
         }
       }
-    }
   }
-  for (const ent of diagram.entities) {
-    if (!visited.has(ent.id)) {
-      const component = /* @__PURE__ */ new Set();
-      dfs(ent.id, component);
-      if (component.size > 0) {
-        components.push(component);
-      }
-    }
-  }
-  return components;
-}
-function renderErAscii(text, config, colorMode, theme) {
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%"));
-  const diagram = parseErDiagram(lines);
-  if (diagram.entities.length === 0) return "";
-  const useAscii = config.useAscii;
-  const hGap = 6;
-  const vGap = 4;
-  const componentGap = 6;
-  const entitySections = /* @__PURE__ */ new Map();
-  const entityBoxW = /* @__PURE__ */ new Map();
-  const entityBoxH = /* @__PURE__ */ new Map();
-  const entityById = /* @__PURE__ */ new Map();
-  for (const ent of diagram.entities) {
-    entityById.set(ent.id, ent);
-    const sections = buildEntitySections(ent);
-    entitySections.set(ent.id, sections);
-    let maxTextW = 0;
-    for (const section of sections) {
-      for (const line of section) maxTextW = Math.max(maxTextW, line.length);
-    }
-    const boxW = maxTextW + 4;
-    let totalLines = 0;
-    for (const section of sections) totalLines += Math.max(section.length, 1);
-    const boxH = totalLines + (sections.length - 1) + 2;
-    entityBoxW.set(ent.id, boxW);
-    entityBoxH.set(ent.id, boxH);
-  }
-  const components = findConnectedComponents(diagram);
-  const placed = /* @__PURE__ */ new Map();
-  let currentY = 0;
-  for (const component of components) {
-    const componentEntities = diagram.entities.filter((e) => component.has(e.id));
-    const maxPerRow = Math.max(2, Math.ceil(Math.sqrt(componentEntities.length)));
-    let currentX = 0;
-    let maxRowH = 0;
-    let colCount = 0;
-    const componentStartY = currentY;
-    for (const ent of componentEntities) {
-      const w = entityBoxW.get(ent.id);
-      const h = entityBoxH.get(ent.id);
-      if (colCount >= maxPerRow) {
-        currentY += maxRowH + vGap;
-        currentX = 0;
-        maxRowH = 0;
-        colCount = 0;
-      }
-      placed.set(ent.id, {
-        entity: ent,
-        sections: entitySections.get(ent.id),
-        x: currentX,
-        y: currentY,
-        width: w,
-        height: h
-      });
-      currentX += w + hGap;
-      maxRowH = Math.max(maxRowH, h);
-      colCount++;
-    }
-    currentY += maxRowH + componentGap;
-  }
-  let totalW = 0;
-  let totalH = 0;
-  for (const p of placed.values()) {
-    totalW = Math.max(totalW, p.x + p.width);
-    totalH = Math.max(totalH, p.y + p.height);
-  }
-  totalW += 4;
-  totalH += 2;
-  const canvas = mkCanvas(totalW - 1, totalH - 1);
-  const rc = mkRoleCanvas(totalW - 1, totalH - 1);
-  function setC(x, y, ch, role) {
-    if (x >= 0 && x < canvas.length && y >= 0 && y < (canvas[0]?.length ?? 0)) {
-      canvas[x][y] = ch;
-      setRole(rc, x, y, role);
-    }
-  }
-  for (const p of placed.values()) {
-    const boxCanvas = drawMultiBox(p.sections, useAscii);
-    for (let bx = 0; bx < boxCanvas.length; bx++) {
-      for (let by = 0; by < boxCanvas[0].length; by++) {
-        const ch = boxCanvas[bx][by];
-        if (ch !== " ") {
-          const cx = p.x + bx;
-          const cy = p.y + by;
-          if (cx < totalW && cy < totalH) {
-            setC(cx, cy, ch, classifyBoxChar2(ch));
-          }
-        }
-      }
-    }
-  }
-  const H = useAscii ? "-" : "\u2500";
-  const V = useAscii ? "|" : "\u2502";
-  const dashH = useAscii ? "." : "\u254C";
-  const dashV = useAscii ? ":" : "\u250A";
-  for (const rel of diagram.relationships) {
-    const e1 = placed.get(rel.entity1);
-    const e2 = placed.get(rel.entity2);
-    if (!e1 || !e2) continue;
-    const lineH = rel.identifying ? H : dashH;
-    const lineV = rel.identifying ? V : dashV;
-    const e1CX = e1.x + Math.floor(e1.width / 2);
-    const e1CY = e1.y + Math.floor(e1.height / 2);
-    const e2CX = e2.x + Math.floor(e2.width / 2);
-    const e2CY = e2.y + Math.floor(e2.height / 2);
-    const sameRow = Math.abs(e1CY - e2CY) < Math.max(e1.height, e2.height);
-    if (sameRow) {
-      const [left, right] = e1CX < e2CX ? [e1, e2] : [e2, e1];
-      const [leftCard, rightCard] = e1CX < e2CX ? [rel.cardinality1, rel.cardinality2] : [rel.cardinality2, rel.cardinality1];
-      const startX = left.x + left.width;
-      const endX = right.x - 1;
-      const lineY = left.y + Math.floor(left.height / 2);
-      for (let x = startX; x <= endX; x++) {
-        setC(x, lineY, lineH, "line");
-      }
-      const leftChars = getCrowsFootChars(leftCard, useAscii, false);
-      for (let i = 0; i < leftChars.length; i++) {
-        setC(startX + i, lineY, leftChars[i], "arrow");
-      }
-      const rightChars = getCrowsFootChars(rightCard, useAscii, true);
-      for (let i = 0; i < rightChars.length; i++) {
-        setC(endX - rightChars.length + 1 + i, lineY, rightChars[i], "arrow");
-      }
-      if (rel.label) {
-        const lines2 = splitLines(rel.label);
-        const gapMid = Math.floor((startX + endX) / 2);
-        for (let lineIdx = 0; lineIdx < lines2.length; lineIdx++) {
-          const line = lines2[lineIdx];
-          const labelStart = Math.max(startX, gapMid - Math.floor(line.length / 2));
-          const labelY = lineY + 1 + lineIdx;
-          increaseSize(canvas, Math.max(labelStart + line.length, 1), Math.max(labelY + 1, 1));
-          increaseRoleCanvasSize(rc, Math.max(labelStart + line.length, 1), Math.max(labelY + 1, 1));
-          for (let i = 0; i < line.length; i++) {
-            const lx = labelStart + i;
-            if (lx >= startX && lx <= endX) {
-              setC(lx, labelY, line[i], "text");
-            }
+  let q = i ? "-" : "\u2500", ut = i ? "|" : "\u2502", O = i ? "." : "\u254C", ft = i ? ":" : "\u250A";
+  for (let I of r.relationships) {
+    let U = p.get(I.entity1), C = p.get(I.entity2);
+    if (!U || !C) continue;
+    let F = I.identifying ? q : O, V = I.identifying ? ut : ft, K = U.x + Math.floor(U.width / 2), at = U.y + Math.floor(U.height / 2), ct = C.x + Math.floor(C.width / 2), ot = C.y + Math.floor(C.height / 2);
+    if (Math.abs(at - ot) < Math.max(U.height, C.height)) {
+      let [w, X] = K < ct ? [U, C] : [C, U], [N, M] = K < ct ? [I.cardinality1, I.cardinality2] : [I.cardinality2, I.cardinality1], W = w.x + w.width, Q = X.x - 1, g = w.y + Math.floor(w.height / 2);
+      for (let T = W; T <= Q; T++)
+        L(T, g, F, "line");
+      let y = ie(N, i, !1);
+      for (let T = 0; T < y.length; T++)
+        L(W + T, g, y[T], "arrow");
+      let E = ie(M, i, !0);
+      for (let T = 0; T < E.length; T++)
+        L(Q - E.length + 1 + T, g, E[T], "arrow");
+      if (I.label) {
+        let T = rt(I.label), k = Math.floor((W + Q) / 2);
+        for (let R = 0; R < T.length; R++) {
+          let J = T[R], G = Math.max(W, k - Math.floor(J.length / 2)), S = g + 1 + R;
+          Tt(v, Math.max(G + J.length, 1), Math.max(S + 1, 1)), Nt(H, Math.max(G + J.length, 1), Math.max(S + 1, 1));
+          for (let z = 0; z < J.length; z++) {
+            let D = G + z;
+            D >= W && D <= Q && L(D, S, J[z], "text");
           }
         }
       }
     } else {
-      const [upper, lower] = e1CY < e2CY ? [e1, e2] : [e2, e1];
-      const [upperCard, lowerCard] = e1CY < e2CY ? [rel.cardinality1, rel.cardinality2] : [rel.cardinality2, rel.cardinality1];
-      const startY = upper.y + upper.height;
-      const endY = lower.y - 1;
-      const lineX = upper.x + Math.floor(upper.width / 2);
-      for (let y = startY; y <= endY; y++) {
-        setC(lineX, y, lineV, "line");
+      let [w, X] = at < ot ? [U, C] : [C, U], [N, M] = at < ot ? [I.cardinality1, I.cardinality2] : [I.cardinality2, I.cardinality1], W = w.y + w.height, Q = X.y - 1, g = w.x + Math.floor(w.width / 2);
+      for (let R = W; R <= Q; R++)
+        L(g, R, V, "line");
+      let y = X.x + Math.floor(X.width / 2);
+      if (g !== y) {
+        let R = Math.floor((W + Q) / 2), J = Math.min(g, y), G = Math.max(g, y);
+        for (let S = J; S <= G; S++)
+          L(S, R, F, "line");
+        for (let S = R + 1; S <= Q; S++)
+          L(y, S, V, "line");
       }
-      const lowerCX = lower.x + Math.floor(lower.width / 2);
-      if (lineX !== lowerCX) {
-        const midY = Math.floor((startY + endY) / 2);
-        const lx = Math.min(lineX, lowerCX);
-        const rx = Math.max(lineX, lowerCX);
-        for (let x = lx; x <= rx; x++) {
-          setC(x, midY, lineH, "line");
-        }
-        for (let y = midY + 1; y <= endY; y++) {
-          setC(lowerCX, y, lineV, "line");
-        }
-      }
-      const upperChars = getCrowsFootChars(upperCard, useAscii, false);
-      for (let i = 0; i < upperChars.length; i++) {
-        setC(lineX - Math.floor(upperChars.length / 2) + i, startY, upperChars[i], "arrow");
-      }
-      const targetX = lineX !== lowerCX ? lowerCX : lineX;
-      const lowerChars = getCrowsFootChars(lowerCard, useAscii, true);
-      for (let i = 0; i < lowerChars.length; i++) {
-        setC(targetX - Math.floor(lowerChars.length / 2) + i, endY, lowerChars[i], "arrow");
-      }
-      if (rel.label) {
-        const lines2 = splitLines(rel.label);
-        const midY = Math.floor((startY + endY) / 2);
-        const startLabelY = midY - Math.floor((lines2.length - 1) / 2);
-        for (let lineIdx = 0; lineIdx < lines2.length; lineIdx++) {
-          const line = lines2[lineIdx];
-          const labelX = lineX + 2;
-          const y = startLabelY + lineIdx;
-          if (y >= 0) {
-            for (let i = 0; i < line.length; i++) {
-              const lx = labelX + i;
-              if (lx >= 0) {
-                increaseSize(canvas, lx + 1, y + 1);
-                increaseRoleCanvasSize(rc, lx + 1, y + 1);
-                setC(lx, y, line[i], "text");
-              }
+      let E = ie(N, i, !1);
+      for (let R = 0; R < E.length; R++)
+        L(g - Math.floor(E.length / 2) + R, W, E[R], "arrow");
+      let T = g !== y ? y : g, k = ie(M, i, !0);
+      for (let R = 0; R < k.length; R++)
+        L(T - Math.floor(k.length / 2) + R, Q, k[R], "arrow");
+      if (I.label) {
+        let R = rt(I.label), G = Math.floor((W + Q) / 2) - Math.floor((R.length - 1) / 2);
+        for (let S = 0; S < R.length; S++) {
+          let z = R[S], D = g + 2, $ = G + S;
+          if ($ >= 0)
+            for (let tt = 0; tt < z.length; tt++) {
+              let Z = D + tt;
+              Z >= 0 && (Tt(v, Z + 1, $ + 1), Nt(H, Z + 1, $ + 1), L(Z, $, z[tt], "text"));
             }
-          }
         }
       }
     }
   }
-  return canvasToString(canvas, { roleCanvas: rc, colorMode, theme });
+  return Pt(v, { roleCanvas: H, colorMode: n, theme: o });
 }
 
 // node_modules/beautiful-mermaid/src/xychart/parser.ts
-function parseXYChart(lines) {
-  const xAxis = {};
-  const yAxis = {};
-  const series = [];
-  let title;
-  let horizontal = false;
-  for (const line of lines) {
-    if (/^xychart(-beta)?\b/i.test(line)) {
-      if (/\bhorizontal\b/i.test(line)) horizontal = true;
+function Gn(t) {
+  let e = {}, n = {}, o = [], s, r = !1;
+  for (let i of t) {
+    if (/^xychart(-beta)?\b/i.test(i)) {
+      /\bhorizontal\b/i.test(i) && (r = !0);
       continue;
     }
-    const titleMatch = line.match(/^title\s+"([^"]+)"/);
-    if (titleMatch) {
-      title = titleMatch[1];
+    let a = i.match(/^title\s+"([^"]+)"/);
+    if (a) {
+      s = a[1];
       continue;
     }
-    const xCatMatch = line.match(/^x-axis\s+(?:"([^"]*)"\s*)?\[([^\]]+)\]/);
-    if (xCatMatch) {
-      if (xCatMatch[1]) xAxis.title = xCatMatch[1];
-      xAxis.categories = xCatMatch[2].split(",").map((s) => s.trim());
+    let c = i.match(/^x-axis\s+(?:"([^"]*)"\s*)?\[([^\]]+)\]/);
+    if (c) {
+      c[1] && (e.title = c[1]), e.categories = c[2].split(",").map((m) => m.trim());
       continue;
     }
-    const xRangeMatch = line.match(/^x-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
-    if (xRangeMatch) {
-      if (xRangeMatch[1]) xAxis.title = xRangeMatch[1];
-      xAxis.range = { min: parseFloat(xRangeMatch[2]), max: parseFloat(xRangeMatch[3]) };
+    let l = i.match(/^x-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
+    if (l) {
+      l[1] && (e.title = l[1]), e.range = { min: parseFloat(l[2]), max: parseFloat(l[3]) };
       continue;
     }
-    const yRangeMatch = line.match(/^y-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
-    if (yRangeMatch) {
-      if (yRangeMatch[1]) yAxis.title = yRangeMatch[1];
-      yAxis.range = { min: parseFloat(yRangeMatch[2]), max: parseFloat(yRangeMatch[3]) };
+    let d = i.match(/^y-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
+    if (d) {
+      d[1] && (n.title = d[1]), n.range = { min: parseFloat(d[2]), max: parseFloat(d[3]) };
       continue;
     }
-    const yTitleOnly = line.match(/^y-axis\s+"([^"]+)"\s*$/);
-    if (yTitleOnly) {
-      yAxis.title = yTitleOnly[1];
+    let h = i.match(/^y-axis\s+"([^"]+)"\s*$/);
+    if (h) {
+      n.title = h[1];
       continue;
     }
-    const barMatch = line.match(/^bar\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
-    if (barMatch) {
-      series.push({ type: "bar", name: barMatch[1] ?? barMatch[2], data: parseNumericArray(barMatch[3]) });
+    let f = i.match(/^bar\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
+    if (f) {
+      o.push({ type: "bar", name: f[1] ?? f[2], data: kn(f[3]) });
       continue;
     }
-    const lineMatch = line.match(/^line\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
-    if (lineMatch) {
-      series.push({ type: "line", name: lineMatch[1] ?? lineMatch[2], data: parseNumericArray(lineMatch[3]) });
+    let u = i.match(/^line\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
+    if (u) {
+      o.push({ type: "line", name: u[1] ?? u[2], data: kn(u[3]) });
       continue;
     }
   }
-  if (!yAxis.range && series.length > 0) {
-    const allValues = series.flatMap((s) => s.data);
-    let min = Math.min(...allValues);
-    let max = Math.max(...allValues);
-    const span = max - min || 1;
-    min = min - span * 0.1;
-    max = max + span * 0.1;
-    if (min > 0 && min < span * 0.5) min = 0;
-    yAxis.range = { min, max };
+  if (!n.range && o.length > 0) {
+    let i = o.flatMap((d) => d.data), a = Math.min(...i), c = Math.max(...i), l = c - a || 1;
+    a = a - l * 0.1, c = c + l * 0.1, a > 0 && a < l * 0.5 && (a = 0), n.range = { min: a, max: c };
   }
-  if (!yAxis.range) {
-    yAxis.range = { min: 0, max: 100 };
-  }
-  return { title, horizontal, xAxis, yAxis, series };
+  return n.range || (n.range = { min: 0, max: 100 }), { title: s, horizontal: r, xAxis: e, yAxis: n, series: o };
 }
-function parseNumericArray(str) {
-  return str.split(",").map((s) => parseFloat(s.trim()));
+function kn(t) {
+  return t.split(",").map((e) => parseFloat(e.trim()));
 }
 
 // node_modules/beautiful-mermaid/src/xychart/colors.ts
-var CHART_ACCENT_FALLBACK = "#3b82f6";
-function hexToHsl(hex) {
-  const h = hex.replace("#", "");
-  const ri = parseInt(h.substring(0, 2), 16) / 255;
-  const gi = parseInt(h.substring(2, 4), 16) / 255;
-  const bi = parseInt(h.substring(4, 6), 16) / 255;
-  const max = Math.max(ri, gi, bi);
-  const min = Math.min(ri, gi, bi);
-  const l = (max + min) / 2;
-  if (max === min) return [0, 0, l * 100];
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let hue;
-  if (max === ri) hue = ((gi - bi) / d + (gi < bi ? 6 : 0)) / 6;
-  else if (max === gi) hue = ((bi - ri) / d + 2) / 6;
-  else hue = ((ri - gi) / d + 4) / 6;
-  return [hue * 360, s * 100, l * 100];
+var Me = "#3b82f6";
+function Nn(t) {
+  let e = t.replace("#", ""), n = parseInt(e.substring(0, 2), 16) / 255, o = parseInt(e.substring(2, 4), 16) / 255, s = parseInt(e.substring(4, 6), 16) / 255, r = Math.max(n, o, s), i = Math.min(n, o, s), a = (r + i) / 2;
+  if (r === i) return [0, 0, a * 100];
+  let c = r - i, l = a > 0.5 ? c / (2 - r - i) : c / (r + i), d;
+  return r === n ? d = ((o - s) / c + (o < s ? 6 : 0)) / 6 : r === o ? d = ((s - n) / c + 2) / 6 : d = ((n - o) / c + 4) / 6, [d * 360, l * 100, a * 100];
 }
-function hslToHex(h, s, l) {
-  const si = s / 100;
-  const li = l / 100;
-  const c = (1 - Math.abs(2 * li - 1)) * si;
-  const x = c * (1 - Math.abs(h / 60 % 2 - 1));
-  const m = li - c / 2;
-  let r, g, b;
-  if (h < 60) {
-    r = c;
-    g = x;
-    b = 0;
-  } else if (h < 120) {
-    r = x;
-    g = c;
-    b = 0;
-  } else if (h < 180) {
-    r = 0;
-    g = c;
-    b = x;
-  } else if (h < 240) {
-    r = 0;
-    g = x;
-    b = c;
-  } else if (h < 300) {
-    r = x;
-    g = 0;
-    b = c;
-  } else {
-    r = c;
-    g = 0;
-    b = x;
-  }
-  const toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+function so(t, e, n) {
+  let o = e / 100, s = n / 100, r = (1 - Math.abs(2 * s - 1)) * o, i = r * (1 - Math.abs(t / 60 % 2 - 1)), a = s - r / 2, c, l, d;
+  t < 60 ? (c = r, l = i, d = 0) : t < 120 ? (c = i, l = r, d = 0) : t < 180 ? (c = 0, l = r, d = i) : t < 240 ? (c = 0, l = i, d = r) : t < 300 ? (c = i, l = 0, d = r) : (c = r, l = 0, d = i);
+  let h = (f) => Math.round((f + a) * 255).toString(16).padStart(2, "0");
+  return `#${h(c)}${h(l)}${h(d)}`;
 }
-function isValidHex(color) {
-  return /^#[0-9a-fA-F]{6}$/.test(color);
+function In(t) {
+  return /^#[0-9a-fA-F]{6}$/.test(t);
 }
-function isDarkBackground(bgHex) {
-  return hexToHsl(bgHex)[2] < 50;
+function ao(t) {
+  return Nn(t)[2] < 50;
 }
-function getSeriesColor(index, accentColor, bgColor) {
-  if (index === 0) return accentColor;
-  const safeAccent = isValidHex(accentColor) ? accentColor : CHART_ACCENT_FALLBACK;
-  const safeBg = bgColor && isValidHex(bgColor) ? bgColor : void 0;
-  const [h, s] = hexToHsl(safeAccent);
-  const chartS = Math.max(55, Math.min(85, s));
-  const tier = Math.ceil(index / 2);
-  const oddIndex = index % 2 === 1;
-  const dark = safeBg && isDarkBackground(safeBg) ? !oddIndex : oddIndex;
-  const l = dark ? Math.max(25, 48 - tier * 13) : Math.min(78, 55 + tier * 11);
-  const hShift = (dark ? -8 : 12) * tier;
-  const newH = ((h + hShift) % 360 + 360) % 360;
-  return hslToHex(newH, chartS, l);
+function Yn(t, e, n) {
+  if (t === 0) return e;
+  let o = In(e) ? e : Me, s = n && In(n) ? n : void 0, [r, i] = Nn(o), a = Math.max(55, Math.min(85, i)), c = Math.ceil(t / 2), l = t % 2 === 1, d = s && ao(s) ? !l : l, h = d ? Math.max(25, 48 - c * 13) : Math.min(78, 55 + c * 11), f = (d ? -8 : 12) * c, u = ((r + f) % 360 + 360) % 360;
+  return so(u, a, h);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/xychart.ts
-var PLOT_WIDTH = 60;
-var PLOT_HEIGHT = 20;
-var UNI = {
+var we = 60, ve = 20, co = {
   hLine: "\u2500",
   vLine: "\u2502",
   origin: "\u253C",
@@ -4972,8 +3091,7 @@ var UNI = {
   // bottom-left: up+right
   cornerBR: "\u256F"
   // bottom-right: up+left
-};
-var ASC = {
+}, $n = {
   hLine: "-",
   vLine: "|",
   origin: "+",
@@ -4986,603 +3104,371 @@ var ASC = {
   cornerBL: "+",
   cornerBR: "+"
 };
-function getSeriesColors(total, theme) {
-  const accent = theme.accent ?? CHART_ACCENT_FALLBACK;
-  if (total <= 1) return [accent];
-  return Array.from({ length: total }, (_, i) => getSeriesColor(i, accent, theme.bg));
+function Bn(t, e) {
+  let n = e.accent ?? Me;
+  return t <= 1 ? [n] : Array.from({ length: t }, (o, s) => Yn(s, n, e.bg));
 }
-function roleToHex(role, theme) {
-  switch (role) {
+function lo(t, e) {
+  switch (t) {
     case "text":
-      return theme.fg;
+      return e.fg;
     case "border":
-      return theme.border;
+      return e.border;
     case "line":
-      return theme.line;
+      return e.line;
     case "arrow":
-      return theme.arrow;
+      return e.arrow;
     case "corner":
-      return theme.corner ?? theme.line;
+      return e.corner ?? e.line;
     case "junction":
-      return theme.junction ?? theme.border;
+      return e.junction ?? e.border;
     default:
-      return theme.fg;
+      return e.fg;
   }
 }
-function renderXYChartAscii(text, config, colorMode, theme) {
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%"));
-  const chart = parseXYChart(lines);
-  const ch = config.useAscii ? ASC : UNI;
-  if (chart.horizontal) {
-    return renderHorizontal(chart, ch, colorMode, theme);
-  }
-  return renderVertical(chart, ch, colorMode, theme);
+function Xn(t, e, n, o) {
+  let s = t.split(`
+`).map((a) => a.trim()).filter((a) => a.length > 0 && !a.startsWith("%%")), r = Gn(s), i = e.useAscii ? $n : co;
+  return r.horizontal ? uo(r, i, n, o) : fo(r, i, n, o);
 }
-function renderVertical(chart, ch, colorMode, theme) {
-  const dataCount = getDataCount(chart);
-  if (dataCount === 0) return "";
-  const yRange = chart.yAxis.range;
-  const rawTicks = niceTickValues(yRange.min, yRange.max);
-  const step = rawTicks.length > 1 ? rawTicks[1] - rawTicks[0] : Math.abs(yRange.max - yRange.min) || 1;
-  const lo = Math.floor(yRange.min / step + 1e-9) * step;
-  const hi = Math.max(lo + step, Math.ceil(yRange.max / step - 1e-9) * step);
-  const intervals = Math.round((hi - lo) / step);
-  const yTicks = Array.from({ length: intervals + 1 }, (_, i) => Math.round((lo + i * step) * 1e10) / 1e10);
-  const yLabels = yTicks.map((v) => formatTickValue(v));
-  const yGutter = Math.max(...yLabels.map((l) => l.length)) + 1;
-  const plotW = Math.max(PLOT_WIDTH, dataCount * 6);
-  const perTick = Math.max(1, Math.round(PLOT_HEIGHT / intervals));
-  const plotH = intervals * perTick;
-  const unit = step / perTick;
-  const level = (v) => (v - lo) / unit;
-  const base = level(Math.min(Math.max(0, lo), hi));
-  const zero = Math.round(base) - 1;
-  const bandW = Math.floor(plotW / dataCount);
-  const catLabels = getCategoryLabels(chart, dataCount);
-  const hasTitle = !!chart.title;
-  const hasXTitle = !!chart.xAxis.title;
-  const hasLegend = chart.series.length > 1;
-  const titleRow = hasTitle ? 0 : -1;
-  const plotTop = (hasTitle ? 2 : 0) + (hasLegend ? 1 : 0);
-  const plotLeft = yGutter + 1;
-  const totalW = plotLeft + bandW * dataCount + 2;
-  const xAxisRow = plotTop + plotH;
-  const xLabelRow = xAxisRow + 1;
-  const xTitleRow = hasXTitle ? xLabelRow + 1 : -1;
-  const totalH = xLabelRow + 1 + (hasXTitle ? 1 : 0) + (hasLegend && !hasTitle ? 0 : 0);
-  const canvas = createCanvas(totalW, totalH);
-  const roles = createRoleCanvas(totalW, totalH);
-  const hexColors = createHexCanvas(totalW, totalH);
-  const seriesColors = getSeriesColors(chart.series.length, theme);
-  const valueToRow = (v) => Math.min(plotH - 1, Math.max(-1, Math.round(level(v)) - 1));
-  const bandCenter = (i) => plotLeft + Math.floor(bandW * (i + 0.5));
-  if (hasTitle && titleRow >= 0) {
-    writeText(canvas, roles, titleRow, Math.floor(totalW / 2 - chart.title.length / 2), chart.title, "text");
+function fo(t, e, n, o) {
+  let s = zn(t);
+  if (s === 0) return "";
+  let r = t.yAxis.range, i = Fn(r.min, r.max), a = i.length > 1 ? i[1] - i[0] : Math.abs(r.max - r.min) || 1, c = Math.floor(r.min / a + 1e-9) * a, l = Math.max(c + a, Math.ceil(r.max / a - 1e-9) * a), d = Math.round((l - c) / a), h = Array.from({ length: d + 1 }, (g, y) => Math.round((c + y * a) * 1e10) / 1e10), f = h.map((g) => se(g)), u = Math.max(...f.map((g) => g.length)) + 1, m = Math.max(we, s * 6), p = Math.max(1, Math.round(ve / d)), b = d * p, A = a / p, B = (g) => (g - c) / A, v = B(Math.min(Math.max(0, c), l)), H = Math.round(v) - 1, L = Math.floor(m / s), q = On(t, s), ut = !!t.title, O = !!t.xAxis.title, ft = t.series.length > 1, I = ut ? 0 : -1, U = (ut ? 2 : 0) + (ft ? 1 : 0), C = u + 1, F = C + L * s + 2, V = U + b, K = V + 1, at = O ? K + 1 : -1, ct = K + 1 + (O ? 1 : 0) + 0, ot = Hn(F, ct), st = Wn(F, ct), w = _n(F, ct), X = Bn(t.series.length, o), N = (g) => Math.min(b - 1, Math.max(-1, Math.round(B(g)) - 1)), M = (g) => C + Math.floor(L * (g + 0.5));
+  ut && I >= 0 && Xt(ot, st, I, Math.floor(F / 2 - t.title.length / 2), t.title, "text"), ft && Pn(ot, st, w, t, ut ? 1 : 0, F, e, X);
+  for (let g = 0; g < b; g++) {
+    let y = U + (b - 1 - g);
+    bt(ot, st, y, C - 1, e.vLine, "border");
   }
-  if (hasLegend) {
-    const legendRow = hasTitle ? 1 : 0;
-    drawLegend(canvas, roles, hexColors, chart, legendRow, totalW, ch, seriesColors);
+  bt(ot, st, V, C - 1, e.origin, "border");
+  for (let g of h) {
+    let y = Math.round(B(g)) - 1;
+    if (y < -1 || y >= b) continue;
+    let E = U + (b - 1 - y), T = se(g);
+    bt(ot, st, E, C - 1, y === -1 || y === H ? e.origin : e.yTick, "border");
+    let k = u - T.length;
+    Xt(ot, st, E, Math.max(0, k), T, "text");
   }
-  for (let row = 0; row < plotH; row++) {
-    const displayRow = plotTop + (plotH - 1 - row);
-    set(canvas, roles, displayRow, plotLeft - 1, ch.vLine, "border");
+  for (let g = C; g < C + L * s; g++)
+    bt(ot, st, V, g, e.hLine, "border");
+  for (let g = 0; g < s; g++) {
+    let y = M(g);
+    bt(ot, st, V, y, e.xTick, "border");
+    let E = q[g], T = y - Math.floor(E.length / 2);
+    Xt(ot, st, K, Math.max(0, T), E, "text");
   }
-  set(canvas, roles, xAxisRow, plotLeft - 1, ch.origin, "border");
-  for (const tick of yTicks) {
-    const row = Math.round(level(tick)) - 1;
-    if (row < -1 || row >= plotH) continue;
-    const displayRow = plotTop + (plotH - 1 - row);
-    const label = formatTickValue(tick);
-    set(canvas, roles, displayRow, plotLeft - 1, row === -1 || row === zero ? ch.origin : ch.yTick, "border");
-    const labelStart = yGutter - label.length;
-    writeText(canvas, roles, displayRow, Math.max(0, labelStart), label, "text");
+  if (O && at >= 0) {
+    let g = t.xAxis.title;
+    Xt(ot, st, at, Math.floor(F / 2 - g.length / 2), g, "text");
   }
-  for (let c = plotLeft; c < plotLeft + bandW * dataCount; c++) {
-    set(canvas, roles, xAxisRow, c, ch.hLine, "border");
+  for (let g of h) {
+    let y = Math.round(B(g)) - 1;
+    if (y < 0 || y >= b) continue;
+    let E = U + (b - 1 - y);
+    for (let T = C; T < C + L * s; T++)
+      Ae(ot, E, T) === " " && bt(ot, st, E, T, y === H ? e.hLine : e.grid, y === H ? "border" : "line");
   }
-  for (let i = 0; i < dataCount; i++) {
-    const cx = bandCenter(i);
-    set(canvas, roles, xAxisRow, cx, ch.xTick, "border");
-    const label = catLabels[i];
-    const labelStart = cx - Math.floor(label.length / 2);
-    writeText(canvas, roles, xLabelRow, Math.max(0, labelStart), label, "text");
-  }
-  if (hasXTitle && xTitleRow >= 0) {
-    const title = chart.xAxis.title;
-    writeText(canvas, roles, xTitleRow, Math.floor(totalW / 2 - title.length / 2), title, "text");
-  }
-  for (const tick of yTicks) {
-    const row = Math.round(level(tick)) - 1;
-    if (row < 0 || row >= plotH) continue;
-    const displayRow = plotTop + (plotH - 1 - row);
-    for (let c = plotLeft; c < plotLeft + bandW * dataCount; c++) {
-      if (get(canvas, displayRow, c) === " ") {
-        set(canvas, roles, displayRow, c, row === zero ? ch.hLine : ch.grid, row === zero ? "border" : "line");
-      }
-    }
-  }
-  const barEntries = [];
-  for (let si = 0; si < chart.series.length; si++) {
-    if (chart.series[si].type === "bar") barEntries.push({ data: chart.series[si].data, globalIdx: si });
-  }
-  if (barEntries.length > 0) {
-    const barCount = barEntries.length;
-    const usable = Math.max(1, bandW - 2);
-    const singleBarW = Math.max(1, Math.min(Math.floor(usable / barCount), 8));
-    const groupW = singleBarW * barCount + (barCount - 1);
-    for (let bIdx = 0; bIdx < barEntries.length; bIdx++) {
-      const entry = barEntries[bIdx];
-      const hexColor = seriesColors[entry.globalIdx];
-      for (let i = 0; i < entry.data.length; i++) {
-        const cx = bandCenter(i);
-        const groupLeft = cx - Math.floor(groupW / 2);
-        const bx = groupLeft + bIdx * (singleBarW + 1);
-        const exact = level(entry.data[i]);
-        const value = exact < base ? Math.ceil(exact * 2 - 1e-9) / 2 : Math.floor(exact * 2 + 1e-9) / 2;
-        const from = Math.max(0, Math.min(base, value));
-        const to = Math.min(plotH, Math.max(base, value));
-        for (let row = -1; row < plotH; row++) {
-          const low = from <= row + 0.5 + 1e-9 && to >= row + 1 - 1e-9;
-          const high = from <= row + 1 + 1e-9 && to >= row + 1.5 - 1e-9;
-          const glyph = ch === ASC ? (value < base ? high : low) && ch.bar : low && high ? ch.bar : low ? "\u2584" : high && "\u2580";
-          if (!glyph) continue;
-          const displayRow = plotTop + (plotH - 1 - row);
-          for (let c = bx; c < bx + singleBarW; c++) {
-            set(canvas, roles, displayRow, c, glyph, "arrow", hexColors, hexColor);
-          }
+  let W = [];
+  for (let g = 0; g < t.series.length; g++)
+    t.series[g].type === "bar" && W.push({ data: t.series[g].data, globalIdx: g });
+  if (W.length > 0) {
+    let g = W.length, y = Math.max(1, L - 2), E = Math.max(1, Math.min(Math.floor(y / g), 8)), T = E * g + (g - 1);
+    for (let k = 0; k < W.length; k++) {
+      let R = W[k], J = X[R.globalIdx];
+      for (let G = 0; G < R.data.length; G++) {
+        let D = M(G) - Math.floor(T / 2) + k * (E + 1), $ = B(R.data[G]), tt = $ < v ? Math.ceil($ * 2 - 1e-9) / 2 : Math.floor($ * 2 + 1e-9) / 2, Z = Math.max(0, Math.min(v, tt)), et = Math.min(b, Math.max(v, tt));
+        for (let nt = -1; nt < b; nt++) {
+          let lt = Z <= nt + 0.5 + 1e-9 && et >= nt + 1 - 1e-9, mt = Z <= nt + 1 + 1e-9 && et >= nt + 1.5 - 1e-9, Dt = e === $n ? (tt < v ? mt : lt) && e.bar : lt && mt ? e.bar : lt ? "\u2584" : mt && "\u2580";
+          if (!Dt) continue;
+          let Ct = U + (b - 1 - nt);
+          for (let kt = D; kt < D + E; kt++)
+            bt(ot, st, Ct, kt, Dt, "arrow", w, J);
         }
       }
     }
   }
-  const lineEntries = [];
-  for (let si = 0; si < chart.series.length; si++) {
-    if (chart.series[si].type === "line") lineEntries.push({ data: chart.series[si].data, globalIdx: si });
+  let Q = [];
+  for (let g = 0; g < t.series.length; g++)
+    t.series[g].type === "line" && Q.push({ data: t.series[g].data, globalIdx: g });
+  for (let g of Q) {
+    if (g.data.length === 0) continue;
+    let y = X[g.globalIdx];
+    ho(ot, st, g.data, M, N, U, b, C, L * s, e, w, y);
   }
-  for (const entry of lineEntries) {
-    if (entry.data.length === 0) continue;
-    const hexColor = seriesColors[entry.globalIdx];
-    drawStaircaseLine(canvas, roles, entry.data, bandCenter, valueToRow, plotTop, plotH, plotLeft, bandW * dataCount, ch, hexColors, hexColor);
-  }
-  return canvasToString2(canvas, roles, hexColors, colorMode, theme);
+  return jn(ot, st, w, n, o);
 }
-function renderHorizontal(chart, ch, colorMode, theme) {
-  const dataCount = getDataCount(chart);
-  if (dataCount === 0) return "";
-  const yRange = chart.yAxis.range;
-  const valueTicks = niceTickValues(yRange.min, yRange.max);
-  const catLabels = getCategoryLabels(chart, dataCount);
-  const catGutter = Math.max(...catLabels.map((l) => l.length)) + 1;
-  const plotW = Math.max(PLOT_WIDTH, 40);
-  const bandH = Math.max(2, Math.floor(PLOT_HEIGHT / dataCount));
-  const plotH = bandH * dataCount;
-  const hasTitle = !!chart.title;
-  const hasYTitle = !!chart.yAxis.title;
-  const hasLegend = chart.series.length > 1;
-  const plotTop = (hasTitle ? 2 : 0) + (hasLegend ? 1 : 0);
-  const plotLeft = catGutter + 1;
-  const totalW = plotLeft + plotW + 2;
-  const totalH = plotTop + plotH + 2 + (hasYTitle ? 1 : 0);
-  const xAxisRow = plotTop + plotH;
-  const canvas = createCanvas(totalW, totalH);
-  const roles = createRoleCanvas(totalW, totalH);
-  const hexColors = createHexCanvas(totalW, totalH);
-  const seriesColors = getSeriesColors(chart.series.length, theme);
-  const valueToCol = (v) => {
-    const t = (v - yRange.min) / (yRange.max - yRange.min || 1);
-    return plotLeft + Math.round(t * (plotW - 1));
-  };
-  const bandMid = (i) => plotTop + Math.floor(bandH * (i + 0.5));
-  if (hasTitle) {
-    writeText(canvas, roles, 0, Math.floor(totalW / 2 - chart.title.length / 2), chart.title, "text");
+function uo(t, e, n, o) {
+  let s = zn(t);
+  if (s === 0) return "";
+  let r = t.yAxis.range, i = Fn(r.min, r.max), a = On(t, s), c = Math.max(...a.map((C) => C.length)) + 1, l = Math.max(we, 40), d = Math.max(2, Math.floor(ve / s)), h = d * s, f = !!t.title, u = !!t.yAxis.title, m = t.series.length > 1, p = (f ? 2 : 0) + (m ? 1 : 0), b = c + 1, A = b + l + 2, B = p + h + 2 + (u ? 1 : 0), v = p + h, H = Hn(A, B), L = Wn(A, B), q = _n(A, B), ut = Bn(t.series.length, o), O = (C) => {
+    let F = (C - r.min) / (r.max - r.min || 1);
+    return b + Math.round(F * (l - 1));
+  }, ft = (C) => p + Math.floor(d * (C + 0.5));
+  f && Xt(H, L, 0, Math.floor(A / 2 - t.title.length / 2), t.title, "text"), m && Pn(H, L, q, t, f ? 1 : 0, A, e, ut);
+  for (let C = p; C < p + h; C++)
+    bt(H, L, C, b - 1, e.vLine, "border");
+  bt(H, L, v, b - 1, e.origin, "border");
+  for (let C = 0; C < s; C++) {
+    let F = ft(C), V = a[C], K = c - V.length;
+    Xt(H, L, F, Math.max(0, K), V, "text");
   }
-  if (hasLegend) {
-    const legendRow = hasTitle ? 1 : 0;
-    drawLegend(canvas, roles, hexColors, chart, legendRow, totalW, ch, seriesColors);
+  for (let C = b; C < b + l; C++)
+    bt(H, L, v, C, e.hLine, "border");
+  for (let C of i) {
+    let F = O(C);
+    if (F < b || F >= b + l) continue;
+    bt(H, L, v, F, e.xTick, "border");
+    let V = se(C);
+    Xt(H, L, v + 1, F - Math.floor(V.length / 2), V, "text");
   }
-  for (let r = plotTop; r < plotTop + plotH; r++) {
-    set(canvas, roles, r, plotLeft - 1, ch.vLine, "border");
+  if (u) {
+    let C = t.yAxis.title;
+    Xt(H, L, B - 1, Math.floor(A / 2 - C.length / 2), C, "text");
   }
-  set(canvas, roles, xAxisRow, plotLeft - 1, ch.origin, "border");
-  for (let i = 0; i < dataCount; i++) {
-    const my = bandMid(i);
-    const label = catLabels[i];
-    const labelStart = catGutter - label.length;
-    writeText(canvas, roles, my, Math.max(0, labelStart), label, "text");
+  for (let C of i) {
+    let F = O(C);
+    if (!(F < b || F >= b + l))
+      for (let V = p; V < p + h; V++)
+        Ae(H, V, F) === " " && bt(H, L, V, F, e.grid, "line");
   }
-  for (let c = plotLeft; c < plotLeft + plotW; c++) {
-    set(canvas, roles, xAxisRow, c, ch.hLine, "border");
-  }
-  for (const tick of valueTicks) {
-    const cx = valueToCol(tick);
-    if (cx < plotLeft || cx >= plotLeft + plotW) continue;
-    set(canvas, roles, xAxisRow, cx, ch.xTick, "border");
-    const label = formatTickValue(tick);
-    writeText(canvas, roles, xAxisRow + 1, cx - Math.floor(label.length / 2), label, "text");
-  }
-  if (hasYTitle) {
-    const title = chart.yAxis.title;
-    writeText(canvas, roles, totalH - 1, Math.floor(totalW / 2 - title.length / 2), title, "text");
-  }
-  for (const tick of valueTicks) {
-    const cx = valueToCol(tick);
-    if (cx < plotLeft || cx >= plotLeft + plotW) continue;
-    for (let r = plotTop; r < plotTop + plotH; r++) {
-      if (get(canvas, r, cx) === " ") {
-        set(canvas, roles, r, cx, ch.grid, "line");
+  let I = [];
+  for (let C = 0; C < t.series.length; C++)
+    t.series[C].type === "bar" && I.push({ data: t.series[C].data, globalIdx: C });
+  if (I.length > 0) {
+    let C = I.length, F = 1, V = F * C + (C - 1), K = O(Math.max(0, r.min));
+    for (let at = 0; at < I.length; at++) {
+      let ct = I[at], ot = ut[ct.globalIdx];
+      for (let st = 0; st < ct.data.length; st++) {
+        let N = ft(st) - Math.floor(V / 2) + at * (F + 1), M = O(ct.data[st]), W = Math.min(K, M), Q = Math.max(K, M);
+        for (let g = N; g < N + F; g++)
+          for (let y = W; y <= Q; y++)
+            bt(H, L, g, y, e.bar, "arrow", q, ot);
       }
     }
   }
-  const barEntries = [];
-  for (let si = 0; si < chart.series.length; si++) {
-    if (chart.series[si].type === "bar") barEntries.push({ data: chart.series[si].data, globalIdx: si });
+  let U = [];
+  for (let C = 0; C < t.series.length; C++)
+    t.series[C].type === "line" && U.push({ data: t.series[C].data, globalIdx: C });
+  for (let C of U) {
+    if (C.data.length === 0) continue;
+    let F = ut[C.globalIdx];
+    go(H, L, C.data, ft, O, p, h, b, l, e, q, F);
   }
-  if (barEntries.length > 0) {
-    const barCount = barEntries.length;
-    const singleBarH = 1;
-    const groupH = singleBarH * barCount + (barCount - 1);
-    const baseCol = valueToCol(Math.max(0, yRange.min));
-    for (let bIdx = 0; bIdx < barEntries.length; bIdx++) {
-      const entry = barEntries[bIdx];
-      const hexColor = seriesColors[entry.globalIdx];
-      for (let i = 0; i < entry.data.length; i++) {
-        const my = bandMid(i);
-        const groupTop = my - Math.floor(groupH / 2);
-        const by = groupTop + bIdx * (singleBarH + 1);
-        const valCol = valueToCol(entry.data[i]);
-        const fromCol = Math.min(baseCol, valCol);
-        const toCol = Math.max(baseCol, valCol);
-        for (let r = by; r < by + singleBarH; r++) {
-          for (let c = fromCol; c <= toCol; c++) {
-            set(canvas, roles, r, c, ch.bar, "arrow", hexColors, hexColor);
-          }
-        }
-      }
-    }
-  }
-  const lineEntries = [];
-  for (let si = 0; si < chart.series.length; si++) {
-    if (chart.series[si].type === "line") lineEntries.push({ data: chart.series[si].data, globalIdx: si });
-  }
-  for (const entry of lineEntries) {
-    if (entry.data.length === 0) continue;
-    const hexColor = seriesColors[entry.globalIdx];
-    drawHorizontalStaircaseLine(canvas, roles, entry.data, bandMid, valueToCol, plotTop, plotH, plotLeft, plotW, ch, hexColors, hexColor);
-  }
-  return canvasToString2(canvas, roles, hexColors, colorMode, theme);
+  return jn(H, L, q, n, o);
 }
-function drawStaircaseLine(canvas, roles, data, bandCenter, valueToRow, plotTop, plotH, plotLeft, plotTotalW, ch, hexCanvas, hexColor) {
-  if (data.length === 0) return;
-  const points = data.map((v, i) => ({
-    col: bandCenter(i),
-    row: valueToRow(v)
-  }));
-  const drawAt = (col, row, char) => {
-    const displayRow = plotTop + (plotH - 1 - row);
-    if (displayRow >= 0 && col >= plotLeft && col < plotLeft + plotTotalW && ![ch.bar, "\u2580", "\u2584"].includes(get(canvas, displayRow, col))) {
-      set(canvas, roles, displayRow, col, char, "arrow", hexCanvas, hexColor);
-    }
+function ho(t, e, n, o, s, r, i, a, c, l, d, h) {
+  if (n.length === 0) return;
+  let f = n.map((m, p) => ({
+    col: o(p),
+    row: s(m)
+  })), u = (m, p, b) => {
+    let A = r + (i - 1 - p);
+    A >= 0 && m >= a && m < a + c && ![l.bar, "\u2580", "\u2584"].includes(Ae(t, A, m)) && bt(t, e, A, m, b, "arrow", d, h);
   };
-  if (points.length === 1) {
-    drawAt(points[0].col, points[0].row, ch.hLine);
+  if (f.length === 1) {
+    u(f[0].col, f[0].row, l.hLine);
     return;
   }
-  for (let i = 0; i < points.length - 1; i++) {
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    if (p1.row === p2.row) {
-      for (let c = p1.col; c <= p2.col; c++) {
-        drawAt(c, p1.row, ch.hLine);
-      }
+  for (let m = 0; m < f.length - 1; m++) {
+    let p = f[m], b = f[m + 1];
+    if (p.row === b.row) {
+      for (let L = p.col; L <= b.col; L++)
+        u(L, p.row, l.hLine);
       continue;
     }
-    const midCol = Math.round((p1.col + p2.col) / 2);
-    const goingUp = p2.row > p1.row;
-    for (let c = p1.col; c < midCol; c++) {
-      drawAt(c, p1.row, ch.hLine);
+    let A = Math.round((p.col + b.col) / 2), B = b.row > p.row;
+    for (let L = p.col; L < A; L++)
+      u(L, p.row, l.hLine);
+    B ? u(A, p.row, l.cornerBR) : u(A, p.row, l.cornerTR);
+    let v = Math.min(p.row, b.row), H = Math.max(p.row, b.row);
+    for (let L = v + 1; L < H; L++)
+      u(A, L, l.vLine);
+    B ? u(A, b.row, l.cornerTL) : u(A, b.row, l.cornerBL);
+    for (let L = A + 1; L <= b.col; L++)
+      u(L, b.row, l.hLine);
+    if (m === 0) {
+      let L = Math.max(a, p.col - Math.floor((b.col - p.col) / 4));
+      for (let q = L; q < p.col; q++)
+        u(q, p.row, l.hLine);
     }
-    if (goingUp) {
-      drawAt(midCol, p1.row, ch.cornerBR);
-    } else {
-      drawAt(midCol, p1.row, ch.cornerTR);
-    }
-    const minRow = Math.min(p1.row, p2.row);
-    const maxRow = Math.max(p1.row, p2.row);
-    for (let row = minRow + 1; row < maxRow; row++) {
-      drawAt(midCol, row, ch.vLine);
-    }
-    if (goingUp) {
-      drawAt(midCol, p2.row, ch.cornerTL);
-    } else {
-      drawAt(midCol, p2.row, ch.cornerBL);
-    }
-    for (let c = midCol + 1; c <= p2.col; c++) {
-      drawAt(c, p2.row, ch.hLine);
-    }
-    if (i === 0) {
-      const leadStart = Math.max(plotLeft, p1.col - Math.floor((p2.col - p1.col) / 4));
-      for (let c = leadStart; c < p1.col; c++) {
-        drawAt(c, p1.row, ch.hLine);
-      }
-    }
-    if (i === points.length - 2) {
-      const trailEnd = Math.min(plotLeft + plotTotalW - 1, p2.col + Math.floor((p2.col - p1.col) / 4));
-      for (let c = p2.col + 1; c <= trailEnd; c++) {
-        drawAt(c, p2.row, ch.hLine);
-      }
+    if (m === f.length - 2) {
+      let L = Math.min(a + c - 1, b.col + Math.floor((b.col - p.col) / 4));
+      for (let q = b.col + 1; q <= L; q++)
+        u(q, b.row, l.hLine);
     }
   }
 }
-function drawHorizontalStaircaseLine(canvas, roles, data, bandMid, valueToCol, plotTop, plotH, plotLeft, plotW, ch, hexCanvas, hexColor) {
-  if (data.length === 0) return;
-  const points = data.map((v, i) => ({
-    row: bandMid(i),
-    col: valueToCol(v)
-  }));
-  const drawAt = (row, col, char) => {
-    if (row >= plotTop && row < plotTop + plotH && col >= plotLeft && col < plotLeft + plotW) {
-      set(canvas, roles, row, col, char, "arrow", hexCanvas, hexColor);
-    }
+function go(t, e, n, o, s, r, i, a, c, l, d, h) {
+  if (n.length === 0) return;
+  let f = n.map((m, p) => ({
+    row: o(p),
+    col: s(m)
+  })), u = (m, p, b) => {
+    m >= r && m < r + i && p >= a && p < a + c && bt(t, e, m, p, b, "arrow", d, h);
   };
-  if (points.length === 1) {
-    drawAt(points[0].row, points[0].col, ch.vLine);
+  if (f.length === 1) {
+    u(f[0].row, f[0].col, l.vLine);
     return;
   }
-  for (let i = 0; i < points.length - 1; i++) {
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    if (p1.col === p2.col) {
-      for (let r = p1.row; r <= p2.row; r++) {
-        drawAt(r, p1.col, ch.vLine);
-      }
+  for (let m = 0; m < f.length - 1; m++) {
+    let p = f[m], b = f[m + 1];
+    if (p.col === b.col) {
+      for (let L = p.row; L <= b.row; L++)
+        u(L, p.col, l.vLine);
       continue;
     }
-    const midRow = Math.round((p1.row + p2.row) / 2);
-    const goingRight = p2.col > p1.col;
-    for (let r = p1.row; r < midRow; r++) {
-      drawAt(r, p1.col, ch.vLine);
-    }
-    if (goingRight) {
-      drawAt(midRow, p1.col, ch.cornerBL);
-    } else {
-      drawAt(midRow, p1.col, ch.cornerBR);
-    }
-    const minCol = Math.min(p1.col, p2.col);
-    const maxCol = Math.max(p1.col, p2.col);
-    for (let c = minCol + 1; c < maxCol; c++) {
-      drawAt(midRow, c, ch.hLine);
-    }
-    if (goingRight) {
-      drawAt(midRow, p2.col, ch.cornerTR);
-    } else {
-      drawAt(midRow, p2.col, ch.cornerTL);
-    }
-    for (let r = midRow + 1; r <= p2.row; r++) {
-      drawAt(r, p2.col, ch.vLine);
-    }
+    let A = Math.round((p.row + b.row) / 2), B = b.col > p.col;
+    for (let L = p.row; L < A; L++)
+      u(L, p.col, l.vLine);
+    B ? u(A, p.col, l.cornerBL) : u(A, p.col, l.cornerBR);
+    let v = Math.min(p.col, b.col), H = Math.max(p.col, b.col);
+    for (let L = v + 1; L < H; L++)
+      u(A, L, l.hLine);
+    B ? u(A, b.col, l.cornerTR) : u(A, b.col, l.cornerTL);
+    for (let L = A + 1; L <= b.row; L++)
+      u(L, b.col, l.vLine);
   }
 }
-function drawLegend(canvas, roles, hexCanvas, chart, row, totalW, ch, seriesColors) {
-  const items = [];
-  let barIdx = 0, lineIdx = 0;
-  for (let si = 0; si < chart.series.length; si++) {
-    const s = chart.series[si];
-    if (s.type === "bar") {
-      items.push({ symbol: ch.bar, label: s.name || `Bar ${barIdx + 1}`, globalIdx: si });
-      barIdx++;
-    } else {
-      items.push({ symbol: ch.hLine, label: s.name || `Line ${lineIdx + 1}`, globalIdx: si });
-      lineIdx++;
-    }
+function Pn(t, e, n, o, s, r, i, a) {
+  let c = [], l = 0, d = 0;
+  for (let m = 0; m < o.series.length; m++) {
+    let p = o.series[m];
+    p.type === "bar" ? (c.push({ symbol: i.bar, label: p.name || `Bar ${l + 1}`, globalIdx: m }), l++) : (c.push({ symbol: i.hLine, label: p.name || `Line ${d + 1}`, globalIdx: m }), d++);
   }
-  let totalLen = 0;
-  for (let i = 0; i < items.length; i++) {
-    if (i > 0) totalLen += 2;
-    totalLen += 1 + 1 + items[i].label.length;
-  }
-  const startCol = Math.max(0, Math.floor(totalW / 2 - totalLen / 2));
-  let col = startCol;
-  for (let i = 0; i < items.length; i++) {
-    if (i > 0) col += 2;
-    const item = items[i];
-    set(canvas, roles, row, col, item.symbol, "arrow", hexCanvas, seriesColors[item.globalIdx]);
-    col += 1;
-    col += 1;
-    writeText(canvas, roles, row, col, item.label, "text");
-    col += item.label.length;
+  let h = 0;
+  for (let m = 0; m < c.length; m++)
+    m > 0 && (h += 2), h += 2 + c[m].label.length;
+  let u = Math.max(0, Math.floor(r / 2 - h / 2));
+  for (let m = 0; m < c.length; m++) {
+    m > 0 && (u += 2);
+    let p = c[m];
+    bt(t, e, s, u, p.symbol, "arrow", n, a[p.globalIdx]), u += 1, u += 1, Xt(t, e, s, u, p.label, "text"), u += p.label.length;
   }
 }
-function createCanvas(width, height) {
-  return Array.from({ length: width }, () => Array.from({ length: height }, () => " "));
+function Hn(t, e) {
+  return Array.from({ length: t }, () => Array.from({ length: e }, () => " "));
 }
-function createRoleCanvas(width, height) {
-  return Array.from({ length: width }, () => Array.from({ length: height }).fill(null));
+function Wn(t, e) {
+  return Array.from({ length: t }, () => Array.from({ length: e }).fill(null));
 }
-function createHexCanvas(width, height) {
-  return Array.from({ length: width }, () => Array.from({ length: height }).fill(null));
+function _n(t, e) {
+  return Array.from({ length: t }, () => Array.from({ length: e }).fill(null));
 }
-function set(canvas, roles, row, col, char, role, hexCanvas, hex) {
-  if (col >= 0 && col < canvas.length && row >= 0 && row < canvas[0].length) {
-    canvas[col][row] = char;
-    roles[col][row] = role;
-    if (hexCanvas && hex) hexCanvas[col][row] = hex;
+function bt(t, e, n, o, s, r, i, a) {
+  o >= 0 && o < t.length && n >= 0 && n < t[0].length && (t[o][n] = s, e[o][n] = r, i && a && (i[o][n] = a));
+}
+function Ae(t, e, n) {
+  return n >= 0 && n < t.length && e >= 0 && e < t[0].length ? t[n][e] : " ";
+}
+function Xt(t, e, n, o, s, r) {
+  for (let i = 0; i < s.length; i++)
+    bt(t, e, n, o + i, s[i], r);
+}
+function jn(t, e, n, o, s) {
+  if (t.length === 0) return "";
+  let r = t[0].length, i = t.length, a = [];
+  for (let c = 0; c < r; c++) {
+    let l = [], d = [], h = [];
+    for (let u = 0; u < i; u++)
+      l.push(t[u][c]), d.push(e[u][c]), h.push(n[u][c]);
+    let f = l.length - 1;
+    for (; f >= 0 && l[f] === " "; ) f--;
+    f < 0 ? a.push("") : a.push(mo(
+      l.slice(0, f + 1),
+      d.slice(0, f + 1),
+      h.slice(0, f + 1),
+      s,
+      o
+    ));
   }
+  for (; a.length > 0 && a[a.length - 1] === ""; )
+    a.pop();
+  return a.join(`
+`);
 }
-function get(canvas, row, col) {
-  if (col >= 0 && col < canvas.length && row >= 0 && row < canvas[0].length) {
-    return canvas[col][row];
-  }
-  return " ";
-}
-function writeText(canvas, roles, row, startCol, text, role) {
-  for (let i = 0; i < text.length; i++) {
-    set(canvas, roles, row, startCol + i, text[i], role);
-  }
-}
-function canvasToString2(canvas, roles, hexCanvas, colorMode, theme) {
-  if (canvas.length === 0) return "";
-  const height = canvas[0].length;
-  const width = canvas.length;
-  const lines = [];
-  for (let row = 0; row < height; row++) {
-    const chars = [];
-    const rowRoles = [];
-    const rowHex = [];
-    for (let col = 0; col < width; col++) {
-      chars.push(canvas[col][row]);
-      rowRoles.push(roles[col][row]);
-      rowHex.push(hexCanvas[col][row]);
-    }
-    let end = chars.length - 1;
-    while (end >= 0 && chars[end] === " ") end--;
-    if (end < 0) {
-      lines.push("");
-    } else {
-      lines.push(colorizeRow(
-        chars.slice(0, end + 1),
-        rowRoles.slice(0, end + 1),
-        rowHex.slice(0, end + 1),
-        theme,
-        colorMode
-      ));
-    }
-  }
-  while (lines.length > 0 && lines[lines.length - 1] === "") {
-    lines.pop();
-  }
-  return lines.join("\n");
-}
-function colorizeRow(chars, roles, hexOverrides, theme, mode) {
-  if (mode === "none") return chars.join("");
-  let result = "";
-  let currentColor = null;
-  let buffer = "";
-  for (let i = 0; i < chars.length; i++) {
-    const char = chars[i];
-    if (char === " ") {
-      if (buffer.length > 0) {
-        result += currentColor ? colorizeText(buffer, currentColor, mode) : buffer;
-        buffer = "";
-        currentColor = null;
-      }
-      result += " ";
+function mo(t, e, n, o, s) {
+  if (s === "none") return t.join("");
+  let r = "", i = null, a = "";
+  for (let c = 0; c < t.length; c++) {
+    let l = t[c];
+    if (l === " ") {
+      a.length > 0 && (r += i ? ee(a, i, s) : a, a = "", i = null), r += " ";
       continue;
     }
-    const hexOvr = hexOverrides[i] ?? null;
-    const roleVal = roles[i] ?? null;
-    const color = hexOvr ?? (roleVal ? roleToHex(roleVal, theme) : null);
-    if (color === currentColor) {
-      buffer += char;
-    } else {
-      if (buffer.length > 0) {
-        result += currentColor ? colorizeText(buffer, currentColor, mode) : buffer;
-      }
-      buffer = char;
-      currentColor = color;
-    }
+    let d = n[c] ?? null, h = e[c] ?? null, f = d ?? (h ? lo(h, o) : null);
+    f === i ? a += l : (a.length > 0 && (r += i ? ee(a, i, s) : a), a = l, i = f);
   }
-  if (buffer.length > 0) {
-    result += currentColor ? colorizeText(buffer, currentColor, mode) : buffer;
-  }
-  return result;
+  return a.length > 0 && (r += i ? ee(a, i, s) : a), r;
 }
-function getDataCount(chart) {
-  if (chart.xAxis.categories) return chart.xAxis.categories.length;
-  for (const s of chart.series) {
-    if (s.data.length > 0) return s.data.length;
-  }
+function zn(t) {
+  if (t.xAxis.categories) return t.xAxis.categories.length;
+  for (let e of t.series)
+    if (e.data.length > 0) return e.data.length;
   return 0;
 }
-function getCategoryLabels(chart, count) {
-  if (chart.xAxis.categories) return chart.xAxis.categories;
-  if (chart.xAxis.range) {
-    const { min, max } = chart.xAxis.range;
-    const step = count > 1 ? (max - min) / (count - 1) : 0;
-    return Array.from({ length: count }, (_, i) => formatTickValue(min + step * i));
+function On(t, e) {
+  if (t.xAxis.categories) return t.xAxis.categories;
+  if (t.xAxis.range) {
+    let { min: n, max: o } = t.xAxis.range, s = e > 1 ? (o - n) / (e - 1) : 0;
+    return Array.from({ length: e }, (r, i) => se(n + s * i));
   }
-  return Array.from({ length: count }, (_, i) => String(i + 1));
+  return Array.from({ length: e }, (n, o) => String(o + 1));
 }
-function niceTickValues(min, max) {
-  const range = max - min;
-  if (range <= 0) return [min];
-  const rawInterval = range / 6;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
-  const residual = rawInterval / magnitude;
-  let niceInterval;
-  if (residual <= 1.5) niceInterval = magnitude;
-  else if (residual <= 3) niceInterval = 2 * magnitude;
-  else if (residual <= 7) niceInterval = 5 * magnitude;
-  else niceInterval = 10 * magnitude;
-  const start = Math.ceil(min / niceInterval) * niceInterval;
-  const ticks = [];
-  for (let v = start; v <= max + niceInterval * 1e-3; v += niceInterval) {
-    ticks.push(Math.round(v * 1e10) / 1e10);
-  }
-  return ticks;
+function Fn(t, e) {
+  let n = e - t;
+  if (n <= 0) return [t];
+  let o = n / 6, s = Math.pow(10, Math.floor(Math.log10(o))), r = o / s, i;
+  r <= 1.5 ? i = s : r <= 3 ? i = 2 * s : r <= 7 ? i = 5 * s : i = 10 * s;
+  let a = Math.ceil(t / i) * i, c = [];
+  for (let l = a; l <= e + i * 1e-3; l += i)
+    c.push(Math.round(l * 1e10) / 1e10);
+  return c;
 }
-function formatTickValue(v) {
-  if (Number.isInteger(v)) return String(v);
-  return v.toFixed(Math.abs(v) < 10 ? 1 : 0);
+function se(t) {
+  return Number.isInteger(t) ? String(t) : t.toFixed(Math.abs(t) < 10 ? 1 : 0);
 }
-var setChartSize = (width, height) => {
-  PLOT_WIDTH = width;
-  PLOT_HEIGHT = height;
+var po = (t, e) => {
+  we = t, ve = e;
 };
 
 // node_modules/beautiful-mermaid/src/ascii/index.ts
-function detectDiagramType(text) {
-  const firstLine = text.trim().split("\n")[0]?.trim().toLowerCase() ?? "";
-  if (/^xychart(-beta)?\b/.test(firstLine)) return "xychart";
-  if (/^sequencediagram\s*$/.test(firstLine)) return "sequence";
-  if (/^classdiagram\s*$/.test(firstLine)) return "class";
-  if (/^erdiagram\s*$/.test(firstLine)) return "er";
-  return "flowchart";
+function xo(t) {
+  let e = t.trim().split(`
+`)[0]?.trim().toLowerCase() ?? "";
+  return /^xychart(-beta)?\b/.test(e) ? "xychart" : /^sequencediagram\s*$/.test(e) ? "sequence" : /^classdiagram\s*$/.test(e) ? "class" : /^erdiagram\s*$/.test(e) ? "er" : "flowchart";
 }
-function renderMermaidASCII(text, options = {}) {
-  const config = {
-    useAscii: options.useAscii ?? false,
-    paddingX: options.paddingX ?? 5,
-    paddingY: options.paddingY ?? 5,
-    boxBorderPadding: options.boxBorderPadding ?? 1,
+function bo(t, e = {}) {
+  let n = {
+    useAscii: e.useAscii ?? !1,
+    paddingX: e.paddingX ?? 5,
+    paddingY: e.paddingY ?? 5,
+    boxBorderPadding: e.boxBorderPadding ?? 1,
     graphDirection: "TD"
     // default, overridden for flowcharts below
-  };
-  const colorMode = options.colorMode === "auto" || options.colorMode === void 0 ? detectColorMode() : options.colorMode;
-  const theme = { ...DEFAULT_ASCII_THEME, ...options.theme };
-  const diagramType = detectDiagramType(text);
-  switch (diagramType) {
+  }, o = e.colorMode === "auto" || e.colorMode === void 0 ? ke() : e.colorMode, s = { ...Zt, ...e.theme };
+  switch (xo(t)) {
     case "xychart":
-      return renderXYChartAscii(text, config, colorMode, theme);
+      return Xn(t, n, o, s);
     case "sequence":
-      return renderSequenceAscii(text, config, colorMode, theme);
+      return vn(t, n, o, s);
     case "class":
-      return renderClassAscii(text, config, colorMode, theme);
+      return Dn(t, n, o, s);
     case "er":
-      return renderErAscii(text, config, colorMode, theme);
-    case "flowchart":
+      return En(t, n, o, s);
     default: {
-      const parsed = parseMermaid(text);
-      if (parsed.direction === "LR" || parsed.direction === "RL") {
-        config.graphDirection = "LR";
-      } else {
-        config.graphDirection = "TD";
-      }
-      const graph = convertToAsciiGraph(parsed, config);
-      createMapping(graph);
-      drawGraph(graph);
-      if (parsed.direction === "BT") {
-        flipCanvasVertically(graph.canvas);
-        flipRoleCanvasVertically(graph.roleCanvas);
-      }
-      return canvasToString(graph.canvas, {
-        roleCanvas: graph.roleCanvas,
-        colorMode,
-        theme
+      let i = Le(t);
+      i.direction === "LR" || i.direction === "RL" ? n.graphDirection = "LR" : n.graphDirection = "TD";
+      let a = Oe(i, n);
+      return Mn(a), xn(a), i.direction === "BT" && (We(a.canvas), _e(a.roleCanvas)), Pt(a.canvas, {
+        roleCanvas: a.roleCanvas,
+        colorMode: o,
+        theme: s
       });
     }
   }
 }
-var renderMermaidAscii = renderMermaidASCII;
+var yo = bo;
 export {
-  renderMermaidAscii,
-  setChartSize
+  yo as renderMermaidAscii,
+  po as setChartSize
 };
