@@ -25,7 +25,7 @@ description: Add, rename or update a prismantis color preset from an existing th
    | `diffAdded`, `diffRemoved` | the theme's own green and red, its git or diff colors when it names them; the test wants code text at 4.5:1 on their tints and the two at least ΔE 13 apart |
 
 4. **Name it after the source**, lowercase-hyphenated with the variant (`catppuccin-mocha`, `github-light`). Add it to `options` on the `theme` field in `plugin/.claude-plugin/plugin.json`.
-5. **Credit it** in `docs/THIRD_PARTY_NOTICES.md` with the repo URL, the copyright line and the license name.
+5. **Credit it** in `plugin/THIRD_PARTY_NOTICES.md` with the repo URL, the copyright line and the license name.
 6. **Document it** in the README theme list (dark or light).
 7. **Test** that `resolveStyle({ theme: '<name>' })` returns its `tableHeader`, then run the AGENTS.md Verify steps.
 8. **Look at it** with `live-check` on a dark and a light terminal background.

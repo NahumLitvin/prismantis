@@ -15,4 +15,4 @@ Prismantis makes no network calls. Everything below stays on your machine.
 
 ## License
 
-MIT, by Nahum Litvin.
+[MIT](LICENSE), by Nahum Litvin. Bundled third-party code and palettes are credited in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

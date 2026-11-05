@@ -10,7 +10,9 @@ const dir = mkdtempSync(join(tmpdir(), 'prismantis-test-'))
 try {
   cpSync(join(ROOT, 'plugin'), dir, { recursive: true })
   cpSync(join(ROOT, 'tests'), join(dir, 'tests'), { recursive: true })
-  const run = spawnSync('claude', ['plugin', 'test', dir, ...process.argv.slice(2)], { stdio: 'inherit', shell: process.platform === 'win32' })
+  const windows = process.platform === 'win32'
+  const args = ['plugin', 'test', dir, ...process.argv.slice(2)]
+  const run = spawnSync('claude', windows ? args.map(a => `"${a}"`) : args, { stdio: 'inherit', shell: windows })
   process.exitCode = run.status ?? 1
 } finally {
   rmSync(dir, { recursive: true, force: true })
