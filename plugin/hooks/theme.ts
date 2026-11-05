@@ -49,6 +49,7 @@ export type Style = {
   htmlCopy: ClipboardBackend | null
   images: boolean
   nativeCode?: boolean
+  buttonChildren?: boolean
   gridFace?: boolean
   monoFace?: boolean
   smallDot?: boolean

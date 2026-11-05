@@ -422,10 +422,10 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     return style.copyButtons && offers(style, rich) ? (
       <Button
         key={key}
-        {...(style.copyButtonStyle === 'dim' ? { plain: true as const, dimColor: true } : { variant: 'primary' as const })}
+        {...(style.copyButtonStyle !== 'dim' ? { variant: 'primary' as const } : style.buttonChildren ? { plain: true as const, dimColor: true } : { variant: 'secondary' as const, dimColor: true })}
         label={label}
         onPress={async press => $.ui.toast(await copied(press.surface).catch(() => 'Copy failed'))}
-      >{style.copyButtonStyle === 'dim' ? <el.Text>{`[ ${label} ]`}</el.Text> : undefined}</Button>
+      >{style.copyButtonStyle === 'dim' && style.buttonChildren ? <el.Text>{`[ ${label} ]`}</el.Text> : undefined}</Button>
     ) : null
   }
   const drawn = drawDiagrams(el, style, blocks, columns - markerRoom(style))
@@ -714,7 +714,8 @@ export const register: Register = (on, options) => {
   const pathChecks: PathChecks = { asked: new Set(), batch: [], found: new Set() }
   const forSurface = (base: Style, { surface, viewport }: { surface: RenderSurface; viewport?: { isFullscreen?: boolean } }, links: LinkReach): Style => {
     const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor, obsidianLinks: links.editor && viewport?.isFullscreen === false, fileLinks: links.files, pathLinks: links.paths } : base) : { ...base, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop', monoFace: surface === 'desktop' && links.monoText }
-    return surface === 'mobile' && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
+    const shaped = { ...drawn, buttonChildren: links.marks }
+    return surface === 'mobile' && shaped.copyButtonStyle === 'hover' ? { ...shaped, copyButtonStyle: 'inline' } : shaped
   }
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
 
