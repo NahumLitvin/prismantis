@@ -3046,6 +3046,7 @@ test('/prismantis setup draws each sample in its own style', async $ => {
   await headings.unmount()
   const copy = await mount(5)
   expect(await copy.findAll({ type: 'Text', text: /^\[ ⧉ md \]$/ })).toHaveLength(2)
+  expect((await copy.findAll({ type: 'Text', text: /^⧉ md$/ })).map(t => t.props.dimColor)).toEqual([true])
   expect((await copy.findAll({ type: 'Box' })).filter(b => b.props.display === 'none').map(b => b.text)).toEqual(['[ ⧉ md ] [ ⧉ art ]'])
   expect((await copy.findAll({ type: 'Text', text: /^⧉$/ })).map(t => t.props.dimColor)).toEqual([true])
   expect(await copy.findAll({ type: 'Text', text: /^Its buttons show only while the pointer is on its ⧉\.$/ })).toHaveLength(1)
