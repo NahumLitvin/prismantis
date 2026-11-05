@@ -438,15 +438,9 @@
     "copyButtonStyle": {
       "type": "string",
       "title": "Copy button style",
-      "description": "inline: buttons beside or above each block, always shown. hover: each block shows a dim ⧉ beside its first row, and the reply one in its bottom-right corner; the pointer on a ⧉ draws its buttons over it, so they take no line; ctrl+x tab does not reach them, and the mobile app, which has no pointer, shows them inline. Needs copyButtons on.",
-      "default": "inline",
-      "options": ["inline", "hover"]
-    },
-    "copyButtonDim": {
-      "type": "boolean",
-      "title": "Dim copy buttons",
-      "description": "Draw copy buttons dim, at full strength under the pointer or the focus, in place of the accent color. Needs copyButtons on.",
-      "default": false
+      "description": "dim: buttons beside or above each block, drawn dim and at full strength under the pointer or the focus. inline: the same buttons in the accent color. hover: each block shows a dim ⧉ beside its first row, and the reply one in its bottom-right corner; the pointer on a ⧉ draws its buttons over it, so they take no line; ctrl+x tab does not reach them, and the mobile app, which has no pointer, shows them inline. Needs copyButtons on.",
+      "default": "dim",
+      "options": ["dim", "inline", "hover"]
     },
     "textCopyButtons": {
       "type": "boolean",

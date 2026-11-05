@@ -414,7 +414,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('the changed words in a deeper tint')
   expect(showcaseText([])).toContain('Files a shell command changes')
   expect(showcaseText([])).toContain('Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`')
-  expect(showcaseText([])).toContain('Set `copyButtonDim` to `true` in `/config` to draw the copy buttons dim')
+  expect(showcaseText([])).toContain('The buttons draw dim and light up under the pointer; set `copyButtonStyle` to `inline`')
   expect(showcaseText([])).toContain('Set `pieStyle` to `bars` in `/config` for one bar per slice')
   expect(showcaseText([])).toContain('as a smooth picture in kitty and Ghostty')
   expect(showcaseText([])).toContain("A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks")
@@ -2071,11 +2071,11 @@ test('footnotes follow quotes and fences: a quoted fence marker inside code make
   expect(marks('> a[^q]\n>\n> > [^q]: Nested note\n> >   continued')).toEqual(['¹ Nested note continued'])
 })
 
-for (const copyButtonStyle of ['inline', 'hover'] as const) test(`a quote that opens with code puts its own ${copyButtonStyle} copy button on its last row`, { options: { copyButtonStyle } }, async $ => {
+for (const copyButtonStyle of ['dim', 'inline', 'hover'] as const) test(`a quote that opens with code puts its own ${copyButtonStyle} copy button on its last row`, { options: { copyButtonStyle } }, async $ => {
   const ui = await $.ui.mount(mount('> ```bash\n> npm test\n> ```\n>\n> Run that first.\n\n> One line.'))
   const boxes = await ui.findAll({ type: 'Box' })
   const low = boxes.filter(b => (copyButtonStyle === 'hover' ? b.props.display === 'none' && b.props.bottom === 0 && b.props.right === 0 && b.text !== '⧉ copy reply' : b.props.alignSelf === 'flex-end' && b.key !== 'reply'))
-  expect(low.map(b => b.text)).toEqual(['⧉ copy'])
+  expect(low.map(b => b.text)).toEqual([copyButtonStyle === 'dim' ? '[ ⧉ copy ]' : '⧉ copy'])
   expect(boxes.filter(b => b.props.position === 'absolute' && b.props.top === 0 && b.props.display === 'none' && b.text !== '⧉ copy reply').map(b => b.text)).toEqual(copyButtonStyle === 'hover' ? ['⧉ copy', '⧉ copy'] : [])
   await ui.unmount()
 })

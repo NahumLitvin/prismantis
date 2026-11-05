@@ -268,7 +268,7 @@ test('code blocks, tables and quotes get a copy button, tables an art button, th
   const ui = await $.ui.mount({ ...draw(text), surface: 'terminal' })
   const buttons = await ui.findAll({ type: 'Button' })
   expect(buttons.length).toBe(5)
-  expect(buttons.every(b => b.props.variant === "primary")).toBe(true)
+  expect(buttons.every(b => b.props.plain === true && b.props.dimColor === true)).toBe(true)
   await ui.press({ key: 'copy1' })
   expect(copied).toEqual(['ls -la'])
   await ui.unmount()
@@ -388,10 +388,10 @@ for (const surface of SURFACES) test(`copyButtonStyle hover shows nothing while 
 
 const WIDE = `| A | B |\n|---|---|\n| ${'alpha '.repeat(12)}| ${'bravo '.repeat(12)}|\n\nx\n\n\`\`\`mermaid\nflowchart LR\n  A[${'a'.repeat(12)}] --> B[${'b'.repeat(12)}] --> C[${'c'.repeat(12)}]\n\`\`\`\n\ny\n\n\`\`\`mermaid\nflowchart LR\n  A[${'a'.repeat(7)}] --> B[${'b'.repeat(7)}] --> C[${'c'.repeat(7)}] --> D[${'d'.repeat(7)}]\n\`\`\``
 const widest = (node: DrawnNode): number => (node.type === 'Text' ? width(shownText(node)) : Math.max(0, ...drawnKids(node).map(widest)))
-for (const copyButtonStyle of ['inline', 'hover'] as const) test(`copyButtonStyle ${copyButtonStyle} lays a full-width table and diagram out ${copyButtonStyle === 'hover' ? 'two columns narrower, so the ⧉ fits beside them' : 'to the whole width'}`, { options: { replyStyle: 'off', copyButtonStyle } }, async $ => {
+for (const copyButtonStyle of ['dim', 'inline', 'hover'] as const) test(`copyButtonStyle ${copyButtonStyle} lays a full-width table and diagram out ${copyButtonStyle === 'hover' ? 'two columns narrower, so the ⧉ fits beside them' : 'to the whole width'}`, { options: { replyStyle: 'off', copyButtonStyle } }, async $ => {
   const ui = await $.ui.mount({ ...draw(WIDE), viewport: { columns: 60, rows: 40 }, surface: 'terminal' })
   const [table, wide, wider] = await Promise.all(['c0', 'c2', 'c4'].map(async key => widest((await ui.find({ key })) as DrawnNode)))
-  if (copyButtonStyle === 'inline') expect({ table, wide: wide! > 56 - MARK - 2 }).toEqual({ table: 56, wide: true })
+  if (copyButtonStyle !== 'hover') expect({ table, wide: wide! > 56 - MARK - 2 }).toEqual({ table: 56, wide: true })
   else expect({ table, fits: [wide!, wider!].every(w => w + MARK <= 56) }).toEqual({ table: 56 - MARK, fits: true })
   await ui.unmount()
 })
@@ -406,7 +406,7 @@ test('copyButtonStyle hover drops trailing buttons a narrow terminal has no room
   }
 })
 
-test('copyButtonStyle inline, the default, keeps every copy button in the flow', async $ => {
+test('copyButtonStyle dim, the default, keeps every copy button in the flow', async $ => {
   const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
   expect(await floatingCopies(ui)).toHaveLength(0)
@@ -425,7 +425,7 @@ test('copyButtons off draws no buttons', { options: { copyButtons: false } }, as
   await ui.unmount()
 })
 
-for (const copyButtonStyle of ['inline', 'hover'] as const) test(`textCopyButtons off drops the ${copyButtonStyle} buttons on lists, quotes and alerts and keeps code, table and reply buttons`, { options: { textCopyButtons: false, copyButtonStyle } }, async $ => {
+for (const copyButtonStyle of ['dim', 'inline', 'hover'] as const) test(`textCopyButtons off drops the ${copyButtonStyle} buttons on lists, quotes and alerts and keeps code, table and reply buttons`, { options: { textCopyButtons: false, copyButtonStyle } }, async $ => {
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...draw(`- one\n- two\n\n> quoted\n\n> [!NOTE]\n> noted\n\n${TABLE}\n\n\`\`\`bash\nls\n\`\`\``), surface })
     const labels = (await ui.findAll({ type: 'Button' })).map(b => String(b.props.label))
@@ -758,18 +758,19 @@ test('a tinted translation is drawn in its color', async $ => {
 
 const CODE = '```ts\nconst a = 1\n```'
 
-for (const surface of SURFACES) test(`a copy button stays primary by default on ${surface}`, async $ => {
-  const plain = await $.ui.mount({ ...draw(CODE), surface })
-  const bright = await plain.find({ key: 'copy0' })
-  expect(bright?.props.variant).toBe('primary')
-  expect(bright?.props.dimColor).toBe(undefined)
-  await plain.unmount()
-})
-
-for (const surface of SURFACES) test(`copyButtonDim on draws a copy button dim on ${surface}`, { options: { copyButtonDim: true } }, async $ => {
+for (const surface of SURFACES) test(`copyButtonStyle dim, the default, draws a copy button dim on ${surface}`, async $ => {
   const ui = await $.ui.mount({ ...draw(CODE), surface })
   const button = await ui.find({ key: 'copy0' })
-  expect(button?.props.variant).toBe('secondary')
+  expect(button?.props.plain).toBe(true)
   expect(button?.props.dimColor).toBe(true)
+  expect(button?.text).toBe('[ ⧉ copy ]')
+  await ui.unmount()
+})
+
+for (const surface of SURFACES) test(`copyButtonStyle inline draws a copy button in the accent color on ${surface}`, { options: { copyButtonStyle: 'inline' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(CODE), surface })
+  const button = await ui.find({ key: 'copy0' })
+  expect(button?.props.variant).toBe('primary')
+  expect(button?.props.dimColor).toBe(undefined)
   await ui.unmount()
 })
