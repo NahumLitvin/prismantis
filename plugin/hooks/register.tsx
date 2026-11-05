@@ -926,7 +926,7 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'UserMessage', ...here }, async ($, e, next) => {
     const kind = e.props.origin.kind
-    const own = kind === 'composer' || kind === 'bridge' || (kind === 'unclassified' && !e.props.from && !e.props.task)
+    const own = kind === 'composer' || kind === 'bridge' || ((kind === 'unclassified' || kind === 'sdk') && !e.props.from && !e.props.task)
     if (!own) return next(e)
     const at = style.clock === 'off' ? undefined : sentAt(await read($, sent), e.props.text, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)

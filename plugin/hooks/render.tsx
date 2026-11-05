@@ -2767,12 +2767,19 @@ const chatWidth = (lines: readonly string[], room: number, stamp: number, pasted
 const chatSize = (style: Style, hebrew: boolean, lines: readonly string[], columns: number, time: string | undefined, pasted: boolean): number | '100%' =>
   hebrew && mirrored(style) ? '100%' : chatWidth(lines, promptRoom(style, columns), time === undefined ? 0 : time.length + 1, pasted)
 
+const hugsText = (style: Style, size: number | '100%'): boolean => style.gridFace === true && size !== '100%'
+
+const chatRoom = (style: Style, size: number | '100%') => (hugsText(style, size) ? { flexShrink: 1 } : { width: size, flexShrink: 0 })
+
 const chatPrompt = (el: ElementTable, style: Style, content: RenderElement, size: number | '100%'): RenderElement => {
   const color = youColor(style.theme)
+  const bubble = (
+    <el.Box borderStyle="round" borderColor={color} backgroundColor={promptFill(style.theme, style.background, color)} paddingX={1} {...chatRoom(style, size)}>{content}</el.Box>
+  )
   return (
     <el.Box flexDirection="column" width="100%" {...(size === '100%' ? {} : { alignItems: 'flex-end' as const })}>
       {style.bubbleLabels === 'off' ? null : <el.Text color={color} bold>{youHead(style)}</el.Text>}
-      <el.Box borderStyle="round" borderColor={color} backgroundColor={promptFill(style.theme, style.background, color)} paddingX={1} width={size} flexShrink={0}>{content}</el.Box>
+      {hugsText(style, size) ? <el.Box flexDirection="row" justifyContent="flex-end" width={`${Math.round(CHAT_SHARE * 100)}%`}>{bubble}</el.Box> : bubble}
     </el.Box>
   )
 }
