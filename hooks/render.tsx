@@ -1190,9 +1190,9 @@ export type Fold = (id: string, hidden: number, key: string, look?: FoldLook) =>
 export type Tip = (note: number) => (() => void) | undefined
 
 export const instanceKey = (id: string): string => {
-  let h = 5381
-  for (let i = 0; i < id.length; i++) h = (h * 33 + id.charCodeAt(i)) | 0
-  return (h >>> 0).toString(36)
+  let hash = 5381
+  for (let i = 0; i < id.length; i++) hash = (hash * 33 + id.charCodeAt(i)) | 0
+  return (hash >>> 0).toString(36)
 }
 
 export const noteTip = (blocks: Block[], toast: (text: string) => void): Tip | undefined => {
@@ -1211,12 +1211,12 @@ const FOLD_AT = 30
 const FOLD_SHOW = 20
 
 const codeId = (lines: string[]): string => {
-  let h = 5381
+  let hash = 5381
   for (const line of lines) {
-    for (let i = 0; i < line.length; i++) h = (h * 33 + line.charCodeAt(i)) | 0
-    h = (h * 33 + 10) | 0
+    for (let i = 0; i < line.length; i++) hash = (hash * 33 + line.charCodeAt(i)) | 0
+    hash = (hash * 33 + 10) | 0
   }
-  return `${lines.length}:${(h >>> 0).toString(36)}`
+  return `${lines.length}:${(hash >>> 0).toString(36)}`
 }
 
 const copySource = (style: Style, block: Block): string | undefined =>
@@ -1563,9 +1563,9 @@ export const diffLines = (output: unknown): DiffLine[] | undefined => {
   const out = output as { structuredPatch?: unknown }
   if (!Array.isArray(out.structuredPatch) || out.structuredPatch.length === 0) return undefined
   const rows: DiffLine[] = []
-  for (const [h, hunk] of (out.structuredPatch as { oldStart?: unknown; newStart?: unknown; lines?: unknown }[]).entries()) {
+  for (const [index, hunk] of (out.structuredPatch as { oldStart?: unknown; newStart?: unknown; lines?: unknown }[]).entries()) {
     if (typeof hunk?.oldStart !== 'number' || typeof hunk.newStart !== 'number' || !Array.isArray(hunk.lines)) return undefined
-    rows.push(...hunkRows(hunk.lines, hunk.oldStart, hunk.newStart, h))
+    rows.push(...hunkRows(hunk.lines, hunk.oldStart, hunk.newStart, index))
   }
   return rows
 }

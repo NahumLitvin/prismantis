@@ -461,8 +461,27 @@ const THEME_ARGS = [...PRESET_NAMES, 'random']
 
 type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
 
-const saveOption = ($: EngineInterface, key: string, value: string): Promise<string | undefined> =>
-  $.config.set({ key: `${$.plugin.name}.${key}`, value }).then(
+const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => {
+  switch (key) {
+    case 'theme': return $.config.set({ key: 'prismantis.theme', value })
+    case 'tableStyle': return $.config.set({ key: 'prismantis.tableStyle', value })
+    case 'taskStyle': return $.config.set({ key: 'prismantis.taskStyle', value })
+    case 'listMarker': return $.config.set({ key: 'prismantis.listMarker', value })
+    case 'headingStyle': return $.config.set({ key: 'prismantis.headingStyle', value })
+    case 'copyButtonStyle': return $.config.set({ key: 'prismantis.copyButtonStyle', value })
+    case 'promptStyle': return $.config.set({ key: 'prismantis.promptStyle', value })
+    case 'replyStyle': return $.config.set({ key: 'prismantis.replyStyle', value })
+    case 'bubbleLabels': return $.config.set({ key: 'prismantis.bubbleLabels', value })
+    case 'clock': return $.config.set({ key: 'prismantis.clock', value })
+    case 'toolStyle': return $.config.set({ key: 'prismantis.toolStyle', value })
+    case 'toolOutput': return $.config.set({ key: 'prismantis.toolOutput', value })
+    case 'diffStyle': return $.config.set({ key: 'prismantis.diffStyle', value })
+    case 'pieStyle': return $.config.set({ key: 'prismantis.pieStyle', value })
+  }
+}
+
+const saveOption = ($: EngineInterface, key: SetupStep['key'], value: string): Promise<string | undefined> =>
+  setOption($, key, value).then(
     r => r.deny,
     (e: unknown) => `${e instanceof Error ? e.message : String(e)}. Set "${key}": "${value}" by hand in the ${$.plugin.name} options under pluginConfigs in ~/.claude/settings.json, then restart.`,
   )

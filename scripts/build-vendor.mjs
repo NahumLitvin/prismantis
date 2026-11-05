@@ -175,8 +175,6 @@ track(await build({
   format: 'esm',
   platform: 'neutral',
   target: 'es2023',
-  minifySyntax: true,
-  minifyWhitespace: true,
   outfile: '../hooks/vendor/prism.js',
   legalComments: 'none',
 }))
@@ -195,8 +193,6 @@ track(await build({
   format: 'esm',
   platform: 'neutral',
   target: 'es2023',
-  minifySyntax: true,
-  minifyWhitespace: true,
   outfile: '../hooks/vendor/mermaid-text.js',
   legalComments: 'none',
   plugins: [{

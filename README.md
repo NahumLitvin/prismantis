@@ -448,6 +448,15 @@ A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name
 - **Fills look flat gray in tmux:** Claude Code draws 256 colors inside tmux, which turns dark fills gray. Set `CLAUDE_CODE_TMUX_TRUECOLOR=1` in the environment Claude Code starts in.
 - **`You ●` instead of `You ⬤` in tmux, screen or Zellij:** on purpose. The large dot can draw across two cells in the terminal outside, which leaves half dots behind and over the next letter.
 
+## What it runs, reads and changes
+
+Prismantis makes no network calls. Everything below stays on your machine.
+
+- **Programs.** Clicking `⧉ html` or `▣ png` runs the clipboard helper with the copied table, diagram or figure on stdin: `osascript` on macOS, `powershell.exe` on Windows (it reads `SystemRoot` to find it), or `copyq` on Linux. With `latex` on, it runs `ratex-render` from your `PATH` with the reply's formulas on stdin. It runs nothing else.
+- **Files.** It reads a local PNG that a reply links as a Markdown image, up to 2 MB, to draw it in kitty or Ghostty. It reads back the PNGs `ratex-render` writes to `$TMPDIR/prismantis-latex-<session>-<id>`. It writes no files itself.
+- **Settings.** `/prismantis setup` and `/prismantis theme` save your pick through `/config`, only into prismantis's own options (`prismantis.theme`, `prismantis.tableStyle` and the other setup steps). Nothing else in your settings changes.
+- **Hooks.** It draws through `ui.render`, answers the `/prismantis` command through `command.run`, adds the model-only [diagram hints](#diagram-hints) note in `prompt.submit`, and adds `$.prismantis.markdown` for [other mods](#other-mods) in `engine.create`. `prismantis.markdown` is that call's own event.
+
 ## Limits
 
 - The parser covers what Claude writes (headings, lists, tables, fences, quotes, emphasis, links). It's not full CommonMark: HTML draws as plain text, and a quote ends at the first line without `>`.
