@@ -5,13 +5,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bold, fg, StyledText, TextRenderable } from "@opentui/core";
 
-// ../hooks/layout.ts
+// ../plugin/hooks/layout.ts
 var WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}\u20E3]|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u;
 var segmenter = new Intl.Segmenter();
 var graphemes = (s) => [...segmenter.segment(s)].map((g) => g.segment);
 var cells = (s) => /^[ -~]*$/.test(s) ? [...s] : graphemes(s).flatMap((g) => WIDE.test(g) ? [g, ""] : [g]);
 
-// ../hooks/markdown.ts
+// ../plugin/hooks/markdown.ts
 var FIGURE_ROLES = ["accent", "warn", "ok", "note", "dim", "strong"];
 var ROLE_MARKUP = new RegExp(`\\{(?:${FIGURE_ROLES.join("|")}):([^{}]*)\\}`, "g");
 var scriptMap = (from, to) => new Map(Array.from(from).map((c, i) => [c, Array.from(to)[i]]));
@@ -20,7 +20,7 @@ var SUB = scriptMap("0123456789+-\u2212=()aehijklmnoprstuvx", "\u2080\u2081\u208
 var TINT_ON = { "2": "dim", "3": "italic", "90": "gray", "36": "cyan", "32": "green", "33": "yellow" };
 var TINT_KEYS = Object.keys(TINT_ON);
 
-// ../hooks/figure.tsx
+// ../plugin/hooks/figure.tsx
 var FIGURE_MAX_COLUMNS = 100;
 var FIGURE_SAFE_COLUMNS = 74;
 var RAW_MAX_LINE = FIGURE_MAX_COLUMNS * 4;

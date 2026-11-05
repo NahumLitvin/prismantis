@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.43.0] - 2026-11-05
+
+### Changed
+
+- Copy buttons draw dim by default, as bare `⧉ md ⧉ art` labels that light up under the pointer or the focus, so they stop pulling the eye from the reply. `copyButtonStyle` gains `dim` as its new default; set it to `inline` for the accent-colored `[ ⧉ md ]` buttons as before. Older Claude Code versions draw the dim labels in plain white. Thanks @zarcell ([#387](https://github.com/NahumLitvin/prismantis/pull/387)).
+- Installs and updates download a zip of the plugin folder, pinned by its SHA-256, instead of cloning the whole repository, and need no git. The install commands are the same ([#392](https://github.com/NahumLitvin/prismantis/pull/392), [#393](https://github.com/NahumLitvin/prismantis/pull/393)).
+- The plugin gets an icon, and its README says what prismantis runs, reads and changes on your machine ([#391](https://github.com/NahumLitvin/prismantis/pull/391)).
+
+### Fixed
+
+- In the Claude Code desktop app your own prompts draw with `promptStyle`, as in the terminal, and the bubble fits its text. Thanks @berkay8987 ([#385](https://github.com/NahumLitvin/prismantis/pull/385)).
+
 ## [0.42.0] - 2026-11-04
 
 ### Added
