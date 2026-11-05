@@ -40,6 +40,14 @@ test('escaped pipes stay inside a cell', async () => {
   expect(t.rows[0]?.length).toBe(2)
 })
 
+test('a separator shorter than the header pads align to the header columns', async () => {
+  const [t] = parse('| a | b | c |\n|:---|---:|\n| x | y |', { numbers: false, paths: false })
+  if (t?.kind !== 'table') throw new Error('not a table')
+  expect(t.align).toEqual(['left', 'right', 'left'])
+  expect(t.rows[0]).toHaveLength(3)
+  expect(t.rows[0]?.[2]).toEqual([])
+})
+
 test('user colors override the theme, bad colors are ignored', async () => {
   const s = resolveStyle({ theme: 'catppuccin-mocha', tableHeaderColor: '#ff0000', numberColor: 'not a color', pathColor: 'cyan', linkColor: 'javascript:x' })
   expect(s.theme.tableHeader).toBe('#ff0000')
