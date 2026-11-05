@@ -120,7 +120,9 @@ writeFileSync(join(root, '.codex-plugin/plugin.json'), `${JSON.stringify({ name:
 
 const market = JSON.parse(readFileSync(join(root, '.claude-plugin/marketplace.json'), 'utf8'))
 mkdirSync(join(root, '.agents/plugins'), { recursive: true })
-const codexMarket = { ...market, plugins: market.plugins.map(p => ({ ...p, source: { ...p.source, source: 'url', path: undefined } })) }
+const pinned = JSON.parse(readFileSync(join(root, '.agents/plugins/marketplace.json'), 'utf8')).plugins
+const codexSource = p => (p.source.source === 'archive' ? pinned.find(c => c.name === p.name).source : { ...p.source, source: 'url', path: undefined })
+const codexMarket = { ...market, plugins: market.plugins.map(p => ({ ...p, source: codexSource(p) })) }
 writeFileSync(join(root, '.agents/plugins/marketplace.json'), `${JSON.stringify(codexMarket, null, 2)}\n`)
 
 const opencode = join(root, 'opencode')

@@ -65,7 +65,7 @@ jobs:
       - name: Bundle matches its source and holds only MIT packages
         run: npm --prefix scripts run build:vendor && git diff --exit-code plugin/hooks/vendor
       - name: Codex marketplace pins the same release
-        run: test "$(jq -c '.plugins[0].source|{ref,sha}' .claude-plugin/marketplace.json)" = "$(jq -c '.plugins[0].source|{ref,sha}' .agents/plugins/marketplace.json)"
+        run: test "$(jq -r '.plugins[0].source | .ref // (.url | capture("/download/(?<tag>v[^/]+)/").tag)' .claude-plugin/marketplace.json)" = "$(jq -r '.plugins[0].source.ref' .agents/plugins/marketplace.json)"
       - name: Codex files match their Claude Code source on a release
         run: git ls-remote --exit-code --tags origin "refs/tags/v$(jq -r .version plugin/.claude-plugin/plugin.json)" >/dev/null || { npm --prefix scripts run build:codex && test -z "$(git status --porcelain codex opencode .codex-plugin .agents)"; }
       - name: Render snapshots match

@@ -23,6 +23,35 @@ jobs:
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - name: Notes from the changelog
         run: awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## \\[" v "\\]" {f=1; next} /^## \[/ {f=0} f' docs/CHANGELOG.md > notes.md
-      - run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md
+      - name: Plugin zip
+        run: |
+          git archive --format=zip -o prismantis-plugin.zip "$GITHUB_SHA:plugin"
+          echo "prismantis-plugin.zip sha256: $(sha256sum prismantis-plugin.zip | cut -d' ' -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md prismantis-plugin.zip
         env:
           GH_TOKEN: ${{ github.token }}
+
+  install:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        claude: ['2.1.287', latest]
+    name: install from the zip (claude ${{ matrix.claude }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: npm install -g @anthropic-ai/claude-code@${{ matrix.claude }}
+      - name: Install the release zip through a marketplace pinned to its sha256
+        env:
+          URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/prismantis-plugin.zip
+        run: |
+          export CLAUDE_CONFIG_DIR="$RUNNER_TEMP/cfg"
+          mkdir -p "$CLAUDE_CONFIG_DIR" "$RUNNER_TEMP/m/.claude-plugin"
+          sha=$(curl -fsSL "$URL" | sha256sum | cut -d' ' -f1)
+          jq -n --arg url "$URL" --arg sha "$sha" '{name: "release", owner: {name: "ci"}, plugins: [{name: "prismantis", source: {source: "archive", url: $url, sha256: $sha}}]}' > "$RUNNER_TEMP/m/.claude-plugin/marketplace.json"
+          claude plugin marketplace add "$RUNNER_TEMP/m"
+          claude plugin install prismantis@release
+          claude -p /prismantis | grep -F '## Commands'
