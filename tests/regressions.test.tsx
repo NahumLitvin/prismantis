@@ -759,7 +759,7 @@ const folders = (on: On, dirs: string[]) => {
 test('a folder links once its stat lands, even when the engine refuses the first write because a render was drawing', async ($, on) => {
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)
-  on('fs.stat', (_, e) => (e.path === '/work/app/sub' ? { value: { kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false } } : e.path === '/work/app/notes' ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` }))
+  on('fs.stat', (_, e) => { const path = e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/)/, ''); return path === '/work/app/sub' ? { value: { kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false } } : path === '/work/app/notes' ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` } })
   let refused = 0
   on('state.set', (_, e, next) => (e.key === 'foundPaths' && refused++ === 0 ? { deny: 'state.set: denied: it was made while ui.render is being dispatched' } : next(e)))
   if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
