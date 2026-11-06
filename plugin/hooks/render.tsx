@@ -227,14 +227,17 @@ const hidesFile = (reach: Reach, n: Extract<Inline, { kind: 'link' }>, href: str
   return shown === undefined || shown !== withoutSlash(linkPath(root, href))
 }
 
-const ZERO_WIDTH = /[\u200b-\u200d\u2060\ufeff]/g
+const ZERO_WIDTH = /[\p{Cf}\u034f\u180e]/gu
 
 const WEB_TLDS = new Set(['com', 'org', 'net', 'io', 'dev', 'app', 'ai', 'co', 'gov', 'edu', 'info', 'biz', 'me', 'xyz', 'example', 'test', 'uk', 'de', 'fr', 'eu', 'ie', 'il', 'ca', 'au', 'jp', 'cn', 'ru', 'br', 'in'])
 
 const hostOf = (href: string): string | undefined => /^[a-z][\w+.-]*:\/\/(?:[^@/?#]*@)?([^/?#:]+)/i.exec(href)?.[1]?.toLowerCase().replace(/^www\./, '')
 
+const shownHost = (label: string): string =>
+  label.replace(/[*_~`]/g, '').replace(/[\u3002\uff0e\uff61]/gu, '.').trim().replace(/\.$/, '').replace(/^\/\//, '').replace(/^([a-z][\w+.-]*:\/\/)?[^@/?#\s]*@/i, '$1')
+
 const labelHost = (label: string): string | undefined => {
-  const m = /^([a-z][\w+.-]*:\/\/)?((?:www\.)?[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+)(?::\d+)?(?:[/?#]\S*)?$/iu.exec(label.trim())
+  const m = /^([a-z][\w+.-]*:\/\/)?((?:www\.)?[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+)(?::\d+)?(?:[/?#]\S*)?$/iu.exec(shownHost(label))
   const host = m?.[2]?.toLowerCase().replace(/^www\./, '')
   return host && (m![1] || host !== m![2]!.toLowerCase() || WEB_TLDS.has(host.slice(host.lastIndexOf('.') + 1))) ? host : undefined
 }
