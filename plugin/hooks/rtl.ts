@@ -286,12 +286,14 @@ export const opensLatin = (text: string): boolean => startsLatin(units(text, { w
 const ordered = (line: Unit[], shape: Shape, base: Dir, lead: boolean): Unit[] =>
   shape === 'engine' ? forEngine(line, lead) : shape === 'mirror' ? holdEdges(line) : asWritten(shape) ? line : shape === 'inverse' ? terminalBidi(reorder(line, base)) : reorder(line, base)
 
+const breakLines = (all: Unit[]): Unit[][] => all.reduce<Unit[][]>((rows, u) => (u.ch === '\n' ? rows.push([]) : rows.at(-1)!.push(u), rows), [[]])
+
 export const flow = (nodes: Inline[], columns: number, measure: (s: string) => number, shape: Shape = 'visual', mark = true): Flow | null => {
   if (!containsRtl(nodes)) return null
   const all = flatten(nodes)
   const base = shape === 'mirror' ? 'R' : baseOf(all)
   const marked = mark && asWritten(shape) && base === 'R' && all.some(u => bidiClass(u.ch) === 'L')
-  const logical = base === 'R' ? wrapUnits(all, columns - (marked ? measure(ROW_MARK_TEXT) : 0), measure) : [all]
+  const logical = base === 'R' ? breakLines(all).flatMap(line => wrapUnits(line, columns - (marked ? measure(ROW_MARK_TEXT) : 0), measure)) : [all]
   const lines = logical.map(line => {
     const lead = marked && startsLatin(line)
     const built = rebuild(ordered(line, shape, base, lead))

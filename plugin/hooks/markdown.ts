@@ -282,6 +282,12 @@ const keepTints = (raw: string): string =>
     code in TINT_ON ? `\uE000${String.fromCharCode(0xe100 + TINT_KEYS.indexOf(code))}` : code === '22' || code === '23' || code === '39' ? '\uE001' : m)
 const TINTED = /\uE000([\uE100-\uE1FF])([^\uE000\uE001]*)\uE001?/g
 const breakBefore = (line: string) => (line.trimStart().startsWith('\uE000') ? '\n' : ' ')
+const joinLines = (lines: string[]) =>
+  lines.map((l, i) => {
+    const t = l.trim()
+    if (i === lines.length - 1) return t
+    return / {2,}$/.test(l) || t.endsWith('\\') ? `${t.replace(/\\$/, '')}\n` : `${t}${breakBefore(lines[i + 1]!)}`
+  }).join('')
 const dropTints = (text: string) => text.replace(/\uE000[\uE100-\uE1FF]?|\uE001/g, '')
 const tinted = (text: string, hl: Highlight): Inline[] => {
   if (!text.includes('\uE000') && !text.includes('\uE001')) return decorate(text, hl)
@@ -362,7 +368,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   let para: string[] = []
 
   const flush = (end: number) => {
-    if (para.length) add({ kind: 'paragraph', inline: parseInline(para.reduce((a, l) => `${a}${breakBefore(l)}${l}`), hl) }, paraStart, end)
+    if (para.length) add({ kind: 'paragraph', inline: parseInline(joinLines(para), hl) }, paraStart, end)
     para = []
   }
 
@@ -493,7 +499,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       continue
     }
     if (!para.length) paraStart = i
-    para.push(line.trim())
+    para.push(line)
   }
   flush(lines.length)
   return blocks
