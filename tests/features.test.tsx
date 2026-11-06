@@ -1306,6 +1306,14 @@ test('promptStyle bar draws an accent bar', { options: { promptStyle: 'bar' } },
   await ui.unmount()
 })
 
+test('promptStyle bar draws its bar down every line of a prompt, wrapped lines included', { options: { promptStyle: 'bar' } }, async $ => {
+  const ui = await $.ui.mount(prompt(`one\ntwo\n${'word '.repeat(30)}`))
+  const bar = await ui.find({ type: 'Text', text: /^▌ \n/ })
+  expect(bar?.props.color).toBe(PRESETS['catppuccin-mocha'].accent)
+  expect(String(bar?.text).split('\n').length).toBeGreaterThanOrEqual(4)
+  await ui.unmount()
+})
+
 test('promptStyle chevron draws a bold accent prompt', { options: { promptStyle: 'chevron' } }, async $ => {
   const ui = await $.ui.mount(prompt('hi'))
   expect(await ui.find({ type: 'Text', text: /^› $/ })).toBeDefined()
