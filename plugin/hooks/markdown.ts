@@ -86,8 +86,15 @@ const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*
 const NUMBER = /(?<![\w.#/-])(v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/])/g
 const PATH = /(?<![\w/.:])((?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]*)*)/g
 
+const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' }
+const ENTITY = /&(?:#(\d{1,7})|#[xX]([\da-fA-F]{1,6})|(amp|lt|gt|quot|apos|nbsp));/g
+const codePoint = (n: number) => String.fromCodePoint(n > 0 && n <= 0x10ffff && (n < 0xd800 || n > 0xdfff) ? n : 0xfffd)
+const decodeEntities = (text: string): string =>
+  text.includes('&') ? text.replace(ENTITY, (_, dec?: string, hex?: string, name?: string) => (name ? NAMED[name]! : codePoint(dec ? Number(dec) : parseInt(hex!, 16)))).replace(CONTROL, '') : text
+const linkText = (text: string) => (/^`[^`]+`$/.test(text) ? text.slice(1, -1) : decodeEntities(text))
+
 const decorate = (raw: string, hl: Highlight): Inline[] => {
-  const text = raw.replace(ROLE_MARKUP, '$1')
+  const text = decodeEntities(raw.replace(ROLE_MARKUP, '$1'))
   if (!hl.numbers && !hl.paths) return [{ kind: 'text', text }]
   const marks: { start: number; end: number; kind: 'number' | 'path' }[] = []
   if (hl.paths) for (const m of text.matchAll(PATH)) marks.push({ start: m.index, end: m.index + m[0].length, kind: 'path' })
@@ -118,7 +125,7 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
   for (const m of text.matchAll(INLINE)) {
     if (m.index > at) out.push(...tinted(text.slice(at, m.index), hl))
     if (m[2] !== undefined) out.push({ kind: 'code', text: m[2] })
-    else if (m[3] !== undefined) out.push({ kind: 'link', text: m[3].replace(/^`([^`]+)`$/, '$1'), href: m[4]! })
+    else if (m[3] !== undefined) out.push({ kind: 'link', text: linkText(m[3]), href: m[4]! })
     else if (m[5] !== undefined || m[6] !== undefined) out.push({ kind: 'strong', children: parseInline(m[5] ?? m[6] ?? "", hl) })
     else if (m[7] !== undefined) out.push({ kind: 'strike', children: parseInline(m[7], hl) })
     else if (m[8] !== undefined || m[9] !== undefined) out.push({ kind: 'emphasis', children: parseInline(m[8] ?? m[9] ?? "", hl) })
