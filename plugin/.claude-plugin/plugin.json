@@ -312,6 +312,18 @@
       "description": "Color for # comments in shell blocks. Hex, rgb(), ansi256() or a name. Empty uses the theme.",
       "default": ""
     },
+    "codeFillColor": {
+      "type": "string",
+      "title": "Code block fill",
+      "description": "Background of code blocks with codeStyle filled or card. Hex, rgb(), ansi256() or a name. Empty uses a shade a step off the background.",
+      "default": ""
+    },
+    "codeBorderColor": {
+      "type": "string",
+      "title": "Code block frame",
+      "description": "Frame of code blocks with codeStyle framed or card. Hex, rgb(), ansi256() or a name. Empty uses the rule color.",
+      "default": ""
+    },
     "ruleColor": {
       "type": "string",
       "title": "Rules",
@@ -408,6 +420,13 @@
       "description": "How edit and shell edit diffs draw. card: a rounded box with tinted lines. full: no box, each changed line tinted across the width. marks: no box and no tint, only the +/- marks in the theme's diff colors. bar: no box and no tint, a colored ▌ before each changed line. Every style highlights the code and marks the changed words.",
       "default": "card",
       "options": ["card", "full", "marks", "bar"]
+    },
+    "codeStyle": {
+      "type": "string",
+      "title": "Code block style",
+      "description": "How code blocks draw in the terminal. plain: no frame, so a mouse selection copies only the code. framed: a rounded box. filled: a background, or the box in a theme with no colors to fill with. card: a rounded box on a background.",
+      "default": "plain",
+      "options": ["plain", "framed", "filled", "card"]
     },
     "pieStyle": {
       "type": "string",

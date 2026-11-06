@@ -476,6 +476,7 @@ const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => 
     case 'toolStyle': return $.config.set({ key: 'prismantis.toolStyle', value: value })
     case 'toolOutput': return $.config.set({ key: 'prismantis.toolOutput', value: value })
     case 'diffStyle': return $.config.set({ key: 'prismantis.diffStyle', value: value })
+    case 'codeStyle': return $.config.set({ key: 'prismantis.codeStyle', value: value })
     case 'pieStyle': return $.config.set({ key: 'prismantis.pieStyle', value: value })
   }
 }

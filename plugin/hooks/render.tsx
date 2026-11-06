@@ -635,6 +635,16 @@ const codeBody = (el: ElementTable, style: Style, rows: RenderElement[], gutter:
   )
 }
 
+const codeShell = (style: Style): { props: { borderStyle?: 'round'; borderColor?: string; backgroundColor?: string; paddingX?: number }; width: number } => {
+  if (style.nativeCode || style.codeStyle === 'plain') return { props: {}, width: 0 }
+  const fill = style.codeStyle === 'framed' ? undefined : style.theme.codeFill ?? previewBand(style.theme, style.background)
+  const framed = style.codeStyle !== 'filled' || !fill
+  return {
+    props: { paddingX: 1, ...(framed ? { borderStyle: 'round' as const, borderColor: style.theme.codeBorder ?? style.theme.rule } : {}), ...(fill ? { backgroundColor: fill } : {}) },
+    width: framed ? 4 : 2,
+  }
+}
+
 const isShellLang = (lang: string) => lang === '' || /^(sh|bash|zsh|shell|console|fish|powershell|ps1)$/i.test(lang)
 
 const BOX_DRAWING = /[\u2500-\u257F]/
@@ -1310,10 +1320,10 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
     return { first, second, html, png: second && copy?.(grid!, `png${b}`, '▣ png', 'png', hues) }
   })
-  const codeHead = (label: string, button: RenderElement | null) => {
+  const codeHead = (label: string, button: RenderElement | null, shell: number) => {
     if (!hover || !button) return null
     const float = floating([button])
-    return { ...float, minWidth: Math.min(columns, width(label) + 1 + float.needs) }
+    return { ...float, minWidth: Math.min(columns, width(label) + 1 + float.needs + shell) }
   }
   const room = (b: number) => (hover && buttons[b]!.first ? columns - MARK : columns)
   const beside = (b: number) => (!buttons[b]!.first ? columns : hover ? columns - MARK : columns - reserved([buttons[b]!.first]) - 2)
@@ -1338,15 +1348,16 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
         const shown = toggle?.folded ? FOLD_SHOW : lines.length
         const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
-        const room = columns - 2 - gutterOf(lines, numbered)
+        const shell = codeShell(style)
+        const room = columns - 2 - shell.width - gutterOf(lines, numbered)
         const gutter = numbered ? String(lines.length).length : 0
         const held = !style.nativeCode && mirrored(style) && lines.some(line => hasRtl(line) && (!opensLatin(line) || width(line) > room))
         const rows = held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key) : codeRows(el, style, lines, shown, block.lang, numbered, room, key)
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
-        const head = codeHead(label, button)
+        const head = codeHead(label, button, shell.width)
         return (
-          <Box key={key} flexDirection="column" alignSelf="flex-start" minWidth={head?.minWidth}>
+          <Box key={key} flexDirection="column" alignSelf="flex-start" minWidth={head?.minWidth} {...shell.props}>
             {note ? <Text color={t.codeComment}>{note}</Text> : null}
             <Box flexDirection="row" justifyContent="space-between" columnGap={head ? 1 : 4}>
               <Text color={t.codeComment}>{label}</Text>
