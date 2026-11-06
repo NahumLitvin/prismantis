@@ -801,7 +801,7 @@ const tablePicture = (block: Extract<Block, { kind: 'table' }>, screen: boolean,
   const texts = rows.map(r => r.map(displayText))
   const { natural, words } = tableSize(block)
   const widths = columnWidths(natural, ART_WIDTH - 4, 3, words)
-  const rule: Ink = own({ color: t.tableRule })
+  const rule: Ink = own({ color: t.tableRule, dim: !t.tableRule || undefined })
   const header = own({ color: t.tableHeader, bold: screen || undefined })
   const lines: string[] = []
   const inks: Ink[][] = []
