@@ -12,6 +12,15 @@ Type /kick to start; /srv/dojo/moves.md has the moves.
 | Mantis | Guardians of the Galaxy | empathy, awkward hugs | 168cm |
 | mantis shrimp | real life | punches at 23 m/s | 10cm |
 
+## Attachments
+
+Long paths and checksums never split mid-word, so a column cannot shrink below them. When those minimum widths no longer fit the reply, `tableLayout` `auto` and `stacked` draw the table as one card per row, and `compact` keeps the columns at their longest word:
+
+| Scroll | Checksum |
+|:-------|:---------|
+| ~/jade-palace/noodle-scrolls/scrolls/scroll-07-training-notes.md | 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 |
+| /srv/dojo/moves.md | 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings

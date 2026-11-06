@@ -1070,3 +1070,19 @@ test('Apple Terminal outside fullscreen gets a Hebrew prompt and reply in its bu
   expect(rows).toEqual([visual(heading), visual(item), visual('הכל תקין')])
   await replied.unmount()
 })
+
+test('a Hebrew table on Apple Terminal keeps its cells when auto would stack it', { options: { rtl: 'apple-terminal', tableLayout: 'auto' } }, async $ => {
+  const ui = await $.ui.mount(mount('| מסלול | בדיקה |\n|---|---|\n| קריאת-המגילה-העתיקה-במרתף-העיר | ממתינים-לאישור-הגרסה-הבאה-שבדרך |', 50))
+  expect(await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^מסלול$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^בדיקה$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a Hebrew table on Apple Terminal keeps its cells when stacked is asked', { options: { rtl: 'apple-terminal', tableLayout: 'stacked' } }, async $ => {
+  const ui = await $.ui.mount(mount('| מסלול | בדיקה |\n|---|---|\n| קריאת-המגילה-העתיקה-במרתף-העיר | ממתינים-לאישור-הגרסה-הבאה-שבדרך |', 50))
+  expect(await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^מסלול$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^בדיקה$/ })).toBeDefined()
+  await ui.unmount()
+})

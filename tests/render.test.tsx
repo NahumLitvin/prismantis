@@ -545,6 +545,40 @@ test('tables draw boxed by default in the terminal, with a double line under the
 
 const percent = (width: unknown) => (typeof width === 'string' && /^\d+%$/.test(width) ? Number(width.slice(0, -1)) : NaN)
 
+const STACKS = '| Scroll | Checksum |\n|:-------|:---------|\n| ~/jade-palace/noodle-scrolls/scrolls/scroll-07-training-notes.md | 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 |\n| /srv/dojo/moves.md | 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae |'
+
+for (const tableLayout of ['classic', 'auto', 'compact', 'stacked'] as const) test(`tableLayout ${tableLayout} in the terminal ${(tableLayout === 'classic' ? "keeps today's look" : tableLayout === 'auto' ? 'stretches the columns and stacks only a table too wide for even its longest words' : tableLayout === 'compact' ? 'sits every column at its longest word' : 'draws every row as label and value pairs')}`, { options: { tableLayout } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(tableLayout === 'stacked' ? STACKS : TABLE), surface: 'terminal' })
+  if (tableLayout === 'stacked') {
+    expect((await ui.findAll({ type: 'Text', text: /^Scroll *$/ }))).toHaveLength(2)
+    expect((await ui.findAll({ type: 'Text', text: /^Checksum$/ }))).toHaveLength(2)
+    expect(await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })).toBeUndefined()
+  } else {
+    const boxes = await ui.findAll({ type: 'Box' })
+    expect(['Service', 'Regions', 'Version'].map(name => {
+      const cell = boxes.find(b => b.text === name && typeof b.props.width === 'number')
+      if (!cell) throw new Error(`column ${name} not drawn`)
+      return cell.props.width as number
+    })).toEqual(tableLayout === 'compact' ? [11, 7, 7] : [11, 10, 13])
+  }
+  await ui.unmount()
+})
+
+test('tableLayout auto stacks in the terminal when not even the longest words fit', { options: { tableLayout: 'auto' } }, async $ => {
+  const narrow = await $.ui.mount({ ...draw(STACKS), surface: 'terminal', viewport: { columns: 40, rows: 40 } })
+  expect((await narrow.findAll({ type: 'Text', text: /^Checksum$/ }))).toHaveLength(2)
+  expect(await narrow.find({ type: 'Text', text: /^┌[─┬]+┐$/ })).toBeUndefined()
+  await narrow.unmount()
+})
+
+test('tableLayout stacked on desktop falls back to the shared percent layout', { options: { tableLayout: 'stacked' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'desktop' })
+  expect(await ui.findAll({ type: 'Text', text: /^Checksum$/ })).toHaveLength(0)
+  const headers = (await ui.findAll({ type: 'Box' })).filter(b => /^(Service|Regions|Version)$/.test(b.text ?? '') && b.props.width !== undefined)
+  expect(headers.map(b => percent(b?.props.width)).reduce((sum, n) => sum + n, 0)).toBe(100)
+  await ui.unmount()
+})
+
 for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tableStyle ${tableStyle} in the terminal keeps its character rules in fixed columns`, { options: { tableStyle } }, async $ => {
   const ui = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
   const boxes = await ui.findAll({ type: 'Box' })

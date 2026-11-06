@@ -465,6 +465,7 @@ const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => 
   switch (key) {
     case 'theme': return $.config.set({ key: 'prismantis.theme', value: value })
     case 'tableStyle': return $.config.set({ key: 'prismantis.tableStyle', value: value })
+    case 'tableLayout': return $.config.set({ key: 'prismantis.tableLayout', value: value })
     case 'taskStyle': return $.config.set({ key: 'prismantis.taskStyle', value: value })
     case 'listMarker': return $.config.set({ key: 'prismantis.listMarker', value: value })
     case 'headingStyle': return $.config.set({ key: 'prismantis.headingStyle', value: value })

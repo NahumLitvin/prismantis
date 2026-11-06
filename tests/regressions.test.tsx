@@ -154,15 +154,17 @@ for (const [kind, cell] of [
   ['named link', 'see [docs](https://github.com/org/repo/blob/main/docs/spec.md) for more'],
   ['bare URL', 'https://example.com/a/rather/long/path/that/cannot/fit/on/one/line'],
 ] as const) {
-  test(`a boxed row with a ${kind} keeps the link whole and clips its borders to the row`, async $ => {
+  test(`a row too wide for its ${kind} stacks as cards and keeps the ${kind} whole`, { options: { tableLayout: 'auto' } }, async $ => {
+    const url = kind === 'named link' ? 'https://github.com/org/repo/blob/main/docs/spec.md' : 'https://example.com/a/rather/long/path/that/cannot/fit/on/one/line'
     const ui = await $.ui.mount(mount(`| n | link |\n|---|---|\n| 1 | ${cell} |`, 40))
     const links = await ui.findAll({ type: 'Link' })
-    const boxes = await ui.findAll({ type: 'Box' })
-    const clips = boxes.filter(b => b.props.overflow === 'hidden' && b.props.height === 0)
-    expect(links.length).toBe(1)
-    expect(clips.length).toBe(3)
-    expect(clips.every(b => drawn(b).split('\n').length > 2)).toBe(true)
-    expect(boxes.some(b => b.props.position === 'absolute' && drawn(b).includes('│'))).toBe(false)
+    const href = (l: { props?: Record<string, unknown> }) => (typeof l.props?.href === 'string' ? l.props.href : '')
+    expect(await ui.find({ type: 'Text', text: /^┌[─┬]+┐$/ })).toBeUndefined()
+    expect((await ui.findAll({ type: 'Box' })).filter(b => b.props.overflow === 'hidden' && b.props.height === 0)).toHaveLength(0)
+    expect((await ui.findAll({ type: 'Box' })).some(b => b.props.position === 'absolute' && drawn(b).includes('│'))).toBe(false)
+    expect(await ui.findAll({ type: 'Text', text: /^link *$/ })).toHaveLength(1)
+    expect(links.every(l => href(l) === url)).toBe(true)
+    if (kind === 'bare URL') expect(links).toHaveLength(3)
     await ui.unmount()
   })
 }
@@ -357,6 +359,8 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('`You ⬤`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('A paste of 4 lines or more')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`clock`')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`tableLayout`')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('scroll-07-training-notes.md')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`listMarker` to dash in')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`bubbleLabels`')
   expect(helpText([])).toContain('bubble labels')
