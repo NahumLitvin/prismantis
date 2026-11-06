@@ -74,6 +74,41 @@ test('shell blocks color command and flags', async $ => {
   await ui.unmount()
 })
 
+const DIAGRAM = [
+  'why prod runs a new chart',
+  '',
+  'A prod app is two knobs.',
+  '      ┌──────────────┐',
+  '      │ chart ref    │',
+  '      └──────┬───────┘',
+  'moves when the branch tip moves',
+  '             ▼',
+].join('\n')
+
+test('an untagged block holding a box diagram draws no line in shell colors', async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(['```', DIAGRAM, '```'].join('\n')), surface: 'terminal' })
+  const inks = (await ui.findAll({ type: 'Text' })).map(n => n.props.color)
+  expect(inks).not.toContain(t.codeCommand)
+  expect(inks).not.toContain(t.codeFlag)
+  for (const line of ['why prod runs a new chart', 'A prod app is two knobs.', 'moves when the branch tip moves']) {
+    expect((await ui.find({ type: 'Text', text: new RegExp(`^${line}$`) }))?.props.color).toBe(t.codeText)
+  }
+  await ui.unmount()
+})
+
+test('a tagged shell block keeps its command color when a box glyph shares the block', async $ => {
+  const ui = await $.ui.mount({ ...draw('```bash\ntree src\n├── a.ts\n└── b.ts\n```'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^tree$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].codeCommand)
+  await ui.unmount()
+})
+
+test('an untagged block without a box glyph still reads as shell', async $ => {
+  const ui = await $.ui.mount({ ...draw('```\nnpm run build --silent\n```'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^npm$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].codeCommand)
+  await ui.unmount()
+})
+
 test('disabled leaves the engine renderer alone', { options: { enabled: false } }, async ($, on) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)

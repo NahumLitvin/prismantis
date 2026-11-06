@@ -603,8 +603,10 @@ export const highlightBlock = ({ Text }: ElementTable, style: Style, lines: stri
 
 const gutterOf = (lines: string[], numbered: boolean) => (numbered ? String(lines.length).length + 2 : 0)
 
-const heldSegments = (style: Style, lines: string[], lang: string): Segment[][] =>
-  (isShellLang(lang) ? lines.map(line => shellLine(style, line)) : segmentRows(style, lines, lang)) ?? lines.map(text => (text ? [{ text, italic: false }] : []))
+const heldSegments = (style: Style, lines: string[], lang: string): Segment[][] => {
+  const plain = plainBlock(lang, lines)
+  return (isShellLang(lang) ? lines.map(line => shellLine(style, line, plain)) : segmentRows(style, lines, lang)) ?? lines.map(text => (text ? [{ text, italic: false }] : []))
+}
 
 const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, gutter: number, room: number, key: string): RenderElement[] =>
   heldSegments(style, lines, lang).slice(0, shown).flatMap((segs, i) =>
@@ -618,7 +620,8 @@ const figureFallbackLines = (block: Extract<Block, { kind: 'code' }>): string[] 
 
 const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string): RenderElement[] => {
   if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
-  const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room))
+  const plain = plainBlock(lang, lines)
+  const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room, plain))
   return style.shape === 'engine' ? rows.map((row, i) => <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</el.Text>) : rows
 }
 
@@ -636,13 +639,15 @@ const isShellLang = (lang: string) => lang === '' || /^(sh|bash|zsh|shell|consol
 
 const BOX_DRAWING = /[\u2500-\u257F]/
 
+const plainBlock = (lang: string, lines: readonly string[]): boolean => lang === '' && lines.some(line => BOX_DRAWING.test(line))
+
 const SHELL_COMMENT = /^\s*#/
 
-export const codeLine = (el: ElementTable, style: Style, line: string, lang: string, key: string, room?: number): RenderElement => {
+export const codeLine = (el: ElementTable, style: Style, line: string, lang: string, key: string, room?: number, plain = false): RenderElement => {
   const { Text } = el
   const t = style.theme
   const isShell = isShellLang(lang)
-  if (BOX_DRAWING.test(line)) return <Text key={key} color={t.codeText}>{line}</Text>
+  if (plain || BOX_DRAWING.test(line)) return <Text key={key} color={t.codeText}>{line || ' '}</Text>
   const comment = style.reorder ? commentTail(line, style.shape) : null
   if (comment) {
     return (
@@ -657,9 +662,9 @@ export const codeLine = (el: ElementTable, style: Style, line: string, lang: str
   return <Text key={key} color={t.codeText}>{shellSegments(style, line, room).map((s, i) => <Text key={`${key}.${i}`} color={s.color}>{s.text}</Text>)}</Text>
 }
 
-const shellLine = (style: Style, line: string): Segment[] => {
+const shellLine = (style: Style, line: string, plain = false): Segment[] => {
   if (!line) return []
-  if (BOX_DRAWING.test(line)) return [{ text: line, color: style.theme.codeText, italic: false }]
+  if (plain || BOX_DRAWING.test(line)) return [{ text: line, color: style.theme.codeText, italic: false }]
   if (SHELL_COMMENT.test(line)) return [{ text: line, color: style.theme.codeComment, italic: false }]
   return shellSegments(style, line)
 }
