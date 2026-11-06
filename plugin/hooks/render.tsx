@@ -1487,13 +1487,18 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       </Box>,
     )
   }
-  return [...out, ...restSource(el, blocks.slice(cut))]
+  return [...out, ...restSource(el, blocks.slice(cut), REST_ROOM - textIn(out))]
 }
 
 const NODE_BUDGET = 19800
 
 const nodesIn = (n: unknown): number =>
   Array.isArray(n) ? n.reduce<number>((sum, c) => sum + nodesIn(c), 0) : n !== null && typeof n === 'object' ? 1 + nodesIn((n as { children?: unknown }).children) : typeof n === 'string' ? 1 : 0
+
+const REST_ROOM = 59000
+
+const textIn = (n: unknown): number =>
+  Array.isArray(n) ? n.reduce<number>((sum, c) => sum + textIn(c), 0) : typeof n === 'string' ? n.length : n !== null && typeof n === 'object' ? textIn((n as { children?: unknown }).children) : 0
 
 const budgetCut = (elements: RenderElement[]): number => {
   let left = NODE_BUDGET
@@ -1512,8 +1517,14 @@ const chunks = (text: string): string[] =>
     }
     return out
   }, [])
-const restSource = ({ Text }: ElementTable, rest: Block[]): RenderElement[] =>
-  rest.length ? chunks(rest.map(block => block.raw).join('\n\n')).map((text, i) => <Text key={`rest${i}`} dimColor>{text}</Text>) : []
+const restSource = ({ Text }: ElementTable, rest: Block[], room: number): RenderElement[] => {
+  if (!rest.length) return []
+  const lines = rest.map(block => block.raw).join('\n\n').split('\n')
+  const fit = lines.findIndex(line => (room -= line.length + 1) < 0)
+  const kept = fit < 0 ? lines : lines.slice(0, fit)
+  const text = kept.length ? chunks(kept.join('\n').trimEnd()).map((text, i) => <Text key={`rest${i}`} dimColor>{text}</Text>) : []
+  return fit < 0 ? text : [...text, <Text key="restMore" dimColor>{`… +${lines.length - fit} lines · /prismantis copy for the whole reply`}</Text>]
+}
 
 export type ToolRow = { tool: string; input: unknown; isRunning: boolean; isErrored: boolean; isInterrupted: boolean }
 
