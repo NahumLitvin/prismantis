@@ -255,6 +255,34 @@ test('toolOutput quiet shows why a call failed instead of only its exit code', {
   await out.unmount()
 })
 
+test('toolOutput quiet hands a failed call back to the engine in the ctrl+o transcript, so it shows in full', { options: { toolOutput: 'quiet' } }, async ($, on) => {
+  engine(on)
+  const row = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: { ...call('Bash', { command: 'false' }, 'fx-1'), isErrored: true, ...{ isExpanded: true }, output: 'Exit code 1\nerror: boom' } as never,
+  })
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await row.unmount()
+  const out = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolResult',
+    props: { tool_use_id: 'fx-1', tool: 'Bash', output: 'Error: Exit code 1\nerror: boom', isErrored: true, ...{ isExpanded: true } } as never,
+  })
+  expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await out.unmount()
+  const back = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: { ...call('Bash', { command: 'false' }, 'fx-1'), isErrored: true, ...{ isExpanded: false }, output: 'Exit code 1\nerror: boom' } as never,
+  })
+  expect(await back.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await back.unmount()
+})
+
 const REFUSED = 'Permission for this action was denied by the Claude Code auto mode classifier. Reason: Blocked by classifier. If you have other tasks that do not depend on this action, continue with those.'
 
 test('a refused call keeps its whole reason, a failed command only its last line', () => {
