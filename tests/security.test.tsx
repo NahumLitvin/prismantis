@@ -206,3 +206,12 @@ test('a link whose label names another host or hides zero-width characters draws
   for (const [label] of HONEST) expect([label, texts.includes(label)]).toEqual([label, true])
   await ui.unmount()
 })
+
+test('links in your own prompt pass the same checks as links in a reply', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(reply('[x](https://a.dev)'))))) return
+  const typed = '[https://good.example](https://evil.example/x) [run](javascript:alert(1)) [docs](https://a.dev/docs)'
+  const ui = await $.ui.mount({ plugin: 'prismantis', component: 'UserMessage' as const, props: { text: typed, origin: { kind: 'composer' } as never, isExpanded: true }, viewport: { columns: 120, rows: 10 }, surface: 'terminal' as const })
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['https://a.dev/docs'])
+  await ui.unmount()
+})
