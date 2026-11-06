@@ -463,7 +463,17 @@ const folder = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolv
   return { folded, faced: look?.face !== undefined, element, around: (rows, hover) => <el.Button key={`${key}.rows`} plain label={label} hover={hover} onPress={toggle}>{rows}</el.Button> }
 }
 
-const copyOut = async ($: EngineInterface, style: Style, content: string, surface: RenderSurface, rich?: (() => string) | 'png', hues?: Hues): Promise<string> => {
+const copies = { last: 0, pending: 0, queue: Promise.resolve() as Promise<unknown> }
+
+const lastCopy = (run: () => Promise<string>): Promise<string | null> => {
+  const turn = ++copies.last
+  const done = copies.pending ? copies.queue.then(() => (turn === copies.last ? run() : null)) : run()
+  copies.pending++
+  copies.queue = done.catch(() => null).finally(() => copies.pending--)
+  return done
+}
+
+const copyNow = async ($: EngineInterface, style: Style, content: string, surface: RenderSurface, rich?: (() => string) | 'png', hues?: Hues): Promise<string> => {
   const backend = style.htmlCopy
   const failure = rich && backend ? await runHelper($, backend, richCommand(style, backend, content, rich, hues)) : undefined
   if (failure === null) return rich === 'png' ? 'Copied as image' : 'Copied formatted table'
@@ -475,13 +485,16 @@ const copyOut = async ($: EngineInterface, style: Style, content: string, surfac
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', rich?: (() => string) | 'png', hues?: () => Hues) => {
-    const copied = (surface: RenderSurface) => copyOut($, style, typeof text === 'function' ? text() : text, surface, rich, hues?.())
+    const copied = (surface: RenderSurface) => lastCopy(() => copyNow($, style, typeof text === 'function' ? text() : text, surface, rich, hues?.()))
     return style.copyButtons && offers(style, rich) ? (
       <Button
         key={key}
         {...(style.copyButtonStyle === 'dim' ? { plain: true as const, dimColor: true } : { variant: 'primary' as const })}
         label={label}
-        onPress={async press => $.ui.toast(await copied(press.surface).catch(() => 'Copy failed'))}
+        onPress={async press => {
+          const said = await copied(press.surface).catch(() => 'Copy failed')
+          if (said) $.ui.toast(said)
+        }}
       />
     ) : null
   }

@@ -426,3 +426,30 @@ test('a Latin table copies to html with no dir', async ($, on) => {
   expect(JSON.parse(inputs[0]!).html).toMatch(/^<table>/)
   await ui.unmount()
 })
+
+test('the last copy pressed wins: ⧉ md pressed while ▣ png still draws lands after the image, and ⧉ art pressed between is dropped', async ($, on) => {
+  clipboardEnv(on, 'macos')
+  const order: string[] = []
+  let release = () => {}
+  const drawing = new Promise<void>(resolve => { release = resolve })
+  on('process.run', async () => {
+    await drawing
+    order.push('png')
+    return runResult(0)
+  })
+  on('ui.copy', (_, e) => {
+    order.push(e.text.startsWith('|') ? 'md' : 'text')
+    return { value: { isCopied: true as const } }
+  })
+  const toasts = recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount(mount)
+  const png = ui.press({ key: 'png0' })
+  const art = ui.press({ key: 'art0' })
+  const md = ui.press({ key: 'copy0' })
+  release()
+  await Promise.all([png, art, md])
+  expect(order).toEqual(['png', 'md'])
+  expect(toasts).toEqual(['Copied as image', 'Copied'])
+  await ui.unmount()
+})
