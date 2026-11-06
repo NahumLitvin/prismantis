@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.45.0] - 2026-11-06
+
+A hardening release from two code reviews, an end-to-end bug hunt in real terminals and a QA pass.
+
+### Changed
+
+- A file path with no extension, like `/bin/sh` or `Makefile`, no longer becomes a clickable link, so a click can't launch a program. Folders without an extension still link once prismantis sees they are folders ([#424](https://github.com/NahumLitvin/prismantis/pull/424), [#440](https://github.com/NahumLitvin/prismantis/pull/440)).
+- A link whose label names one site but goes to another draws as `label (target)`, also for lookalikes with markup, odd dots or hidden characters, and links in your own prompt get the same checks ([#427](https://github.com/NahumLitvin/prismantis/pull/427), [#438](https://github.com/NahumLitvin/prismantis/pull/438), [#436](https://github.com/NahumLitvin/prismantis/pull/436)).
+- An opened code block over 400 lines shows its first 400 and a `… +N lines` note, and a reply too big for Claude Code shows the rest as dim markdown ending in `… +N lines · /prismantis copy for the whole reply`, instead of falling back to Claude Code's own drawing. Copy still gives everything ([#417](https://github.com/NahumLitvin/prismantis/pull/417), [#419](https://github.com/NahumLitvin/prismantis/pull/419), [#437](https://github.com/NahumLitvin/prismantis/pull/437)).
+- Copying an alert gives its text without the `[!TYPE]` line, and `/prismantis copy code` skips diagrams ([#421](https://github.com/NahumLitvin/prismantis/pull/421)).
+- Hebrew tables copy to PNG and HTML in the order you see them ([#420](https://github.com/NahumLitvin/prismantis/pull/420)).
+
+### Fixed
+
+- A stray terminal escape in a reply no longer erases everything after it, and escapes in tool commands and errors are stripped instead of making the row fall back ([#414](https://github.com/NahumLitvin/prismantis/pull/414), [#426](https://github.com/NahumLitvin/prismantis/pull/426)).
+- `&amp;`, `&lt;` and numeric entities show as `&`, `<` and the character, and no longer get escaped twice in the HTML copy ([#412](https://github.com/NahumLitvin/prismantis/pull/412)).
+- Two trailing spaces or a backslash break a line inside list items too ([#413](https://github.com/NahumLitvin/prismantis/pull/413)).
+- Broken or very deep display math shows as source instead of misleading text or a crash ([#416](https://github.com/NahumLitvin/prismantis/pull/416)).
+- Very long table cells, runs of unclosed `$$` lines and long folded code blocks no longer slow drawing down ([#415](https://github.com/NahumLitvin/prismantis/pull/415), [#418](https://github.com/NahumLitvin/prismantis/pull/418)).
+- Light themes on a dark terminal draw readable reply text, and `mono` draws alerts without color ([#429](https://github.com/NahumLitvin/prismantis/pull/429), [#430](https://github.com/NahumLitvin/prismantis/pull/430)).
+- `promptStyle: bar` runs down the whole prompt, and the `wide` description matches what it draws ([#432](https://github.com/NahumLitvin/prismantis/pull/432), [#431](https://github.com/NahumLitvin/prismantis/pull/431)).
+- Deep lists stop indenting at half the width, so every level shows its text ([#433](https://github.com/NahumLitvin/prismantis/pull/433)).
+- `/prismantis setup` keeps the focused style visible in a short, narrow terminal ([#434](https://github.com/NahumLitvin/prismantis/pull/434)).
+- Under Ctrl+O, failed calls in quiet mode expand, and a command's output shows once ([#435](https://github.com/NahumLitvin/prismantis/pull/435), [#439](https://github.com/NahumLitvin/prismantis/pull/439)).
+- Short `#abc` colors in options tint like six-digit ones ([#422](https://github.com/NahumLitvin/prismantis/pull/422)).
+- Chart gridlines stay dim in a PNG copy ([#420](https://github.com/NahumLitvin/prismantis/pull/420)).
+- Fewer file system checks per turn, and LaTeX and image caches are bounded by size ([#425](https://github.com/NahumLitvin/prismantis/pull/425), [#423](https://github.com/NahumLitvin/prismantis/pull/423)).
+
 ## [0.44.0] - 2026-11-06
 
 ### Added
