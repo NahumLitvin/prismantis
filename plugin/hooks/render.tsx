@@ -127,7 +127,19 @@ const isHyperlink = (href: string, reach: Reach): boolean =>
   (reach.httpLinks ? /^https?:/i : /^(https:|http:\/\/localhost(:\d+)?([/?#]|$))/i).test(href)
   || (reach.editorLinks && /^(vscode(-insiders)?|cursor|windsurf|zed):\/\/file\//i.test(href))
   || (reach.obsidianLinks && opensObsidianNote(href))
-  || (reach.fileLinks !== null && /^file:/i.test(href) && !launches(href))
+  || (reach.fileLinks !== null && /^file:/i.test(href) && !launches(href) && opens(reach, href))
+
+const bare = (path: string): boolean => /^\d*$/.test(extensionOf(path.replace(/[/\\]+$/, '').replace(/^.*[/\\]/, '')))
+
+const hrefPath = (reach: Reach, href: string): string =>
+  (linkPath(reach.fileLinks ?? 'file://', href) ?? href).replace(/^\/(?=[a-z]:)/i, '').replace(/(?<=.)\/+$/, '')
+
+const opens = (reach: Reach, href: string): boolean => {
+  const path = hrefPath(reach, href)
+  return !bare(path) || reach.found?.has(`${path}/`) === true
+}
+
+const bareKey = (reach: Reach, href: string | undefined): string[] => (href === undefined || !bare(hrefPath(reach, href)) ? [] : [hrefPath(reach, href)])
 
 const plainLink = (text: string, href: string): string => {
   const target = href.replace(/^mailto:/i, '')
@@ -181,7 +193,7 @@ type LinkPiece = { text: string; path?: string }
 const pieceText = (pieces: LinkPiece[]): string => pieces.map(p => p.text).join('')
 
 const drawPieces = (el: ElementTable, style: Style, pieces: LinkPiece[]): string | (string | RenderElement)[] => {
-  const hrefs = pieces.map(p => (p.path === undefined ? undefined : toolHref(style, p.path)))
+  const hrefs = pieces.map(p => (p.path === undefined ? undefined : toolHref(style, p.path))).map(href => (href && opens(style, href) ? href : undefined))
   return hrefs.some(Boolean) ? pieces.map((p, i) => { const href = hrefs[i]; return href ? <el.Link key={`p${i}`} href={href} label={p.text} /> : p.text }) : pieceText(pieces)
 }
 
@@ -225,7 +237,7 @@ const linksAsPath = (path: string): boolean => !path.startsWith('/') || /^\/[^/]
 
 const drawnPath = (n: Extract<Inline, { kind: 'path' }>, reach: Reach): Inline => {
   const href = reach.pathLinks && linksAsPath(n.text) ? pathHref(reach, n.text) : undefined
-  return href === undefined ? n : { ...n, href }
+  return href === undefined || !opens(reach, href) ? n : { ...n, href }
 }
 
 const PART = String.raw`[\p{L}\p{N}_@+-]+`
@@ -246,7 +258,7 @@ const looseSpellings = (text: string): RegExpExecArray[] => [...text.matchAll(LO
 
 const foundProbe = (reach: Reach, spelling: string): Probe | undefined => {
   const probe = looseProbe(reach, spelling)
-  return probe && reach.found?.has(probe.key) ? probe : undefined
+  return probe && reach.found?.has(probe.key) && opens(reach, probe.href) ? probe : undefined
 }
 
 const loosePaths = (n: Extract<Inline, { kind: 'text' }>, reach: Reach): Inline[] => {
@@ -311,14 +323,25 @@ const inlinesOf = (block: Block): Inline[][] => {
 
 const spelled = new WeakMap<Block, string[]>()
 
+const bareKeysIn = (nodes: Inline[], reach: Reach): string[] =>
+  nodes.flatMap(n => {
+    if (n.kind === 'path') return reach.pathLinks && linksAsPath(n.text) ? bareKey(reach, pathHref(reach, n.text)) : []
+    if (n.kind === 'link') return /^file:/i.test(n.href) ? bareKey(reach, n.href) : []
+    return 'children' in n ? bareKeysIn(n.children, reach) : []
+  })
+
 export const pathsToProbe = (blocks: Block[], reach: Reach): string[] => {
-  if (!reach.pathLinks || reach.fileLinks === null) return []
+  if (reach.fileLinks === null) return []
   return nestedBlocks(blocks).flatMap(block => {
     const spellings = spelled.get(block) ?? inlinesOf(block).flatMap(spellingsIn)
     spelled.set(block, spellings)
-    return spellings.flatMap(spelling => looseProbe(reach, spelling)?.key ?? [])
+    const loose = reach.pathLinks ? spellings.flatMap(spelling => looseProbe(reach, spelling)?.key ?? []) : []
+    return [...loose, ...inlinesOf(block).flatMap(nodes => bareKeysIn(nodes, reach))]
   })
 }
+
+export const toolPathsToProbe = (reach: Reach, inputs: unknown[]): string[] =>
+  reach.pathLinks && reach.fileLinks !== null ? inputs.flatMap(input => PATH_FIELDS.flatMap(k => { const path = field(input, k); return path === undefined ? [] : bareKey(reach, toolHref(reach, path)) })) : []
 
 const hyperlinkBlock = (block: Block, reach: Reach): Block => {
   const drawn = (nodes: Inline[]) => hyperlinks(nodes, reach)
@@ -342,7 +365,7 @@ const hyperlinked = new WeakMap<Block, Record<string, Block>>()
 const drawable = (block: Block, reach: Reach): Block => {
   const cached = hyperlinked.get(block) ?? {}
   hyperlinked.set(block, cached)
-  const key = `${+reach.httpLinks}${+reach.editorLinks}${+reach.obsidianLinks}${reach.fileLinks ?? ''}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}\0${reach.found?.size ?? 0}` : ''}`
+  const key = `${+reach.httpLinks}${+reach.editorLinks}${+reach.obsidianLinks}${reach.fileLinks ?? ''}\0${reach.found?.size ?? 0}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}` : ''}`
   return (cached[key] ??= hyperlinkBlock(block, reach))
 }
 
