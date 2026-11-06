@@ -1007,6 +1007,19 @@ test('a light theme keeps Claude\'s fill a pale blue that its code text reads on
   expect(contrast(latte.codeText!, fill)).toBeGreaterThanOrEqual(4.5)
 })
 
+test('a light theme draws a reply\'s plain text in its own text color, so it reads on the pale fill in a dark terminal', { options: { theme: 'gruvbox-light' } }, async $ => {
+  const ink = PRESETS['gruvbox-light'].codeText
+  const ui = await $.ui.mount(answer('A plain sentence.\n\n- a list item\n\n| a | b |\n|---|---|\n| cell | 2 |\n\n> [!NOTE]\n> inside an alert'))
+  for (const text of [/^A plain sentence\.$/, /^a list item$/, /^cell/, /^inside an alert$/]) expect((await ui.find({ type: 'Text', text }))?.props.color).toBe(ink)
+  await ui.unmount()
+})
+
+test('a dark theme leaves a reply\'s plain text in the terminal\'s own color', async $ => {
+  const ui = await $.ui.mount(answer('A plain sentence.\n\n- a list item'))
+  for (const text of [/^A plain sentence\.$/, /^a list item$/]) expect((await ui.find({ type: 'Text', text }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
 test('promptFillColor and replyFillColor set the fills of the bubbles', { options: { promptFillColor: '#1e3a28', replyFillColor: '#1c2233' } }, async $ => {
   const mine = await $.ui.mount(prompt('how many frog raids?'))
   expect((await mine.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.backgroundColor).toBe('#1e3a28')
