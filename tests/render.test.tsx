@@ -1,4 +1,5 @@
 import { expect, test } from 'claude-code/testing'
+import type { TestBody } from 'claude-code/testing'
 
 import { displayText, parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
@@ -704,6 +705,36 @@ test('folds open starts a long code block open, folds it on press and opens it a
     expect(await shown()).toBe(n)
     await ui.unmount()
   }
+})
+
+const nodeCount = (n: unknown): number =>
+  n == null || n === false ? 0 : Array.isArray(n) ? n.reduce((a: number, c) => a + nodeCount(c), 0) : typeof n !== 'object' ? 1 : 1 + nodeCount((n as { children?: unknown[] }).children)
+
+const hugeCode = (name = 'v') => `\`\`\`ts\n${Array.from({ length: 900 }, (_, i) => `const ${name}${i} = await fetch("/api/${i}", { retries: ${i % 5}, cache: false })`).join('\n')}\n\`\`\``
+
+const takesLongCode = ($: Parameters<TestBody>[0]) =>
+  $.ui.mount({ ...draw(`\`\`\`ts\n${'x'.repeat(10001)}\n\`\`\``), surface: 'desktop' }).then(ui => ui.unmount().then(() => true), () => false)
+
+test('an opened 900-line code block shows 400 lines, counts the rest and keeps show less under the node ceiling', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    if (surface === 'desktop' && !(await takesLongCode($))) continue
+    const ui = await $.ui.mount({ ...draw(hugeCode(surface)), surface })
+    await ui.press({ key: 'fold0' })
+    expect(nodeCount(await ui.drawn())).toBeLessThan(20000)
+    expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
+    expect(await ui.find({ type: 'Text', text: /^… \+500 lines$/ })).toBeDefined()
+    if (surface === 'terminal') expect([!!(await ui.find({ type: 'Text', text: /^const terminal399 / })), !!(await ui.find({ type: 'Text', text: /^const terminal400 / }))]).toEqual([true, false])
+    else expect(String((await ui.find({ type: 'Code' }))!.props.source).split('\n').length).toBe(400)
+    await ui.unmount()
+  }
+})
+
+test('folds open caps a 900-line code block at 400 lines', { options: { folds: 'open' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(hugeCode()), surface: 'terminal' })
+  expect(nodeCount(await ui.drawn())).toBeLessThan(20000)
+  expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
+  expect(await ui.find({ type: 'Text', text: /^… \+500 lines$/ })).toBeDefined()
+  await ui.unmount()
 })
 
 test('two code blocks that differ only in where lines break fold on their own', async $ => {
