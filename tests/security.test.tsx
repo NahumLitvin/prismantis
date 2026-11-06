@@ -179,3 +179,29 @@ test('terminal control sequences in a failed tool\'s error and refusal text are 
   expect(refusal.join('')).toContain('Permission to run')
   expect([...error, ...refusal].filter(t => /[\u001b\u0007]/.test(t))).toEqual([])
 })
+
+const SPOOFS: [label: string, href: string][] = [
+  ['https://good.example', 'https://evil.example/x'],
+  ['www.good.example/login', 'https://evil.example'],
+  ['paypal.com', 'https://evil.example'],
+  ['pay​pal.com', 'https://paypal.com'],
+  ['Pay⁠Pal', 'https://paypal.com'],
+]
+
+const HONEST: [label: string, href: string][] = [
+  ['docs', 'https://evil.example/x'],
+  ['README.md', 'https://github.com/o/r/blob/main/README.md'],
+  ['example.com', 'https://docs.example.com/x'],
+  ['https://a.dev/one', 'https://a.dev/two'],
+  ['GitHub.com', 'https://www.github.com/o'],
+]
+
+test('a link whose label names another host or hides zero-width characters draws as text with its target', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  if (!(await linksHttp($.ui.mount(reply('[x](https://a.dev)'))))) return
+  const ui = await $.ui.mount(reply([...SPOOFS, ...HONEST].map(([label, href]) => `[${label}](${href})`).join(' and ')))
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(HONEST.map(([, href]) => href))
+  for (const [label, href] of SPOOFS) expect([label, await ui.find({ type: 'Text', text: new RegExp(`^${`${label.replace(/[​-‍⁠﻿]/g, '')} (${href})`.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}$`) }) !== undefined]).toEqual([label, true])
+  for (const [label] of HONEST) expect([label, await ui.find({ type: 'Text', text: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}$`) }) !== undefined]).toEqual([label, true])
+  await ui.unmount()
+})
