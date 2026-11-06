@@ -40,6 +40,8 @@ const section = n => demo.repeat(n)
 const bigTable = `| id | service | region | pods | p95 |\n|---|---|---|---|---|\n${Array.from({ length: 300 }, (_, i) => `| ${i} | svc-${i} | us-east | ${i * 3} | ${i % 90}ms |`).join('\n')}`
 const bigCode = `\`\`\`ts\n${Array.from({ length: 1500 }, (_, i) => `const v${i} = await fetch("/api/${i}", { retries: ${i % 5} }) // 99.9% ~/src/app.ts`).join('\n')}\n\`\`\``
 const streamSource = section(6)
+const hugeCode = `\`\`\`ts\n${Array.from({ length: 10000 }, (_, i) => `const v${i} = await fetch("/api/${i}", { retries: ${i % 5} }) // 99.9% ~/src/app.ts`).join('\n')}\n\`\`\``
+const folded = () => ({ folded: true, element: null })
 
 const blocks = parse(demo, { numbers: true, paths: true })
 const charts = blocks.filter(b => b.kind === 'code' && b.lang === 'mermaid').map(b => b.lines.join('\n'))
@@ -51,6 +53,14 @@ for (let end = 100; end <= streamSource.length; end += 100) {
   const t = performance.now()
   reply(text, style)
   streamTimes.push(performance.now() - t)
+}
+
+const foldedStream = []
+for (let end = 2000; end <= 200000; end += 2000) {
+  const text = hugeCode.slice(0, end)
+  const t = performance.now()
+  reply(text, style, columns, folded)
+  foldedStream.push(performance.now() - t)
 }
 
 const hebrew = (n, tag = '') => Array.from({ length: n }, (_, i) => `פסקה ${i}${tag} עם **מודגש**, \`קוד\`, 99.9% ו-250ms וגם kubectl באנגלית ועוד מילים כדי שהשורה תתכסה.`).join("\n\n")
@@ -80,6 +90,12 @@ const rows = [
   time('table, 300 rows', i => reply(fresh(bigTable, i), style)),
   time('Hebrew, 300 paragraphs (cold)', i => reply(hebrew(300, `-${i}`), style), Math.max(20, RUNS / 5)),
   time('code block, 1500 lines, highlighted', i => reply(fresh(bigCode, i), style), Math.max(20, RUNS / 5)),
+  time('code block, 10000 lines, folded (cold)', i => reply(hugeCode.replace('const v0 ', `const v${i} `), style, columns, folded), Math.max(10, RUNS / 20)),
+  {
+    stage: `stream replay, ${foldedStream.length} redraws of a folded code block (per redraw)`,
+    median: quantile(foldedStream, 0.5),
+    p95: quantile(foldedStream, 0.95),
+  },
   {
     stage: `stream replay, ${streamTimes.length} redraws of a ${streamSource.length}-char reply (per redraw)`,
     median: quantile(streamTimes, 0.5),
