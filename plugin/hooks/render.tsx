@@ -2908,7 +2908,7 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   const t = style.theme
   const color = promptInk(style)
   const rows = text.split('\n')
-  const marked = rows.map(line => parseInline(told(line), { numbers: false, paths: false }))
+  const marked = rows.map(line => hyperlinks(parseInline(told(line), { numbers: false, paths: false }), style))
   const lines = rows.map((line, i) => (own(line) === undefined ? flowOf(style, marked[i]!, promptRoom(style, columns) - 4 - (time === undefined ? 0 : time.length + 1)) : null))
   const hebrew = lines.some(l => l?.base === 'R')
   const rtl = hebrew && !mirrored(style)
