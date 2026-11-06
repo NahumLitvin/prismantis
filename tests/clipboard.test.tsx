@@ -414,3 +414,15 @@ test('a Latin table copies to html with no dir', async ($, on) => {
   expect(JSON.parse(inputs[0]!).html).toMatch(/^<table>/)
   await ui.unmount()
 })
+
+test('⧉ art copies a Hebrew table with its columns right to left, as the screen and ▣ png draw it', { options: { rtl: 'warp' } }, async ($, on) => {
+  clipboardEnv(on, 'macos')
+  on('process.run', () => runResult(0))
+  const copies = recordCopies(on)
+  recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount({ ...mount, props: { text: '| שם | כמות |\n|--|--:|\n| תפוחים | 3 |', isFirstOfReply: true } })
+  await ui.press({ key: 'art0' })
+  expect(copies[0]!.split('\n')[4]).toBe('│    3 │ תפוחים │')
+  await ui.unmount()
+})

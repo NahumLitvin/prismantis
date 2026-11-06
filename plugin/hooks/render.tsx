@@ -849,7 +849,7 @@ const rightToLeft = (block: Extract<Block, { kind: 'table' }>): Extract<Block, {
 const tableArts = (block: Extract<Block, { kind: 'table' }>, t: Theme, rtl: boolean) => {
   let picture: { text: string; inks: Ink[][] } | undefined
   const drawn = () => (picture ??= tablePicture(rtl ? rightToLeft(block) : block, true, t))
-  return { art: () => tableArt(block), grid: () => drawn().text, hues: () => drawn().inks }
+  return { art: () => tableArt(rtl ? rightToLeft(block) : block), grid: () => drawn().text, hues: () => drawn().inks }
 }
 
 const artsOf = (drawn: { art?: string; hues?: () => Hues } | undefined, block: Block, t: Theme, rtl: boolean): { art?: string | (() => string); grid?: string | (() => string); hues?: () => Hues } =>
