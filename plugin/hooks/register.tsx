@@ -3,7 +3,7 @@ import type { EngineInterface, PluginOptions, PromptOrigin, Register, RenderElem
 
 import { clockText, endedAt, promptKey, sentAt, withRecord } from './clock'
 import type { Formula } from './latex'
-import { LATEX_DPR, LATEX_FONT_PX, MAX_IMAGE_BYTES, fitImage, fitsImage, imageFile, imageOf, keepFormulas, mathOf, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
+import { LATEX_DPR, LATEX_FONT_PX, MAX_IMAGE_BYTES, fitImage, fitsImage, imageFile, imageOf, keepFormulas, mathOf, oldestOver, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
 import type { Block } from './markdown'
 import { nestedBlocks, parse } from './markdown'
 import type { ClipboardBackend, HelperCommand } from './clipboard'
@@ -158,12 +158,28 @@ const typeset = async ($: EngineInterface, color: string, engine: Latex, texs: s
     { stdin: `${texs.join('\n')}\n`, timeoutMs: 2000 },
   )
   const rendered = renderedOf(stdout)
-  return Promise.all(texs.map(async (_, i): Promise<Formula> => {
-    if (!rendered.has(i + 1)) return { error: true }
-    const png = await $.fs.read(`${engine.dir}/${String(i + 1).padStart(4, '0')}.png`, { as: 'bytes' }).then(r => r.base64, () => '')
-    const size = png ? pngSize(png) : null
-    return size && fitsImage(png) ? { png, ...size } : { error: true }
-  }))
+  return fewAtOnce(texs.map((_, i) => () => (rendered.has(i + 1) ? readFormula($, `${engine.dir}/${String(i + 1).padStart(4, '0')}.png`) : Promise.resolve<Formula>({ error: true }))))
+}
+
+const fewAtOnce = async <T,>(jobs: (() => Promise<T>)[], width = 4): Promise<T[]> => {
+  const done: T[] = []
+  let next = 0
+  const worker = async () => {
+    while (next < jobs.length) {
+      const i = next++
+      done[i] = await jobs[i]!()
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(width, jobs.length) }, worker))
+  return done
+}
+
+const readFormula = async ($: EngineInterface, path: string): Promise<Formula> => {
+  const stat = await $.fs.stat(path).catch(() => null)
+  if (stat?.kind !== 'file' || stat.size > MAX_IMAGE_BYTES) return { error: true }
+  const png = await $.fs.read(path, { as: 'bytes' }).then(r => r.base64, () => '')
+  const size = png ? pngSize(png) : null
+  return size && fitsImage(png) ? { png, ...size } : { error: true }
 }
 
 const withPadding = async ($: EngineInterface, color: string, engine: Latex, texs: string[], results: Formula[]): Promise<Formula[]> => {
@@ -258,7 +274,16 @@ const pictureOf = async ($: EngineInterface, src: string, home: string): Promise
   return size && size.width > 0 && size.height > 0 && fitsImage(png) ? { png, ...size } : null
 }
 
-const loaded = new Map<string, Promise<Omit<Picture, 'alt'> | null>>()
+const loaded = new Map<string, { picture: Promise<Omit<Picture, 'alt'> | null>; bytes: number }>()
+
+const loadPicture = ($: EngineInterface, src: string, home: string) => remember(loaded, src, () => {
+  const entry = { picture: pictureOf($, src, home), bytes: 0 }
+  void entry.picture.then(picture => {
+    entry.bytes = src.length + (picture ? (picture.png.length * 3) / 4 : 0)
+    for (const old of oldestOver(loaded, (_, e) => e.bytes)) loaded.delete(old)
+  })
+  return entry
+}, Infinity).picture
 
 const imagesOn = async ($: EngineInterface, probes: Probes, surface: RenderSurface): Promise<boolean> => surface === 'terminal' && (await (probes.images ??= showsImages($).catch(() => false)))
 
@@ -270,7 +295,7 @@ const picturesOf = async ($: EngineInterface, style: Style, probes: Probes, surf
   if (images.length === 0 || !(await imagesOn($, probes, surface))) return new Map()
   await locate($, style)
   const found = await Promise.all(images.map(async ({ i, alt, src }) => {
-    const picture = await remember(loaded, src, () => pictureOf($, src, style.home), 50)
+    const picture = await loadPicture($, src, style.home)
     return picture ? [[i, { ...picture, alt }] as const] : []
   }))
   return new Map(found.flat())
