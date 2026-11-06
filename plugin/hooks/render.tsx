@@ -579,9 +579,17 @@ const segmentRows = (style: Style, lines: string[], lang: string, room?: number)
         if (piece) out[out.length - 1]!.push(shownSegment(seg, piece, style, room))
       })
     }
-    return out
+    return style.reorder ? out : out.map(mergeRuns)
   })
 }
+
+const mergeRuns = (row: Segment[]): Segment[] =>
+  row.reduce<Segment[]>((runs, seg) => {
+    const last = runs[runs.length - 1]
+    if (last && last.color === seg.color && last.italic === seg.italic) runs[runs.length - 1] = { ...last, text: last.text + seg.text }
+    else runs.push(seg)
+    return runs
+  }, [])
 
 export const highlightBlock = ({ Text }: ElementTable, style: Style, lines: string[], lang: string, key: string, room?: number): RenderElement[] | null => {
   const rows = segmentRows(style, lines, lang, room)
