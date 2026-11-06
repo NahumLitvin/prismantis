@@ -607,23 +607,25 @@ const grammarFor = (lang: string) => {
 
 const shownSegment = (seg: Segment, piece: string, style: Style, room?: number): Segment => ({ ...seg, text: seg.italic ? piece : shownCode(piece, style, room) })
 
-const segmentRows = (style: Style, lines: string[], lang: string, room?: number): Segment[][] | null => {
+const segmentRows = (style: Style, lines: string[], lang: string, room?: number, shown = lines.length, isOpen = false): Segment[][] | null => {
   const grammar = grammarFor(lang)
   if (!grammar) return null
-  const code = lines.join('\n')
+  const code = (isOpen ? lines.slice(0, shown) : lines).join('\n')
   const cache = highlighted.get(style.theme) ?? new Map<string, Segment[][]>()
   highlighted.set(style.theme, cache)
-  return remember(cache, `${style.reorder ? style.shape : ''}\0${room ?? ''}\0${lang}\0${code}`, () => {
+  return remember(cache, `${style.reorder ? style.shape : ''}\0${room ?? ''}\0${lang}\0${shown}\0${code}`, () => {
     const out: Segment[][] = [[]]
     for (const seg of flatten(tokenize(code, grammar), style)) {
-      seg.text.split('\n').forEach((piece, i) => {
-        if (i > 0) out.push([])
+      for (const [i, piece] of seg.text.split('\n').entries()) {
+        if (i > 0 && out.push([]) > shown) return keptRows(style, out.slice(0, shown))
         if (piece) out[out.length - 1]!.push(shownSegment(seg, piece, style, room))
-      })
+      }
     }
-    return style.reorder ? out : out.map(mergeRuns)
+    return keptRows(style, out)
   })
 }
+
+const keptRows = (style: Style, rows: Segment[][]): Segment[][] => (style.reorder ? rows : rows.map(mergeRuns))
 
 const mergeRuns = (row: Segment[]): Segment[] =>
   row.reduce<Segment[]>((runs, seg) => {
@@ -633,8 +635,8 @@ const mergeRuns = (row: Segment[]): Segment[] =>
     return runs
   }, [])
 
-const highlightBlock = ({ Text }: ElementTable, style: Style, lines: string[], lang: string, key: string, room?: number): RenderElement[] | null => {
-  const rows = segmentRows(style, lines, lang, room)
+const highlightBlock = ({ Text }: ElementTable, style: Style, lines: string[], lang: string, key: string, room?: number, shown?: number, isOpen?: boolean): RenderElement[] | null => {
+  const rows = segmentRows(style, lines, lang, room, shown, isOpen)
   if (!rows) return null
   return rows.map((row, r) => (
     <Text key={`${key}.${r}`} color={style.theme.codeText}>
@@ -645,13 +647,13 @@ const highlightBlock = ({ Text }: ElementTable, style: Style, lines: string[], l
 
 const gutterOf = (lines: string[], numbered: boolean) => (numbered ? String(lines.length).length + 2 : 0)
 
-const heldSegments = (style: Style, lines: string[], lang: string): Segment[][] => {
+const heldSegments = (style: Style, lines: string[], lang: string, shown: number, isOpen?: boolean): Segment[][] => {
   const plain = plainBlock(lang, lines)
-  return (isShellLang(lang) ? lines.map(line => shellLine(style, line, plain)) : segmentRows(style, lines, lang)) ?? lines.map(text => (text ? [{ text, italic: false }] : []))
+  return (isShellLang(lang) ? lines.slice(0, shown).map(line => shellLine(style, line, plain)) : segmentRows(style, lines, lang, undefined, shown, isOpen)) ?? lines.slice(0, shown).map(text => (text ? [{ text, italic: false }] : []))
 }
 
-const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, gutter: number, room: number, key: string): RenderElement[] =>
-  heldSegments(style, lines, lang).slice(0, shown).flatMap((segs, i) =>
+const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, gutter: number, room: number, key: string, isOpen?: boolean): RenderElement[] =>
+  heldSegments(style, lines, lang, shown, isOpen).flatMap((segs, i) =>
     visualRows(tabbed(wordPieces(segs, null)), room).map((part, k) => (
       <el.Box key={`${key}.h${i}.${k}`} flexDirection="row">
         {numberedLine(el, style, `  ${gutter ? (k ? ' '.repeat(gutter + 2) : `${String(i + 1).padStart(gutter)}  `) : ''}`, part, `${key}.h${i}.${k}`)}
@@ -660,10 +662,10 @@ const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number
 
 const figureFallbackLines = (block: Extract<Block, { kind: 'code' }>): string[] => isFigureLang(block.lang) ? block.lines.map(figureText) : block.lines
 
-const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string): RenderElement[] => {
+const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string, isOpen?: boolean): RenderElement[] => {
   if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
   const plain = plainBlock(lang, lines)
-  const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room))?.slice(0, shown) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room, plain))
+  const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room, shown, isOpen)) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room, plain))
   return style.shape === 'engine' ? rows.map((row, i) => <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</el.Text>) : rows
 }
 
@@ -1407,7 +1409,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const room = columns - 2 - shell.width - gutterOf(lines, numbered)
         const gutter = numbered ? String(lines.length).length : 0
         const held = !style.nativeCode && mirrored(style) && lines.some(line => hasRtl(line) && (!opensLatin(line) || width(line) > room))
-        const rows = [...(held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key) : codeRows(el, style, lines, shown, block.lang, numbered, room, key)), ...codeRest(el, lines.length, shown, key)]
+        const rows = [...(held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key, block.isOpen) : codeRows(el, style, lines, shown, block.lang, numbered, room, key, block.isOpen)), ...codeRest(el, lines.length, shown, key)]
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
         const head = codeHead(label, button, shell.width)

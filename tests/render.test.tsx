@@ -734,6 +734,14 @@ test('folds open caps a 900-line code block at 400 lines', { options: { folds: '
   expect(nodeCount(await ui.drawn())).toBeLessThan(20000)
   expect((await ui.find({ key: 'fold0' }))?.props.label).toBe('show less')
   expect(await ui.find({ type: 'Text', text: /^… \+500 lines$/ })).toBeDefined()
+})
+
+test('a folded code block colors its last shown line from the whole block, so a string that runs past the fold stays a string', async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const lines = [...Array.from({ length: 19 }, (_, i) => `let a${i} = ${i}`), 'const s = `line twenty', ...Array.from({ length: 20 }, (_, i) => `more ${i}`), 'end`']
+  const ui = await $.ui.mount({ ...draw(`\`\`\`ts\n${lines.join('\n')}\n\`\`\``), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^ *\d+  $/ })).length).toBe(20)
+  expect((await ui.findAll({ type: 'Text' })).filter(n => n.props.color === t.codeString && /line twenty/.test(n.text ?? '')).length).toBe(1)
   await ui.unmount()
 })
 

@@ -34,9 +34,9 @@ export const load = async () => {
   globalThis.Fragment = 'Fragment'
   const lib = await import(pathToFileURL(out).href)
   const el = { Box: 'Box', Text: 'Text', Button: 'Button', Link: 'Link' }
-  const reply = (text, style, columns = 200) => {
+  const reply = (text, style, columns = 200, fold) => {
     const blocks = lib.parse(text, { numbers: style.highlightNumbers, paths: style.highlightPaths })
-    return lib.renderBlocks(el, style, blocks, columns, lib.drawDiagrams(el, style, blocks, columns), () => null)
+    return lib.renderBlocks(el, style, blocks, columns, lib.drawDiagrams(el, style, blocks, columns), () => null, fold)
   }
   return { ...lib, el, reply }
 }
