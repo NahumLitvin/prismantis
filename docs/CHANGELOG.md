@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.44.0] - 2026-11-06
+
+### Added
+
+- New option `codeStyle` draws code blocks `plain`, `framed`, `filled` or `card`, with `codeBorderColor` and `codeFillColor`, and a `Code blocks` step in `/prismantis setup`. The default stays `plain`. Thanks @zarcell ([#405](https://github.com/NahumLitvin/prismantis/pull/405)).
+- `promptStyle` gains `framed`, a frame around your prompt with no fill, also a setup step. The default stays `bubble`. Thanks @zarcell ([#404](https://github.com/NahumLitvin/prismantis/pull/404)).
+
+### Changed
+
+- Highlighted code draws with about half the elements, so scrolling past long code blocks costs less. Nothing looks different. Thanks @Nanako0129 ([#406](https://github.com/NahumLitvin/prismantis/pull/406)).
+
+### Fixed
+
+- Two trailing spaces or a trailing backslash break a paragraph line, as in CommonMark, and a Hebrew paragraph keeps its broken lines in order. Thanks @arykhoda for the report ([#408](https://github.com/NahumLitvin/prismantis/pull/408)).
+- An untagged code block holding a box diagram draws as one plain block instead of switching to shell colors line by line. Thanks @berkay8987 ([#394](https://github.com/NahumLitvin/prismantis/pull/394)).
+- A blank line between two lines of your prompt stays in the prompt bubble. Thanks @berkay8987 ([#402](https://github.com/NahumLitvin/prismantis/pull/402)).
+
 ## [0.43.0] - 2026-11-05
 
 ### Changed
