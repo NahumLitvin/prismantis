@@ -5,7 +5,7 @@ import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline } from './markdown'
 import { mathOf } from './latex'
-import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, parseInline, texText } from './markdown'
+import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, parseInline, texParses, texText } from './markdown'
 import type { Flow } from './rtl'
 import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
@@ -1253,7 +1253,7 @@ const copySource = (style: Style, block: Block): string | undefined =>
 export const drawMath = (el: ElementTable, style: Style, blocks: Block[], drawn: Drawn = new Map()): Drawn => {
   for (const [i, block] of blocks.entries()) {
     const tex = drawn.has(i) ? null : mathOf(block)
-    const text = tex === null ? null : texText(tex)
+    const text = tex === null || !texParses(tex) ? null : texText(tex)
     if (text && !text.includes('\\')) drawn.set(i, { element: <el.Box key={`b${i}`} paddingLeft={2}><el.Text italic color={style.theme.emphasis}>{text}</el.Text></el.Box> })
   }
   return drawn

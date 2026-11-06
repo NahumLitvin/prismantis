@@ -41,6 +41,7 @@ const ROLE_MARKUP = new RegExp(`\\{(?:${FIGURE_ROLES.join('|')}):([^{}]*)\\}`, '
 
 const MAX_INLINE = 4000
 const MAX_QUOTE_DEPTH = 8
+const MAX_TEX_DEPTH = 32
 const QUOTE = /^\s*>/
 const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/
@@ -222,8 +223,19 @@ const texUnicode = (tex: string): string => {
 
 const isTex = (tex: string) => /[\\^_={}]/.test(tex) || /^[A-Za-z]$/.test(tex)
 
+export const texParses = (tex: string): boolean => {
+  if (tex.length > MAX_INLINE) return false
+  let depth = 0
+  for (let i = 0; i < tex.length; i++) {
+    if (tex[i] === '\\') i++
+    else if (tex[i] === '{' && ++depth > MAX_TEX_DEPTH) return false
+    else if (tex[i] === '}' && --depth < 0) return false
+  }
+  return depth === 0
+}
+
 export const texText = (tex: string): string =>
-  texUnicode(tex)
+  !texParses(tex) ? tex : texUnicode(tex)
     .replace(new RegExp(`${FN}(?=[\\p{L}\\p{N}])`, 'gu'), ' ')
     .replaceAll(FN, '')
     .replace(/\)\(/g, ')·(')

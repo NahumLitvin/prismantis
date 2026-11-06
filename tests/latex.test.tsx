@@ -630,6 +630,24 @@ test('in Warp a formula draws as Unicode text, not as its TeX source', async ($,
   await ui.unmount()
 })
 
+test('deeply nested or unbalanced TeX comes back as its source', () => {
+  const deep = `${'{'.repeat(100000)}x${'}'.repeat(100000)}`
+  expect(texText(deep)).toBe(deep)
+  expect(texText(String.raw`\frac{1}{`)).toBe(String.raw`\frac{1}{`)
+  expect(texText('x}')).toBe('x}')
+})
+
+test('display math with unbalanced braces draws as source in a math block', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'WarpTerminal' })
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  const ui = await $.ui.mount(reply('$$\\frac{1}{$$\n\n$$\n{x\n$$'))
+  expect(await ui.find({ type: 'Text', text: /1\/\(\)/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^\\frac\{1\}\{$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\{x$/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Text', text: /── math/ })).length).toBe(2)
+  await ui.unmount()
+})
+
 test('after /prismantis random, new formulas take the new theme color', { options: { theme: 'random' } }, async ($, on) => {
   mock.env(on, KITTY)
   on('config.set', (_, e) => ({ value: e.value }))
