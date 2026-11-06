@@ -562,7 +562,7 @@
       <Text>
         ""skadoosh""
 <Box border=round>
-  <Text color=green bold>
+  <Text bold>
     "Tip"
   <Box>
     <Text>

@@ -1058,6 +1058,19 @@ test('alert color options set each alert kind, and an empty one keeps the termin
   }
 })
 
+test('mono draws alerts with no color, its label bold', { options: { theme: 'mono', replyStyle: 'off' } }, async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    for (const kind of ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION']) {
+      const ui = await $.ui.mount(answer(`> [!${kind}]\n> careful`, true, surface))
+      const label = await ui.find({ type: 'Text', text: new RegExp(`^${kind[0] + kind.slice(1).toLowerCase()}$`) })
+      expect(label?.props.color).toBeUndefined()
+      expect(label?.props.bold).toBe(true)
+      expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderColor !== undefined)).toBe(false)
+      await ui.unmount()
+    }
+  }
+})
+
 test('runningDot blink blinks a running tool\'s dot while the call runs and stops after it', { options: { toolStyle: 'classic', runningDot: 'blink' } }, async ($, on) => {
   engine(on)
   const clock = mock.clock(on)

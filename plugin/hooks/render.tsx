@@ -1127,7 +1127,7 @@ const renderQuote = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
 const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'alert' }>, columns: number, key: string, copy?: CopyButton, fold?: Fold, tip?: Tip) => {
   const { Box, Text } = el
-  const color = style.theme[ALERT_TOKEN[block.level]] ?? ALERT_COLOR[block.level]
+  const color = style.theme[ALERT_TOKEN[block.level]] ?? (style.background ? ALERT_COLOR[block.level] : undefined)
   const inner = columns - 4
   const hebrew = flowOf(style, leadInline(block.blocks), inner)?.base === 'R'
   const label = block.level[0]!.toUpperCase() + block.level.slice(1)
