@@ -261,7 +261,7 @@ test('toolOutput quiet hands a failed call back to the engine in the ctrl+o tran
     plugin: 'prismantis',
     surface: 'terminal',
     component: 'ToolUse',
-    props: { ...call('Bash', { command: 'false' }, 'fx-1'), isErrored: true, isExpanded: true, output: 'Exit code 1\nerror: boom' },
+    props: { ...call('Bash', { command: 'false' }, 'fx-1'), isErrored: true, ...{ isExpanded: true }, output: 'Exit code 1\nerror: boom' } as never,
   })
   expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await row.unmount()
@@ -269,7 +269,7 @@ test('toolOutput quiet hands a failed call back to the engine in the ctrl+o tran
     plugin: 'prismantis',
     surface: 'terminal',
     component: 'ToolResult',
-    props: { tool_use_id: 'fx-1', tool: 'Bash', output: 'Error: Exit code 1\nerror: boom', isErrored: true, isExpanded: true },
+    props: { tool_use_id: 'fx-1', tool: 'Bash', output: 'Error: Exit code 1\nerror: boom', isErrored: true, ...{ isExpanded: true } } as never,
   })
   expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await out.unmount()
@@ -277,7 +277,7 @@ test('toolOutput quiet hands a failed call back to the engine in the ctrl+o tran
     plugin: 'prismantis',
     surface: 'terminal',
     component: 'ToolUse',
-    props: { ...call('Bash', { command: 'false' }, 'fx-1'), isErrored: true, isExpanded: false, output: 'Exit code 1\nerror: boom' },
+    props: { ...call('Bash', { command: 'false' }, 'fx-1'), isErrored: true, ...{ isExpanded: false }, output: 'Exit code 1\nerror: boom' } as never,
   })
   expect(await back.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
   await back.unmount()

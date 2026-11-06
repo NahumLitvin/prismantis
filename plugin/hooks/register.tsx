@@ -508,6 +508,8 @@ const THEME_ARGS = [...PRESET_NAMES, 'random']
 
 type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
 
+const expandedRow = (props: object): boolean => 'isExpanded' in props && props.isExpanded === true
+
 const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => $.config.set({ key: `prismantis.${key}`, value })
 
 const saveOption = ($: EngineInterface, key: SetupStep['key'], value: string): Promise<string | undefined> =>
@@ -784,7 +786,7 @@ export const register: Register = (on, options) => {
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
       const dotDark = await darkDot($, style, e.props.isRunning)
       const drawn = forSurface(style, e, await linkReach($, probes, style))
-      if (!e.props.isExpanded && !expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, [e.props.input]))), dotDark }, e.props, e.viewport?.columns)
+      if (!expandedRow(e.props) && !expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, [e.props.input]))), dotDark }, e.props, e.viewport?.columns)
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
       return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), { ...style, dotDark }, e.props, e.viewport?.columns) : next(e)
     })
@@ -802,7 +804,7 @@ export const register: Register = (on, options) => {
         const drawn = renderBashEdits(el, forSurface(cards(), e, await linkReach($, probes, style)), edits, folder($, el, await read($, unfolded), (await linkReach($, probes, style)).marks, style.folds === 'open'), e.props.tool_use_id, above !== null, notes, e.viewport?.columns)
         return above === null ? drawn : <el.Box flexDirection="column">{above}{drawn}</el.Box>
       }
-      if (!quietRow(e.props.isExpanded)) return next(e)
+      if (!quietRow(expandedRow(e.props))) return next(e)
       await locate($, style)
       const el = $.ui.resolve(e)
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
