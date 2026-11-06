@@ -305,6 +305,17 @@ test('parse cost grows linearly with reply size', async () => {
   }
 })
 
+test('parse cost grows linearly on long backtick cells and unclosed $$ lines', async () => {
+  const cell = (n: number) => `| a |\n|---|\n| ${'`'.repeat(n * 6)} |`
+  const unclosed = (n: number) => Array.from({ length: n }, () => '$$x').join('\n')
+  for (const make of [cell, unclosed]) {
+    parse(make(500), hl)
+    const small = Math.max(best(() => parse(make(500), hl)), 0.05)
+    const large = best(() => parse(make(5000), hl))
+    expect(large < small * 40).toBe(true)
+  }
+})
+
 test('parse stays inside a generous budget on a large reply', async () => {
   expect(best(() => parse(prose(2000), hl)) < 250).toBe(true)
   expect(best(() => parse(rows(2000), hl)) < 250).toBe(true)
