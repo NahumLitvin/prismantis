@@ -923,3 +923,12 @@ test('two trailing spaces or a backslash end a list item line', async $ => {
     await ui.unmount()
   }
 })
+
+test('a deeply nested list stops indenting at half the width, so its deepest items keep room for their text', { options: { replyStyle: 'off' } }, async $ => {
+  const nest = Array.from({ length: 50 }, (_, i) => `${'  '.repeat(i)}- level ${i + 1}`).join('\n')
+  const ui = await $.ui.mount({ ...draw(nest), viewport: { columns: 60, rows: 40 }, surface: 'terminal' })
+  const pads = (await ui.findAll({ type: 'Box' })).map(b => Number(b.props.paddingLeft ?? 0))
+  expect(Math.max(...pads)).toBeLessThanOrEqual(28)
+  expect(await ui.find({ type: 'Text', text: /^level 50$/ })).toBeDefined()
+  await ui.unmount()
+})
