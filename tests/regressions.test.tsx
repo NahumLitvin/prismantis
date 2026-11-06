@@ -1003,7 +1003,7 @@ test('a missing path is stat-ed again only after a tool call that could have mad
     return { deny: 'no such file' }
   })
   on('tool.call', () => ({ result: 'ok', text: 'ok' }))
-  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
   const draw = async () => {
     const ui = await $.ui.mount(mount('See src/gone.ts and docs/old.md.'))
     await clock.settle()
@@ -1028,7 +1028,7 @@ test('one stat batch asks at most 200 paths', async ($, on) => {
   const clock = mock.clock(on)
   let stats = 0
   on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/').includes('/work/app/') ? (stats++, { deny: 'no such file' }) : next(e)))
-  if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
   const ui = await $.ui.mount(mount(Array.from({ length: 300 }, (_, i) => `f${i}.md`).join(' ')))
   await clock.settle()
   expect(stats).toBe(200)
