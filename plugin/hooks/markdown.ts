@@ -280,7 +280,7 @@ const numberNotes = (blocks: Block[], defs: Map<string, string>, hl: Highlight):
   return defs.size ? [...out, { kind: 'notes', notes, raw: '' }] : out
 }
 
-export const CONTROL = /\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)?|\u001b\[[0-?]*[ -/]*[@-~]|\u001b[@-_]?|[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g
+export const CONTROL = /\u001b\][^\u0007\u001b\n]{0,1024}(?:\u0007|\u001b\\)?|\u001b\[[0-?]*[ -/]*[@-~]|\u001b[@-_]?|[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g
 
 const TINT_ON: Record<string, string> = { '2': 'dim', '3': 'italic', '90': 'gray', '36': 'cyan', '32': 'green', '33': 'yellow' }
 const TINT_KEYS = Object.keys(TINT_ON)
