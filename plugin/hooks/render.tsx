@@ -793,14 +793,19 @@ const tableGrid = (block: Extract<Block, { kind: 'table' }>): string => tablePic
 
 export const tableArt = (block: Extract<Block, { kind: 'table' }>): string => ['```', tableGrid(block), '```'].join('\n')
 
-const tableArts = (block: Extract<Block, { kind: 'table' }>, t: Theme) => {
+const rightToLeft = (block: Extract<Block, { kind: 'table' }>): Extract<Block, { kind: 'table' }> => {
+  const flip = <T,>(row: T[], blank: T) => block.header.map((_, c) => row[c] ?? blank).reverse()
+  return { ...block, header: flip(block.header, []), rows: block.rows.map(row => flip(row, [])), align: flip(block.align, 'left') }
+}
+
+const tableArts = (block: Extract<Block, { kind: 'table' }>, t: Theme, rtl: boolean) => {
   let picture: { text: string; inks: Ink[][] } | undefined
-  const drawn = () => (picture ??= tablePicture(block, true, t))
+  const drawn = () => (picture ??= tablePicture(rtl ? rightToLeft(block) : block, true, t))
   return { art: () => tableArt(block), grid: () => drawn().text, hues: () => drawn().inks }
 }
 
-const artsOf = (drawn: { art?: string; hues?: () => Hues } | undefined, block: Block, t: Theme): { art?: string | (() => string); grid?: string | (() => string); hues?: () => Hues } =>
-  drawn?.art !== undefined ? { art: drawn.art, grid: drawn.art, hues: drawn.hues } : block.kind === 'table' ? tableArts(block, t) : {}
+const artsOf = (drawn: { art?: string; hues?: () => Hues } | undefined, block: Block, t: Theme, rtl: boolean): { art?: string | (() => string); grid?: string | (() => string); hues?: () => Hues } =>
+  drawn?.art !== undefined ? { art: drawn.art, grid: drawn.art, hues: drawn.hues } : block.kind === 'table' ? tableArts(block, t, rtl) : {}
 
 const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: string) => (
   <Box key={key} flexDirection="column" minWidth={w}>
@@ -1314,10 +1319,10 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const buttons = blocks.map((block, b) => {
     const text = hover && holdsOnlyEmptyCode(block) ? undefined : copySource(style, block)
     const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
-    const { art, grid, hues } = artsOf(drawn.get(b), block, style.theme)
+    const { art, grid, hues } = artsOf(drawn.get(b), block, style.theme, rtlTables[b]!)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
-    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block)) : null
+    const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block, rtlTables[b])) : null
     return { first, second, html, png: second && copy?.(grid!, `png${b}`, '▣ png', 'png', hues) }
   })
   const codeHead = (label: string, button: RenderElement | null, shell: number) => {
