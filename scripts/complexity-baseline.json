@@ -4,6 +4,6 @@
   "plugin/hooks/markdown.ts": 206,
   "plugin/hooks/mermaid.tsx": 71,
   "plugin/hooks/register.tsx": 69,
-  "plugin/hooks/render.tsx": 152,
+  "plugin/hooks/render.tsx": 148,
   "plugin/hooks/rtl.ts": 27
 }

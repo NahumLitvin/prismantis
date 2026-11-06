@@ -2863,6 +2863,11 @@ const chatPrompt = (el: ElementTable, style: Style, content: RenderElement, size
   )
 }
 
+const promptMark = (el: ElementTable, style: Style, rtl: boolean, tall: number): RenderElement => {
+  const glyph = style.promptStyle === 'bar' ? (rtl ? ' ▐' : '▌ ') : rtl ? ' ‹' : '› '
+  return style.promptStyle === 'bar' && tall > 1 ? quoteBar(el, glyph, style.theme.accent, tall) : <el.Text color={style.theme.accent} bold>{glyph}</el.Text>
+}
+
 export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, columns: number, time?: string, paste?: DrawPaste): RenderElement => {
   const { Box, Text } = el
   const pastes: string[] = []
@@ -2892,8 +2897,10 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   if (style.promptStyle === 'wide') {
     return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} width="100%">{content}</Box>
   }
-  const mark = <Text color={t.accent} bold>{style.promptStyle === 'bar' ? (rtl ? ' ▐' : '▌ ') : rtl ? ' ‹' : '› '}</Text>
-  return <Box flexDirection="row" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>
+  const room = columns - 2 - (time === undefined ? 0 : time.length + 1)
+  const tall = rows.reduce((sum, line) => sum + (own(line) === undefined ? textRows(told(line), room) : own(line)!.split('\n').length + 4), 0)
+  const mark = promptMark(el, style, rtl, tall)
+  return <Box flexDirection="row" alignItems="stretch" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>
 }
 
 type ReplyLook = Exclude<Style['replyStyle'], 'auto'>
