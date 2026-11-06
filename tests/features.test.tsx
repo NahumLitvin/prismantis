@@ -3301,3 +3301,16 @@ test('a narrow pane adds its width to the render hint, a wide one does not', asy
   expect(seen[0]?.some(c => c.includes('70 columns'))).toBe(true)
   expect(seen[1]?.some(c => c.includes('columns wide'))).toBe(false)
 })
+
+test('in the ctrl+o transcript a shell row goes to the engine whole, so its output draws once', async ($, on) => {
+  engine(on)
+  const row = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: { ...call('Bash', { command: 'ls -la' }, 'fx-2'), ...{ isExpanded: true }, output: { stdout: 'a\nb', stderr: '', interrupted: false } } as never,
+  })
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  expect(await row.find({ type: 'Text', text: /^a$/ })).toBeUndefined()
+  await row.unmount()
+})
