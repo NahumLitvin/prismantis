@@ -185,15 +185,28 @@ const SPOOFS: [label: string, href: string][] = [
   ['www.good.example/login', 'https://evil.example'],
   ['paypal.com', 'https://evil.example'],
   ['pay​pal.com', 'https://paypal.com'],
-  ['Pay⁠Pal', 'https://paypal.com'],
+  ['**paypal.com**', 'https://evil.example/x'],
+  ['example.com.', 'https://evil.example/x'],
+  ['https://paypal.com.', 'https://evil.example/x'],
+  ['//paypal.com', 'https://evil.example/x'],
+  ['paypal\u3002com', 'https://evil.example/x'],
+  ['paypal\uff0ecom', 'https://evil.example/x'],
+  ['paypal\uff61com', 'https://evil.example/x'],
+  ['user@paypal.com', 'https://evil.example/x'],
+  ...['\u00ad', '\u034f', '\u180e', '\u200e', '\u200f', '\u202a', '\u202e', '\u2066', '\u2069'].map((c): [string, string] => [`pay${c}pal.com`, 'https://paypal.com']),
 ]
 
 const HONEST: [label: string, href: string][] = [
+  ['Pay⁠Pal', 'https://paypal.com'],
+  ['\u200fקישור', 'https://a.dev/he'],
+  ['read\u200b the docs', 'https://a.dev/zw'],
   ['docs', 'https://evil.example/x'],
   ['README.md', 'https://github.com/o/r/blob/main/README.md'],
   ['example.com', 'https://docs.example.com/x'],
   ['https://a.dev/one', 'https://a.dev/two'],
   ['GitHub.com', 'https://www.github.com/o'],
+  ['chart.js', 'https://evil.example/x'],
+  ['read the docs', 'https://evil.example/x'],
 ]
 
 test('a link whose label names another host or hides zero-width characters draws as text with its target', async ($, on) => {
@@ -202,7 +215,7 @@ test('a link whose label names another host or hides zero-width characters draws
   const ui = await $.ui.mount(reply([...SPOOFS, ...HONEST].map(([label, href]) => `[${label}](${href})`).join(' and ')))
   expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(HONEST.map(([, href]) => href))
   const texts = (await ui.findAll({ type: 'Text' })).map(n => n.text)
-  for (const [label, href] of SPOOFS) expect([label, texts.includes(`${label.replace(/[\u200b-\u200d\u2060\ufeff]/g, '')} (${href})`)]).toEqual([label, true])
+  for (const [label, href] of SPOOFS) expect([label, texts.includes(`${label.replace(/[\p{Cf}\u034f\u180e]/gu, '')} (${href})`)]).toEqual([label, true])
   for (const [label] of HONEST) expect([label, texts.includes(label)]).toEqual([label, true])
   await ui.unmount()
 })
