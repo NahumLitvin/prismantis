@@ -1471,9 +1471,10 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       </Box>
     )
   })
-  const isFigure = (b: number) => blocks[b]?.kind === 'table' || drawn.get(b)?.art !== undefined
+  const cut = budgetCut(copied)
+  const isFigure = (b: number) => b < cut && (blocks[b]?.kind === 'table' || drawn.get(b)?.art !== undefined)
   const out: RenderElement[] = []
-  for (let b = 0; b < rendered.length; b++) {
+  for (let b = 0; b < cut; b++) {
     if (!isFigure(b) || !isFigure(b + 1)) {
       out.push(copied[b]!)
       continue
@@ -1486,8 +1487,33 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
       </Box>,
     )
   }
-  return out
+  return [...out, ...restSource(el, blocks.slice(cut))]
 }
+
+const NODE_BUDGET = 19800
+
+const nodesIn = (n: unknown): number =>
+  Array.isArray(n) ? n.reduce<number>((sum, c) => sum + nodesIn(c), 0) : n !== null && typeof n === 'object' ? 1 + nodesIn((n as { children?: unknown }).children) : typeof n === 'string' ? 1 : 0
+
+const budgetCut = (elements: RenderElement[]): number => {
+  let left = NODE_BUDGET
+  const cut = elements.findIndex(element => (left -= nodesIn(element)) < 0)
+  return cut < 0 ? elements.length : cut
+}
+
+const REST_CHUNK = 8000
+const chunks = (text: string): string[] =>
+  text.split('\n').reduce<string[]>((out, line) => {
+    for (let at = 0; at < Math.max(line.length, 1); at += REST_CHUNK) {
+      const piece = line.slice(at, at + REST_CHUNK)
+      const last = out.length - 1
+      if (at === 0 && last >= 0 && out[last]!.length + piece.length + 1 <= REST_CHUNK) out[last] += `\n${piece}`
+      else out.push(piece)
+    }
+    return out
+  }, [])
+const restSource = ({ Text }: ElementTable, rest: Block[]): RenderElement[] =>
+  rest.length ? chunks(rest.map(block => block.raw).join('\n\n')).map((text, i) => <Text key={`rest${i}`} dimColor>{text}</Text>) : []
 
 export type ToolRow = { tool: string; input: unknown; isRunning: boolean; isErrored: boolean; isInterrupted: boolean }
 

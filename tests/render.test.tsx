@@ -729,6 +729,18 @@ test('an opened 900-line code block shows 400 lines, counts the rest and keeps s
   }
 })
 
+test('a reply past the node budget draws its remaining blocks as dim source and stays under the engine ceiling', async $ => {
+  const items = (n: number, mark: string, gap: string) => Array.from({ length: n }, (_, i) => `${mark}**item** ${i}`).join(gap)
+  for (const [surface, n, mark, gap] of [['terminal', 3000, '- ', '\n'], ['desktop', 3000, '- ', '\n'], ['terminal', 5000, '', '\n\n']] as const) {
+    const ui = await $.ui.mount({ ...draw(`# Inventory\n\n${items(n, mark, gap)}`), surface })
+    expect(nodeCount(await ui.drawn())).toBeLessThan(20000)
+    expect(await ui.find({ type: 'Text', text: /^Inventory$/ })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: new RegExp(`\\*\\*item\\*\\* ${n - 1}$`) }))?.props.dimColor).toBe(true)
+    expect(Math.max(...(await ui.findAll({ type: 'Text' })).map(t => (t.text ?? '').length))).toBeLessThanOrEqual(10000)
+    await ui.unmount()
+  }
+})
+
 test('folds open caps a 900-line code block at 400 lines', { options: { folds: 'open' } }, async $ => {
   const ui = await $.ui.mount({ ...draw(hugeCode()), surface: 'terminal' })
   expect(nodeCount(await ui.drawn())).toBeLessThan(20000)
