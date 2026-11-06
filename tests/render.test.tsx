@@ -500,6 +500,17 @@ test('Prism colors PHP variables, properties and comments', async $ => {
   await ui.unmount()
 })
 
+test('a highlighted code line draws each run of one color as one span', async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('```ts\nconst name = await fetch("/api/0", { retries: 1 }) // app\n```'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^ name = $/ }))?.props.color).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^, \{ retries: $/ })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: /^const$/ }))?.props.color).toBe(t.codeFlag)
+  expect((await ui.find({ type: 'Text', text: /^"\/api\/0"$/ }))?.props.color).toBe(t.codeString)
+  expect((await ui.find({ type: 'Text', text: /^\/\/ app$/ }))?.props.italic).toBe(true)
+  await ui.unmount()
+})
+
 test('fence languages that name Prism internals fall back to plain code', async $ => {
   for (const lang of ['extend', 'toString', 'constructor', '__proto__']) {
     const ui = await $.ui.mount({ ...draw(`\`\`\`${lang}\nhello\n\`\`\``), surface: 'terminal' })
