@@ -1080,3 +1080,14 @@ test('Apple Terminal outside fullscreen gets a Hebrew prompt and reply in its bu
   expect(rows).toEqual([visual(heading), visual(item), visual('הכל תקין')])
   await replied.unmount()
 })
+
+test('a hard line break in a Hebrew paragraph keeps both lines in order in Ghostty', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'ghostty', TERM: 'xterm-ghostty' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם  \nמה נשמע'))
+  const drawn = JSON.stringify(await ui.drawn())
+  expect(drawn.indexOf('"םלוע םולש"')).toBeGreaterThan(-1)
+  expect(drawn.indexOf('"עמשנ המ"')).toBeGreaterThan(drawn.indexOf('"םלוע םולש"'))
+  await ui.unmount()
+})
