@@ -416,7 +416,7 @@ for (const rtl of ['warp', 'iterm'] as const) {
   test(`a Hebrew line draws a clickable named link and a file link that shows its path once, like an English line, ${rtl}`, { options: { rtl } }, async ($, on) => {
     claudeAt(on, '2.1.289')
     mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
-    if (!(await linksHttp($.ui.mount(mount('[/x](file:///x)'))))) return
+    if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
     const ui = await $.ui.mount(mount('שלום [קישור להודעה](https://x.dev/archives/p1) ו [/tmp/notes.md](file:///tmp/notes.md) ו [המסמך](file:///tmp/setup.command) עולם'))
     const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
     expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href)).sort()).toEqual(['file:///tmp/notes.md', 'https://x.dev/archives/p1'])

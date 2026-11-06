@@ -85,7 +85,7 @@ test('only web links in a reply are clickable, in every block, while file links 
 test('with file links on, only web links and file links labelled with their own address are clickable, as written, in every block', async ($, on) => {
   claudeAt(on, '2.1.289')
   mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
-  if (!(await linksHttp($.ui.mount(reply('[/x](file:///x)'))))) return
+  if (!(await linksHttp($.ui.mount(reply('[/x.md](file:///x.md)'))))) return
   const ui = await $.ui.mount(reply(everyBlock(targetLinks)))
   const hrefs = (await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))
   const allowed = TARGETS.filter(([, linked]) => linked).map(([href]) => href)
@@ -96,7 +96,7 @@ test('with file links on, only web links and file links labelled with their own 
 test('with file links on, a file link named anything but its own path draws as text with its target, in every block', async ($, on) => {
   claudeAt(on, '2.1.289')
   mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
-  if (!(await linksHttp($.ui.mount(reply('[/x](file:///x)'))))) return
+  if (!(await linksHttp($.ui.mount(reply('[/x.md](file:///x.md)'))))) return
   const ui = await $.ui.mount(reply(everyBlock(TARGETS.map(([href], i) => `[t${i}](${href})`).join(' '))))
   const hrefs = (await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))
   expect(hrefs).toEqual(Array.from({ length: 6 }, () => 'https://a.dev'))
@@ -134,8 +134,8 @@ test('with path links on, an extensionless file never links and an extensionless
   mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
   on('session.root', () => ({ value: '/work/app' }))
   const clock = mock.clock(on)
-  on('fs.stat', (_, e) => ({ value: { kind: /^\/(usr\/local|work\/app\/docs)$/.test(e.path) ? 'dir' as const : 'file' as const, size: 1, mtimeMs: 0, isLink: false } }))
-  if (!(await linksHttp($.ui.mount(reply('[/x](file:///x)'))))) return
+  on('fs.stat', (_, e) => ({ value: { kind: /^\/(usr\/local|work\/app\/docs)$/.test(e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/)/, '')) ? 'dir' as const : 'file' as const, size: 1, mtimeMs: 0, isLink: false } }))
+  if (!(await linksHttp($.ui.mount(reply('[/x.md](file:///x.md)'))))) return
   const ui = await $.ui.mount(reply('Run /bin/sh, /usr/bin/say or /usr/bin/python3.12, see [/bin/sh](file:///bin/sh), `bin/tool`, docs/ and /usr/local.'))
   await clock.settle()
   expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///work/app/docs/', 'file:///usr/local'])
