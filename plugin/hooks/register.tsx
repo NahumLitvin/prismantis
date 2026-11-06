@@ -657,8 +657,9 @@ const promptSample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: S
 const SETUP_REPLY = 'The failing test passes now: `retries` was read before the config loaded.'
 
 const replySample = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, id: string, columns: number): RenderElement[] => {
-  const drawn = drawMarkdown($, el, style, parse(SETUP_REPLY, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns - replyRoom(style))
-  return [<el.Box key={id} flexDirection="column">{renderReply(el, style, drawn, true, columns, false)}</el.Box>]
+  const framed = replyStyleFor(style, SETUP_REPLY)
+  const drawn = drawMarkdown($, el, framed, parse(SETUP_REPLY, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns - replyRoom(framed))
+  return [<el.Box key={id} flexDirection="column">{renderReply(el, framed, drawn, true, columns, false)}</el.Box>]
 }
 
 const SETUP_EDIT = {
@@ -996,7 +997,7 @@ export const register: Register = (on, options) => {
     const corner = reply !== undefined && markerRoom(surfaceStyle) > 0
     const columns = columnsOf(e.viewport, surfaceStyle)
     const framed = replyStyleFor(surfaceStyle, e.props.text)
-    const drawn = drawMarkdown($, el, narration ? { ...surfaceStyle, narration } : surfaceStyle, blocks, columns - replyRoom(framed), math, pictures, reply, open, { id: e.requestId, press: reach.marks })
+    const drawn = drawMarkdown($, el, narration ? { ...framed, narration } : framed, blocks, columns - replyRoom(framed), math, pictures, reply, open, { id: e.requestId, press: reach.marks })
     return renderReply(el, framed, drawn, e.props.isFirstOfReply === true, columns, corner)
   })
 

@@ -32,6 +32,7 @@ export type Style = {
   dotDark?: boolean
   unreadPrompts: boolean
   narration?: boolean
+  ink?: string
   inside?: 'quote' | 'alert'
   noteKey?: string
   pressPreview?: boolean

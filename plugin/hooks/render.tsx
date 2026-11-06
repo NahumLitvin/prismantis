@@ -1074,7 +1074,7 @@ const ALERT_COLOR = { note: 'blue', tip: 'green', important: 'magenta', warning:
 
 const ALERT_TOKEN = { note: 'alertNote', tip: 'alertTip', important: 'alertImportant', warning: 'alertWarning', caution: 'alertCaution' } as const
 
-const prose = (style: Style) => (style.inside === 'quote' ? { italic: true, color: style.theme.quote } : {})
+const prose = (style: Style) => (style.inside === 'quote' ? { italic: true, color: style.theme.quote } : style.ink ? { color: style.ink } : {})
 
 const bulletOf = (style: Style, item: { marker: string; depth: number }): string => {
   if (/\d/.test(item.marker)) return item.marker
@@ -2905,7 +2905,18 @@ const replyLook = (style: Style): ReplyLook => {
   return look === 'solid' && replyFill(style.theme, style.background) === undefined ? 'framed' : look
 }
 
-export const replyStyleFor = (style: Style, text: string): Style => (mirrored(style) && hasRtl(text) ? { ...style, replyStyle: 'off' } : style)
+const fillOf = (style: Style): string | undefined => {
+  const look = replyLook(style)
+  return look === 'framed' || look === 'off' ? undefined : replyFill(style.theme, style.background)
+}
+
+const inked = (style: Style): Style => {
+  const fill = fillOf(style)
+  const ink = fill && HEX.test(fill) && !darkBackground(fill) ? style.theme.codeText : undefined
+  return ink ? { ...style, ink, theme: { ...style.theme, tableText: style.theme.tableText ?? ink } } : style
+}
+
+export const replyStyleFor = (style: Style, text: string): Style => inked(mirrored(style) && hasRtl(text) ? { ...style, replyStyle: 'off' } : style)
 
 export const replyRoom = (style: Style): number => ({ off: 0, solid: 0, bubble: 2, framed: 2 })[replyLook(style)]
 
@@ -2915,9 +2926,8 @@ const claudeColor = (theme: Theme): string | undefined => theme.replyBorder ?? (
 
 const replyFrame = (el: ElementTable, style: Style, body: RenderElement, columns: number): RenderElement => {
   const t = style.theme
-  const look = replyLook(style)
-  const fill = look === 'framed' ? undefined : replyFill(t, style.background)
-  if (look === 'solid') {
+  const fill = fillOf(style)
+  if (replyLook(style) === 'solid') {
     const width = columns + 2
     return (
       <el.Box flexDirection="column" width={width} flexShrink={0}>
