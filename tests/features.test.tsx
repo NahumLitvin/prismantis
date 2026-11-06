@@ -1370,6 +1370,20 @@ test('clock puts the send time before your prompt', { options: { clock: '24h' } 
   await unsent.unmount()
 })
 
+test('a send time keeps its full width and the gap after it beside a prompt that wraps', { options: { clock: '12h' } }, async ($, on) => {
+  mock.clock(on, { now: local(10, 21, 7) })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  const text = 'spawn one agent and count the files, '.repeat(12)
+  await $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...prompt(text, 'composer', surface), requestId: `row-${surface}` })
+    const nodes = nodesOf(await ui.drawn())
+    const holder = nodes.find(n => n.children?.some(c => (c as DrawnNode).type === 'Text' && (c as DrawnNode).children?.[0] === '9:07 PM '))
+    expect(holder?.props?.flexShrink).toBe(0)
+    await ui.unmount()
+  }
+})
+
 test('an old prompt row that redraws after a resume never takes a later send time', { options: { clock: '24h' } }, async ($, on) => {
   const clock = mock.clock(on, { now: local(10, 9, 0) })
   on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
