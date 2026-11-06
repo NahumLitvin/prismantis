@@ -15,6 +15,7 @@ import { MARK, bashEdits, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShe
 import type { SetupStep } from './help'
 import { HINT, ISSUE_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
+import { textRows } from './layout'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
 import { DEFAULT_COLUMNS, MIN_COLUMNS } from './layout'
@@ -535,7 +536,7 @@ const SETUP_PANE = 'prismantis-setup'
 
 const SETUP_PICK = 'pick:'
 const SETUP_LIST_COLUMNS = 30
-const SETUP_HEAD_ROWS = 8
+const SETUP_HEAD_ROWS = 5
 
 const openPane = ($: EngineInterface) => $.ui.open({ id: SETUP_PANE, title: 'prismantis setup', focus: true, closeOnEscape: true, rows: 40, columns: 90 })
 
@@ -674,6 +675,11 @@ const diffSample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Sty
 
 type SetupView = { el: ReturnType<EngineInterface['ui']['resolve']>; base: Style; options: PluginOptions; at: number; step: SetupStep; current: string; columns: number; rows: number; pick: (value: string) => void }
 
+const shownRows = (text: string, columns: number) => textRows(text.replace(/`/g, ''), columns)
+
+const paneFits = (v: SetupView, choices: number, preview: string): boolean =>
+  SETUP_HEAD_ROWS + shownRows(v.step.note, v.columns) + shownRows(SETUP_PANE_KEYS, v.columns) + Math.max(choices, 1 + shownRows(preview, Math.max(40, v.columns - SETUP_LIST_COLUMNS))) <= v.rows
+
 const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, randomTheme: string): RenderElement => {
   const { el, step } = v
   const choices = step.key === 'theme' ? THEME_ARGS : step.options
@@ -683,7 +689,7 @@ const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, ra
   const options = parts.options.filter(o => o.value === sampled).map(o => (step.key === 'theme' ? { ...o, text: `${o.text.split('\n\n')[0]}\n\n${THEME_PREVIEW}` } : o))
   const drawn = drawSetup($, el, v.base, v.options, { at: v.at, before: '', parts: { ...parts, options, tail: '' } }, Math.max(40, v.columns - SETUP_LIST_COLUMNS))
   const buttons = choices.map(value => <el.Button key={pickKey(step, value)} label={value === v.current ? `${value} (now)` : value} variant={value === shown ? 'primary' : 'secondary'} autoFocus={value === v.current ? true : undefined} onPress={() => v.pick(value)} />)
-  const fits = choices.length + SETUP_HEAD_ROWS <= v.rows
+  const fits = paneFits(v, choices.length, options[0]?.text ?? '')
   return (
     <el.Box flexDirection="column" rowGap={1} {...(fits ? { height: v.rows, overflow: 'hidden' as const } : {})}>
       <el.Box flexDirection="column" flexShrink={0}>{drawn[0]}</el.Box>
