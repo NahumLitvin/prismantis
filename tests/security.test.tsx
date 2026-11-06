@@ -201,7 +201,8 @@ test('a link whose label names another host or hides zero-width characters draws
   if (!(await linksHttp($.ui.mount(reply('[x](https://a.dev)'))))) return
   const ui = await $.ui.mount(reply([...SPOOFS, ...HONEST].map(([label, href]) => `[${label}](${href})`).join(' and ')))
   expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(HONEST.map(([, href]) => href))
-  for (const [label, href] of SPOOFS) expect([label, await ui.find({ type: 'Text', text: new RegExp(`^${`${label.replace(/[​-‍⁠﻿]/g, '')} (${href})`.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}$`) }) !== undefined]).toEqual([label, true])
-  for (const [label] of HONEST) expect([label, await ui.find({ type: 'Text', text: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}$`) }) !== undefined]).toEqual([label, true])
+  const texts = (await ui.findAll({ type: 'Text' })).map(n => n.text)
+  for (const [label, href] of SPOOFS) expect([label, texts.includes(`${label.replace(/[\u200b-\u200d\u2060\ufeff]/g, '')} (${href})`)]).toEqual([label, true])
+  for (const [label] of HONEST) expect([label, texts.includes(label)]).toEqual([label, true])
   await ui.unmount()
 })
