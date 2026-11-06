@@ -199,6 +199,22 @@ test('a prompt sent while the renderer check is still running is not held up and
   await clock.settle()
 })
 
+test('a formula still draws as an image when the engine refuses its first store write mid-render', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on)
+  let refused = 0
+  on('state.set', (_, e, next) => (e.key === 'formulas' && refused++ === 0 ? { deny: 'state.set: denied: it was made while ui.render is being dispatched' } : next(e)))
+  const ui = await $.ui.mount(reply(REPLY))
+  await clock.advance(1000)
+  expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('\\int_0^1 x^2\\,dx')
+  const next = await $.ui.mount(reply('$$a^2 + b^2 = c^2$$'))
+  await clock.advance(1000)
+  expect((await next.find({ type: 'Image' }))?.props.alt).toBe('a^2 + b^2 = c^2')
+  await ui.unmount()
+  await next.unmount()
+})
+
 test('after the renderer fails once, later formulas stay text and it is not run again', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
