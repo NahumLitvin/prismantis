@@ -993,6 +993,48 @@ test('a path named before a tool creates it links once the tool ran', async ($, 
   await done.unmount()
 })
 
+test('a missing path is stat-ed again only after a tool call that could have made it', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  const stats: string[] = []
+  on('fs.stat', (_, e, next) => {
+    if (!e.path.replace(/\\/g, '/').includes('/work/app/')) return next(e)
+    stats.push(e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/work\/app\/)/, ''))
+    return { deny: 'no such file' }
+  })
+  on('tool.call', () => ({ result: 'ok', text: 'ok' }))
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const draw = async () => {
+    const ui = await $.ui.mount(mount('See src/gone.ts and docs/old.md.'))
+    await clock.settle()
+    await ui.unmount()
+  }
+  await draw()
+  await $.tool.call({ tool: 'Read', file_path: '/work/app/README.md' })
+  await $.tool.call({ tool: 'Write', file_path: '/work/app/other.ts', content: 'x' })
+  await draw()
+  expect(stats.filter(path => path === '/work/app/src/gone.ts')).toHaveLength(1)
+  await $.tool.call({ tool: 'Write', file_path: '/work/app/src/gone.ts', content: 'x' })
+  await draw()
+  expect(stats.filter(path => path === '/work/app/src/gone.ts')).toHaveLength(2)
+  expect(stats.filter(path => path === '/work/app/docs/old.md')).toHaveLength(1)
+  await $.tool.call({ tool: 'Bash', command: 'make docs' })
+  await draw()
+  expect(stats.filter(path => path === '/work/app/docs/old.md')).toHaveLength(2)
+})
+
+test('one stat batch asks at most 200 paths', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  let stats = 0
+  on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/').includes('/work/app/') ? (stats++, { deny: 'no such file' }) : next(e)))
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const ui = await $.ui.mount(mount(Array.from({ length: 300 }, (_, i) => `f${i}.md`).join(' ')))
+  await clock.settle()
+  expect(stats).toBe(200)
+  await ui.unmount()
+})
+
 test('a line number after a path stays out of its link with number colors off', { options: { highlightNumbers: false } }, async ($, on) => {
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)

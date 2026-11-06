@@ -351,6 +351,24 @@ type PathChecks = { asked: Set<string>; batch: string[]; list?: readonly string[
 
 const MAX_FOUND = 2000
 
+const MAX_BATCH = 200
+
+const MAX_ASKED = 5000
+
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
+
+const writtenPath = (call: Record<string, unknown>): string | undefined => {
+  const path = call.file_path ?? call.notebook_path
+  return WRITE_TOOLS.has(String(call.tool)) && typeof path === 'string' ? path.replace(/\\/g, '/') : undefined
+}
+
+const forgetMisses = (checks: PathChecks, call: Record<string, unknown>) => {
+  if (checks.asked.size < MAX_ASKED && isReadOnlyCall(String(call.tool), call)) return
+  const path = checks.asked.size < MAX_ASKED ? writtenPath(call) : undefined
+  if (path === undefined) checks.asked = new Set(checks.found)
+  else for (let at = path; at.includes('/'); at = at.slice(0, at.lastIndexOf('/'))) checks.asked.delete(at)
+}
+
 const statPaths = async ($: EngineInterface, paths: string[]): Promise<void> => {
   const kinds = await Promise.all(paths.map(path => $.fs.stat(path).then(stat => stat.kind, () => 'other')))
   const hits = paths.flatMap((path, i) => (kinds[i] === 'dir' ? [path, `${path}/`] : kinds[i] === 'file' ? [path] : []))
@@ -360,6 +378,7 @@ const statPaths = async ($: EngineInterface, paths: string[]): Promise<void> => 
 const askPaths = ($: EngineInterface, checks: PathChecks, paths: string[]) => {
   for (const path of paths) {
     if (checks.asked.has(path)) continue
+    if (checks.batch.length >= MAX_BATCH) return
     if (checks.batch.length === 0) {
       $.clock.after(0, () => {
         const batch = checks.batch
@@ -807,7 +826,7 @@ export const register: Register = (on, options) => {
   on('tool.call', async ($, e, next) => {
     if (style.runningDot !== 'blink') {
       const done = await next(e)
-      pathChecks.asked = new Set(pathChecks.found)
+      forgetMisses(pathChecks, e)
       return done
     }
     blinker.tools++
@@ -817,7 +836,7 @@ export const register: Register = (on, options) => {
     } finally {
       blinker.tools--
       await keepBlinking($, blinker)
-      pathChecks.asked = new Set(pathChecks.found)
+      forgetMisses(pathChecks, e)
     }
   })
 
