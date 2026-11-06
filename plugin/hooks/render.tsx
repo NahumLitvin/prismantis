@@ -1233,7 +1233,8 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
           <Text color={t.bullet}>{` ${done}/${tasks.length} done`}</Text>
         </Text>
       )}
-      {block.items.map((item, i) => {
+      {block.items.map((full, i) => {
+        const item = { ...full, depth: Math.min(full.depth, Math.floor(columns / 4)) }
         const k = `${key}.${i}`
         const glyph = item.task !== undefined ? TASK_GLYPHS[style.taskStyle][item.task ? 1 : 0] : bulletOf(style, item)
         const glyphColor = item.task && tick ? t.accent : t.bullet
