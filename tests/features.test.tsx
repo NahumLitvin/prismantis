@@ -1342,6 +1342,22 @@ test('the bubble hugs its text off the terminal, where a cell count misjudges a 
   await desk.unmount()
 })
 
+test('a blank line between prompt lines survives into the bubble', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(prompt('first line\n\nsecond line', 'composer', surface))
+    expect((await ui.findAll({ type: 'Text', text: /^ $/ })).length).toBe(1)
+    expect(await ui.find({ type: 'Text', text: /^first line$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^second line$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('a prompt with no blank line gains none', async $ => {
+  const ui = await $.ui.mount(prompt('first line\nsecond line'))
+  expect((await ui.findAll({ type: 'Text', text: /^ $/ })).length).toBe(0)
+  await ui.unmount()
+})
+
 test('a teammate message an SDK host carries is not yours', async ($, on) => {
   engine(on)
   const peer = await $.ui.mount({ ...prompt('from a teammate', 'sdk'), props: { text: 'from a teammate', origin: { kind: 'sdk' } as never, isExpanded: true, from: { name: 'bob' } as never } })
