@@ -357,6 +357,10 @@ const MAX_BATCH = 200
 
 const MAX_ASKED = 5000
 
+const FOUND_TRIES = 20
+
+const FOUND_RETRY_MS = 50
+
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
 
 const writtenPath = (call: Record<string, unknown>): string | undefined => {
@@ -374,7 +378,13 @@ const forgetMisses = (checks: PathChecks, call: Record<string, unknown>) => {
 const statPaths = async ($: EngineInterface, paths: string[]): Promise<void> => {
   const kinds = await Promise.all(paths.map(path => $.fs.stat(path).then(stat => stat.kind, () => 'other')))
   const hits = paths.flatMap((path, i) => (kinds[i] === 'dir' ? [path, `${path}/`] : kinds[i] === 'file' ? [path] : []))
-  if (hits.length) await update($, foundPaths, list => [...list, ...hits].slice(-MAX_FOUND))
+  if (hits.length) saveFound($, hits, FOUND_TRIES)
+}
+
+const saveFound = ($: EngineInterface, hits: string[], tries: number): void => {
+  void update($, foundPaths, list => [...list, ...hits].slice(-MAX_FOUND)).catch(() => {
+    if (tries > 1) $.clock.after(FOUND_RETRY_MS, () => saveFound($, hits, tries - 1))
+  })
 }
 
 const askPaths = ($: EngineInterface, checks: PathChecks, paths: string[]) => {

@@ -756,6 +756,19 @@ const folders = (on: On, dirs: string[]) => {
   return mock.clock(on)
 }
 
+test('a folder links once its stat lands, even when the engine refuses the first write because a render was drawing', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = mock.clock(on)
+  on('fs.stat', (_, e) => { const path = e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/)/, ''); return path === '/work/app/sub' ? { value: { kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false } } : path === '/work/app/notes' ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` } })
+  let refused = 0
+  on('state.set', (_, e, next) => (e.key === 'foundPaths' && refused++ === 0 ? { deny: 'state.set: denied: it was made while ui.render is being dispatched' } : next(e)))
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const ui = await $.ui.mount(mount('Folder: /work/app/sub and ./sub, file /work/app/notes and ./notes'))
+  await clock.advance(1000)
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///work/app/sub', 'file:///work/app/sub'])
+  await ui.unmount()
+})
+
 const withoutLinks = (node: unknown): unknown => {
   if (node === null || typeof node !== 'object') return node
   const { type, props, children } = node as { type?: string; props?: Record<string, unknown>; children?: unknown[] }
