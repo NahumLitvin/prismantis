@@ -72,6 +72,7 @@ const splitRow = (line: string): string[] => {
 const CELL_BREAK = /(`+)(?!`).+?(?<!`)\1(?!`)|<br\s*\/?>/gi
 
 const parseCell = (text: string, hl: Highlight): Inline[] => {
+  if (text.length > MAX_INLINE) return parseInline(text, hl)
   const out: Inline[] = []
   let at = 0
   for (const m of text.matchAll(CELL_BREAK)) {
@@ -232,19 +233,19 @@ export const texText = (tex: string): string =>
 export const inlineText = (inline: Inline[]): string =>
   inline.map(n => ('children' in n ? inlineText(n.children) : n.text)).join('')
 
-const mathAt = (lines: string[], start: number): { lines: string[]; end: number } | null => {
+const mathAt = (lines: string[], start: number, miss: { end: number }): { lines: string[]; end: number } | null => {
   const trimmed = (n: number) => (lines[n] ?? '').trim()
   const first = trimmed(start)
-  if (!first.startsWith('$$')) return null
+  if (start < miss.end || !first.startsWith('$$')) return null
   const open = first.slice(2)
   let end = start
   if (!(open.length >= 2 && open.endsWith('$$'))) {
     end = start + 1
     while (end < lines.length && !trimmed(end).endsWith('$$')) {
-      if (trimmed(end) === '') return null
+      if (trimmed(end) === '') return (miss.end = end, null)
       end++
     }
-    if (end === lines.length) return null
+    if (end === lines.length) return (miss.end = end, null)
   }
   const body = end === start ? [open.slice(0, -2)] : [open, ...lines.slice(start + 1, end), trimmed(end).slice(0, -2)]
   const tex = body.filter(line => line.trim() !== '').map((line, i, all) => (i === 0 || i === all.length - 1 ? line.trim() : line))
@@ -371,6 +372,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   const at = (n: number) => lines[n] ?? ''
   const blocks: Block[] = []
   const add = (block: Draft, from: number, to: number) => blocks.push({ ...block, raw: lines.slice(from, to).join('\n') } as Block)
+  const mathMiss = { end: -1 }
   let paraStart = 0
   let para: string[] = []
 
@@ -393,7 +395,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       add({ kind: 'code', lang: fence[2] ?? '', lines: body, ...(i < lines.length ? {} : { isOpen: true as const }) }, start, i + 1)
       continue
     }
-    const math = mathAt(lines, i)
+    const math = mathAt(lines, i, mathMiss)
     if (math) {
       flush(i)
       add({ kind: 'code', lang: 'math', lines: math.lines }, i, math.end + 1)
