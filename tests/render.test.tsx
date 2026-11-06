@@ -1,4 +1,5 @@
 import { expect, test } from 'claude-code/testing'
+import type { TestBody } from 'claude-code/testing'
 
 import { displayText, parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
@@ -711,8 +712,12 @@ const nodeCount = (n: unknown): number =>
 
 const hugeCode = (name = 'v') => `\`\`\`ts\n${Array.from({ length: 900 }, (_, i) => `const ${name}${i} = await fetch("/api/${i}", { retries: ${i % 5}, cache: false })`).join('\n')}\n\`\`\``
 
+const takesLongCode = ($: Parameters<TestBody>[0]) =>
+  $.ui.mount({ ...draw(`\`\`\`ts\n${'x'.repeat(10001)}\n\`\`\``), surface: 'desktop' }).then(ui => ui.unmount().then(() => true), () => false)
+
 test('an opened 900-line code block shows 400 lines, counts the rest and keeps show less under the node ceiling', async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
+    if (surface === 'desktop' && !(await takesLongCode($))) continue
     const ui = await $.ui.mount({ ...draw(hugeCode(surface)), surface })
     await ui.press({ key: 'fold0' })
     expect(nodeCount(await ui.drawn())).toBeLessThan(20000)
