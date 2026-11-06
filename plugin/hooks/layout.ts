@@ -1,6 +1,10 @@
 const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}\u20E3]|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u
 const segmenter = new Intl.Segmenter()
 
+export const DEFAULT_COLUMNS = 100
+
+export const MIN_COLUMNS = 20
+
 export const graphemes = (s: string): string[] => [...segmenter.segment(s)].map(g => g.segment)
 
 const CLUSTER_UNITS = 32

@@ -1,6 +1,7 @@
 import { ratexColor } from './latex'
 import { cells, width } from './layout'
 import { holdVisual } from './rtl'
+import { longHex } from './theme'
 
 export const MAC_TABLE_COPY = `
 ObjC.import('AppKit')
@@ -205,9 +206,7 @@ export const clipboardCommand = (backend: ClipboardBackend, html: string, text: 
 export const drawsImages = (backend: ClipboardBackend | null): boolean => backend === 'macos' || backend === 'windows'
 
 const rgbOf = (color: string | undefined, fallback: number[]): number[] => {
-  const c = color === undefined ? '' : ratexColor(color)
-  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(c)
-  const hex = short ? `#${short[1]!.repeat(2)}${short[2]!.repeat(2)}${short[3]!.repeat(2)}` : c
+  const hex = color === undefined ? '' : longHex(ratexColor(color))
   return /^#[0-9a-f]{6}$/i.test(hex) ? [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)) : fallback
 }
 
@@ -215,7 +214,7 @@ export type Ink = string | { color?: string; bold?: boolean; italic?: boolean } 
 
 type Face = { color?: number[]; bold?: true; italic?: true }
 
-export const imageLines = (text: string, tint: (row: number, cell: number, glyph: string) => Face | undefined = () => undefined): ({ at: number; text: string } & Face)[][] =>
+const imageLines = (text: string, tint: (row: number, cell: number, glyph: string) => Face | undefined = () => undefined): ({ at: number; text: string } & Face)[][] =>
   text.split('\n').map((line, row) => {
     const { cells: shown, from } = holdVisual(cells(line))
     return shown.flatMap((g, at) => (g.trim() ? [{ at, text: g, ...tint(row, from[at] ?? at, g) }] : []))

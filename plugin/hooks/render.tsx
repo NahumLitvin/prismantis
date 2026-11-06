@@ -11,7 +11,7 @@ import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, comm
 import type { Style, Theme } from './theme'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
-import { cells, clusters, columnWidths, graphemes, longestWord, mostLines, textRows, widestLine, width, wrapRanges } from './layout'
+import { DEFAULT_COLUMNS, cells, clusters, columnWidths, graphemes, longestWord, mostLines, textRows, widestLine, width, wrapRanges } from './layout'
 
 const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
   const out: Inline[] = []
@@ -633,7 +633,7 @@ const mergeRuns = (row: Segment[]): Segment[] =>
     return runs
   }, [])
 
-export const highlightBlock = ({ Text }: ElementTable, style: Style, lines: string[], lang: string, key: string, room?: number): RenderElement[] | null => {
+const highlightBlock = ({ Text }: ElementTable, style: Style, lines: string[], lang: string, key: string, room?: number): RenderElement[] | null => {
   const rows = segmentRows(style, lines, lang, room)
   if (!rows) return null
   return rows.map((row, r) => (
@@ -695,7 +695,7 @@ const plainBlock = (lang: string, lines: readonly string[]): boolean => lang ===
 
 const SHELL_COMMENT = /^\s*#/
 
-export const codeLine = (el: ElementTable, style: Style, line: string, lang: string, key: string, room?: number, plain = false): RenderElement => {
+const codeLine = (el: ElementTable, style: Style, line: string, lang: string, key: string, room?: number, plain = false): RenderElement => {
   const { Text } = el
   const t = style.theme
   const isShell = isShellLang(lang)
@@ -2352,7 +2352,7 @@ const quietToolRow = (el: ElementTable, style: Style, row: ToolRow, columns: num
   ))
 }
 
-export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = 100): RenderElement => {
+export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = DEFAULT_COLUMNS): RenderElement => {
   if (style.toolOutput === 'quiet') return quietToolRow(el, style, row, columns)
   const { Text } = el
   const t = style.theme
@@ -2744,7 +2744,7 @@ const quietToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow
   )
 }
 
-export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[], isActive: boolean, columns = 100): RenderElement => {
+export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[], isActive: boolean, columns = DEFAULT_COLUMNS): RenderElement => {
   if (style.toolOutput === 'quiet') return quietToolGroup(el, style, calls, isActive, columns)
   const { Text } = el
   const t = style.theme

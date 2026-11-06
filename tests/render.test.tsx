@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { displayText, parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
-import { MARK, replyFill } from '../hooks/render'
+import { MARK, diffTint, replyFill } from '../hooks/render'
 import { width } from '../hooks/layout'
 import { resolveStyle } from '../hooks/theme'
 import { clipboardEnv, startSession } from './clipboard-env'
@@ -46,6 +46,12 @@ test('user colors override the theme, bad colors are ignored', async () => {
   expect(s.theme.number).toBe(PRESETS['catppuccin-mocha'].number)
   expect(s.theme.path).toBe('cyan')
   expect(s.theme.link).toBe(PRESETS['catppuccin-mocha'].link)
+})
+
+test('a short #abc color reaches the theme as six digits, so a tint built from it still draws', () => {
+  const t = resolveStyle({ diffAddedColor: '#0a0', tableRuleColor: ' #ABC ' }).theme
+  expect([t.diffAdded, t.tableRule]).toEqual(['#00aa00', '#AABBCC'])
+  expect(diffTint(t.codeText, t.diffAdded)).toBeDefined()
 })
 
 test('draws a colored table on terminal and desktop', async $ => {

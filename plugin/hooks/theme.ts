@@ -6,7 +6,7 @@ import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from './presets'
 import type { Shape, Terminal } from './rtl'
 import { TERMINALS } from './rtl'
 
-export const TOKENS = [
+const TOKENS = [
   'accent', 'heading', 'strong', 'emphasis', 'inlineCode', 'codeText', 'codeCommand', 'codeFlag', 'codeString', 'codeComment', 'codeFill', 'codeBorder',
   'link', 'path', 'number', 'quote', 'rule', 'tableHeader', 'tableRule', 'tableText', 'bullet', 'diagram', 'diagramText', 'diffAdded', 'diffRemoved', 'promptFill', 'promptBorder', 'promptText', 'replyFill', 'alertNote', 'alertTip', 'alertImportant', 'alertWarning', 'alertCaution', 'replyBorder', 'pngBackground',
 ] as const
@@ -71,7 +71,9 @@ export type Style = {
 
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)|ansi256\(\d{1,3}\)|(black|red|green|yellow|blue|magenta|cyan|white|gray|grey)(Bright)?)$/i
 
-export const isColor = (value: unknown): value is string => typeof value === 'string' && COLOR.test(value.trim())
+const isColor = (value: unknown): value is string => typeof value === 'string' && COLOR.test(value.trim())
+
+export const longHex = (color: string): string => color.replace(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i, '#$1$1$2$2$3$3')
 
 const SURFACES: RenderSurface[] = ['terminal', 'desktop', 'vscode', 'mobile']
 
@@ -94,7 +96,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
   const preset = (PRESET_NAMES as string[]).includes(String(options.theme)) ? (String(options.theme) as PresetName) : 'catppuccin-mocha'
   const base: Theme = PRESETS[preset]
   const fromFields = Object.fromEntries(
-    TOKENS.filter(k => isColor(options[`${k}Color`])).map(k => [k, String(options[`${k}Color`]).trim()]),
+    TOKENS.filter(k => isColor(options[`${k}Color`])).map(k => [k, longHex(String(options[`${k}Color`]).trim())]),
   )
 
   const rtl = pick(options.rtl, ['auto', 'off', ...(Object.keys(TERMINALS) as Terminal[])], 'auto')
