@@ -1247,12 +1247,17 @@ const codeId = (lines: string[]): string => {
   return `${lines.length}:${(hash >>> 0).toString(36)}`
 }
 
+const unquoted = (block: Extract<Block, { kind: 'quote' | 'alert' }>): string[] => {
+  const lines = block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, ''))
+  return block.kind === 'alert' ? lines.filter((line, i) => i > 0 || !/^\s*\[![A-Za-z]+\]\s*$/.test(line)) : lines
+}
+
 const copySource = (style: Style, block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n')
   : block.kind === 'table' ? block.raw
   : style.inside || !style.textCopyButtons ? undefined
   : block.kind === 'list' ? block.raw
-  : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n')
+  : block.kind === 'quote' || block.kind === 'alert' ? unquoted(block).join('\n')
   : undefined
 
 export const drawMath = (el: ElementTable, style: Style, blocks: Block[], drawn: Drawn = new Map()): Drawn => {

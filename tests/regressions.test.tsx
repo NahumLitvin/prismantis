@@ -249,14 +249,14 @@ test('a left-to-right flowchart too wide for the terminal draws top-down instead
   expect(art).toContain('▼')
 })
 
-test('a GitHub alert draws its title and body, and copies without the > markers', async ($, on) => {
+test('a GitHub alert draws its title and body, and copies its text without the > markers or the alert tag', async ($, on) => {
   const copied = stubClipboard(on)
   const ui = await $.ui.mount(mount('> [!WARNING]\n> disk is almost full'))
   expect(await ui.find({ type: 'Text', text: /^Warning$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^disk is almost full$/ })).toBeDefined()
   const [button] = await ui.findAll({ type: 'Button' })
   await ui.press({ key: button!.key! })
-  expect(copied).toEqual(['[!WARNING]\ndisk is almost full'])
+  expect(copied).toEqual(['disk is almost full'])
   await ui.unmount()
 })
 
@@ -2003,7 +2003,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`an alert keeps a l
   const buttons = await ui.findAll({ type: 'Button' })
   expect(buttons.map(b => b.props.label)).toEqual(['⧉ copy'])
   await ui.press({ key: buttons[0]!.key! })
-  expect(copied).toEqual(['[!NOTE]\nBefore you merge:\n- run the tests\n- update the CHANGELOG'])
+  expect(copied).toEqual(['Before you merge:\n- run the tests\n- update the CHANGELOG'])
   await ui.unmount()
 })
 

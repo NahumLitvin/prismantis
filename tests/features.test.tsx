@@ -859,6 +859,12 @@ test('/prismantis copy code finds a code block inside a quote', async ($, on) =>
   expect(copied).toEqual(['npm ci'])
 })
 
+test('/prismantis copy code skips a mermaid diagram and a figure after the last code block', async ($, on) => {
+  const copied = transcript(on, [{ role: 'assistant', text: '```bash\nnpm test\n```\n\n```mermaid\ngraph LR\n  A --> B\n```\n\n```figure\n[a] -> [b]\n```' }])
+  await $.command.run(run('copy code'))
+  expect(copied).toEqual(['npm test'])
+})
+
 test('/prismantis copy says so when there is nothing to copy', async ($, on) => {
   const copied = transcript(on, [{ role: 'assistant', text: 'no code here' }])
   expect((await $.command.run(run('copy code'))).text).toBe('The last reply has no code block.')
