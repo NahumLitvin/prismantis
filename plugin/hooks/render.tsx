@@ -1281,6 +1281,8 @@ const NUMBER_MAX = 400
 const FOLD_AT = 30
 const FOLD_SHOW = 20
 
+const codeRest = ({ Text }: ElementTable, total: number, shown: number, key: string): RenderElement[] => (shown === DIFF_MAX && total > shown ? [<Text key={`${key}.rest`} dimColor>{`… +${total - shown} lines`}</Text>] : [])
+
 const codeId = (lines: string[]): string => {
   let hash = 5381
   for (const line of lines) {
@@ -1399,13 +1401,13 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const note = drawn.get(b)?.note
         const lines = figureFallbackLines(block)
         const toggle = lines.length > FOLD_AT ? fold?.(codeId(lines), lines.length - FOLD_SHOW, `fold${b}`) : null
-        const shown = toggle?.folded ? FOLD_SHOW : lines.length
+        const shown = toggle?.folded ? FOLD_SHOW : Math.min(lines.length, DIFF_MAX)
         const numbered = lines.length >= NUMBER_AT && lines.length <= NUMBER_MAX
         const shell = codeShell(style)
         const room = columns - 2 - shell.width - gutterOf(lines, numbered)
         const gutter = numbered ? String(lines.length).length : 0
         const held = !style.nativeCode && mirrored(style) && lines.some(line => hasRtl(line) && (!opensLatin(line) || width(line) > room))
-        const rows = held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key) : codeRows(el, style, lines, shown, block.lang, numbered, room, key)
+        const rows = [...(held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key) : codeRows(el, style, lines, shown, block.lang, numbered, room, key)), ...codeRest(el, lines.length, shown, key)]
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
         const head = codeHead(label, button, shell.width)
