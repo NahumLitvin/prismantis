@@ -185,7 +185,6 @@ const SPOOFS: [label: string, href: string][] = [
   ['www.good.example/login', 'https://evil.example'],
   ['paypal.com', 'https://evil.example'],
   ['pay​pal.com', 'https://paypal.com'],
-  ['Pay⁠Pal', 'https://paypal.com'],
   ['**paypal.com**', 'https://evil.example/x'],
   ['example.com.', 'https://evil.example/x'],
   ['https://paypal.com.', 'https://evil.example/x'],
@@ -198,6 +197,9 @@ const SPOOFS: [label: string, href: string][] = [
 ]
 
 const HONEST: [label: string, href: string][] = [
+  ['Pay⁠Pal', 'https://paypal.com'],
+  ['\u200fקישור', 'https://a.dev/he'],
+  ['read\u200b the docs', 'https://a.dev/zw'],
   ['docs', 'https://evil.example/x'],
   ['README.md', 'https://github.com/o/r/blob/main/README.md'],
   ['example.com', 'https://docs.example.com/x'],

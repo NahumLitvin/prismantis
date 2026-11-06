@@ -243,10 +243,11 @@ const labelHost = (label: string): string | undefined => {
 }
 
 const spoofs = (label: string, href: string): boolean => {
-  if (label !== label.replace(ZERO_WIDTH, '')) return true
-  const shown = labelHost(label)
+  const clean = label.replace(ZERO_WIDTH, '')
+  const shown = labelHost(clean)
+  if (shown === undefined) return false
   const real = hostOf(href) ?? ''
-  return shown !== undefined && real !== shown && !real.endsWith(`.${shown}`)
+  return clean !== label || (real !== shown && !real.endsWith(`.${shown}`))
 }
 
 const drawnLink = (n: Extract<Inline, { kind: 'link' }>, reach: Reach): Inline => {
