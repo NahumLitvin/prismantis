@@ -2769,10 +2769,13 @@ const readableOn = (ink: string | undefined, fill: string | undefined, fallback:
 const promptInk = (style: Style): string | undefined => {
   const t = style.theme
   if (style.promptStyle === 'chevron') return t.accent
+  if (style.promptStyle === 'framed') return t.promptText ?? t.heading
   return style.promptStyle === 'bubble' ? t.promptText ?? readableOn(t.heading, promptFill(t, style.background, youColor(t)), t.codeText) : t.heading
 }
 
-const promptRoom = (style: Style, columns: number): number => (style.promptStyle === 'bubble' ? Math.floor(columns * CHAT_SHARE) : columns)
+const isChatPrompt = (style: Style): boolean => style.promptStyle === 'bubble' || style.promptStyle === 'framed'
+
+const promptRoom = (style: Style, columns: number): number => (isChatPrompt(style) ? Math.floor(columns * CHAT_SHARE) : columns)
 
 const chatWidth = (lines: readonly string[], room: number, stamp: number, pasted: boolean): number =>
   pasted ? room : Math.min(room, Math.max(...lines.map(width)) + stamp + 4)
@@ -2787,7 +2790,7 @@ const chatRoom = (style: Style, size: number | '100%') => (hugsText(style, size)
 const chatPrompt = (el: ElementTable, style: Style, content: RenderElement, size: number | '100%'): RenderElement => {
   const color = youColor(style.theme)
   const bubble = (
-    <el.Box borderStyle="round" borderColor={color} backgroundColor={promptFill(style.theme, style.background, color)} paddingX={1} {...chatRoom(style, size)}>{content}</el.Box>
+    <el.Box borderStyle="round" borderColor={color} {...(style.promptStyle === 'bubble' ? { backgroundColor: promptFill(style.theme, style.background, color) } : {})} paddingX={1} {...chatRoom(style, size)}>{content}</el.Box>
   )
   return (
     <el.Box flexDirection="column" width="100%" {...(size === '100%' ? {} : { alignItems: 'flex-end' as const })}>
@@ -2822,7 +2825,7 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   )
   const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
-  if (style.promptStyle === 'bubble') return chatPrompt(el, style, content, chatSize(style, hebrew, marked.map(inlineText), columns, time, rows.some(line => own(line) !== undefined)))
+  if (isChatPrompt(style)) return chatPrompt(el, style, content, chatSize(style, hebrew, marked.map(inlineText), columns, time, rows.some(line => own(line) !== undefined)))
   if (style.promptStyle === 'wide') {
     return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} width="100%">{content}</Box>
   }
