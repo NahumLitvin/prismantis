@@ -17,6 +17,7 @@ import { HINT, ISSUE_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_PANE_KEYS,
 import { PRESET_NAMES } from './presets'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
+import { DEFAULT_COLUMNS, MIN_COLUMNS } from './layout'
 import type { Terminal } from './rtl'
 import { ROW_MARK_TEXT, TERMINALS, hasRtl, opensLatin } from './rtl'
 
@@ -58,8 +59,8 @@ const readOnlyCalls = new Set<string>()
 const DESKTOP_ROOM = 0.84
 
 const columnsOf = (viewport: { columns?: number } | undefined, style: Pick<Style, 'monoFace'>) => {
-  const reported = viewport?.columns ?? 100
-  return Math.max(20, (style.monoFace ? Math.floor(reported * DESKTOP_ROOM) : reported) - 4)
+  const reported = viewport?.columns ?? DEFAULT_COLUMNS
+  return Math.max(MIN_COLUMNS, (style.monoFace ? Math.floor(reported * DESKTOP_ROOM) : reported) - 4)
 }
 
 const formulas = atom({ plugin: 'prismantis', key: 'formulas' } as const, {})
@@ -506,25 +507,7 @@ const THEME_ARGS = [...PRESET_NAMES, 'random']
 
 type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
 
-const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => {
-  switch (key) {
-    case 'theme': return $.config.set({ key: 'prismantis.theme', value: value })
-    case 'tableStyle': return $.config.set({ key: 'prismantis.tableStyle', value: value })
-    case 'taskStyle': return $.config.set({ key: 'prismantis.taskStyle', value: value })
-    case 'listMarker': return $.config.set({ key: 'prismantis.listMarker', value: value })
-    case 'headingStyle': return $.config.set({ key: 'prismantis.headingStyle', value: value })
-    case 'copyButtonStyle': return $.config.set({ key: 'prismantis.copyButtonStyle', value: value })
-    case 'promptStyle': return $.config.set({ key: 'prismantis.promptStyle', value: value })
-    case 'replyStyle': return $.config.set({ key: 'prismantis.replyStyle', value: value })
-    case 'bubbleLabels': return $.config.set({ key: 'prismantis.bubbleLabels', value: value })
-    case 'clock': return $.config.set({ key: 'prismantis.clock', value: value })
-    case 'toolStyle': return $.config.set({ key: 'prismantis.toolStyle', value: value })
-    case 'toolOutput': return $.config.set({ key: 'prismantis.toolOutput', value: value })
-    case 'diffStyle': return $.config.set({ key: 'prismantis.diffStyle', value: value })
-    case 'codeStyle': return $.config.set({ key: 'prismantis.codeStyle', value: value })
-    case 'pieStyle': return $.config.set({ key: 'prismantis.pieStyle', value: value })
-  }
-}
+const setOption = ($: EngineInterface, key: SetupStep['key'], value: string) => $.config.set({ key: `prismantis.${key}`, value })
 
 const saveOption = ($: EngineInterface, key: SetupStep['key'], value: string): Promise<string | undefined> =>
   setOption($, key, value).then(
@@ -1023,6 +1006,6 @@ export const register: Register = (on, options) => {
     const el = $.ui.resolve({ surface: e.surface, component: 'AssistantMessage' })
     const { Box } = el
     const surfaceStyle = forSurface(style, e, await linkReach($, probes, style))
-    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...surfaceStyle, copyButtons: false }, blocks, Math.max(20, e.columns || 0))}</Box> }
+    return { value: <Box flexDirection="column" rowGap={1} {...fullWidth(e.text)}>{drawMarkdown($, el, { ...surfaceStyle, copyButtons: false }, blocks, Math.max(MIN_COLUMNS, e.columns || 0))}</Box> }
   })
 }

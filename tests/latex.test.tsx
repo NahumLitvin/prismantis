@@ -562,7 +562,7 @@ test('back-to-back formulas stack one per line instead of sharing a row', async 
   await ui.unmount()
 })
 
-for (const [color, hex] of [['ansi256(114)', '#87d787'], ['cyanBright', '#00ffff'], ['rgb(166, 227, 161)', '#a6e3a1'], ['#fc0', '#fc0']] as const) {
+for (const [color, hex] of [['ansi256(114)', '#87d787'], ['cyanBright', '#00ffff'], ['rgb(166, 227, 161)', '#a6e3a1'], ['#fc0', '#ffcc00']] as const) {
   test(`the diagram text color ${color} reaches the renderer as ${hex}, a color it accepts`, { options: { diagramTextColor: color } }, async ($, on) => {
     mock.env(on, KITTY)
     const clock = mock.clock(on)

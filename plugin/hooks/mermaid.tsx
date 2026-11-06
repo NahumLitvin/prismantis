@@ -16,7 +16,7 @@ const MAX_LINES = 80
 const PAD = '\uFDD0'
 const textCache = new Map<string, string | null>()
 
-export const chartSize = (columns: number, source = '') => {
+const chartSize = (columns: number, source = '') => {
   const labels = (/^\s*x-axis\b[^[\n]*\[([^\]\n]*)\]/m.exec(source)?.[1] ?? '').split(',').map(s => s.trim().replace(/^"|"$/g, ''))
   const fit = labels.length * (Math.max(...labels.map(l => l.length)) + 2)
   const width = Math.max(24, Math.min(60, Math.max(Math.floor(columns / 6), fit), columns - 12))
