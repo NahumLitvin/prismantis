@@ -1476,7 +1476,7 @@ const field = (input: unknown, ...keys: string[]): string | undefined => {
   if (input === null || typeof input !== 'object') return undefined
   for (const k of keys) {
     const v = (input as Record<string, unknown>)[k]
-    if (typeof v === 'string' && v.trim() !== '') return v
+    if (typeof v === 'string' && v.trim() !== '') return v.replace(CONTROL, '')
   }
   return undefined
 }
@@ -2266,7 +2266,7 @@ const REFUSAL = /^(Error:\s*)?(The user doesn't want to proceed|Permission (for|
 
 export const refusalReason = (output: unknown): string | undefined => {
   if (typeof output !== 'string' || /^(Error:\s*)?Exit code \d+/m.test(output) || !REFUSAL.test(output)) return undefined
-  return output.replace(/\s+/g, ' ').trim()
+  return output.replace(CONTROL, '').replace(/\s+/g, ' ').trim()
 }
 
 export const rememberCall = (calls: Set<string>, id: string, limit = 2000): void => {
@@ -2279,7 +2279,7 @@ export const errorReason = (output: unknown): string | undefined => {
   const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
   const text = typeof output === 'string' ? output : typeof out.stderr === 'string' && out.stderr.trim() ? out.stderr : out.stdout
   if (typeof text !== 'string') return undefined
-  return text.split('\n').map(l => l.trim()).filter(l => l !== '' && !NOISE_LINES.test(l)).at(-1)
+  return text.replace(CONTROL, '').split('\n').map(l => l.trim()).filter(l => l !== '' && !NOISE_LINES.test(l)).at(-1)
 }
 
 export const renderFailure = (el: ElementTable, style: Style, output: unknown, key?: string): RenderElement | undefined => {
@@ -2658,7 +2658,7 @@ const commandLine = (el: ElementTable, style: Style, row: ToolRow, line: string,
 export const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }, columns?: number): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
-  const command = (field(row.input, 'command') ?? '').replace(CONTROL, '').split('\n')
+  const command = (field(row.input, 'command') ?? '').split('\n')
   const out = row.output !== null && typeof row.output === 'object' ? (row.output as Record<string, unknown>) : {}
   const shown: OutputLine[] = [...lines(out.stdout).map(text => ({ text })), ...lines(out.stderr).map(text => ({ text, color: t.codeFlag }))]
   const { rows, hidden } = outputRows(style, shown, columns === undefined ? undefined : columns - SHELL_FRAME)
