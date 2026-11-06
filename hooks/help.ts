@@ -73,6 +73,17 @@ Long paths and checksums never split mid-word, so a column cannot shrink below t
 | ~/jade-palace/noodle-scrolls/scrolls/scroll-07-training-notes.md | 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 |
 | /srv/dojo/moves.md | 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae |
 
+### Status matrix
+
+When a table has a status column — the one whose cells are things like ✓, passed, failed or pending — \`statusMatrix\` \`color\` draws those cells in theme colors, green for a pass, red for a failure, amber for a warning and gray for a wait; \`summary\` adds a count line under the table, like \`✓ 2 · ✗ 1 · ● 1\`, and \`group\` reorders rows by status and draws a heavy rule where the status changes. The default \`off\` keeps tables as written:
+
+| Suite | Cases | Result |
+|:------|------:|:-------|
+| Unit | 412 | ✓ |
+| Propagation | 88 | failed |
+| Smoke | 24 | pending |
+| Regression | 130 | ✓ |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -400,12 +411,13 @@ flowchart LR
 
 export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
-export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
   { name: 'tables', key: 'tableStyle', title: 'Tables', note: 'How markdown tables draw.', options: ['box', 'rules', 'grid', 'minimal'], sample: '| Item | Qty |\n|:-----|----:|\n| Apples | 3 |\n| Pears | 5 |' },
   { name: 'table-layout', key: 'tableLayout', title: 'Table layout', note: 'How markdown tables fit the width. `classic` keeps today\'s look: columns share the width and shrink to the terminal. `auto` stretches like `classic` and stacks each row as label and value pairs when not even its longest words fit. `compact` sits every column at its longest word, so long cells wrap and the table stays narrow. `stacked` always draws label and value pairs. The desktop app lays tables to a share of the reply\'s width, so auto and stacked keep it there. The sample\'s columns cannot shrink below their longest words, so `classic` wraps the cells and `auto` and `stacked` draw cards.', options: ['classic', 'auto', 'compact', 'stacked'], sample: '| Scroll | Checksum |\n|:-------|:---------|\n| ~/jade-palace/noodle-scrolls/scrolls/scroll-07-training-notes.md | 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 |\n| /srv/dojo/moves.md | 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae |' },
+  { name: 'status-matrix', key: 'statusMatrix', title: 'Status matrix', note: 'How the status cells of a table draw: the column whose cells are things like ✓, passed, failed or pending. `off` keeps tables as written. `color` draws them in theme colors, `summary` adds a count line under the table, and `group` also reorders rows by status and draws a heavy rule where the status changes.', options: ['color', 'summary', 'group', 'off'], sample: '| Suite | Cases | Result |\n|:------|------:|:-------|\n| Unit | 412 | ✓ |\n| Propagation | 88 | failed |\n| Smoke | 24 | pending |' },
   { name: 'tasks', key: 'taskStyle', title: 'Tasks', note: 'How `- [ ]` and `- [x]` items draw.', options: ['checks', 'ticks', 'box', 'progress'], sample: '- [x] Parse the reply\n- [x] Draw it\n- [ ] Ship it' },
   { name: 'lists', key: 'listMarker', title: 'List bullets', note: 'How bullet list items draw. `dash` draws `-` at every level, so a list you select with the mouse pastes as a markdown list into Slack, GitHub or a doc.', options: ['dots', 'dash'], sample: '- Parse the reply\n  - Find the lists\n- Draw it' },
   { name: 'headings', key: 'headingStyle', title: 'Headings', note: 'How `#` and `##` headings draw. Terminals have one font size, so headings stand out through style and color.', options: ['banner', 'bold', 'underline', 'uppercase'], sample: '# Release notes\n\n## Fixes\n\nTables keep their width.' },

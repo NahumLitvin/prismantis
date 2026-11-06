@@ -21,6 +21,17 @@ Long paths and checksums never split mid-word, so a column cannot shrink below t
 | ~/jade-palace/noodle-scrolls/scrolls/scroll-07-training-notes.md | 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 |
 | /srv/dojo/moves.md | 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae |
 
+## Status matrix
+
+When a table has a status column — the one whose cells are things like ✓, passed, failed or pending — `statusMatrix` `color` draws those cells in theme colors: green for a pass, red for a failure, amber for a warning, gray for a wait. `summary` adds a count line under the table and `group` reorders rows by status with a heavy rule where the status changes. The default `off` keeps tables as written:
+
+| Suite | Cases | Result |
+|:------|------:|:-------|
+| Unit | 412 | ✓ |
+| Propagation | 88 | failed |
+| Smoke | 24 | pending |
+| Regression | 130 | ✓ |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings
