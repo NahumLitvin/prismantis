@@ -2331,3 +2331,15 @@ test('a two-node cycle with an outgoing edge falls back to its source instead of
   expect(await ui.find({ type: 'Text', text: /B --> C/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('HTML entities decode in text but not in code, and never make a control character', async () => {
+  const [para] = parse('a &amp; b &lt;x&gt; &quot;&apos;&nbsp;&#65;&#x42; &bogus; `&amp;` x&#27;[31my&#0;', { numbers: false, paths: false })
+  if (para?.kind !== 'paragraph') throw new Error('not a paragraph')
+  expect(para.inline).toEqual([{ kind: 'text', text: 'a & b <x> "\'\u00a0AB &bogus; ' }, { kind: 'code', text: '&amp;' }, { kind: 'text', text: ' xy\ufffd' }])
+  expect(para.raw).toBe('a &amp; b &lt;x&gt; &quot;&apos;&nbsp;&#65;&#x42; &bogus; `&amp;` x&#27;[31my&#0;')
+  const [link] = parse('[a &amp; b](https://x.io) [`&amp;`](https://x.io)', hl)
+  expect(link?.kind === 'paragraph' && link.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['a & b', ' ', '&amp;'])
+  const table = tableOf('| a |\n|--|\n| &amp; &lt;b&gt; |')
+  expect(tableHtml(table)).toContain('<td style="text-align: left">&amp; &lt;b&gt;</td>')
+  expect(tableText(table)).toBe('a\n& <b>')
+})
