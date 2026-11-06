@@ -3028,6 +3028,17 @@ test('/prismantis setup in the pane keeps to the rows it is given when the list 
   await tight.unmount()
 })
 
+test('/prismantis setup in a short narrow pane lets the list scroll when the wrapped note leaves it no room, so the focused style stays in view', async ($, on) => {
+  paneStandIn(on, [])
+  on('config.set', (_, e) => ({ value: e.value }))
+  await setupRun($, 'setup')
+  const pane = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'Pane', requestId: 'prismantis-setup', props: { title: 'prismantis setup', isFocused: true, bodyColumns: 56, placement: 'dock', scroll: { offset: 0, bodyRows: 17 }, view: {} }, viewport: { columns: 60, rows: 30 } })
+  for (const [step, value] of [['theme', 'catppuccin-mocha'], ['tables', 'box'], ['tasks', 'checks'], ['lists', 'dots'], ['headings', 'banner'], ['copy', 'dim']] as const) await pane.press({ key: `pick:${step}:${value}` })
+  expect(await pane.find({ type: 'Text', text: /Setup 7\/15: Your prompts/ })).toBeTruthy()
+  expect((await pane.findAll({ type: 'Box' })).filter(b => b.props.height !== undefined)).toHaveLength(0)
+  await pane.unmount()
+})
+
 test('/prismantis setup in the pane opens again on the last step when its save is refused', async ($, on) => {
   on('config.set', (_, e) => (e.key === 'prismantis.pieStyle' ? { deny: 'managed' } : { value: e.value }))
   on('ui.focus', () => ({}))
