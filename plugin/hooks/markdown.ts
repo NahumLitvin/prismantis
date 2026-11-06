@@ -460,13 +460,15 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       const ordered = /\d/.test(item[2] ?? '')
       const items: ListItem[] = []
       const contentIndent: number[] = []
+      const texts: string[][] = []
       while (i < lines.length) {
         const it = LIST_ITEM.exec(at(i))
         if (it) {
           const lead = indentOf(it[1] ?? '')
           contentIndent.push(lead + (it[2] ?? '').length + 1)
           const task = /^\[([ xX])\]\s+(.*)$/.exec(it[3] ?? '')
-          items.push({ marker: it[2] ?? '-', depth: Math.floor(lead / 2), ...(task ? { task: task[1] !== ' ' } : {}), inline: parseInline(task ? task[2]! : it[3] ?? '', hl) })
+          texts.push([task ? task[2]! : it[3] ?? ''])
+          items.push({ marker: it[2] ?? '-', depth: Math.floor(lead / 2), ...(task ? { task: task[1] !== ' ' } : {}), inline: parseInline(texts.at(-1)![0]!, hl) })
         } else if (/^\s{2,}\S/.test(at(i)) && items.length) {
           const indent = indentOf(at(i))
           let owner = items.length - 1
@@ -489,18 +491,19 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
             }
             target.blocks = [...(target.blocks ?? []), { kind: 'code', lang: fence[2] ?? '', lines: body, ...(isOpen ? { isOpen: true as const } : {}), raw: lines.slice(from, i + 1).join('\n') }]
           } else if (last?.kind === 'paragraph') {
-            last.inline = [...last.inline, { kind: 'text', text: breakBefore(at(i).trim()) }, ...parseInline(at(i).trim(), hl)]
             last.raw += `\n${at(i)}`
+            last.inline = parseInline(joinLines(last.raw.split('\n')), hl)
           } else if (last) {
             target.blocks!.push({ kind: 'paragraph', inline: parseInline(at(i).trim(), hl), raw: at(i) })
           } else {
-            target.inline = [...target.inline, { kind: 'text', text: breakBefore(at(i).trim()) }, ...parseInline(at(i).trim(), hl)]
+            texts[owner]!.push(at(i))
           }
         } else {
           break
         }
         i++
       }
+      texts.forEach((t, k) => { if (t.length > 1) items[k]!.inline = parseInline(joinLines(t), hl) })
       add({ kind: 'list', ordered, items }, start, i)
       i--
       continue

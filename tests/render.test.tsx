@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { parse } from '../hooks/markdown'
+import { displayText, parse } from '../hooks/markdown'
 import { PRESETS } from '../hooks/presets'
 import { MARK, replyFill } from '../hooks/render'
 import { width } from '../hooks/layout'
@@ -779,7 +779,7 @@ test('a line break stays only before a tinted translation line', async () => {
   if (plain?.kind !== 'paragraph' || para?.kind !== 'paragraph' || list?.kind !== 'list') throw new Error('unexpected blocks')
   expect(plain.inline).toEqual([{ kind: 'text', text: 'one two' }])
   expect(para.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['Hello world.\n', '你好世界。'])
-  expect(list.items[0]?.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['item', '\n', '项目', ' ', 'more'])
+  expect(list.items[0]?.inline.map(n => ('text' in n ? n.text : ''))).toEqual(['item\n', '项目', ' more'])
 })
 
 test('translation colors from BBilingual survive, other escape codes do not', async () => {
@@ -900,6 +900,20 @@ test('two trailing spaces or a backslash end a paragraph line', async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...draw('🟩🟩  \n✅ DELIVERED  \n🟩🟩'), surface })
     expect(await ui.find({ type: 'Text', text: /^🟩🟩\n✅ DELIVERED\n🟩🟩$/ })).toBeTruthy()
+    await ui.unmount()
+  }
+})
+
+test('two trailing spaces or a backslash end a list item line', async $ => {
+  const [list] = parse('- one  \n  two\\\n  three\n  four\n- שלום  \n  עולם\n  ```\n  c\n  ```\n  para  \n  next', { numbers: false, paths: false })
+  if (list?.kind !== 'list') throw new Error('not a list')
+  expect(list.items.map(it => displayText(it.inline))).toEqual(['one\ntwo\nthree four', 'שלום\nעולם'])
+  const para = list.items[1]?.blocks?.[1]
+  expect(para?.kind === 'paragraph' && displayText(para.inline)).toBe('para\nnext')
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...draw('- one  \n  two\n- שלום  \n  עולם'), surface })
+    expect(await ui.find({ type: 'Text', text: /^one\ntwo$/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /^שלום\nעולם$/ })).toBeTruthy()
     await ui.unmount()
   }
 })
