@@ -1,8 +1,8 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { LINUX_TABLE_COPY, MAC_IMAGE_COPY, MAC_TABLE_COPY, WIN_IMAGE_COPY, WIN_TABLE_COPY, imageCommand } from '../hooks/clipboard'
+import { LINUX_TABLE_COPY, MAC_IMAGE_COPY, WIN_IMAGE_COPY, WIN_TABLE_COPY, imageCommand } from '../hooks/clipboard'
 import { PRESETS } from '../hooks/presets'
-import { clipboardEnv, recordCopies, recordToasts, runResult, startSession } from './clipboard-env'
+import { clipboardEnv, payloadOf, recordCopies, recordToasts, runResult, startSession } from './clipboard-env'
 
 const source = '| Name | Value |\n|--|--:|\n| **שלום** | `$(ignored)` |'
 const plain = 'Name\tValue\nשלום\t$(ignored)'
@@ -15,7 +15,7 @@ const mount = {
 }
 
 const backends = {
-  macos: { platform: 'macos', env: {}, argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY] },
+  macos: { platform: 'macos', env: {}, argv: ['/usr/bin/osascript', '-l', 'JavaScript'] },
   wayland: { platform: 'other', env: { WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0' }, argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'] },
   x11: { platform: 'other', env: { DISPLAY: ':0' }, argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'] },
 } as const
@@ -36,7 +36,7 @@ for (const [backend, setup] of Object.entries(backends)) test(`${backend} copies
   await ui.press({ key: 'html0' })
   expect(calls).toHaveLength(1)
   expect(calls[0]!.argv).toEqual(setup.argv)
-  const payload = JSON.parse(calls[0]!.input)
+  const payload = payloadOf(calls[0]!.input)
   expect(payload.text).toBe(plain)
   expect(payload.html).toContain('<strong>שלום</strong>')
   expect(payload.html).toContain('<code style="white-space: pre-wrap">$(ignored)</code>')
@@ -65,7 +65,7 @@ test('windows copies HTML and CRLF plain text through PowerShell', async ($, on)
   expect(calls[0]!.argv).toContain('-STA')
   expect(calls[0]!.argv.at(-1)).toBe(WIN_TABLE_COPY)
   expect(calls[0]!.input).toMatch(/^[\x00-\x7e]*$/)
-  const payload = JSON.parse(calls[0]!.input)
+  const payload = payloadOf(calls[0]!.input)
   expect(payload.html.startsWith('<table>')).toBe(true)
   expect(payload.html).toContain('<th style="text-align: left">Name</th>')
   expect(payload.html).not.toContain('Excel')
@@ -206,9 +206,10 @@ for (const key of ['copy0', 'html0']) for (const failure of ['unavailable', 'ref
 test('the image helper gets each glyph at its terminal column, and the theme colors as RGB, on stdin', async () => {
   const text = '┌──┬──┐\n│苹│ab│\n└──┴──┘'
   const mac = imageCommand('macos', text, { foreground: '#cdd6f4', background: '#1e1e2e' })!
-  expect(mac.argv).toEqual(['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_IMAGE_COPY])
+  expect(mac.argv).toEqual(['/usr/bin/osascript', '-l', 'JavaScript'])
+  expect(mac.stdin.endsWith(`\n${MAC_IMAGE_COPY}`)).toBe(true)
   const row = (s: string) => [...s].map((text, at) => ({ at, text }))
-  expect(JSON.parse(mac.stdin)).toEqual({
+  expect(payloadOf(mac.stdin)).toEqual({
     lines: [row('┌──┬──┐'), [{ at: 0, text: '│' }, { at: 1, text: '苹' }, { at: 3, text: '│' }, { at: 4, text: 'a' }, { at: 5, text: 'b' }, { at: 6, text: '│' }], row('└──┴──┘')],
     columns: 7,
     foreground: [205, 214, 244],
@@ -217,14 +218,14 @@ test('the image helper gets each glyph at its terminal column, and the theme col
   const win = imageCommand('windows', text, { foreground: 'ansi256(15)', background: '#fff' }, 'C:\\Windows')!
   expect(win.argv).toEqual(['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', '-NoProfile', '-NonInteractive', '-STA', '-Command', WIN_IMAGE_COPY])
   expect(win.stdin).toMatch(/^[\x00-\x7e]*$/)
-  expect(JSON.parse(win.stdin)).toEqual({ ...JSON.parse(mac.stdin), foreground: [0, 0, 0], background: [255, 255, 255] })
-  expect(JSON.parse(imageCommand('macos', 'x', { foreground: 'cyan' })!.stdin)).toMatchObject({ foreground: [0, 0, 0], background: [255, 255, 255] })
-  expect(JSON.parse(imageCommand('macos', 'x', { foreground: '#c9d4f2' })!.stdin)).toMatchObject({ foreground: [0, 0, 0], background: [255, 255, 255] })
-  expect(JSON.parse(imageCommand('macos', 'x', { foreground: '#202020', background: '#1e1e2e' })!.stdin)).toMatchObject({ foreground: [255, 255, 255] })
+  expect(payloadOf(win.stdin)).toEqual({ ...payloadOf(mac.stdin), foreground: [0, 0, 0], background: [255, 255, 255] })
+  expect(payloadOf(imageCommand('macos', 'x', { foreground: 'cyan' })!.stdin)).toMatchObject({ foreground: [0, 0, 0], background: [255, 255, 255] })
+  expect(payloadOf(imageCommand('macos', 'x', { foreground: '#c9d4f2' })!.stdin)).toMatchObject({ foreground: [0, 0, 0], background: [255, 255, 255] })
+  expect(payloadOf(imageCommand('macos', 'x', { foreground: '#202020', background: '#1e1e2e' })!.stdin)).toMatchObject({ foreground: [255, 255, 255] })
 })
 
 test('the image helper gets right-to-left cell text in drawn order, each letter in its own column, borders kept in place', async () => {
-  const lines = JSON.parse(imageCommand('macos', '│ שלום │ 3 │\n│ Pears אגסים │', {}).stdin).lines
+  const lines = payloadOf(imageCommand('macos', '│ שלום │ 3 │\n│ Pears אגסים │', {}).stdin).lines
   expect(lines[0]).toEqual([{ at: 0, text: '│' }, { at: 2, text: 'ם' }, { at: 3, text: 'ו' }, { at: 4, text: 'ל' }, { at: 5, text: 'ש' }, { at: 7, text: '│' }, { at: 9, text: '3' }, { at: 11, text: '│' }])
   expect(lines[1].map((g: { text: string }) => g.text).join('')).toBe('│Pearsםיסגא│')
   expect(lines[1].at(-1)).toEqual({ at: 14, text: '│' })
@@ -291,13 +292,13 @@ for (const surface of ['terminal', 'desktop'] as const) for (const [backend, set
   await ui.press({ key: 'art0' })
   await ui.press({ key: 'png0' })
   expect(calls).toHaveLength(1)
-  expect(calls[0]!.argv.at(-1)).toBe(setup.script)
-  const drawn = JSON.parse(calls[0]!.input).lines.map((glyphs: { text: string }[]) => glyphs.map(g => g.text).join(''))
+  expect([...calls[0]!.argv, calls[0]!.input].some(s => s.endsWith(setup.script))).toBe(true)
+  const drawn = payloadOf(calls[0]!.input).lines.map((glyphs: { text: string }[]) => glyphs.map(g => g.text).join(''))
   expect(copies[0]).toContain('```')
   expect(drawn.join('\n')).not.toContain('`')
   expect(drawn).toEqual(copies[0]!.split('\n').slice(1, -1).map((line, i) => (i === 2 ? line.replace(/[├┼┤─]/g, c => ({ '├': '╞', '┼': '╪', '┤': '╡', '─': '═' })[c]!) : line.replace(/ /g, ''))))
   await ui.press({ key: 'png1' })
-  expect(JSON.parse(calls[1]!.input).lines.flat().map((run: { text: string }) => run.text).join('')).toContain('Gateway')
+  expect(payloadOf(calls[1]!.input).lines.flat().map((run: { text: string }) => run.text).join('')).toContain('Gateway')
   expect(toasts).toEqual(['Copied', 'Copied as image', 'Copied as image'])
   await ui.unmount()
 })
@@ -398,7 +399,7 @@ test('▣ png draws a table as the screen does: header bold in its color, rules,
   const ui = await $.ui.mount({ ...mount, props: { text: '| Name | Note |\n|--|--|\n| plain | `code` **bold** *slant* |', isFirstOfReply: true } })
   await ui.press({ key: 'png0' })
   type Glyph = { at: number; text: string; color?: number[]; bold?: boolean; italic?: boolean }
-  const lines = (JSON.parse(inputs[0]!) as { lines: Glyph[][] }).lines
+  const lines = (payloadOf(inputs[0]!) as { lines: Glyph[][] }).lines
   const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
   const t = PRESETS['catppuccin-mocha']
   const at = (row: number, text: string) => lines[row]!.find(g => g.text === text)!
@@ -415,7 +416,7 @@ test('▣ png draws a table as the screen does: header bold in its color, rules,
 
 test('the png helper keeps a rule glyph in its drawn color and still makes a bar or a letter readable', () => {
   const text = '─█a'
-  const glyphs = JSON.parse(imageCommand('macos', text, { foreground: '#000000', background: '#ffffff' }, undefined, [['#f5f5f5', '#f5f5f5', '#f5f5f5']]).stdin).lines[0]
+  const glyphs = payloadOf(imageCommand('macos', text, { foreground: '#000000', background: '#ffffff' }, undefined, [['#f5f5f5', '#f5f5f5', '#f5f5f5']]).stdin).lines[0]
   expect(glyphs.map((g: { color?: number[] }) => g.color)).toEqual([[245, 245, 245], [0, 0, 0], [0, 0, 0]])
 })
 
@@ -430,7 +431,7 @@ test('pngBackgroundColor sets the background of the png copy', { options: { pngB
   await startSession($, on)
   const ui = await $.ui.mount({ ...mount, props: { text: figures, isFirstOfReply: true } })
   await ui.press({ key: 'png0' })
-  expect(JSON.parse(inputs[0]!).background).toEqual([0, 0, 0])
+  expect(payloadOf(inputs[0]!).background).toEqual([0, 0, 0])
   await ui.unmount()
 })
 
@@ -445,7 +446,7 @@ test('a pngBackgroundColor the png helper cannot read falls back to the theme ba
   await startSession($, on)
   const ui = await $.ui.mount({ ...mount, props: { text: figures, isFirstOfReply: true } })
   await ui.press({ key: 'png0' })
-  expect(JSON.parse(inputs[0]!).background).toEqual([0x1e, 0x1e, 0x2e])
+  expect(payloadOf(inputs[0]!).background).toEqual([0x1e, 0x1e, 0x2e])
   await ui.unmount()
 })
 
@@ -462,7 +463,7 @@ test('▣ png keeps the colors the figure and the diagram draw with', async ($, 
   const ui = await $.ui.mount({ ...mount, props: { text, isFirstOfReply: true } })
   for (const key of ['png0', 'png1']) await ui.press({ key })
   const colors = (input: string) => {
-    const payload = JSON.parse(input) as { lines: { text: string; color?: number[] }[][] }
+    const payload = payloadOf(input) as { lines: { text: string; color?: number[] }[][] }
     return new Map(payload.lines.flat().map(g => [g.text, String(g.color)]))
   }
   const figure = colors(inputs[0]!)

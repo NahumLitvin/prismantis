@@ -7,11 +7,9 @@ if (process.platform !== 'darwin') {
   process.exit(0)
 }
 
-const { MAC_TABLE_COPY, MAC_IMAGE_COPY, imageCommand } = await load()
-const payload = {
-  html: '<table><tr><th>Name</th></tr><tr><td>Żółć &amp; שלום</td></tr></table>',
-  text: 'Name\nŻółć & שלום\t中文',
-}
+const { MAC_TABLE_COPY, MAC_IMAGE_COPY, clipboardCommand, imageCommand } = await load()
+const table = clipboardCommand('macos', '<table><tr><th>Name</th></tr><tr><td>Żółć &amp; שלום</td></tr></table>', 'Name\nŻółć & שלום\t中文 "};throw 1//\u2028')
+const run = (command, script) => spawnSync('/usr/bin/osascript', command.argv.slice(1), { input: command.stdin.slice(0, command.stdin.indexOf('\n') + 1) + script, encoding: 'utf8', timeout: 5000 })
 const bridge = `
 ObjC.import('AppKit')
 var received = $.NSMutableArray.alloc.init
@@ -26,13 +24,9 @@ var testPasteboard = {
 `
 const helper = MAC_TABLE_COPY.replace('$.NSPasteboard.generalPasteboard', 'testPasteboard')
 assert.notEqual(helper, MAC_TABLE_COPY)
-const result = spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', bridge + helper], {
-  input: JSON.stringify(payload), encoding: 'utf8', timeout: 5000,
-})
+const result = run(table, bridge + helper)
 assert.equal(result.status, 0, result.stderr || result.error?.message)
-const broken = spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', bridge + helper.replace('$.NSArray.arrayWithObject(item)', '[item]')], {
-  input: JSON.stringify(payload), encoding: 'utf8', timeout: 5000,
-})
+const broken = run(table, bridge + helper.replace('$.NSArray.arrayWithObject(item)', '[item]'))
 assert.notEqual(broken.status, 0)
 assert.match(broken.stderr, /Expected a native NSPasteboardItem/)
 console.log('Native clipboard bridge preserves NSPasteboardItem and both Unicode formats; implicit JavaScript arrays are rejected')
@@ -50,7 +44,7 @@ var rep = $.NSBitmapImageRep.imageRepWithData(stored)
 var corner = rep.colorAtXY(0, 0)
 ;[rep.pixelsWide, rep.pixelsHigh, Math.round(corner.redComponent * 255), Math.round(corner.greenComponent * 255), Math.round(corner.blueComponent * 255)].join(',')
 `
-const drawn = spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', imageBridge + imageHelper + probe], { input: image.stdin, encoding: 'utf8', timeout: 5000 })
+const drawn = run(image, imageBridge + imageHelper + probe)
 assert.equal(drawn.status, 0, drawn.stderr || drawn.error?.message)
 const [wide, high, ...corner] = drawn.stdout.trim().split(',').map(Number)
 assert.ok(wide > 2 * 8 * 8 && high > 2 * 3 * 14, `image is ${wide}x${high}`)
@@ -71,7 +65,7 @@ var missing = [0, 1].map(function (c) {
 })
 missing.join(',')
 `
-const blocks = spawnSync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', imageBridge + imageHelper + gaps], { input: imageCommand('macos', '█│\n█│\n█│', { foreground: '#cdd6f4', background: '#1e1e2e' }).stdin, encoding: 'utf8', timeout: 5000 })
+const blocks = run(imageCommand('macos', '█│\n█│\n█│', { foreground: '#cdd6f4', background: '#1e1e2e' }), imageBridge + imageHelper + gaps)
 assert.equal(blocks.status, 0, blocks.stderr || blocks.error?.message)
 assert.equal(blocks.stdout.trim(), '0,0', `pixel rows without █ or │ ink: ${blocks.stdout.trim()}`)
 console.log('Stacked █ and │ glyphs touch from row to row in the PNG')

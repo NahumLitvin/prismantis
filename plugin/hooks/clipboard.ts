@@ -6,8 +6,6 @@ import { longHex } from './theme'
 
 export const MAC_TABLE_COPY = `
 ObjC.import('AppKit')
-var input = $.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile
-var payload = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(input, $.NSUTF8StringEncoding)))
 var item = $.NSPasteboardItem.alloc.init
 if (!item.setStringForType(payload.html, $.NSPasteboardTypeHTML) ||
     !item.setStringForType(payload.text, $.NSPasteboardTypeString)) throw new Error('Cannot encode table')
@@ -55,8 +53,6 @@ try {
 
 export const MAC_IMAGE_COPY = `
 ObjC.import('AppKit')
-var input = $.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile
-var payload = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(input, $.NSUTF8StringEncoding)))
 var rgb = function (c) { return $.NSColor.colorWithSRGBRedGreenBlueAlpha(c[0] / 255, c[1] / 255, c[2] / 255, 1) }
 var font = $.NSFont.fontWithNameSize('Menlo', 14)
 if (!font) font = $.NSFont.monospacedSystemFontOfSizeWeight(14, 0)
@@ -223,18 +219,17 @@ const powershell = (systemRoot: string | undefined, script: string) =>
 
 export type HelperCommand = { stdin: string; argv: string[]; failure: string }
 
+const osascript = (script: string, json: string) => ({ stdin: `var payload = ${ascii(json)}\n${script}`, argv: ['/usr/bin/osascript', '-l', 'JavaScript'] })
+
 export const clipboardCommand = (backend: ClipboardBackend, html: string, text: string, systemRoot?: string): HelperCommand => backend === 'windows'
   ? {
     stdin: ascii(JSON.stringify({ html, text: text.replace(/\r?\n/g, '\r\n') })),
     argv: powershell(systemRoot, WIN_TABLE_COPY),
     failure: 'Windows clipboard helper failed',
   }
-  : {
-    stdin: JSON.stringify({ html, text }),
-    ...backend === 'macos'
-      ? { argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_TABLE_COPY], failure: 'macOS clipboard helper failed' }
-      : { argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'], failure: 'CopyQ failed; install and start CopyQ in the graphical session' },
-  }
+  : backend === 'macos'
+    ? { ...osascript(MAC_TABLE_COPY, JSON.stringify({ html, text })), failure: 'macOS clipboard helper failed' }
+    : { stdin: JSON.stringify({ html, text }), argv: ['copyq', 'eval', LINUX_TABLE_COPY, '-'], failure: 'CopyQ failed; install and start CopyQ in the graphical session' }
 
 export const drawsImages = (backend: ClipboardBackend | null): boolean => backend === 'macos' || backend === 'windows'
 
@@ -294,5 +289,5 @@ export const imageCommand = (backend: ClipboardBackend, text: string, colors: { 
   const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground, background })
   return backend === 'windows'
     ? { stdin: ascii(json), argv: powershell(systemRoot, WIN_IMAGE_COPY), failure: 'Windows image helper failed' }
-    : { stdin: json, argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_IMAGE_COPY], failure: 'macOS image helper failed' }
+    : { ...osascript(MAC_IMAGE_COPY, json), failure: 'macOS image helper failed' }
 }
