@@ -126,3 +126,26 @@ test('with app links on, app links that write notes, run commands, or launch fil
   expect(hrefs.filter(h => !/^(https|file):/i.test(h))).toEqual([])
   await ui.unmount()
 })
+
+const toolUse = (tool: string, input: unknown) => ({ plugin: 'prismantis', surface: 'terminal' as const, component: 'ToolUse' as const, props: { tool_use_id: `x-${tool}`, tool, input, isRunning: false, isErrored: false, isInterrupted: false } })
+
+test('with path links on, an extensionless file never links and an extensionless folder links once a stat finds a folder', async ($, on) => {
+  claudeAt(on, '2.1.289')
+  mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
+  on('session.root', () => ({ value: '/work/app' }))
+  const clock = mock.clock(on)
+  on('fs.stat', (_, e) => ({ value: { kind: /^\/(usr\/local|work\/app\/docs)$/.test(e.path) ? 'dir' as const : 'file' as const, size: 1, mtimeMs: 0, isLink: false } }))
+  if (!(await linksHttp($.ui.mount(reply('[/x](file:///x)'))))) return
+  const ui = await $.ui.mount(reply('Run /bin/sh, /usr/bin/say or /usr/bin/python3.12, see [/bin/sh](file:///bin/sh), `bin/tool`, docs/ and /usr/local.'))
+  await clock.settle()
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///work/app/docs/', 'file:///usr/local'])
+  await ui.unmount()
+  for (const [tool, input, hrefs] of [['Read', { file_path: '/usr/bin/say' }, []], ['Grep', { pattern: 'x', path: '/usr/local' }, ['file:///usr/local']]] as const) {
+    const row = await $.ui.mount(toolUse(tool, input))
+    await clock.settle()
+    const again = await $.ui.mount(toolUse(tool, input))
+    expect((await again.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual([...hrefs])
+    await row.unmount()
+    await again.unmount()
+  }
+})

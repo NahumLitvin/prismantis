@@ -11,7 +11,7 @@ import { clipboardCommand, drawsImages, imageCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { CopyButton, DrawPaste, Fold, Hues, TerminalEnv } from './render'
-import { MARK, bashEdits, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
+import { MARK, bashEdits, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { HINT, ISSUE_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -353,7 +353,7 @@ const MAX_FOUND = 2000
 
 const statPaths = async ($: EngineInterface, paths: string[]): Promise<void> => {
   const kinds = await Promise.all(paths.map(path => $.fs.stat(path).then(stat => stat.kind, () => 'other')))
-  const hits = paths.filter((_, i) => kinds[i] !== 'other')
+  const hits = paths.flatMap((path, i) => (kinds[i] === 'dir' ? [path, `${path}/`] : kinds[i] === 'file' ? [path] : []))
   if (hits.length) await update($, foundPaths, list => [...list, ...hits].slice(-MAX_FOUND))
 }
 
@@ -372,8 +372,9 @@ const askPaths = ($: EngineInterface, checks: PathChecks, paths: string[]) => {
   }
 }
 
-const withFoundPaths = async ($: EngineInterface, checks: PathChecks, style: Style, blocks: Block[]): Promise<Style> => {
-  const paths = pathsToProbe(blocks, style)
+const withFoundPaths = async ($: EngineInterface, checks: PathChecks, style: Style, blocks: Block[]): Promise<Style> => withFound($, checks, style, pathsToProbe(blocks, style))
+
+const withFound = async ($: EngineInterface, checks: PathChecks, style: Style, paths: string[]): Promise<Style> => {
   if (paths.length === 0) return style
   askPaths($, checks, paths)
   const list = await read($, foundPaths)
@@ -764,14 +765,16 @@ export const register: Register = (on, options) => {
         return next(e)
       }
       const dotDark = await darkDot($, style, groupRunning(e.props))
-      return renderToolGroup($.ui.resolve(e), { ...forSurface(style, e, await linkReach($, probes, style)), dotDark }, e.props.calls, e.props.isActive, e.viewport?.columns)
+      const drawn = forSurface(style, e, await linkReach($, probes, style))
+      return renderToolGroup($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, e.props.calls.map(call => call.input)))), dotDark }, e.props.calls, e.props.isActive, e.viewport?.columns)
     })
     on('ui.render', { component: 'ToolUse', ...here }, async ($, e, next) => {
       await locate($, style)
       noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
       if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
       const dotDark = await darkDot($, style, e.props.isRunning)
-      if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), { ...forSurface(style, e, await linkReach($, probes, style)), dotDark }, e.props, e.viewport?.columns)
+      const drawn = forSurface(style, e, await linkReach($, probes, style))
+      if (!expandedCalls.has(e.props.tool_use_id)) return renderToolRow($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, [e.props.input]))), dotDark }, e.props, e.viewport?.columns)
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
       return shell && typeof e.props.output !== 'string' ? renderExpandedShell($.ui.resolve(e), { ...style, dotDark }, e.props, e.viewport?.columns) : next(e)
     })
