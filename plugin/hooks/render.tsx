@@ -227,9 +227,28 @@ const hidesFile = (reach: Reach, n: Extract<Inline, { kind: 'link' }>, href: str
   return shown === undefined || shown !== withoutSlash(linkPath(root, href))
 }
 
+const ZERO_WIDTH = /[\u200b-\u200d\u2060\ufeff]/g
+
+const WEB_TLDS = new Set(['com', 'org', 'net', 'io', 'dev', 'app', 'ai', 'co', 'gov', 'edu', 'info', 'biz', 'me', 'xyz', 'example', 'test', 'uk', 'de', 'fr', 'eu', 'ie', 'il', 'ca', 'au', 'jp', 'cn', 'ru', 'br', 'in'])
+
+const hostOf = (href: string): string | undefined => /^[a-z][\w+.-]*:\/\/(?:[^@/?#]*@)?([^/?#:]+)/i.exec(href)?.[1]?.toLowerCase().replace(/^www\./, '')
+
+const labelHost = (label: string): string | undefined => {
+  const m = /^([a-z][\w+.-]*:\/\/)?((?:www\.)?[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+)(?::\d+)?(?:[/?#]\S*)?$/iu.exec(label.trim())
+  const host = m?.[2]?.toLowerCase().replace(/^www\./, '')
+  return host && (m![1] || host !== m![2]!.toLowerCase() || WEB_TLDS.has(host.slice(host.lastIndexOf('.') + 1))) ? host : undefined
+}
+
+const spoofs = (label: string, href: string): boolean => {
+  if (label !== label.replace(ZERO_WIDTH, '')) return true
+  const shown = labelHost(label)
+  const real = hostOf(href) ?? ''
+  return shown !== undefined && real !== shown && !real.endsWith(`.${shown}`)
+}
+
 const drawnLink = (n: Extract<Inline, { kind: 'link' }>, reach: Reach): Inline => {
   const href = reach.fileLinks !== null && /^file:/i.test(n.href) ? fileHref(reach.fileLinks, n.href) : n.href
-  if (!isHyperlink(n.href, reach) || encodedLength(href) > LINK_MAX || hidesFile(reach, n, href)) return { kind: 'text', text: plainLink(n.text, n.href) }
+  if (!isHyperlink(n.href, reach) || encodedLength(href) > LINK_MAX || hidesFile(reach, n, href) || spoofs(n.text, n.href)) return { kind: 'text', text: plainLink(n.text.replace(ZERO_WIDTH, ''), n.href) }
   return href === n.href ? n : { ...n, href }
 }
 
