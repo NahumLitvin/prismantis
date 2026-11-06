@@ -276,6 +276,150 @@
   <Text>
     "└─────────────────────────────────────────────────┴────────────────────────────────────────────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Status matrix"
+  <Text>
+    "━━━━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table has a status column — the one whose cells are things like ✓, passed, failed or pending — "
+  <Text>
+    "statusMatrix"
+  <Text>
+    " "
+  <Text>
+    "color"
+  <Text>
+    " draws those cells in theme colors: green for a pass, red for a failure, amber for a warning, gray for a wait. "
+  <Text>
+    "summary"
+  <Text>
+    " adds a count line under the table and "
+  <Text>
+    "group"
+  <Text>
+    " reorders rows by status with a heavy rule where the status changes. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌─────────────┬───────┬─────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Suite"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Cases"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Result"
+    <Text>
+      " │"
+  <Text>
+    "╞═════════════╪═══════╪═════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Unit"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "412"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "✓"
+    <Text>
+      " │"
+  <Text>
+    "├─────────────┼───────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Propagation"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "88"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "failed"
+    <Text>
+      " │"
+  <Text>
+    "├─────────────┼───────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Smoke"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "24"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "pending"
+    <Text>
+      " │"
+  <Text>
+    "├─────────────┼───────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Regression"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "130"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "✓"
+    <Text>
+      " │"
+  <Text>
+    "└─────────────┴───────┴─────────┘"
+<Box>
   <Box row>
     <Text>
       "1. "
