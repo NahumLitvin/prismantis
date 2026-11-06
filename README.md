@@ -213,7 +213,7 @@ When tables, diagrams and figures follow each other, they share a row and wrap o
 ![Copy buttons: plain Claude Code on the left, prismantis on the right](docs/compare/copy.png)
 
 - **Tables:** `⧉ md` copies the original Markdown and `⧉ art` a boxed table that pastes well into Slack. `⧉ html` copies a formatted table (headers, alignment, inline formatting) plus a tab-separated plain-text copy.
-- **Code, lists and quotes:** `[ ⧉ copy ]` on each. Code copies without its fences, lists as markdown, quotes without their `> ` markers. Set `textCopyButtons` to `false` to drop the buttons on lists, quotes and alerts and keep the rest.
+- **Code, lists and quotes:** `[ ⧉ copy ]` on each. Code copies without its fences, lists and alerts as markdown, quotes without their `> ` markers. Set `textCopyButtons` to `false` to drop the buttons on lists, quotes and alerts and keep the rest.
 - **Diagrams and figures:** `⧉ source` copies the mermaid or figure source, `⧉ art` the drawn art.
 - **As an image:** `▣ png` on tables, diagrams and figures puts a PNG of the drawn art on the clipboard, monospace in the theme's text and background colors, ready to paste into Slack, docs or slides. It shows in a local macOS or Windows terminal and draws with the OS's own fonts (`osascript` on macOS, `powershell.exe` on Windows), so it needs nothing installed. If that fails, it copies the drawn text and the toast says why.
 - **Whole replies:** replies with more than one block, or any Hebrew or Arabic, end with `⧉ copy reply`, which copies the reply as Claude wrote it. Selecting right-to-left text on screen copies letters in drawn order, not reading order.

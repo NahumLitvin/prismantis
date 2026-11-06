@@ -1251,8 +1251,8 @@ const copySource = (style: Style, block: Block): string | undefined =>
   block.kind === 'code' ? block.lines.join('\n')
   : block.kind === 'table' ? block.raw
   : style.inside || !style.textCopyButtons ? undefined
-  : block.kind === 'list' ? block.raw
-  : block.kind === 'quote' || block.kind === 'alert' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n')
+  : block.kind === 'list' || block.kind === 'alert' ? block.raw
+  : block.kind === 'quote' ? block.raw.split('\n').map(line => line.replace(/^\s*>\s?/, '')).join('\n')
   : undefined
 
 export const drawMath = (el: ElementTable, style: Style, blocks: Block[], drawn: Drawn = new Map()): Drawn => {
