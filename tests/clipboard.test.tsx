@@ -376,3 +376,41 @@ test('▣ png keeps the colors the figure and the diagram draw with', async ($, 
   expect(diagram.get('┌')).not.toBe('undefined')
   await ui.unmount()
 })
+
+test('the png helper keeps a chart gridline dot in its dim rule color', () => {
+  const glyphs = JSON.parse(imageCommand('windows', '·a', { foreground: '#cdd6f4', background: '#1e1e2e' }, 'C:\\Windows', [['#45475a', '#45475a']]).stdin).lines[0]
+  expect(glyphs.map((g: { color?: number[] }) => g.color)).toEqual([[0x45, 0x47, 0x5a], [255, 255, 255]])
+})
+
+test('a Hebrew table copies to png and html with its columns right to left, as the screen draws it', { options: { rtl: 'warp' } }, async ($, on) => {
+  clipboardEnv(on, 'other', { OS: 'Windows_NT', SystemRoot: 'C:\\Windows' })
+  const inputs: string[] = []
+  on('process.run', (_, e) => {
+    inputs.push(e.init?.stdin ?? '')
+    return runResult(0)
+  })
+  recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount({ ...mount, props: { text: '| שם | כמות |\n|--|--:|\n| תפוחים | 3 |', isFirstOfReply: true } })
+  await ui.press({ key: 'png0' })
+  await ui.press({ key: 'html0' })
+  const row = (JSON.parse(inputs[0]!) as { lines: { at: number; text: string }[][] }).lines[3]!
+  expect(row.find(g => g.text === '3')!.at).toBeLessThan(row.find(g => /[א-ת]/.test(g.text))!.at)
+  expect(JSON.parse(inputs[1]!).html).toMatch(/^<table dir="rtl">/)
+  await ui.unmount()
+})
+
+test('a Latin table copies to html with no dir', async ($, on) => {
+  clipboardEnv(on, 'other', { OS: 'Windows_NT', SystemRoot: 'C:\\Windows' })
+  const inputs: string[] = []
+  on('process.run', (_, e) => {
+    inputs.push(e.init?.stdin ?? '')
+    return runResult(0)
+  })
+  recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount(mount)
+  await ui.press({ key: 'html0' })
+  expect(JSON.parse(inputs[0]!).html).toMatch(/^<table>/)
+  await ui.unmount()
+})

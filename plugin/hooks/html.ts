@@ -27,12 +27,12 @@ const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
   }
 }).join('')
 
-export const tableHtml = (table: Extract<Block, { kind: 'table' }>): string => {
+export const tableHtml = (table: Extract<Block, { kind: 'table' }>, rtl = false): string => {
   const row = (cells: Inline[][], tag: 'th' | 'td') => `    <tr>${cells.map((cell, i) =>
     `<${tag} style="text-align: ${table.align[i] ?? 'left'}">${inlineHtml(cell)}</${tag}>`,
   ).join('')}</tr>`
   return [
-    '<table>',
+    rtl ? '<table dir="rtl">' : '<table>',
     '  <thead>',
     row(table.header, 'th'),
     '  </thead>',
