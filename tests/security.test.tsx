@@ -54,6 +54,12 @@ test('terminal control sequences in a reply are never drawn', async $ => {
   expect(texts.filter(t => /[\u001b\u0007\u009b]/.test(t))).toEqual([])
 })
 
+test('an unterminated OSC escape strips only itself, not the rest of the reply', () => {
+  const blocks = parse('before \u001b]8;;x rest\n\nsecond\n\n| a |\n|---|\n| 1 |', { numbers: false, paths: false })
+  expect(blocks.map(b => b.kind)).toEqual(['paragraph', 'paragraph', 'table'])
+  expect(blocks.map(b => b.raw).join('\n')).not.toMatch(/[\u001b\u0007]/)
+})
+
 const TARGETS: [href: string, linkedWithFileLinks: boolean][] = [
   ['https://a.dev', true],
   ['file:///Applications/Calculator.app', false],
