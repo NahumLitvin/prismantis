@@ -890,6 +890,8 @@ test('a framed code block with hover buttons stays wide enough for its head insi
   const ui = await $.ui.mount({ ...draw('```\nx\n```'), surface: 'terminal' })
   expect((await ui.find({ key: 'b0' }))?.props.minWidth).toBe('── code [ ⧉ copy ]'.length + 4)
   await ui.unmount()
+})
+
 test('two trailing spaces or a backslash end a paragraph line', async $ => {
   const [spaces, slash, soft, rtl] = parse('🟩🟩  \n ✅ DELIVERED  \n🟩🟩\n\none\\\ntwo\n\nthree  \nfour\\\n\nשלום  \nעולם', { numbers: false, paths: false })
   const text = (b: typeof spaces) => (b?.kind === 'paragraph' ? b.inline.map(n => ('text' in n ? n.text : '')).join('') : '')
