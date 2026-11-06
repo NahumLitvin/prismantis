@@ -33,13 +33,20 @@ const ratex = (on: On, answer: (formulas: string[]) => string = ok, png: string 
     runs.push({ argv: e.argv, formulas })
     return { value: { exitCode: 0, stdout: answer(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
-  on('fs.read', (_, e) => {
+  const fileOf = (path: string) => {
     const run = runs.at(-1)
     const dir = run?.argv[run.argv.indexOf('--output-dir') + 1]
-    const file = e.path.replace(/\\/g, '/')
+    const file = path.replace(/\\/g, '/')
     const index = Number(/\/(\d{4})\.png$/.exec(file)?.[1])
-    if (!run || index < 1 || index > run.formulas.length || !file.endsWith(`${dir}/${String(index).padStart(4, '0')}.png`)) return { deny: `no such file ${e.path}` }
-    return { value: { base64: typeof png === 'string' ? png : png(run) } }
+    return !run || index < 1 || index > run.formulas.length || !file.endsWith(`${dir}/${String(index).padStart(4, '0')}.png`) ? null : typeof png === 'string' ? png : png(run)
+  }
+  on('fs.stat', (_, e) => {
+    const file = fileOf(e.path)
+    return file === null ? { deny: `no such file ${e.path}` } : { value: { kind: 'file' as const, size: (file.length * 3) / 4, mtimeMs: 0, isLink: false } }
+  })
+  on('fs.read', (_, e) => {
+    const file = fileOf(e.path)
+    return file === null ? { deny: `no such file ${e.path}` } : { value: { base64: file } }
   })
   return runs
 }
@@ -205,6 +212,7 @@ test('after the renderer fails once, later formulas stay text and it is not run 
       ? { value: { exitCode: 0, stdout: ok(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
       : { deny: 'renderer crashed' }
   })
+  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 100, mtimeMs: 0, isLink: false } }))
   on('fs.read', () => ({ value: { base64: PNG_160x80 } }))
 
   const first = await $.ui.mount(reply(REPLY))
@@ -235,6 +243,7 @@ test('after a later run fails, formulas already drawn stay drawn and new ones st
       ? { value: { exitCode: 0, stdout: ok(formulas), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
       : { deny: 'renderer crashed' }
   })
+  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 100, mtimeMs: 0, isLink: false } }))
   on('fs.read', () => ({ value: { base64: PNG_160x80 } }))
 
   const drawn = await $.ui.mount(reply(REPLY))
@@ -570,16 +579,55 @@ for (const [color, hex] of [['ansi256(114)', '#87d787'], ['cyanBright', '#00ffff
 const keys = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => `k${from + i}`)
 const storeOf = (names: string[]) => Object.fromEntries(names.map(name => [name, name]))
 
-test('the formula store keeps the newest 50, dropping the oldest', async () => {
-  const kept = keepFormulas(storeOf(keys(0, 50)), [['k50', 'k50']], new Set())
+const MB = 1024 * 1024
+const formulaOf = (bytes: number) => ({ png: 'A'.repeat((bytes * 4) / 3), width: 1, height: 1 })
 
-  expect(Object.keys(kept)).toEqual(keys(1, 51))
+test('the formula store keeps the newest formulas under 32 MB, dropping the oldest', async () => {
+  const store = Object.fromEntries(keys(0, 20).map(key => [key, formulaOf(1.9 * MB)]))
+  const kept = keepFormulas(store, [['k20', formulaOf(1.9 * MB)]], new Set())
+
+  expect(Object.keys(kept)).toEqual(keys(5, 21))
 })
 
-test('the formula store never drops a formula a draw still wants, even past 50', async () => {
-  const kept = keepFormulas(storeOf(keys(0, 50)), [['k50', 'k50']], new Set(keys(0, 50)))
+test('the formula store keeps many small formulas', async () => {
+  const kept = keepFormulas(storeOf(keys(0, 80)), [['k80', 'k80']], new Set())
 
-  expect(Object.keys(kept)).toEqual(keys(0, 51))
+  expect(Object.keys(kept)).toEqual(keys(0, 81))
+})
+
+test('the formula store never drops a formula a draw still wants, even past 32 MB', async () => {
+  const store = Object.fromEntries(keys(0, 30).map(key => [key, formulaOf(1.5 * MB)]))
+  const kept = keepFormulas(store, [['k30', formulaOf(1.5 * MB)]], new Set(keys(0, 30)))
+
+  expect(Object.keys(kept)).toEqual(keys(0, 31))
+})
+
+test('a formula png over 2 MB is never read, and at most 4 are read at once', async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('session.id', () => ({ value: 'sess-1' }))
+  on('process.run', (_, e) => ({ value: { exitCode: 0, stdout: ok((e.init?.stdin ?? '').split('\n').filter(line => line !== '')), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  const big = Array.from({ length: 12 }, (_, i) => i === 3)
+  on('fs.stat', (_, e) => ({ value: { kind: 'file' as const, size: big[Number(/(\d{4})\.png$/.exec(e.path)?.[1]) - 1] ? 3 * MB : 100, mtimeMs: 0, isLink: false } }))
+  const reads: string[] = []
+  let open = 0
+  let most = 0
+  on('fs.read', async (_, e) => {
+    reads.push(e.path)
+    most = Math.max(most, ++open)
+    for (let k = 0; k < 5; k++) await Promise.resolve()
+    open--
+    return { value: { base64: PNG_160x80 } }
+  })
+
+  const ui = await $.ui.mount(reply(big.map((_, i) => `$$x_{${i}}$$`).join('\n\n')))
+  await clock.settle()
+
+  expect(reads.some(path => path.endsWith('/0004.png'))).toBe(false)
+  expect(most).toBeLessThanOrEqual(4)
+  expect(await ui.findAll({ type: 'Image' })).toHaveLength(11)
+  await ui.unmount()
 })
 
 test('a reply that streams in more formulas than the store keeps renders each formula once', { timeoutMs: 20000 }, async ($, on) => {

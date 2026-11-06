@@ -222,3 +222,20 @@ test('pie pixels take their slice color, fade at the rim and stay clear outside 
   const alphas = Array.from({ length: side * side }, (_, i) => px[i * 4 + 3]!)
   expect(alphas.some(a => a > 0 && a < 255)).toBe(true)
 })
+
+test('the image cache keeps about 32 MB of pictures and reads an evicted one again', async ($, on) => {
+  mock.env(on, KITTY)
+  const head = PNG_160x80.replace(/=+$/, '')
+  const big = head + 'A'.repeat(2_600_000 - head.length)
+  const paths = Array.from({ length: 18 }, (_, i) => `/home/me/big${i}.png`)
+  const reads = files(on, Object.fromEntries(paths.map(path => [path, big])))
+
+  for (const path of [...paths, paths[17]!, paths[0]!]) {
+    const ui = await $.ui.mount(reply(`![shot](${path})`))
+    expect(await ui.findAll({ type: 'Image' })).toHaveLength(1)
+    await ui.unmount()
+  }
+
+  expect(reads.filter(path => path === paths[0])).toHaveLength(2)
+  expect(reads.filter(path => path === paths[17])).toHaveLength(1)
+})
