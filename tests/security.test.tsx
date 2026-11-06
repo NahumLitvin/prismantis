@@ -1,3 +1,4 @@
+import type { Engine } from 'claude-code/testing'
 import { expect, mock, test } from 'claude-code/testing'
 
 import type { ClipboardBackend } from '../hooks/clipboard'
@@ -148,4 +149,33 @@ test('with path links on, an extensionless file never links and an extensionless
     await row.unmount()
     await again.unmount()
   }
+})
+
+const BAD = '\u001b]52;c;cHduZWQ=\u0007\u001b[2J'
+
+const toolCall = (tool: string, input: unknown) => ({ tool_use_id: `c-${tool}`, tool, input, isRunning: false, isErrored: false, isInterrupted: false })
+
+const drawnTexts = async ($: Engine, props: Record<string, unknown>) => {
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', ...props } as Parameters<Engine['ui']['mount']>[0])
+  const texts = (await ui.findAll({ type: 'Text' })).map(n => n.text ?? '')
+  await ui.unmount()
+  return texts
+}
+
+for (const toolOutput of ['full', 'quiet'] as const) {
+  test(`terminal control sequences in tool commands and targets are never drawn (toolOutput ${toolOutput})`, { options: { toolOutput } }, async $ => {
+    const shell = await drawnTexts($, { component: 'ToolUse', props: toolCall('Bash', { command: `echo hi ${BAD}\nls` }) })
+    const grep = await drawnTexts($, { component: 'ToolUse', props: toolCall('Grep', { pattern: `x${BAD}y` }) })
+    if (toolOutput === 'full') expect(shell.join('')).toContain('echo hi')
+    expect(grep.join('')).toContain('xy')
+    expect([...shell, ...grep].filter(t => /[\u001b\u0007]/.test(t))).toEqual([])
+  })
+}
+
+test('terminal control sequences in a failed tool\'s error and refusal text are never drawn', { options: { toolOutput: 'quiet' } }, async $ => {
+  const error = await drawnTexts($, { component: 'ToolResult', props: { tool_use_id: 'r-1', tool: 'Bash', output: { stdout: '', stderr: `boom ${BAD}`, interrupted: false }, isErrored: true } })
+  const refusal = await drawnTexts($, { component: 'ToolResult', props: { tool_use_id: 'r-2', tool: 'Bash', output: `Permission to run ${BAD} denied`, isErrored: true } })
+  expect(error.join('')).toContain('boom')
+  expect(refusal.join('')).toContain('Permission to run')
+  expect([...error, ...refusal].filter(t => /[\u001b\u0007]/.test(t))).toEqual([])
 })
