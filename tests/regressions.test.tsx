@@ -589,6 +589,17 @@ test('copy reply copies the whole reply as written, Hebrew in reading order', { 
   await ui.unmount()
 })
 
+test('copy reply copies a reply past the text cap whole', async ($, on) => {
+  const copied = stubClipboard(on)
+  const text = `List:\n\n${Array.from({ length: 3000 }, (_, i) => `- item ${i} with \`code\` and **bold**`).join('\n')}\n\nTAIL MARKER`
+  const ui = await $.ui.mount(mount(text))
+  expect(await ui.find({ type: 'Text', text: /TAIL MARKER/ })).toBeUndefined()
+  const reply = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ copy reply')
+  await ui.press({ key: reply!.key! })
+  expect(copied).toEqual([text])
+  await ui.unmount()
+})
+
 test('a one-paragraph English block gets no copy reply button', async $ => {
   const ui = await $.ui.mount(mount('Checking the tests next.'))
   expect((await ui.findAll({ type: 'Button' })).some(b => b.props.label === '⧉ copy reply')).toBe(false)
