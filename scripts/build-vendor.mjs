@@ -192,7 +192,6 @@ track(await build({
   platform: 'neutral',
   target: 'es2023',
   minifySyntax: true,
-  minifyIdentifiers: true,
   outfile: '../plugin/hooks/vendor/prism.js',
   legalComments: 'none',
   plugins: [{
@@ -225,7 +224,6 @@ track(await build({
   platform: 'neutral',
   target: 'es2023',
   minifySyntax: true,
-  minifyIdentifiers: true,
   outfile: '../plugin/hooks/vendor/mermaid-text.js',
   legalComments: 'none',
   plugins: [{
