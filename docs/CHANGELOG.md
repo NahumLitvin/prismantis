@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.45.1] - 2026-11-07
+
+Bug and performance fixes from a second QA round.
+
+### Fixed
+
+- A long streamed reply holds about 24 MB of cache instead of 260 MB ([#453](https://github.com/NahumLitvin/prismantis/pull/453)).
+- A JS or TS block holding a very long word, like a JWT, draws at once as plain code instead of freezing the screen ([#451](https://github.com/NahumLitvin/prismantis/pull/451)).
+- A very long reply keeps its copy reply button and ends on a clear note ([#452](https://github.com/NahumLitvin/prismantis/pull/452)).
+- Formulas, send times, the unread blink and prompt hints survive a busy redraw ([#450](https://github.com/NahumLitvin/prismantis/pull/450)).
+- Big tables copy as PNG on the first press, and PNG bars and pies have no seams ([#449](https://github.com/NahumLitvin/prismantis/pull/449)).
+- The last copy button you press is what ends up on the clipboard ([#446](https://github.com/NahumLitvin/prismantis/pull/446)).
+- ⧉ art of a Hebrew table pastes in screen order, and mono PNG copies draw faint rules and gridlines ([#445](https://github.com/NahumLitvin/prismantis/pull/445), [#447](https://github.com/NahumLitvin/prismantis/pull/447)).
+- A quote under a list item draws as a quote ([#454](https://github.com/NahumLitvin/prismantis/pull/454)).
+- `&copy;`, `&mdash;` and other common entities draw as symbols, negative numbers are colored whole, and `<https://…>` autolinks lose their brackets ([#448](https://github.com/NahumLitvin/prismantis/pull/448)).
+- Backslash escapes and links with a title draw as on GitHub ([#455](https://github.com/NahumLitvin/prismantis/pull/455)).
+- Setext headings draw as headings, and HTML tag lines with attributes draw dim ([#458](https://github.com/NahumLitvin/prismantis/pull/458)).
+- Flowcharts deeper than 25 levels draw, and the too-wide note says how many columns fit ([#456](https://github.com/NahumLitvin/prismantis/pull/456)).
+- No gap above a pasted prompt, its label says "1 line", and a wrapping prompt keeps the space after its 12h send time ([#457](https://github.com/NahumLitvin/prismantis/pull/457), [#444](https://github.com/NahumLitvin/prismantis/pull/444)).
+
 ## [0.45.0] - 2026-11-06
 
 A hardening release from two code reviews, an end-to-end bug hunt in real terminals and a QA pass.

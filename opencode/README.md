@@ -7,7 +7,7 @@ OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode dra
 Needs OpenCode 2.2.5 or later.
 
 ```bash
-opencode plugin add 'github:NahumLitvin/prismantis#v0.45.0::path:opencode'
+opencode plugin add 'github:NahumLitvin/prismantis#v0.45.1::path:opencode'
 ```
 
 Run `/prismantis-themes` to install the themes, and pick one in settings > Theme. `/prismantis` prints the demo.
