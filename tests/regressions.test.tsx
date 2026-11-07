@@ -368,6 +368,7 @@ test('a tag line with attributes draws dim like a bare one, and a br line stays 
   const blocks = parse('<div align="center">\n  <img src="a.png" width="80">\n</div>', hl)
   expect(blocks.map(b => b.kind === 'paragraph' && b.inline.map(n => n.kind))).toEqual([['dim'], ['dim'], ['dim']])
   expect(parse('a line\n<br />\nnext', hl).map(b => b.kind)).toEqual(['paragraph'])
+  expect(parse('a line\n<br>\nnext', hl).map(b => b.kind === 'paragraph' && inlineText(b.inline))).toEqual(['a line', '<br>', 'next'])
 })
 
 test('setext underlines make headings, and a rule after a blank line stays a rule', () => {
