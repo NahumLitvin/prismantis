@@ -44,6 +44,17 @@ test('a long run of backticks parses in linear time', async () => {
   expect(Date.now() - started < 100).toBe(true)
 })
 
+test('a TypeScript block of 9000-character words draws fast, as plain code', async $ => {
+  const word = 'eyJhbGciOiJIUzI1NiJ9'.repeat(450)
+  const lines = Array.from({ length: 8 }, (_, i) => `const t${i} = ${word}`).join('\n')
+  const started = Date.now()
+  const ui = await $.ui.mount(mount(`Tokens:\n\n\`\`\`ts\n${lines}\n\`\`\``))
+  expect(Date.now() - started < 10000).toBe(true)
+  expect(await ui.find({ type: 'Text', text: /^const$/ })).toBeUndefined()
+  expect(drawn(await ui.find({ type: 'Box' }))).toContain(word.slice(0, 200))
+  await ui.unmount()
+})
+
 test('a four-backtick fence keeps triple-backtick examples inside one code block', async () => {
   const blocks = parse('````md\n```bash\nls\n```\n````', hl)
   expect(blocks.map(b => b.kind)).toEqual(['code'])

@@ -601,7 +601,7 @@ export const remember = <T,>(cache: Map<string, T>, key: string, make: () => T, 
   return value
 }
 
-const highlighted = new WeakMap<Theme, Map<string, Segment[][]>>()
+const highlighted = new WeakMap<Theme, Map<string, Segment[][] | null>>()
 
 const grammarFor = (lang: string) => {
   const name = lang.toLowerCase()
@@ -611,22 +611,28 @@ const grammarFor = (lang: string) => {
 
 const shownSegment = (seg: Segment, piece: string, style: Style, room?: number): Segment => ({ ...seg, text: seg.italic ? piece : shownCode(piece, style, room) })
 
+const LONG_WORD = 1000
+
+const hasLongWord = (code: string): boolean => code.split(/[^$\w\xA0-\uFFFF]/).some(word => word.length > LONG_WORD)
+
 const segmentRows = (style: Style, lines: string[], lang: string, room?: number, shown = lines.length, isOpen = false): Segment[][] | null => {
   const grammar = grammarFor(lang)
   if (!grammar) return null
   const code = (isOpen ? lines.slice(0, shown) : lines).join('\n')
-  const cache = highlighted.get(style.theme) ?? new Map<string, Segment[][]>()
+  const cache = highlighted.get(style.theme) ?? new Map<string, Segment[][] | null>()
   highlighted.set(style.theme, cache)
-  return remember(cache, `${style.reorder ? style.shape : ''}\0${room ?? ''}\0${lang}\0${shown}\0${code}`, () => {
-    const out: Segment[][] = [[]]
-    for (const seg of flatten(tokenize(code, grammar), style)) {
-      for (const [i, piece] of seg.text.split('\n').entries()) {
-        if (i > 0 && out.push([]) > shown) return keptRows(style, out.slice(0, shown))
-        if (piece) out[out.length - 1]!.push(shownSegment(seg, piece, style, room))
-      }
+  return remember(cache, `${style.reorder ? style.shape : ''}\0${room ?? ''}\0${lang}\0${shown}\0${code}`, () => (hasLongWord(code) ? null : tokenRows(style, code, grammar, shown, room)))
+}
+
+const tokenRows = (style: Style, code: string, grammar: object, shown: number, room?: number): Segment[][] => {
+  const out: Segment[][] = [[]]
+  for (const seg of flatten(tokenize(code, grammar), style)) {
+    for (const [i, piece] of seg.text.split('\n').entries()) {
+      if (i > 0 && out.push([]) > shown) return keptRows(style, out.slice(0, shown))
+      if (piece) out[out.length - 1]!.push(shownSegment(seg, piece, style, room))
     }
-    return keptRows(style, out)
-  })
+  }
+  return keptRows(style, out)
 }
 
 const keptRows = (style: Style, rows: Segment[][]): Segment[][] => (style.reorder ? rows : rows.map(mergeRuns))
