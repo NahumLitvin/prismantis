@@ -749,6 +749,17 @@ test('a reply past the node budget draws its remaining blocks as dim source, end
   }
 })
 
+test('a reply of long paragraphs under the node budget still stops under the engine text ceiling and keeps its copy button', async $ => {
+  const words = 'word '.repeat(80)
+  const ui = await $.ui.mount({ ...draw(`# Notes\n\n${Array.from({ length: 300 }, (_, i) => `Note ${i}: ${words}`).join('\n\n')}`), surface: 'terminal' })
+  const drawn = await ui.drawn()
+  expect(textIn(drawn)).toBeLessThan(100000)
+  const texts = await ui.findAll({ type: 'Text' })
+  expect(texts[texts.length - 1]!.text).toMatch(/^… \+\d+ lines · \/prismantis copy for the whole reply$/)
+  expect((await ui.findAll({ type: 'Button' })).some(b => b.props.label === '⧉ copy reply')).toBe(true)
+  await ui.unmount()
+})
+
 test('folds open caps a 900-line code block at 400 lines', { options: { folds: 'open' } }, async $ => {
   const ui = await $.ui.mount({ ...draw(hugeCode()), surface: 'terminal' })
   expect(nodeCount(await ui.drawn())).toBeLessThan(20000)
