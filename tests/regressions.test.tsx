@@ -1942,6 +1942,26 @@ test('a half-streamed fence under a list item is an open code block in the item'
   expect(code?.kind === 'code' && [code.lines, code.isOpen]).toEqual([['npm i'], true])
 })
 
+test('a quote under a list item, nested too, is a quote inside that item', async () => {
+  const list = listOf('- Check\n  > note\n  > more\n- b\n  - c\n    > deep')
+  const quoteText = (b?: ReturnType<typeof parse>[number]) => (b?.kind === 'quote' && b.blocks[0]?.kind === 'paragraph' ? inlineText(b.blocks[0].inline) : undefined)
+  expect(list.items.map(i => inlineText(i.inline))).toEqual(['Check', 'b', 'c'])
+  expect(quoteText(list.items[0]?.blocks?.[0])).toBe('note more')
+  expect(quoteText(list.items[2]?.blocks?.[0])).toBe('deep')
+})
+
+test('a quote under a list item draws with its bar, in Hebrew too', async $ => {
+  for (const [text, word] of [['- Check\n  > note', 'note'], ['- בדיקה\n  > הערה', 'הערה']] as const) {
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount({ ...mount(text), surface })
+      const all = (await ui.findAll({ type: 'Text' })).map(drawn).join('\n')
+      await ui.unmount()
+      expect(all).toContain(word)
+      expect(all).not.toContain('>')
+    }
+  }
+})
+
 test('footnotes after a fence inside a list item are numbered', async () => {
   const [list] = parse('1. a\n   ```\n   x\n   ```\n   see[^n]\n\n[^n]: note', hl)
   const after = list?.kind === 'list' ? list.items[0]?.blocks?.[1] : undefined
