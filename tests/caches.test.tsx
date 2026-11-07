@@ -51,3 +51,21 @@ test('only the 500 most recently expanded tool calls stay expanded', async ($, o
   expect(await isEngine('bounded-500')).toBe(true)
   expect(await isEngine('bounded-0')).toBe(false)
 })
+
+test('a cache miss in a full cache reads a few keys, not all 2000', async () => {
+  let reads = 0
+  class Counted extends Map<string, number> {
+    override *keys(): MapIterator<string> {
+      for (const key of super.keys()) {
+        reads++
+        yield key
+      }
+    }
+  }
+  const cache = new Counted()
+  for (let i = 0; i < 2500; i++) remember(cache, `paragraph ${i}`, () => i, 2000)
+  reads = 0
+  remember(cache, 'one more paragraph', () => 0, 2000)
+  expect(reads).toBeLessThan(10)
+  expect(cache.size).toBe(2000)
+})

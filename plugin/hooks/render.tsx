@@ -589,6 +589,15 @@ const flatten = (tokens: PrismToken[], style: Style, color?: string, italic = fa
   })
 
 const KEPT_CHARS = 1000000
+const keptTotals = new WeakMap<Map<string, unknown>, { size: number; chars: number }>()
+
+const keptChars = (cache: Map<string, unknown>): number => {
+  const known = keptTotals.get(cache)
+  if (known?.size === cache.size) return known.chars
+  let chars = 0
+  for (const key of cache.keys()) chars += key.length
+  return chars
+}
 
 export const remember = <T,>(cache: Map<string, T>, key: string, make: () => T, limit = 200): T => {
   const hit = cache.get(key)
@@ -598,14 +607,14 @@ export const remember = <T,>(cache: Map<string, T>, key: string, make: () => T, 
     return hit
   }
   const value = make()
+  let chars = keptChars(cache) + (cache.has(key) ? 0 : key.length)
   cache.set(key, value)
-  let chars = 0
-  for (const kept of cache.keys()) chars += kept.length
   for (const old of cache.keys()) {
     if (cache.size <= limit && (chars <= KEPT_CHARS || old === key)) break
     chars -= old.length
     cache.delete(old)
   }
+  keptTotals.set(cache, { size: cache.size, chars })
   return value
 }
 
