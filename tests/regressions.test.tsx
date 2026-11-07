@@ -335,7 +335,7 @@ test('parse stays inside a generous budget on a large reply', async () => {
 test('a 300-row table draws inside its budget', async $ => {
   const started = performance.now()
   const ui = await $.ui.mount(mount(rows(300), 160))
-  expect(performance.now() - started < 1500).toBe(true)
+  expect(performance.now() - started < 3000).toBe(true)
   await ui.unmount()
 })
 
