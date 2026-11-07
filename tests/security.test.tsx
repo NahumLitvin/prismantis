@@ -193,6 +193,9 @@ const SPOOFS: [label: string, href: string][] = [
   ['paypal\uff0ecom', 'https://evil.example/x'],
   ['paypal\uff61com', 'https://evil.example/x'],
   ['user@paypal.com', 'https://evil.example/x'],
+  ['גוגל https://google.com', 'https://evil.example/x'],
+  ['sign in at paypal.com', 'https://evil.example/x'],
+  ['mirror (https://good.example)', 'https://evil.example/x'],
   ...['\u00ad', '\u034f', '\u180e', '\u200e', '\u200f', '\u202a', '\u202e', '\u2066', '\u2069'].map((c): [string, string] => [`pay${c}pal.com`, 'https://paypal.com']),
 ]
 
@@ -207,6 +210,8 @@ const HONEST: [label: string, href: string][] = [
   ['GitHub.com', 'https://www.github.com/o'],
   ['chart.js', 'https://evil.example/x'],
   ['read the docs', 'https://evil.example/x'],
+  ['the docs at docs.python.org', 'https://docs.python.org/3/'],
+  ['Node.js and chart.js', 'https://evil.example/y'],
 ]
 
 test('a link whose label names another host or hides zero-width characters draws as text with its target', async ($, on) => {

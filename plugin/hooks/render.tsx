@@ -242,12 +242,15 @@ const labelHost = (label: string): string | undefined => {
   return host && (m![1] || host !== m![2]!.toLowerCase() || WEB_TLDS.has(host.slice(host.lastIndexOf('.') + 1))) ? host : undefined
 }
 
+const labelHosts = (label: string): string[] =>
+  [label, ...label.split(/\s+/).map(word => word.replace(/^[(\[<"']+|[)\]>"'.,;:!?]+$/g, ''))].flatMap(part => labelHost(part) ?? [])
+
 const spoofs = (label: string, href: string): boolean => {
   const clean = label.replace(ZERO_WIDTH, '')
-  const shown = labelHost(clean)
-  if (shown === undefined) return false
+  const shown = labelHosts(clean)
+  if (shown.length === 0) return false
   const real = hostOf(href) ?? ''
-  return clean !== label || (real !== shown && !real.endsWith(`.${shown}`))
+  return clean !== label || shown.some(host => real !== host && !real.endsWith(`.${host}`))
 }
 
 const drawnLink = (n: Extract<Inline, { kind: 'link' }>, reach: Reach): Inline => {
