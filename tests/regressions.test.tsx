@@ -1733,7 +1733,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
 test('a diagram too wide for the terminal shows its source under a note with its width', async $ => {
   const workers = Array.from({ length: 16 }, (_, i) => `W${i + 1}[Worker ${i + 1}]`).join(' & ')
   const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n  Q[Queue] --> ' + workers + '\n```'))
-  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols, terminal is \d+$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols, 112 fit$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
   await ui.unmount()
 })
@@ -1749,6 +1749,16 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 }
+
+test('a flowchart more than 25 ranks deep draws, in Hebrew too', async $ => {
+  for (const label of ['Step', 'שלב']) {
+    const chain = Array.from({ length: 29 }, (_, i) => `  N${i}[${label} ${i}] --> N${i + 1}[${label} ${i + 1}]`).join('\n')
+    const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n' + chain + '\n```'))
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
 
 test('a diagram the renderer cannot draw shows its source under a failure note', async $ => {
   const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n' + '  A --> B\n'.repeat(900) + '```'))

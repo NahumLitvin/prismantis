@@ -774,7 +774,7 @@
           "└──────┘"
 <Box>
   <Text color=#6e7781>
-    "diagram is 180 cols, terminal is 100"
+    "diagram is 180 cols, 98 fit"
   <Box row>
     <Text color=#6e7781>
       "── mermaid"

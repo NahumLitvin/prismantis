@@ -392,7 +392,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
       }
       if (!drawn.has(i) && !block.isOpen) {
         const kind = unsupportedKind(source)
-        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, terminal is ${columns}` })
+        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, ${columns - 2} fit` })
       }
     }
   }

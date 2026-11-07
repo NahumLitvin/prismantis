@@ -380,7 +380,7 @@ export const drawFigure = (el: ElementTable, style: Style, block: { lines: reado
   const decision = remember(decisions, block.lines.join('\n'), () => decide(block.lines))
   if ('note' in decision) return decision
   if (decision.rows.length === 0) return null
-  if (decision.widest > columns - 2) return { note: `figure is ${decision.widest} cols, terminal is ${columns}` }
+  if (decision.widest > columns - 2) return { note: `figure is ${decision.widest} cols, ${columns - 2} fit` }
   const hues = () => decision.rows.map(row => row.flatMap(run => cells(run.text).map(() => runInk(style, run.role))))
   return { element: figureElement(el, style, decision.rows, key), art: decision.texts.join('\n'), hues }
 }

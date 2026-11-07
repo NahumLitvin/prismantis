@@ -505,7 +505,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await finding.find({ type: 'Text', text: /^figure line 3: "🚀" may draw as an emoji, use a text glyph$/ })).toBeDefined()
     await finding.unmount()
     const wide = await $.ui.mount(reply(['```figure', `{accent:${'─'.repeat(70)}}`, '```'].join('\n'), surface, 60))
-    expect(await wide.find({ type: 'Text', text: /^figure is 70 cols, terminal is \d+$/ })).toBeDefined()
+    expect(await wide.find({ type: 'Text', text: /^figure is 70 cols, \d+ fit$/ })).toBeDefined()
     await wide.unmount()
     const long = await $.ui.mount(reply(['```figure', ...Array.from({ length: FIGURE_MAX_LINES + 1 }, (_, i) => `row ${i}`), '```'].join('\n'), surface))
     expect(await long.find({ type: 'Text', text: new RegExp(`^figure has ${FIGURE_MAX_LINES + 1} lines, at most ${FIGURE_MAX_LINES}$`) })).toBeDefined()

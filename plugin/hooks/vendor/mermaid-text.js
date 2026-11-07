@@ -1988,7 +1988,7 @@ function Jr(t) {
   }
 }
 function Mn(t) {
-  let e = t.config.graphDirection, n = new Array(100).fill(0), o = /* @__PURE__ */ new Set(), s = [];
+  let e = t.config.graphDirection, n = new Array(1e4).fill(0), o = /* @__PURE__ */ new Set(), s = [];
   for (let f of t.nodes) {
     o.has(f.name) || s.push(f), o.add(f.name);
     for (let u of ye(t, f))
