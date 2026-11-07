@@ -588,6 +588,8 @@ const flatten = (tokens: PrismToken[], style: Style, color?: string, italic = fa
     return flatten(inner, style, slot ? style.theme[slot] : color, italic || token.type === 'comment')
   })
 
+const KEPT_CHARS = 1000000
+
 export const remember = <T,>(cache: Map<string, T>, key: string, make: () => T, limit = 200): T => {
   const hit = cache.get(key)
   if (hit !== undefined) {
@@ -597,7 +599,13 @@ export const remember = <T,>(cache: Map<string, T>, key: string, make: () => T, 
   }
   const value = make()
   cache.set(key, value)
-  if (cache.size > limit) cache.delete(cache.keys().next().value!)
+  let chars = 0
+  for (const kept of cache.keys()) chars += kept.length
+  for (const old of cache.keys()) {
+    if (cache.size <= limit && (chars <= KEPT_CHARS || old === key)) break
+    chars -= old.length
+    cache.delete(old)
+  }
   return value
 }
 

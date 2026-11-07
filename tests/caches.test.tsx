@@ -13,6 +13,14 @@ test('a cached entry read again outlives newer ones', async () => {
   expect(cache.size).toBe(3)
 })
 
+test('a streaming reply keeps a bounded number of characters cached, not its last 200 prefixes', async () => {
+  const cache = new Map<string, number>()
+  const reply = 'word '.repeat(20000)
+  for (let end = 100; end <= reply.length; end += 100) remember(cache, reply.slice(0, end), () => end)
+  expect([...cache.keys()].reduce((sum, key) => sum + key.length, 0)).toBeLessThanOrEqual(1000000)
+  expect(cache.get(reply)).toBe(reply.length)
+})
+
 test('the terminal is looked up once, not on every prompt', async ($, on) => {
   const reads: string[] = []
   on('env.get', (_, e) => {
