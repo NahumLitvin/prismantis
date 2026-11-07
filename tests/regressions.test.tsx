@@ -2492,6 +2492,19 @@ test('mermaid #entity; escapes draw as their characters, and style colors stay a
   expect(mermaidText('pie title Say #quot;hi#quot;\n  "A #amp; B" : 3\n  "C" : 2', false, 100)).toContain('Say "hi"')
 })
 
+test('backslash escapes draw the character alone and stop emphasis, but not in code or before letters', () => {
+  const [para] = parse('\\*not em\\* \\# \\[x\\] \\_y\\_ a\\\\b C:\\Users\\x `\\*code\\*`', { numbers: false, paths: false })
+  expect(para?.kind === 'paragraph' && para.inline).toEqual([{ kind: 'text', text: '*not em* # [x] _y_ a\\b C:\\Users\\x ' }, { kind: 'code', text: '\\*code\\*' }])
+  const [heb] = parse('שלום \\*לא נטוי\\*', { numbers: false, paths: false })
+  expect(heb?.kind === 'paragraph' && heb.inline).toEqual([{ kind: 'text', text: 'שלום *לא נטוי*' }])
+})
+
+test('a link or image with a title is a link or image', () => {
+  const [para] = parse('[a](https://x.com "My title") ![img](a.png \'t\') [ב](https://x.com/he "כותרת")', hl)
+  const inline = para?.kind === 'paragraph' ? para.inline : []
+  expect(inline.filter(n => n.kind !== 'text')).toEqual([{ kind: 'link', text: 'a', href: 'https://x.com' }, { kind: 'image', text: 'img', src: 'a.png' }, { kind: 'link', text: 'ב', href: 'https://x.com/he' }])
+})
+
 test('an angle-bracket autolink drops its brackets and links the URL', async () => {
   for (const text of ['see <https://example.com/a?b=1> now', 'ראו <https://example.com/a?b=1> עכשיו']) {
     const [para] = parse(text, hl)
