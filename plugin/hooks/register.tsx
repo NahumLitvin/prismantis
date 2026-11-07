@@ -100,7 +100,7 @@ const markUnread = async ($: EngineInterface, style: Style, e: { text: string; c
   if (e.wait && e.turnId !== undefined) blinker.held.set(key, 0)
   else blinker.ready.add(key)
   const at = await $.clock.now()
-  await update($, awaiting, list => [...list.filter(a => a.key !== key), { key, at }].slice(-20))
+  await persist($, () => update($, awaiting, list => [...list.filter(a => a.key !== key), { key, at }].slice(-20)))
   await keepBlinking($, blinker)
 }
 
@@ -116,7 +116,7 @@ const markRead = async ($: EngineInterface, asked: string[], blinker: Blinker) =
   for (const key of asked) blinker.ready.delete(key)
   const list = await read($, awaiting)
   const left = list.filter(a => blinker.ready.has(a.key) || blinker.held.has(a.key))
-  if (left.length !== list.length) await update($, awaiting, () => left)
+  if (left.length !== list.length) await persist($, () => update($, awaiting, () => left))
   await keepBlinking($, blinker)
 }
 
@@ -124,10 +124,25 @@ const groupRunning = (props: { isActive: boolean; calls: readonly { isRunning: b
 
 const keepBlinking = async ($: EngineInterface, blinker: Blinker) => {
   const waiting = (await read($, awaiting)).length > 0 || blinker.tools > 0
-  if (waiting && !blinker.timer) blinker.timer = $.clock.every(BLINK_MS, () => void update($, blink, lit => !lit).catch(() => stopBlink(blinker)))
+  if (waiting && !blinker.timer) blinker.timer = $.clock.every(BLINK_MS, () => void update($, blink, lit => !lit).catch(() => undefined))
   if (!waiting && blinker.timer) {
     stopBlink(blinker)
-    await update($, blink, () => false)
+    await persist($, () => update($, blink, () => false))
+  }
+}
+
+const WRITE_TRIES = 20
+const WRITE_RETRY_MS = 50
+
+const persist = async ($: EngineInterface, write: () => Promise<unknown>): Promise<void> => {
+  for (let tries = WRITE_TRIES; ; tries--) {
+    try {
+      await write()
+      return
+    } catch (error) {
+      if (tries <= 1) throw error
+    }
+    await $.clock.sleep(WRITE_RETRY_MS)
   }
 }
 
@@ -136,7 +151,7 @@ const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
   const { value } = await $.state.get(ref)
   if (value !== undefined) return value
   const now = await $.clock.now()
-  $.clock.after(0, () => void $.state.set(ref, now, { ifVersion: 0 }))
+  $.clock.after(0, () => void persist($, () => $.state.set(ref, now, { ifVersion: 0 })).catch(() => undefined))
   return now
 }
 
@@ -198,7 +213,7 @@ const startLatex = async ($: EngineInterface, latex: LatexSession): Promise<Late
   if (!latex.style.latex || !(await $.session.surfaces()).includes('terminal') || !(await showsImages($))) return null
   const tmp = (await $.env.get('TMPDIR')) ?? (await $.env.get('TEMP')) ?? '/tmp'
   const suffix = (await read($, latexDir)) || crypto.randomUUID()
-  await update($, latexDir, () => suffix)
+  await persist($, () => update($, latexDir, () => suffix))
   const engine = { command: 'ratex-render', dir: `${tmp.replace(/[\\/]+$/, '')}/prismantis-latex-${await $.session.id()}-${suffix}` }
   const [check] = await typeset($, latex.color, engine, ['x^2'])
   return check && 'png' in check ? engine : null
@@ -229,7 +244,7 @@ const typesetLater = async ($: EngineInterface, latex: LatexSession, texs: strin
   )
   if (!results) return stopLatex(latex)
   const fresh = texs.map((tex, i) => [formulaKey(color, tex), results[i]!] as const)
-  await update($, formulas, store => keepFormulas(store, fresh, latex.wanted))
+  await persist($, () => update($, formulas, store => keepFormulas(store, fresh, latex.wanted)))
   latex.wanted.clear()
   for (const tex of texs) latex.pending.delete(formulaKey(color, tex))
 }
@@ -357,10 +372,6 @@ const MAX_BATCH = 200
 
 const MAX_ASKED = 5000
 
-const FOUND_TRIES = 20
-
-const FOUND_RETRY_MS = 50
-
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
 
 const writtenPath = (call: Record<string, unknown>): string | undefined => {
@@ -378,13 +389,7 @@ const forgetMisses = (checks: PathChecks, call: Record<string, unknown>) => {
 const statPaths = async ($: EngineInterface, paths: string[]): Promise<void> => {
   const kinds = await Promise.all(paths.map(path => $.fs.stat(path).then(stat => stat.kind, () => 'other')))
   const hits = paths.flatMap((path, i) => (kinds[i] === 'dir' ? [path, `${path}/`] : kinds[i] === 'file' ? [path] : []))
-  if (hits.length) saveFound($, hits, FOUND_TRIES)
-}
-
-const saveFound = ($: EngineInterface, hits: string[], tries: number): void => {
-  void update($, foundPaths, list => [...list, ...hits].slice(-MAX_FOUND)).catch(() => {
-    if (tries > 1) $.clock.after(FOUND_RETRY_MS, () => saveFound($, hits, tries - 1))
-  })
+  if (hits.length) await persist($, () => update($, foundPaths, list => [...list, ...hits].slice(-MAX_FOUND)))
 }
 
 const askPaths = ($: EngineInterface, checks: PathChecks, paths: string[]) => {
@@ -899,7 +904,7 @@ export const register: Register = (on, options) => {
   on('turn.complete', async ($, e, next) => {
     if (style.clock !== 'off' && e.agentId === undefined) {
       const at = await $.clock.now()
-      await update($, turnEnds, list => withRecord(list, { durationMs: e.durationMs, at }))
+      await persist($, () => update($, turnEnds, list => withRecord(list, { durationMs: e.durationMs, at })))
     }
     return next(e)
   })
@@ -921,7 +926,7 @@ export const register: Register = (on, options) => {
     await markUnread($, style, e, blinker)
     if (style.clock !== 'off' && (e.origin.kind === 'composer' || e.origin.kind === 'bridge')) {
       const at = await $.clock.now()
-      await update($, sent, list => withRecord(list, { text: promptKey(e.text), at }))
+      await persist($, () => update($, sent, list => withRecord(list, { text: promptKey(e.text), at })))
     }
     await probe($, style, probes)
     if (!takesHint(e.origin)) return next(e)

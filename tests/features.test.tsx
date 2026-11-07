@@ -530,6 +530,25 @@ test('slash command output renders as markdown, errors stay native', async ($, o
   await bad.unmount()
 })
 
+test('a prompt keeps its hint and send time when the engine refuses its first clock write mid-render', { options: { clock: '24h', unreadPrompts: true } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  const clock = mock.clock(on, { now: local(10, 9, 7) })
+  mock.env(on, {})
+  const refused = new Set<string>()
+  on('state.set', (_, e, next) => (e.key !== 'blink' && !refused.has(e.key) && refused.add(e.key) ? { deny: 'state.set: denied: it was made while ui.render is being dispatched' } : next(e)))
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  const submitted = $.prompt.submit({ text: 'show me deploys per day', wait: false, origin: { kind: 'composer' } })
+  await clock.advance(1000)
+  await submitted
+  expect(seen[0]).toContain(FIGURE_HINT)
+  const ui = await $.ui.mount({ ...prompt('show me deploys per day'), requestId: 'row-1' })
+  expect(await ui.find({ type: 'Text', text: /^09:07 $/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('your prompts carry the render hint as model-only context', async ($, on) => {
   const seen: (readonly string[] | undefined)[] = []
   mock.env(on, {})
@@ -1193,6 +1212,21 @@ test('unreadPrompts draws a prompt in the comment grey, blinking to the rule col
   await other.unmount()
 })
 
+test('unreadPrompts keeps blinking when the engine refuses one blink write mid-render', { options: { unreadPrompts: true, promptStyle: 'wide' } }, async ($, on) => {
+  const clock = mock.clock(on)
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  let refused = 0
+  on('state.set', (_, e, next) => (e.key === 'blink' && refused++ === 0 ? { deny: 'state.set: denied: it was made while ui.render is being dispatched' } : next(e)))
+  await $.prompt.submit({ text: 'how many frog raids?', wait: false, origin: { kind: 'composer' } })
+  const ui = await $.ui.mount(prompt('how many frog raids?'))
+  const ink = async () => (await ui.find({ type: 'Text', text: /^how many frog raids\?$/ }))?.props.color
+  await clock.advance(500)
+  await clock.advance(500)
+  expect(await ink()).toBe(t.rule)
+  await ui.unmount()
+})
+
 test('replyBorderColor sets the frame and label of Claude\'s bubble, and empty keeps Claude\'s orange', { options: { replyBorderColor: '#c4b7dc', replyStyle: 'framed' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount(answer('The test passes now.', true, surface))
@@ -1396,6 +1430,20 @@ test('an old prompt row that redraws after a resume never takes a later send tim
   expect(await fresh.find({ type: 'Text', text: /^09:01 $/ })).toBeDefined()
   await old.unmount()
   await fresh.unmount()
+})
+
+test('an old prompt row keeps its first-drawn time when the engine refuses that write mid-render', { options: { clock: '24h' } }, async ($, on) => {
+  const clock = mock.clock(on, { now: local(10, 9, 0) })
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  let refused = 0
+  on('state.set', (_, e, next) => (e.key === 'drawn' && refused++ === 0 ? { deny: 'state.set: denied: it was made while ui.render is being dispatched' } : next(e)))
+  const old = await $.ui.mount({ ...prompt('again'), requestId: 'old' })
+  await clock.advance(100)
+  await clock.advance(60000)
+  await $.prompt.submit({ text: 'again', wait: false, origin: { kind: 'composer' } })
+  await old.redraw()
+  expect(await old.find({ type: 'Text', text: /^\d\d:\d\d $/ })).toBeUndefined()
+  await old.unmount()
 })
 
 test('clock with promptStyle off stamps the engine row', { options: { clock: '24h', promptStyle: 'off' } }, async ($, on) => {
