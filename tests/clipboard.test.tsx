@@ -342,7 +342,43 @@ test('the last copy pressed wins: ⧉ md pressed while ▣ png still draws lands
   await ui.unmount()
 })
 
-test('copyButtons off draws no ▣ png', { options: { copyButtons: false } }, async ($, on) => {
+test('/prismantis copy run while ▣ png still draws lands after the image', async ($, on) => {
+  clipboardEnv(on, 'macos')
+  const order: string[] = []
+  let release = () => {}
+  const drawing = new Promise<void>(resolve => { release = resolve })
+  on('process.run', async () => {
+    await drawing
+    order.push('png')
+    return runResult(0)
+  })
+  on('session.messages', () => ({ value: [{ role: 'assistant' as const, text: source, toolUses: [] }] }))
+  on('ui.copy', (_, e) => {
+    order.push(e.text === source ? 'reply' : 'other')
+    return { value: { isCopied: true as const } }
+  })
+  recordToasts(on)
+  await startSession($, on)
+  const ui = await $.ui.mount(mount)
+  const png = ui.press({ key: 'png0' })
+  const command = $.command.run({ command: 'prismantis', args: 'copy', origin: { kind: 'composer' as const }, presentation: { isFullscreen: false, columns: 120 } })
+  const said = command.then(result => order.push(result.text ?? ''))
+  for (let i = 0; i < 200; i++) await Promise.resolve()
+  release()
+  await Promise.all([png, said])
+  expect(order).toEqual(['png', 'reply', 'Copied the last reply.'])
+  await ui.unmount()
+})
+
+test('/prismantis copy with an unknown target copies nothing and says how to use it', async ($, on) => {
+  on('session.messages', () => ({ value: [{ role: 'assistant' as const, text: source, toolUses: [] }] }))
+  const copies = recordCopies(on)
+  const result = await $.command.run({ command: 'prismantis', args: 'copy cdoe', origin: { kind: 'composer' as const }, presentation: { isFullscreen: false, columns: 120 } })
+  expect(copies).toEqual([])
+  expect(result.text).toBe('Unknown copy target "cdoe". Use /prismantis copy, or /prismantis copy code for the last code block.')
+})
+
+test('copyButtons off draws no ▣ png',{ options: { copyButtons: false } }, async ($, on) => {
   clipboardEnv(on, 'macos')
   await startSession($, on)
   const ui = await $.ui.mount({ ...mount, props: { text: figures, isFirstOfReply: true } })
