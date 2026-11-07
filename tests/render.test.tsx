@@ -588,6 +588,14 @@ test('tables draw boxed by default in the terminal, with a double line under the
   await ui.unmount()
 })
 
+test('a table row with a link beside a column of only line breaks still draws as a table', async $ => {
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...draw('| Link | |\n|---|---|\n| https://x.com | <br> |'), surface })
+    expect(await ui.find({ type: 'Text', text: /^Link$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
 const percent = (width: unknown) => (typeof width === 'string' && /^\d+%$/.test(width) ? Number(width.slice(0, -1)) : NaN)
 
 for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tableStyle ${tableStyle} in the terminal keeps its character rules in fixed columns`, { options: { tableStyle } }, async $ => {
