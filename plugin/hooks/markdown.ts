@@ -379,6 +379,46 @@ const tableRows = (lines: string[], width: number, hl: Highlight): Inline[][][] 
   })
 }
 
+type ListDraft = { items: ListItem[]; contentIndent: number[]; texts: string[][] }
+
+const attachLine = (lines: string[], i: number, list: ListDraft, hl: Highlight, depth: number): number => {
+  const at = (n: number) => lines[n] ?? ''
+  const { items, contentIndent, texts } = list
+  const indent = indentOf(at(i))
+  let owner = items.length - 1
+  while (owner > 0 && contentIndent[owner]! > indent) owner--
+  const target = items[owner]!
+  const fence = FENCE.exec(at(i))
+  const last = target.blocks?.at(-1)
+  if (fence) {
+    const from = i
+    const run = fence[1] ?? '```'
+    const closer = closerOf(run)
+    const strip = new RegExp(`^ {0,${indent}}`)
+    const body: string[] = []
+    i++
+    while (i < lines.length && !closer.test(at(i)) && (at(i).trim() === '' || indentOf(at(i)) >= indent)) body.push(at(i++).replace(strip, ''))
+    const isOpen = i === lines.length
+    if (!isOpen && !closer.test(at(i))) {
+      while (body.at(-1)?.trim() === '') body.pop()
+      i--
+    }
+    target.blocks = [...(target.blocks ?? []), { kind: 'code', lang: fence[2] ?? '', lines: body, ...(isOpen ? { isOpen: true as const } : {}), raw: lines.slice(from, i + 1).join('\n') }]
+  } else if (depth < MAX_QUOTE_DEPTH && QUOTE.test(at(i))) {
+    const from = i
+    while (QUOTE.test(at(i + 1)) && indentOf(at(i + 1)) >= 2) i++
+    target.blocks = [...(target.blocks ?? []), ...parseBlocks(lines.slice(from, i + 1).join('\n'), hl, depth)]
+  } else if (last?.kind === 'paragraph') {
+    last.raw += `\n${at(i)}`
+    last.inline = parseInline(joinLines(last.raw.split('\n')), hl)
+  } else if (last) {
+    target.blocks!.push({ kind: 'paragraph', inline: parseInline(at(i).trim(), hl), raw: at(i) })
+  } else {
+    texts[owner]!.push(at(i))
+  }
+  return i
+}
+
 const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   const at = (n: number) => lines[n] ?? ''
@@ -484,34 +524,7 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
           texts.push([task ? task[2]! : it[3] ?? ''])
           items.push({ marker: it[2] ?? '-', depth: Math.floor(lead / 2), ...(task ? { task: task[1] !== ' ' } : {}), inline: parseInline(texts.at(-1)![0]!, hl) })
         } else if (/^\s{2,}\S/.test(at(i)) && items.length) {
-          const indent = indentOf(at(i))
-          let owner = items.length - 1
-          while (owner > 0 && contentIndent[owner]! > indent) owner--
-          const target = items[owner]!
-          const fence = FENCE.exec(at(i))
-          const last = target.blocks?.at(-1)
-          if (fence) {
-            const from = i
-            const run = fence[1] ?? '```'
-            const closer = closerOf(run)
-            const strip = new RegExp(`^ {0,${indent}}`)
-            const body: string[] = []
-            i++
-            while (i < lines.length && !closer.test(at(i)) && (at(i).trim() === '' || indentOf(at(i)) >= indent)) body.push(at(i++).replace(strip, ''))
-            const isOpen = i === lines.length
-            if (!isOpen && !closer.test(at(i))) {
-              while (body.at(-1)?.trim() === '') body.pop()
-              i--
-            }
-            target.blocks = [...(target.blocks ?? []), { kind: 'code', lang: fence[2] ?? '', lines: body, ...(isOpen ? { isOpen: true as const } : {}), raw: lines.slice(from, i + 1).join('\n') }]
-          } else if (last?.kind === 'paragraph') {
-            last.raw += `\n${at(i)}`
-            last.inline = parseInline(joinLines(last.raw.split('\n')), hl)
-          } else if (last) {
-            target.blocks!.push({ kind: 'paragraph', inline: parseInline(at(i).trim(), hl), raw: at(i) })
-          } else {
-            texts[owner]!.push(at(i))
-          }
+          i = attachLine(lines, i, { items, contentIndent, texts }, hl, depth)
         } else {
           break
         }

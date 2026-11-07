@@ -1,7 +1,7 @@
 {
   "plugin/hooks/charts.ts": 52,
   "plugin/hooks/layout.ts": 19,
-  "plugin/hooks/markdown.ts": 206,
+  "plugin/hooks/markdown.ts": 173,
   "plugin/hooks/mermaid.tsx": 71,
   "plugin/hooks/register.tsx": 69,
   "plugin/hooks/render.tsx": 148,
