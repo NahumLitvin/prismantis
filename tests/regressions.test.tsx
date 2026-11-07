@@ -364,6 +364,18 @@ test('a line holding only a tag draws dim on its own, never as a path or joined 
   expect(parse('a <b>bold</b> word\n<br/>', hl).map(b => b.kind === 'paragraph' && b.inline.some(n => n.kind === 'dim'))).toEqual([false])
 })
 
+test('a tag line with attributes draws dim like a bare one, and a br line stays a break', () => {
+  const blocks = parse('<div align="center">\n  <img src="a.png" width="80">\n</div>', hl)
+  expect(blocks.map(b => b.kind === 'paragraph' && b.inline.map(n => n.kind))).toEqual([['dim'], ['dim'], ['dim']])
+  expect(parse('a line\n<br />\nnext', hl).map(b => b.kind)).toEqual(['paragraph'])
+})
+
+test('setext underlines make headings, and a rule after a blank line stays a rule', () => {
+  const blocks = parse('Title\n=====\n\nSub with\ntwo lines\n---\ntext\n\n---\n\n===\n\nכותרת\n---', hl)
+  expect(blocks.map(b => (b.kind === 'heading' ? [b.level, inlineText(b.inline)] : b.kind))).toEqual([[1, 'Title'], [2, 'Sub with two lines'], 'paragraph', 'rule', 'paragraph', [2, 'כותרת']])
+  expect(blocks[1]?.raw).toBe('Sub with\ntwo lines\n---')
+})
+
 test('figure role markup outside a figure draws as its text in table cells and prose, and code keeps it', () => {
   const [table] = parse('| Tool | Fits a sidecar? |\n|---|---|\n| A | {ok:✓} single binary |\n| B | {warn:✗} needs tinyproxy |', hl)
   expect(table?.kind === 'table' && table.rows.map(row => inlineText(row[1]!))).toEqual(['✓ single binary', '✗ needs tinyproxy'])

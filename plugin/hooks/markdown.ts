@@ -47,7 +47,8 @@ const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/
 const FENCE = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/
 const NOTE_DEF = /^\[\^([^\]\s]+)\]:\s*(.*)$/
-const TAG_LINE = /^\s*<\/?[a-z][\w-]*>\s*$/i
+const TAG_LINE = /^\s*<\/?(?!br\b)[a-z][\w-]*(?:\s[^<>]*)?>\s*$/i
+const SETEXT = /^ {0,3}(?:=+|-+)\s*$/
 const SUPERSCRIPT = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 
 const splitRow = (line: string): string[] => {
@@ -437,6 +438,13 @@ const attachLine = (lines: string[], i: number, list: ListDraft, hl: Highlight, 
   return i
 }
 
+const lineBlock = (line: string, hl: Highlight): Draft | null => {
+  if (TAG_LINE.test(line)) return { kind: 'paragraph', inline: [{ kind: 'dim', text: line.trim() }] }
+  const heading = /^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/.exec(line)
+  if (heading) return { kind: 'heading', level: (heading[1] ?? '#').length, inline: parseInline(heading[2] ?? '', hl) }
+  return /^\s*([-*_])(\s*\1){2,}\s*$/.test(line) ? { kind: 'rule' } : null
+}
+
 const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
   const lines = source.replace(/\r\n?/g, '\n').split('\n')
   const at = (n: number) => lines[n] ?? ''
@@ -481,20 +489,15 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       while (/^\s{2,}\S/.test(at(i + 1))) i++
       continue
     }
-    if (TAG_LINE.test(line)) {
-      flush(i)
-      add({ kind: 'paragraph', inline: [{ kind: 'dim', text: line.trim() }] }, i, i + 1)
+    if (para.length && SETEXT.test(line)) {
+      add({ kind: 'heading', level: line.trim().startsWith('=') ? 1 : 2, inline: parseInline(joinLines(para), hl) }, paraStart, i + 1)
+      para = []
       continue
     }
-    const heading = /^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/.exec(line)
-    if (heading) {
+    const single = lineBlock(line, hl)
+    if (single) {
       flush(i)
-      add({ kind: 'heading', level: (heading[1] ?? '#').length, inline: parseInline(heading[2] ?? '', hl) }, i, i + 1)
-      continue
-    }
-    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) {
-      flush(i)
-      add({ kind: 'rule' }, i, i + 1)
+      add(single, i, i + 1)
       continue
     }
     if (line.includes('|') && i + 1 < lines.length && TABLE_SEP.test(at(i + 1))) {
