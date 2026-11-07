@@ -3133,6 +3133,16 @@ test('/prismantis setup in the pane moves the ring by every arrow the engine sum
   expect(scrolled).toEqual([-30])
 })
 
+test('/prismantis setup in a pane narrower than its list and a 40 column sample draws the sample in the room beside the list', async ($, on) => {
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const pane = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'Pane', requestId: 'prismantis-setup', props: { title: 'prismantis setup', isFocused: true, bodyColumns: 53, placement: 'dock', scroll: { offset: 0, bodyRows: 38 }, view: {} }, viewport: { columns: 120, rows: 40 } })
+  const rules = (await pane.findAll({ type: 'Text', text: /^┌─/ })).map(t => t.text)
+  expect(rules.length).toBeGreaterThan(0)
+  expect(rules.filter(rule => rule.length > 53 - 30)).toEqual([])
+  await pane.unmount()
+})
+
 test('/prismantis setup in the pane keeps to the rows it is given when the list fits, so the arrows move the ring instead of scrolling', async ($, on) => {
   paneStandIn(on, [])
   await setupRun($, 'setup')

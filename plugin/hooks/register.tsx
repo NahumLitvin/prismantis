@@ -707,8 +707,11 @@ type SetupView = { el: ReturnType<EngineInterface['ui']['resolve']>; base: Style
 
 const shownRows = (text: string, columns: number) => textRows(text.replace(/`/g, ''), columns)
 
-const paneFits = (v: SetupView, choices: number, preview: string): boolean =>
-  SETUP_HEAD_ROWS + shownRows(v.step.note, v.columns) + shownRows(SETUP_PANE_KEYS, v.columns) + Math.max(choices, 1 + shownRows(preview, Math.max(40, v.columns - SETUP_LIST_COLUMNS))) <= v.rows
+const previewColumns = (v: SetupView, choices: readonly string[]): number =>
+  Math.min(Math.max(40, v.columns - SETUP_LIST_COLUMNS), v.columns - 8 - Math.max(...choices.map(value => (value === v.current ? `${value} (now)` : value).length)))
+
+const paneFits = (v: SetupView, choices: number, preview: string, columns: number): boolean =>
+  SETUP_HEAD_ROWS + shownRows(v.step.note, v.columns) + shownRows(SETUP_PANE_KEYS, v.columns) + Math.max(choices, 1 + shownRows(preview, columns)) <= v.rows
 
 const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, randomTheme: string): RenderElement => {
   const { el, step } = v
@@ -717,9 +720,10 @@ const setupKeyboardPane = ($: EngineInterface, v: SetupView, focused: string, ra
   const sampled = shown === 'random' ? randomTheme : shown
   const parts = setupParts(PRESET_NAMES, v.at)
   const options = parts.options.filter(o => o.value === sampled).map(o => (step.key === 'theme' ? { ...o, text: `${o.text.split('\n\n')[0]}\n\n${THEME_PREVIEW}` } : o))
-  const drawn = drawSetup($, el, v.base, v.options, { at: v.at, before: '', parts: { ...parts, options, tail: '' } }, Math.max(40, v.columns - SETUP_LIST_COLUMNS))
+  const columns = previewColumns(v, choices)
+  const drawn = drawSetup($, el, v.base, v.options, { at: v.at, before: '', parts: { ...parts, options, tail: '' } }, columns)
   const buttons = choices.map(value => <el.Button key={pickKey(step, value)} label={value === v.current ? `${value} (now)` : value} variant={value === shown ? 'primary' : 'secondary'} autoFocus={value === v.current ? true : undefined} onPress={() => v.pick(value)} />)
-  const fits = paneFits(v, choices.length, options[0]?.text ?? '')
+  const fits = paneFits(v, choices.length, options[0]?.text ?? '', columns)
   return (
     <el.Box flexDirection="column" rowGap={1} {...(fits ? { height: v.rows, overflow: 'hidden' as const } : {})}>
       <el.Box flexDirection="column" flexShrink={0}>{drawn[0]}</el.Box>
