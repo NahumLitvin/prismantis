@@ -409,6 +409,32 @@ test('the png helper keeps a chart gridline dot in its dim rule color', () => {
   expect(glyphs.map((g: { color?: number[] }) => g.color)).toEqual([[0x45, 0x47, 0x5a], [255, 255, 255]])
 })
 
+test('▣ png in mono draws table rules and chart gridline dots dim, not in the text color', { options: { theme: 'mono' } }, async ($, on) => {
+  clipboardEnv(on, 'macos')
+  const inputs: string[] = []
+  on('process.run', (_, e) => {
+    inputs.push(e.init?.stdin ?? '')
+    return runResult(0)
+  })
+  recordToasts(on)
+  await startSession($, on)
+  const chart = '```mermaid\nxychart-beta\n  x-axis [mon, tue]\n  y-axis "pods" 0 --> 100\n  bar [30, 90]\n```'
+  const ui = await $.ui.mount({ ...mount, props: { text: `${source}\n\n${chart}`, isFirstOfReply: true } })
+  await ui.press({ key: 'png0' })
+  await ui.press({ key: 'png1' })
+  type Payload = { lines: { text: string; color?: number[] }[][]; foreground: number[] }
+  const colorOf = (input: string, glyph: string) => {
+    const payload = JSON.parse(input) as Payload
+    return { ink: payload.lines.flat().find(g => g.text === glyph)!.color, text: payload.foreground }
+  }
+  for (const [input, glyph] of [[inputs[0]!, '─'], [inputs[1]!, '·']] as const) {
+    const { ink, text } = colorOf(input, glyph)
+    expect(ink).toBeDefined()
+    expect(ink).not.toEqual(text)
+  }
+  await ui.unmount()
+})
+
 test('a Hebrew table copies to png and html with its columns right to left, as the screen draws it', { options: { rtl: 'warp' } }, async ($, on) => {
   clipboardEnv(on, 'other', { OS: 'Windows_NT', SystemRoot: 'C:\\Windows' })
   const inputs: string[] = []

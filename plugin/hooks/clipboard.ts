@@ -210,7 +210,7 @@ const rgbOf = (color: string | undefined, fallback: number[]): number[] => {
   return /^#[0-9a-f]{6}$/i.test(hex) ? [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)) : fallback
 }
 
-export type Ink = string | { color?: string; bold?: boolean; italic?: boolean } | undefined
+export type Ink = string | { color?: string; bold?: boolean; italic?: boolean; dim?: boolean } | undefined
 
 type Face = { color?: number[]; bold?: true; italic?: true }
 
@@ -225,17 +225,26 @@ const luma = ([r, g, b]: number[]): number => (0.299 * r! + 0.587 * g! + 0.114 *
 const readable = (foreground: number[], background: number[]): number[] =>
   Math.abs(luma(foreground) - luma(background)) >= 0.4 ? foreground : luma(background) > 0.5 ? [0, 0, 0] : [255, 255, 255]
 
-const faceOf = (ink: Ink, background: number[], art: boolean): Face | undefined => {
-  const look = typeof ink === 'object' ? ink : { color: ink }
+const dimmed = (foreground: number[], background: number[]): number[] => foreground.map((v, i) => Math.round((v + background[i]!) / 2))
+
+const inkOf = (look: Exclude<Ink, string | undefined>, background: number[], foreground: number[], art: boolean): number[] => {
   const rgb = rgbOf(look.color, [])
-  const face: Face = { ...(rgb.length ? { color: art ? rgb : readable(rgb, background) } : {}), ...(look.bold ? { bold: true as const } : {}), ...(look.italic ? { italic: true as const } : {}) }
+  if (rgb.length) return art ? rgb : readable(rgb, background)
+  return look.dim ? dimmed(foreground, background) : []
+}
+
+const faceOf = (ink: Ink, background: number[], foreground: number[], art: boolean): Face | undefined => {
+  const look = typeof ink === 'object' ? ink : { color: ink }
+  const rgb = inkOf(look, background, foreground, art)
+  const face: Face = { ...(rgb.length ? { color: rgb } : {}), ...(look.bold ? { bold: true as const } : {}), ...(look.italic ? { italic: true as const } : {}) }
   return Object.keys(face).length ? face : undefined
 }
 
 export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string; themeBackground?: string }, systemRoot?: string, hues?: Ink[][]): HelperCommand => {
   const background = rgbOf(colors.background, rgbOf(colors.themeBackground, [255, 255, 255]))
-  const lines = imageLines(text, (row, cell, glyph) => faceOf(hues?.[row]?.[cell], background, /^[─-╿·]$/.test(glyph)))
-  const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground: readable(rgbOf(colors.foreground, [0, 0, 0]), background), background })
+  const foreground = readable(rgbOf(colors.foreground, [0, 0, 0]), background)
+  const lines = imageLines(text, (row, cell, glyph) => faceOf(hues?.[row]?.[cell], background, foreground, /^[─-╿·]$/.test(glyph)))
+  const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground, background })
   return backend === 'windows'
     ? { stdin: ascii(json), argv: powershell(systemRoot, WIN_IMAGE_COPY), failure: 'Windows image helper failed' }
     : { stdin: json, argv: ['/usr/bin/osascript', '-l', 'JavaScript', '-e', MAC_IMAGE_COPY], failure: 'macOS image helper failed' }

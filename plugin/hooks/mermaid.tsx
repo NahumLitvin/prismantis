@@ -2,6 +2,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 
 import type { ChartArt, Pie, Rgb } from './charts'
 import { ganttText, pieRgba, pieText } from './charts'
+import type { Ink } from './clipboard'
 import { drawFigure, isFigureLang } from './figure'
 import { ratexColor } from './latex'
 import type { Block } from './markdown'
@@ -352,6 +353,8 @@ const piePicture = (el: ElementTable, style: Style, pie: Pie, key: string): Rend
   )
 }
 
+const chartHues = ({ grid, colors }: Painted): Ink[][] => colors.map((row, r) => row.map((color, c) => color ?? (grid[r]![c] === '·' ? { dim: true } : undefined)))
+
 const chartElement = (el: ElementTable, style: Style, art: ChartArt, block: Extract<Block, { kind: 'code' }>, key: string): RenderElement =>
   (art.pie && style.images && !block.isOpen && !mirrored(style) && !hasRtl(art.text) ? piePicture(el, style, art.pie, key) : null) ??
   boxArt(el, style, art.text, key, inlineMarks(block.lines.join('\n')), art.slices, art.series)
@@ -369,7 +372,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
         const wide = art === null ? Infinity : artWidth(art.text)
         narrowest = Math.min(narrowest, wide)
         if (art === null || wide > columns - 2) continue
-        drawn.set(i, { element: chartElement(el, style, art, block, `b${i}`), art: art.text, hues: () => painting(style, art.text, art.slices, art.series).colors })
+        drawn.set(i, { element: chartElement(el, style, art, block, `b${i}`), art: art.text, hues: () => chartHues(painting(style, art.text, art.slices, art.series)) })
         break
       }
       if (!drawn.has(i) && !block.isOpen) {
