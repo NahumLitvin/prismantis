@@ -1313,6 +1313,17 @@ test('a pasted block in your prompt is its own frame, folded to a button that op
   await ui.unmount()
 })
 
+for (const promptStyle of ['bubble', 'bar'] as const) {
+  test(`a prompt that is only a one-line paste draws no blank rows and says 1 line, with ${promptStyle}`, { options: { promptStyle } }, async $ => {
+    for (const body of ['one long pasted line', 'שורה אחת ארוכה שהודבקה']) {
+      const ui = await $.ui.mount(prompt(`\n\n<pasted_content id="dd4d">\n${body}\n</pasted_content id="dd4d">`))
+      expect(await ui.find({ type: 'Text', text: /^ $/ })).toBeUndefined()
+      expect((await ui.findAll({ type: 'Button' })).map(b => b.props.label)).toContain('pasted text · 1 line')
+      await ui.unmount()
+    }
+  })
+}
+
 test('promptStyle wide draws the bubble across the full width', { options: { promptStyle: 'wide' } }, async $ => {
   const ui = await $.ui.mount(prompt('hi'))
   expect((await ui.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.width).toBe('100%')
