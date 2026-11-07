@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.45.2] - 2026-11-07
+
+### Changed
+
+- The bundled Prism and beautiful-mermaid code ships with its real names instead of mangled ones, so anyone auditing the plugin can read it. Nothing draws differently ([#409](https://github.com/NahumLitvin/prismantis/pull/409)).
+
 ## [0.45.1] - 2026-11-07
 
 Bug and performance fixes from a second QA round.
