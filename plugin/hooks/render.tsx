@@ -1341,7 +1341,10 @@ export const drawMath = (el: ElementTable, style: Style, blocks: Block[], drawn:
   for (const [i, block] of blocks.entries()) {
     const tex = drawn.has(i) ? null : mathOf(block)
     const text = tex === null || !texParses(tex) ? null : texText(tex)
-    if (text && !text.includes('\\')) drawn.set(i, { element: <el.Box key={`b${i}`} paddingLeft={2}><el.Text italic color={style.theme.emphasis}>{text}</el.Text></el.Box> })
+    if (!text || text.includes('\\')) continue
+    const look = { italic: true, color: style.theme.emphasis }
+    const rtl = flowOf(style, [{ kind: 'text', text }], Infinity)
+    drawn.set(i, { element: <el.Box key={`b${i}`} paddingLeft={2}>{rtl ? renderFlow(el, style, rtl.lines, `b${i}.m`, look) : <el.Text {...look}>{text}</el.Text>}</el.Box> })
   }
   return drawn
 }
