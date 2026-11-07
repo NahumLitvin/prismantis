@@ -1091,3 +1091,9 @@ test('a hard line break in a Hebrew paragraph keeps both lines in order in Ghost
   expect(drawn.indexOf('"עמשנ המ"')).toBeGreaterThan(drawn.indexOf('"םלוע םולש"'))
   await ui.unmount()
 })
+
+test('Hebrew inside a display formula draws in screen order like the prose around it', { options: { rtl: 'warp' } }, async $ => {
+  const ui = await $.ui.mount(mount('$$\\frac{\\text{מרחק כולל}}{\\text{זמן}}$$'))
+  expect(await ui.find({ type: 'Text', text: /^ןמז\/\(ללוכ קחרמ\)$/ })).toBeDefined()
+  await ui.unmount()
+})
