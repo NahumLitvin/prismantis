@@ -949,14 +949,14 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.scroll', { component: 'Pane', requestId: SETUP_PANE }, async ($, e, next) => {
-    if (e.origin.kind !== 'person' || e.pointer || Math.abs(e.by) !== 1) return next(e)
+    if (e.origin.kind !== 'person' || e.pointer || e.by === 0 || Math.abs(e.by) >= e.bodyRows) return next(e)
     const steps = setupSteps(PRESET_NAMES)
     const step = steps[Math.min(await read($, setupAt), steps.length - 1)]!
     const choices = step.key === 'theme' ? THEME_ARGS : step.options
     const focused = await read($, setupFocus)
     const at = choices.indexOf(choices.includes(focused) ? focused : currentOf(step))
-    const target = choices[at + e.by]
-    if (target === undefined) return next(e)
+    const target = choices[Math.max(0, Math.min(choices.length - 1, at + e.by))]!
+    if (target === choices[at]) return next(e)
     await $.ui.focus({ requestId: SETUP_PANE, key: pickKey(step, target) }).catch(() => undefined)
     return {}
   })
