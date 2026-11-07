@@ -708,7 +708,7 @@ type SetupView = { el: ReturnType<EngineInterface['ui']['resolve']>; base: Style
 const shownRows = (text: string, columns: number) => textRows(text.replace(/`/g, ''), columns)
 
 const previewColumns = (v: SetupView, choices: readonly string[]): number =>
-  Math.min(Math.max(40, v.columns - SETUP_LIST_COLUMNS), v.columns - 8 - Math.max(...choices.map(value => (value === v.current ? `${value} (now)` : value).length)))
+  Math.max(MIN_COLUMNS, Math.min(Math.max(40, v.columns - SETUP_LIST_COLUMNS), v.columns - 8 - Math.max(...choices.map(value => (value === v.current ? `${value} (now)` : value).length))))
 
 const paneFits = (v: SetupView, choices: number, preview: string, columns: number): boolean =>
   SETUP_HEAD_ROWS + shownRows(v.step.note, v.columns) + shownRows(SETUP_PANE_KEYS, v.columns) + Math.max(choices, 1 + shownRows(preview, columns)) <= v.rows
