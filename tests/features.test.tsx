@@ -3117,6 +3117,22 @@ test('/prismantis setup in the pane takes the arrows for the ring when its list 
   expect(scrolled).toEqual([-1, 1, 10])
 })
 
+test('/prismantis setup in the pane moves the ring by every arrow the engine sums while a move is in flight', async ($, on) => {
+  on('ui.focus', () => ({}))
+  const scrolled: number[] = []
+  on('ui.scroll', (_, e) => {
+    scrolled.push(e.by)
+    return {}
+  })
+  paneStandIn(on, [])
+  await setupRun($, 'setup')
+  const scroll = (by: number) => $.ui.scroll({ component: 'Pane', requestId: 'prismantis-setup', offset: 1, by, bodyRows: 10, contentRows: 30, origin: { kind: 'person' } })
+  await scroll(3)
+  expect(scrolled).toEqual([])
+  await scroll(-30)
+  expect(scrolled).toEqual([-30])
+})
+
 test('/prismantis setup in the pane keeps to the rows it is given when the list fits, so the arrows move the ring instead of scrolling', async ($, on) => {
   paneStandIn(on, [])
   await setupRun($, 'setup')
