@@ -35,6 +35,12 @@ test('parses tables, code, lists and inline decorations', async () => {
   expect(list.items[0]?.inline.some(n => n.kind === 'path' && n.text === '~/git/app.ts')).toBe(true)
 })
 
+test('a code span drops the one space that pads it on both sides, so a span can show backticks', async () => {
+  const [p] = parse('`` `c` `` and `  x  ` and ` y` and `   `', { numbers: false, paths: false })
+  if (p?.kind !== 'paragraph') throw new Error('not a paragraph')
+  expect(p.inline.filter(n => n.kind === 'code').map(n => (n as { text: string }).text)).toEqual(['`c`', ' x ', ' y', '   '])
+})
+
 test('escaped pipes stay inside a cell', async () => {
   const [t] = parse('| a | b |\n|---|---|\n| x \\| y | z |', { numbers: false, paths: false })
   if (t?.kind !== 'table') throw new Error('not a table')
