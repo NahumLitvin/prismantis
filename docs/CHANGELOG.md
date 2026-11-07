@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.45.3] - 2026-11-07
+
+Bug fixes from a third QA round.
+
+### Fixed
+
+- A line holding only `<br>` is a line break again, as before 0.45.1 ([#463](https://github.com/NahumLitvin/prismantis/pull/463)).
+- Long Hebrew replies draw as fast as in 0.44.0 ([#464](https://github.com/NahumLitvin/prismantis/pull/464)).
+- `/prismantis copy` waits its turn behind a copy button pressed just before it, and a mistyped target says so instead of copying the whole reply ([#465](https://github.com/NahumLitvin/prismantis/pull/465)).
+- A table with an empty column of only `<br>` draws as a table instead of the whole reply going plain ([#466](https://github.com/NahumLitvin/prismantis/pull/466)).
+- A link whose label names another site anywhere in it shows its real target ([#467](https://github.com/NahumLitvin/prismantis/pull/467)).
+- Hebrew inside a display formula reads right to left like the text around it ([#468](https://github.com/NahumLitvin/prismantis/pull/468)).
+- `` `name` `` draws as `name`, without its padding spaces ([#469](https://github.com/NahumLitvin/prismantis/pull/469)).
+- Holding an arrow key in `/prismantis setup` walks through every style, and setup samples fit the room beside the list ([#470](https://github.com/NahumLitvin/prismantis/pull/470), [#471](https://github.com/NahumLitvin/prismantis/pull/471)).
+
 ## [0.45.2] - 2026-11-07
 
 ### Changed
