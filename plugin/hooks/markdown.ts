@@ -127,7 +127,7 @@ const decorate = (raw: string, hl: Highlight): Inline[] => {
 }
 
 const inlineOf = (m: RegExpExecArray, hl: Highlight): Inline[] => {
-  if (m[2] !== undefined) return [{ kind: 'code', text: m[2] }]
+  if (m[2] !== undefined) return [{ kind: 'code', text: m[2].replace(/^ ([^]*[^ ][^]*) $/, '$1') }]
   if (m[3] !== undefined) return [{ kind: 'link', text: linkText(m[3]), href: m[4]! }]
   if (m[5] !== undefined || m[6] !== undefined) return [{ kind: 'strong', children: parseInline(m[5] ?? m[6] ?? "", hl) }]
   if (m[7] !== undefined) return [{ kind: 'strike', children: parseInline(m[7], hl) }]
