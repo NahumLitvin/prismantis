@@ -26,7 +26,7 @@ export type Pie = { bounds: number[]; radius: number; legend: string[]; title?: 
 
 export type ChartArt = { text: string; slices?: number[][]; series?: number[][]; pie?: Pie }
 
-const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
+export const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█'
 
 type Slice = { label: string; text: string; value: number }
 

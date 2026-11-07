@@ -1,3 +1,4 @@
+import { QUADRANTS } from './charts'
 import { ratexColor } from './latex'
 import { cells, width } from './layout'
 import { holdVisual } from './rtl'
@@ -87,25 +88,57 @@ $.NSGraphicsContext.saveGraphicsState
 $.NSGraphicsContext.setCurrentContext($.NSGraphicsContext.graphicsContextWithBitmapImageRep(bitmap))
 rgb(payload.background).setFill
 $.NSRectFill($.NSMakeRect(0, 0, width, height))
+var painted = {}
+var paintOf = function (g, kern) {
+  var key = [g.color, g.bold, g.italic, kern].join()
+  if (!painted[key]) {
+    var look = attributes.mutableCopy
+    if (g.color) look.setObjectForKey(rgb(g.color), $.NSForegroundColorAttributeName)
+    if (g.bold || g.italic) look.setObjectForKey(faceOf(g), $.NSFontAttributeName)
+    look.setObjectForKey($(kern), $.NSKernAttributeName)
+    painted[key] = look
+  }
+  return painted[key]
+}
+var advance = {}
+var stepOf = function (g, text) {
+  var key = [g.bold, g.italic, text].join()
+  if (advance[key] === undefined) advance[key] = $(text).sizeWithAttributes(paintOf(g, 0)).width
+  return advance[key]
+}
+var snap = function (v) { return Math.round(v * 2) / 2 }
+var kindOf = function (g) { return g.fill ? 'fill' : /^[─-▟]$/.test(g.text) ? 'box' : /^[!-~]$/.test(g.text) ? 'text' : 'one' }
+var runsOf = function (glyphs) {
+  var runs = []
+  glyphs.forEach(function (g) {
+    var last = runs[runs.length - 1]
+    var kind = kindOf(g)
+    if (last && (kind === 'box' || kind === 'text') && last.kind === kind && last.at + last.text.length === g.at && last.color + '' === g.color + '' && last.bold === g.bold && last.italic === g.italic) last.text += g.text
+    else runs.push({ at: g.at, text: g.text, color: g.color, bold: g.bold, italic: g.italic, fill: g.fill, kind: kind })
+  })
+  return runs
+}
 payload.lines.forEach(function (glyphs, i) {
   var bottom = height - pad - (i + 1) * line
-  glyphs.forEach(function (g) {
+  runsOf(glyphs).forEach(function (g) {
     var x = pad + g.at * cell
-    var painted = attributes
-    if (g.color || g.bold || g.italic) {
-      painted = attributes.mutableCopy
-      if (g.color) painted.setObjectForKey(rgb(g.color), $.NSForegroundColorAttributeName)
-      if (g.bold || g.italic) painted.setObjectForKey(faceOf(g), $.NSFontAttributeName)
+    if (g.kind === 'fill') {
+      rgb(g.color || payload.foreground).setFill
+      return g.fill.forEach(function (r) {
+        var left = snap(x + r[0] * cell)
+        var low = snap(bottom + (1 - r[3]) * line)
+        $.NSRectFill($.NSMakeRect(left, low, snap(x + r[2] * cell) - left, snap(bottom + (1 - r[1]) * line) - low))
+      })
     }
-    if (!/^[─-▟]$/.test(g.text)) return $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(x, bottom + baseline, 1000, 1000), 0, painted)
+    if (g.kind !== 'box') return $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(x, bottom + baseline, 1e6, 1000), 0, paintOf(g, g.kind === 'text' ? cell - stepOf(g, g.text[0]) : 0))
     $.NSGraphicsContext.saveGraphicsState
-    $.NSRectClip($.NSMakeRect(x, bottom, cell, line))
+    $.NSRectClip($.NSMakeRect(x, bottom, cell * g.text.length, line))
     var fit = $.NSAffineTransform.transform
     fit.translateXByYBy(x, bottom)
     fit.scaleXByYBy(cell / block.size.width, line / block.size.height)
     fit.translateXByYBy(-block.origin.x, -block.origin.y)
     fit.concat
-    $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(0, 0, 1000, 1000), 0, painted)
+    $(g.text).drawWithRectOptionsAttributes($.NSMakeRect(0, 0, 1e6, 1000), 0, paintOf(g, block.size.width - stepOf(g, g.text[0])))
     $.NSGraphicsContext.restoreGraphicsState
   })
 })
@@ -214,10 +247,24 @@ export type Ink = string | { color?: string; bold?: boolean; italic?: boolean; d
 
 type Face = { color?: number[]; bold?: true; italic?: true }
 
-const imageLines = (text: string, tint: (row: number, cell: number, glyph: string) => Face | undefined = () => undefined): ({ at: number; text: string } & Face)[][] =>
+const QUARTERS = [[0, 0, 0.5, 0.5], [0.5, 0, 1, 0.5], [0, 0.5, 0.5, 1], [0.5, 0.5, 1, 1]]
+
+export const blockFill = (glyph: string): number[][] | undefined => {
+  const quadrant = QUADRANTS.indexOf(glyph)
+  if (quadrant > 0) return QUARTERS.filter((_, i) => (quadrant >> i) & 1)
+  const code = glyph.codePointAt(0) ?? 0
+  if (code > 0x2580 && code < 0x2588) return [[0, (0x2588 - code) / 8, 1, 1]]
+  if (code > 0x2588 && code < 0x2590) return [[0, 0, (0x2590 - code) / 8, 1]]
+  return glyph === '▔' ? [[0, 0, 1, 0.125]] : glyph === '▕' ? [[0.875, 0, 1, 1]] : undefined
+}
+
+const imageLines = (text: string, tint: (row: number, cell: number, glyph: string) => Face | undefined = () => undefined): ({ at: number; text: string; fill?: number[][] } & Face)[][] =>
   text.split('\n').map((line, row) => {
     const { cells: shown, from } = holdVisual(cells(line))
-    return shown.flatMap((g, at) => (g.trim() ? [{ at, text: g, ...tint(row, from[at] ?? at, g) }] : []))
+    return shown.flatMap((g, at) => {
+      const fill = blockFill(g)
+      return g.trim() ? [{ at, text: g, ...tint(row, from[at] ?? at, g), ...(fill ? { fill } : {}) }] : []
+    })
   })
 
 const luma = ([r, g, b]: number[]): number => (0.299 * r! + 0.587 * g! + 0.114 * b!) / 255
