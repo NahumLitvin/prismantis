@@ -2937,7 +2937,7 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
       })}
     </Box>
   )
-  const stamp = time === undefined ? null : <Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text>
+  const stamp = time === undefined ? null : <Box flexShrink={0}><Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text></Box>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
   if (isChatPrompt(style)) return chatPrompt(el, style, content, chatSize(style, hebrew, marked.map(inlineText), columns, time, rows.some(line => own(line) !== undefined)))
   if (style.promptStyle === 'wide') {
