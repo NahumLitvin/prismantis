@@ -84,15 +84,20 @@ const parseCell = (text: string, hl: Highlight): Inline[] => {
   return at ? [...out, ...parseInline(text.slice(at).trim(), hl)] : parseInline(text, hl)
 }
 
-const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|\*\*(?!\s)((?:[^*]|\*[^*\s][^*]*?(?<!\s)\*)+?)(?<!\s)\*\*|(?<![\w_])__(?!\s)([^_]+?)(?<!\s)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)(?<!\s)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)(?<!\s)_(?!\w)|(https?:\/\/(?:[^\s<>()]|\([^\s<>()]*\))*(?:[^\s<>().,;:!?'"]|\([^\s<>()]*\)))|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])|\[\^([^\]\s]+)\]|!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g
-const NUMBER = /(?<![\w.#/-])(v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/])/g
+const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|\*\*(?!\s)((?:[^*]|\*[^*\s][^*]*?(?<!\s)\*)+?)(?<!\s)\*\*|(?<![\w_])__(?!\s)([^_]+?)(?<!\s)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)(?<!\s)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)(?<!\s)_(?!\w)|(https?:\/\/(?:[^\s<>()]|\([^\s<>()]*\))*(?:[^\s<>().,;:!?'"]|\([^\s<>()]*\)))|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])|\[\^([^\]\s]+)\]|!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|<(https?:\/\/[^\s<>]+)>/g
+const NUMBER = /(?<![\w.#/-]|\d[.,:])((?:(?<!\p{L})-(?=\d))?v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/])/gu
 const PATH = /(?<![\w/.:])((?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]*)*)/g
 
-const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' }
-const ENTITY = /&(?:#(\d{1,7})|#[xX]([\da-fA-F]{1,6})|(amp|lt|gt|quot|apos|nbsp));/g
+const NAMED: Record<string, string> = {
+  amp: '&', AMP: '&', lt: '<', LT: '<', gt: '>', GT: '>', quot: '"', QUOT: '"', apos: "'", nbsp: '\u00a0', COPY: '©', REG: '®', copy: '©', reg: '®', trade: '™', mdash: '—', ndash: '–', hellip: '…', minus: '−',
+  times: '×', divide: '÷', plusmn: '±', deg: '°', middot: '·', bull: '•', sect: '§', para: '¶', micro: 'µ', laquo: '«', raquo: '»',
+  lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', sbquo: '‚', bdquo: '„', euro: '€', pound: '£', yen: '¥', cent: '¢', frac12: '½', frac14: '¼', frac34: '¾', sup2: '²', sup3: '³',
+  larr: '←', rarr: '→', uarr: '↑', darr: '↓', harr: '↔', lArr: '⇐', rArr: '⇒', hArr: '⇔', le: '≤', ge: '≥', ne: '≠', asymp: '≈', infin: '∞', check: '✓', cross: '✗', star: '☆', hearts: '♥', ensp: '\u2002', emsp: '\u2003', thinsp: '\u2009',
+}
+const ENTITY = /&(?:#(\d{1,7})|#[xX]([\da-fA-F]{1,6})|([A-Za-z][A-Za-z\d]{1,31}));/g
 const codePoint = (n: number) => String.fromCodePoint(n > 0 && n <= 0x10ffff && (n < 0xd800 || n > 0xdfff) ? n : 0xfffd)
-const decodeEntities = (text: string): string =>
-  text.includes('&') ? text.replace(ENTITY, (_, dec?: string, hex?: string, name?: string) => (name ? NAMED[name]! : codePoint(dec ? Number(dec) : parseInt(hex!, 16)))).replace(CONTROL, '') : text
+export const decodeEntities = (text: string): string =>
+  text.includes('&') ? text.replace(ENTITY, (m, dec?: string, hex?: string, name?: string) => (name ? (Object.hasOwn(NAMED, name) ? NAMED[name]! : m) : codePoint(dec ? Number(dec) : parseInt(hex!, 16)))).replace(CONTROL, '') : text
 const linkText = (text: string) => (/^`[^`]+`$/.test(text) ? text.slice(1, -1) : decodeEntities(text))
 
 const decorate = (raw: string, hl: Highlight): Inline[] => {
@@ -120,21 +125,26 @@ const decorate = (raw: string, hl: Highlight): Inline[] => {
   return out
 }
 
+const inlineOf = (m: RegExpExecArray, hl: Highlight): Inline[] => {
+  if (m[2] !== undefined) return [{ kind: 'code', text: m[2] }]
+  if (m[3] !== undefined) return [{ kind: 'link', text: linkText(m[3]), href: m[4]! }]
+  if (m[5] !== undefined || m[6] !== undefined) return [{ kind: 'strong', children: parseInline(m[5] ?? m[6] ?? "", hl) }]
+  if (m[7] !== undefined) return [{ kind: 'strike', children: parseInline(m[7], hl) }]
+  if (m[8] !== undefined || m[9] !== undefined) return [{ kind: 'emphasis', children: parseInline(m[8] ?? m[9] ?? "", hl) }]
+  if (m[11] !== undefined) return isTex(m[11]) ? [{ kind: 'math', text: texText(m[11]) }] : decorate(m[0], hl)
+  if (m[12] !== undefined) return [{ kind: 'footnote', text: m[12] }]
+  if (m[14] !== undefined) return [{ kind: 'image', text: m[13] || 'image', src: m[14] }]
+  const url = m[10] ?? m[15]
+  return url === undefined ? [] : [{ kind: 'link', text: url, href: url }]
+}
+
 export const parseInline = (text: string, hl: Highlight): Inline[] => {
   if (text.length > MAX_INLINE) return [{ kind: 'text', text: dropTints(text) }]
   const out: Inline[] = []
   let at = 0
   for (const m of text.matchAll(INLINE)) {
     if (m.index > at) out.push(...tinted(text.slice(at, m.index), hl))
-    if (m[2] !== undefined) out.push({ kind: 'code', text: m[2] })
-    else if (m[3] !== undefined) out.push({ kind: 'link', text: linkText(m[3]), href: m[4]! })
-    else if (m[5] !== undefined || m[6] !== undefined) out.push({ kind: 'strong', children: parseInline(m[5] ?? m[6] ?? "", hl) })
-    else if (m[7] !== undefined) out.push({ kind: 'strike', children: parseInline(m[7], hl) })
-    else if (m[8] !== undefined || m[9] !== undefined) out.push({ kind: 'emphasis', children: parseInline(m[8] ?? m[9] ?? "", hl) })
-    else if (m[10] !== undefined) out.push({ kind: 'link', text: m[10], href: m[10] })
-    else if (m[11] !== undefined) out.push(...(isTex(m[11]) ? [{ kind: 'math' as const, text: texText(m[11]) }] : decorate(m[0], hl)))
-    else if (m[12] !== undefined) out.push({ kind: 'footnote', text: m[12] })
-    else if (m[14] !== undefined) out.push({ kind: 'image', text: m[13] || 'image', src: m[14] })
+    out.push(...inlineOf(m, hl))
     at = m.index + m[0].length
   }
   if (at < text.length) out.push(...tinted(text.slice(at), hl))

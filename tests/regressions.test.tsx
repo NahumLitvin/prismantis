@@ -2466,3 +2466,39 @@ test('HTML entities decode in text but not in code, and never make a control cha
   expect(tableHtml(table)).toContain('<td style="text-align: left">&amp; &lt;b&gt;</td>')
   expect(tableText(table)).toBe('a\n& <b>')
 })
+
+test('common named entities decode in text, unknown ones and code stay literal', async () => {
+  const [para] = parse('&copy; &mdash; &hellip; &rarr; 3&times;4 &AMP; &euro; &unknown; `&copy;`', { numbers: false, paths: false })
+  expect(para?.kind === 'paragraph' && para.inline).toEqual([{ kind: 'text', text: '© — … → 3×4 & € &unknown; ' }, { kind: 'code', text: '&copy;' }])
+  const [heb] = parse('שלום &mdash; עולם &rarr; סוף', { numbers: false, paths: false })
+  expect(heb?.kind === 'paragraph' && inlineText(heb.inline)).toBe('שלום — עולם → סוף')
+})
+
+test('a negative number colors with its minus, but ranges, dates and flags do not', async () => {
+  const numbers = (text: string) => {
+    const [para] = parse(text, hl)
+    return para?.kind === 'paragraph' ? para.inline.filter(n => n.kind === 'number').map(n => n.text) : []
+  }
+  expect(numbers('went -1,234 and -5% (-7) then 1-2 on 2026-01-15, -n and x-3')).toEqual(['-1,234', '-5%', '-7', '1', '2026'])
+  expect(numbers('ירד ב -1,234 שקלים ו-250ms')).toEqual(['-1,234'])
+})
+
+test('mermaid #entity; escapes draw as their characters, and style colors stay as written', () => {
+  const art = mermaidText('flowchart TD\n  A["say #quot;hi#quot; #91;x#93; #35;1 #bogus;"] -->|a #amp; b| B[שלום #quot;עולם#quot;]\n  style A fill:#123;', false, 100) ?? ''
+  expect(art).toContain('say "hi" [x] #1 #bogus;')
+  expect(art).toContain('a & b')
+  expect(art).toContain('שלום "עולם"')
+  expect(art).not.toContain('#quot;')
+  expect(mermaidText('pie title Say #quot;hi#quot;\n  "A #amp; B" : 3\n  "C" : 2', false, 100)).toContain('Say "hi"')
+})
+
+test('an angle-bracket autolink drops its brackets and links the URL', async () => {
+  for (const text of ['see <https://example.com/a?b=1> now', 'ראו <https://example.com/a?b=1> עכשיו']) {
+    const [para] = parse(text, hl)
+    const inline = para?.kind === 'paragraph' ? para.inline : []
+    expect(inline.find(n => n.kind === 'link')).toEqual({ kind: 'link', text: 'https://example.com/a?b=1', href: 'https://example.com/a?b=1' })
+    expect(inlineText(inline)).not.toContain('<')
+  }
+  const [code] = parse('`<https://example.com>` <br> <b>', hl)
+  expect(code?.kind === 'paragraph' && inlineText(code.inline)).toBe('<https://example.com> <br> <b>')
+})

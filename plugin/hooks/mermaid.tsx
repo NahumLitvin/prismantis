@@ -6,6 +6,7 @@ import type { Ink } from './clipboard'
 import { drawFigure, isFigureLang } from './figure'
 import { ratexColor } from './latex'
 import type { Block } from './markdown'
+import { decodeEntities } from './markdown'
 import type { Drawn } from './render'
 import { cells, graphemes, width } from './layout'
 import { artFace, heldLtr, mirrored, remember } from './render'
@@ -100,13 +101,27 @@ const mermaidArt = (source: string, ascii: boolean, columns: number, pieColors: 
     source = source.replace(INLINE_TAG, '')
     if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
     const own = OWN[kindOf(source).toLowerCase()]
-    if (own) return own(source, ascii, columns, pieColors)
+    if (own) return own(labelEntities(source, false), ascii, columns, pieColors)
     const art = draw(source, ascii, columns)
     const text = art === null || artWidth(art) <= columns - 2 || !SIDEWAYS.test(source) ? art : (draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art)
     return text === null ? null : { text, series: chartSeries(source, ascii, columns) }
   })
 
-const prepared = (padded: string) => unquoteCategories(padded.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|')
+const MERMAID_ENTITY = /#(\d{1,7}|[A-Za-z][A-Za-z\d]{1,31});/g
+const SHIELD = '[]{}()|<>"'
+const SHIELDED = /[\uf100-\uf109]/g
+const STYLE_LINE = /^\s*(?:style|classDef|linkStyle)\b/
+const shielded = (ch: string) => [...ch].map(c => (SHIELD.includes(c) ? String.fromCharCode(0xf100 + SHIELD.indexOf(c)) : c)).join('')
+const entityChar = (m: string, e: string, shield: boolean): string => {
+  const ch = decodeEntities(/^\d/.test(e) ? `&#${e};` : `&${e};`)
+  if (ch === `&${e};` || ch.includes('\n')) return m
+  return shield ? shielded(ch) : ch
+}
+const labelEntities = (source: string, shield: boolean): string =>
+  !source.includes('#') ? source : source.split('\n').map(line => (STYLE_LINE.test(line) ? line : line.replace(MERMAID_ENTITY, (m, e: string) => entityChar(m, e, shield)))).join('\n')
+const unshield = (text: string) => text.replace(SHIELDED, c => SHIELD[c.charCodeAt(0) - 0xf100]!)
+
+const prepared = (padded: string) => labelEntities(unquoteCategories(padded.replace(/^(\s*%%[^\n]*\n)+/, '')).replace(/(-->|-\.->|==>|---|-\.-|===)[ \t]+\|/g, '$1|'), true)
 
 const NEUTRAL = '#808080'
 const PROBE = { fg: NEUTRAL, border: NEUTRAL, line: NEUTRAL, arrow: NEUTRAL, corner: NEUTRAL, junction: NEUTRAL, accent: '#ff0000', bg: '#000000' }
@@ -156,7 +171,7 @@ const draw = (source: string, ascii: boolean, columns: number): string | null =>
     try {
       if (isChart) setChartSize(size.width, size.height)
       const art = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
-      return (isChart ? labelBars(art, padded) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')).replaceAll(PAD, '')
+      return unshield((isChart ? labelBars(art, padded) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')).replaceAll(PAD, ''))
     } catch {
       return null
     }
