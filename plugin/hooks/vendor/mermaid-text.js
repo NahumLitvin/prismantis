@@ -1,25 +1,25 @@
 // node_modules/beautiful-mermaid/src/multiline-utils.ts
-function dt(t) {
-  return (t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t).replace(/<br\s*\/?>/gi, `
+function normalizeBrTags(label) {
+  return (label.startsWith('"') && label.endsWith('"') ? label.slice(1, -1) : label).replace(/<br\s*\/?>/gi, `
 `).replace(/\\n/g, `
 `).replace(/<\/?(?:sub|sup|small|mark)\s*>/gi, "").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/(?<!\*)\*([^\s*](?:[^*]*[^\s*])?)\*(?!\*)/g, "<i>$1</i>").replace(/~~(.+?)~~/g, "<s>$1</s>");
 }
 
 // node_modules/beautiful-mermaid/src/parser.ts
-function Le(t) {
-  let e = t.split(`
-`).map((o) => o.trim()).filter((o) => o.length > 0 && !o.startsWith("%%"));
-  if (e.length === 0)
+function parseMermaid(text) {
+  let lines = text.split(`
+`).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%"));
+  if (lines.length === 0)
     throw new Error("Empty mermaid diagram");
-  let n = e[0];
-  return /^stateDiagram(-v2)?\s*$/i.test(n) ? Un(e) : Jn(e);
+  let header = lines[0];
+  return /^stateDiagram(-v2)?\s*$/i.test(header) ? parseStateDiagram(lines) : parseFlowchart(lines);
 }
-function Jn(t) {
-  let e = t[0].match(/^(?:graph|flowchart)\s+(TD|TB|LR|BT|RL)\s*$/i);
-  if (!e)
-    throw new Error(`Invalid mermaid header: "${t[0]}". Expected "graph TD", "flowchart LR", "stateDiagram-v2", etc.`);
-  let o = {
-    direction: e[1].toUpperCase(),
+function parseFlowchart(lines) {
+  let headerMatch = lines[0].match(/^(?:graph|flowchart)\s+(TD|TB|LR|BT|RL)\s*$/i);
+  if (!headerMatch)
+    throw new Error(`Invalid mermaid header: "${lines[0]}". Expected "graph TD", "flowchart LR", "stateDiagram-v2", etc.`);
+  let graph = {
+    direction: headerMatch[1].toUpperCase(),
     nodes: /* @__PURE__ */ new Map(),
     edges: [],
     subgraphs: [],
@@ -27,64 +27,64 @@ function Jn(t) {
     classAssignments: /* @__PURE__ */ new Map(),
     nodeStyles: /* @__PURE__ */ new Map(),
     linkStyles: /* @__PURE__ */ new Map()
-  }, s = [];
-  for (let r = 1; r < t.length; r++) {
-    let i = t[r], a = i.match(/^classDef\s+(\w+)\s+(.+)$/);
-    if (a) {
-      let u = a[1], m = a[2], p = Vt(m);
-      o.classDefs.set(u, p);
+  }, subgraphStack = [];
+  for (let i = 1; i < lines.length; i++) {
+    let line = lines[i], classDefMatch = line.match(/^classDef\s+(\w+)\s+(.+)$/);
+    if (classDefMatch) {
+      let name = classDefMatch[1], propsStr = classDefMatch[2], props = parseStyleProps(propsStr);
+      graph.classDefs.set(name, props);
       continue;
     }
-    let c = i.match(/^class\s+([\w,-]+)\s+(\w+)$/);
-    if (c) {
-      let u = c[1].split(",").map((p) => p.trim()), m = c[2];
-      for (let p of u)
-        o.classAssignments.set(p, m);
+    let classAssignMatch = line.match(/^class\s+([\w,-]+)\s+(\w+)$/);
+    if (classAssignMatch) {
+      let nodeIds = classAssignMatch[1].split(",").map((s) => s.trim()), className = classAssignMatch[2];
+      for (let id of nodeIds)
+        graph.classAssignments.set(id, className);
       continue;
     }
-    let l = i.match(/^style\s+([\w,-]+)\s+(.+)$/);
-    if (l) {
-      let u = l[1].split(",").map((p) => p.trim()), m = Vt(l[2]);
-      for (let p of u)
-        o.nodeStyles.set(p, { ...o.nodeStyles.get(p), ...m });
+    let styleMatch = line.match(/^style\s+([\w,-]+)\s+(.+)$/);
+    if (styleMatch) {
+      let nodeIds = styleMatch[1].split(",").map((s) => s.trim()), props = parseStyleProps(styleMatch[2]);
+      for (let id of nodeIds)
+        graph.nodeStyles.set(id, { ...graph.nodeStyles.get(id), ...props });
       continue;
     }
-    let d = i.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
-    if (d) {
-      let u = d[1].trim(), m = Vt(d[2]);
-      if (u === "default")
-        o.linkStyles.set("default", { ...o.linkStyles.get("default"), ...m });
+    let linkStyleMatch = line.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
+    if (linkStyleMatch) {
+      let target = linkStyleMatch[1].trim(), props = parseStyleProps(linkStyleMatch[2]);
+      if (target === "default")
+        graph.linkStyles.set("default", { ...graph.linkStyles.get("default"), ...props });
       else {
-        let p = u.split(",").map((b) => parseInt(b.trim(), 10));
-        for (let b of p)
-          isNaN(b) || o.linkStyles.set(b, { ...o.linkStyles.get(b), ...m });
+        let indices = target.split(",").map((s) => parseInt(s.trim(), 10));
+        for (let idx of indices)
+          isNaN(idx) || graph.linkStyles.set(idx, { ...graph.linkStyles.get(idx), ...props });
       }
       continue;
     }
-    let h = i.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
-    if (h && s.length > 0) {
-      s[s.length - 1].direction = h[1].toUpperCase();
+    let dirMatch = line.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
+    if (dirMatch && subgraphStack.length > 0) {
+      subgraphStack[subgraphStack.length - 1].direction = dirMatch[1].toUpperCase();
       continue;
     }
-    let f = i.match(/^subgraph\s+(.+)$/);
-    if (f) {
-      let u = f[1].trim(), m = u.match(/^([\w-]+)\s*\[(.+)\]$/), p, b;
-      m ? (p = m[1], b = dt(m[2])) : (b = dt(u), p = u.replace(/\s+/g, "_").replace(/[^\w]/g, ""));
-      let A = { id: p, label: b, nodeIds: [], children: [] };
-      s.push(A);
+    let subgraphMatch = line.match(/^subgraph\s+(.+)$/);
+    if (subgraphMatch) {
+      let rest = subgraphMatch[1].trim(), bracketMatch = rest.match(/^([\w-]+)\s*\[(.+)\]$/), id, label;
+      bracketMatch ? (id = bracketMatch[1], label = normalizeBrTags(bracketMatch[2])) : (label = normalizeBrTags(rest), id = rest.replace(/\s+/g, "_").replace(/[^\w]/g, ""));
+      let sg = { id, label, nodeIds: [], children: [] };
+      subgraphStack.push(sg);
       continue;
     }
-    if (i === "end") {
-      let u = s.pop();
-      u && (s.length > 0 ? s[s.length - 1].children.push(u) : o.subgraphs.push(u));
+    if (line === "end") {
+      let completed = subgraphStack.pop();
+      completed && (subgraphStack.length > 0 ? subgraphStack[subgraphStack.length - 1].children.push(completed) : graph.subgraphs.push(completed));
       continue;
     }
-    tr(i, o, s);
+    parseEdgeLine(line, graph, subgraphStack);
   }
-  return o;
+  return graph;
 }
-function Un(t) {
-  let e = {
+function parseStateDiagram(lines) {
+  let graph = {
     direction: "TD",
     nodes: /* @__PURE__ */ new Map(),
     edges: [],
@@ -93,90 +93,90 @@ function Un(t) {
     classAssignments: /* @__PURE__ */ new Map(),
     nodeStyles: /* @__PURE__ */ new Map(),
     linkStyles: /* @__PURE__ */ new Map()
-  }, n = [], o = /* @__PURE__ */ new Set(), s = 0, r = 0;
-  for (let i = 1; i < t.length; i++) {
-    let a = t[i], c = a.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
-    if (c) {
-      n.length > 0 ? n[n.length - 1].direction = c[1].toUpperCase() : e.direction = c[1].toUpperCase();
+  }, compositeStack = [], compositeStateIds = /* @__PURE__ */ new Set(), startCount = 0, endCount = 0;
+  for (let i = 1; i < lines.length; i++) {
+    let line = lines[i], dirMatch = line.match(/^direction\s+(TD|TB|LR|BT|RL)\s*$/i);
+    if (dirMatch) {
+      compositeStack.length > 0 ? compositeStack[compositeStack.length - 1].direction = dirMatch[1].toUpperCase() : graph.direction = dirMatch[1].toUpperCase();
       continue;
     }
-    let l = a.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
-    if (l) {
-      let m = l[1].trim(), p = Vt(l[2]);
-      if (m === "default")
-        e.linkStyles.set("default", { ...e.linkStyles.get("default"), ...p });
+    let linkStyleMatch = line.match(/^linkStyle\s+(default|[\d,\s]+)\s+(.+)$/);
+    if (linkStyleMatch) {
+      let target = linkStyleMatch[1].trim(), props = parseStyleProps(linkStyleMatch[2]);
+      if (target === "default")
+        graph.linkStyles.set("default", { ...graph.linkStyles.get("default"), ...props });
       else {
-        let b = m.split(",").map((A) => parseInt(A.trim(), 10));
-        for (let A of b)
-          isNaN(A) || e.linkStyles.set(A, { ...e.linkStyles.get(A), ...p });
+        let indices = target.split(",").map((s) => parseInt(s.trim(), 10));
+        for (let idx of indices)
+          isNaN(idx) || graph.linkStyles.set(idx, { ...graph.linkStyles.get(idx), ...props });
       }
       continue;
     }
-    let d = a.match(/^state\s+(?:"([^"]+)"\s+as\s+)?([\w\p{L}]+)\s*\{$/u);
-    if (d) {
-      let m = d[1] ?? d[2], p = d[2], b = { id: p, label: m, nodeIds: [], children: [] };
-      n.push(b), o.add(p), e.nodes.delete(p);
+    let compositeMatch = line.match(/^state\s+(?:"([^"]+)"\s+as\s+)?([\w\p{L}]+)\s*\{$/u);
+    if (compositeMatch) {
+      let label = compositeMatch[1] ?? compositeMatch[2], id = compositeMatch[2], sg = { id, label, nodeIds: [], children: [] };
+      compositeStack.push(sg), compositeStateIds.add(id), graph.nodes.delete(id);
       continue;
     }
-    if (a === "}") {
-      let m = n.pop();
-      m && (n.length > 0 ? n[n.length - 1].children.push(m) : e.subgraphs.push(m));
+    if (line === "}") {
+      let completed = compositeStack.pop();
+      completed && (compositeStack.length > 0 ? compositeStack[compositeStack.length - 1].children.push(completed) : graph.subgraphs.push(completed));
       continue;
     }
-    let h = a.match(/^state\s+"([^"]+)"\s+as\s+([\w\p{L}]+)\s*$/u);
-    if (h) {
-      let m = dt(h[1]), p = h[2];
-      Ot(e, n, { id: p, label: m, shape: "rounded" });
+    let stateAliasMatch = line.match(/^state\s+"([^"]+)"\s+as\s+([\w\p{L}]+)\s*$/u);
+    if (stateAliasMatch) {
+      let label = normalizeBrTags(stateAliasMatch[1]), id = stateAliasMatch[2];
+      registerStateNode(graph, compositeStack, { id, label, shape: "rounded" });
       continue;
     }
-    let f = a.match(/^(\[\*\]|[\w\p{L}-]+)\s*(-->)\s*(\[\*\]|[\w\p{L}-]+)(?:\s*:\s*(.+))?$/u);
-    if (f) {
-      let m = f[1], p = f[3], b = f[4]?.trim(), A = b ? dt(b) : void 0;
-      m === "[*]" ? (s++, m = `_start${s > 1 ? s : ""}`, Ot(e, n, { id: m, label: "", shape: "state-start" })) : o.has(m) || Se(e, n, m), p === "[*]" ? (r++, p = `_end${r > 1 ? r : ""}`, Ot(e, n, { id: p, label: "", shape: "state-end" })) : o.has(p) || Se(e, n, p), e.edges.push({
-        source: m,
-        target: p,
-        label: A,
+    let transitionMatch = line.match(/^(\[\*\]|[\w\p{L}-]+)\s*(-->)\s*(\[\*\]|[\w\p{L}-]+)(?:\s*:\s*(.+))?$/u);
+    if (transitionMatch) {
+      let sourceId = transitionMatch[1], targetId = transitionMatch[3], rawTransitionLabel = transitionMatch[4]?.trim(), edgeLabel = rawTransitionLabel ? normalizeBrTags(rawTransitionLabel) : void 0;
+      sourceId === "[*]" ? (startCount++, sourceId = `_start${startCount > 1 ? startCount : ""}`, registerStateNode(graph, compositeStack, { id: sourceId, label: "", shape: "state-start" })) : compositeStateIds.has(sourceId) || ensureStateNode(graph, compositeStack, sourceId), targetId === "[*]" ? (endCount++, targetId = `_end${endCount > 1 ? endCount : ""}`, registerStateNode(graph, compositeStack, { id: targetId, label: "", shape: "state-end" })) : compositeStateIds.has(targetId) || ensureStateNode(graph, compositeStack, targetId), graph.edges.push({
+        source: sourceId,
+        target: targetId,
+        label: edgeLabel,
         style: "solid",
         hasArrowStart: !1,
         hasArrowEnd: !0
       });
       continue;
     }
-    let u = a.match(/^([\w\p{L}-]+)\s*:\s*(.+)$/u);
-    if (u) {
-      let m = u[1], p = dt(u[2].trim());
-      Ot(e, n, { id: m, label: p, shape: "rounded" });
+    let stateDescMatch = line.match(/^([\w\p{L}-]+)\s*:\s*(.+)$/u);
+    if (stateDescMatch) {
+      let id = stateDescMatch[1], label = normalizeBrTags(stateDescMatch[2].trim());
+      registerStateNode(graph, compositeStack, { id, label, shape: "rounded" });
       continue;
     }
   }
-  return e;
+  return graph;
 }
-function Ot(t, e, n) {
-  if (!t.nodes.has(n.id) && t.nodes.set(n.id, n), e.length > 0) {
-    let s = e[e.length - 1];
-    s.nodeIds.includes(n.id) || s.nodeIds.push(n.id);
+function registerStateNode(graph, compositeStack, node) {
+  if (!graph.nodes.has(node.id) && graph.nodes.set(node.id, node), compositeStack.length > 0) {
+    let current = compositeStack[compositeStack.length - 1];
+    current.nodeIds.includes(node.id) || current.nodeIds.push(node.id);
   }
 }
-function Se(t, e, n) {
-  if (!t.nodes.has(n))
-    Ot(t, e, { id: n, label: n, shape: "rounded" });
-  else if (e.length > 0) {
-    let o = e[e.length - 1];
-    o.nodeIds.includes(n) || o.nodeIds.push(n);
+function ensureStateNode(graph, compositeStack, id) {
+  if (!graph.nodes.has(id))
+    registerStateNode(graph, compositeStack, { id, label: id, shape: "rounded" });
+  else if (compositeStack.length > 0) {
+    let current = compositeStack[compositeStack.length - 1];
+    current.nodeIds.includes(id) || current.nodeIds.push(id);
   }
 }
-function Vt(t) {
-  let e = t.replace(/;\s*$/, ""), n = {};
-  for (let o of e.split(",")) {
-    let s = o.indexOf(":");
-    if (s > 0) {
-      let r = o.slice(0, s).trim(), i = o.slice(s + 1).trim();
-      r && i && (n[r] = i);
+function parseStyleProps(propsStr) {
+  let cleaned = propsStr.replace(/;\s*$/, ""), props = {};
+  for (let pair of cleaned.split(",")) {
+    let colonIdx = pair.indexOf(":");
+    if (colonIdx > 0) {
+      let key = pair.slice(0, colonIdx).trim(), val = pair.slice(colonIdx + 1).trim();
+      key && val && (props[key] = val);
     }
   }
-  return n;
+  return props;
 }
-var qn = /^(<)?(-->|-.->|==>|---|-\.-|===)(?:\|([^|]*)\|)?/, Vn = /^(<)?(--|-\.|==)\s+(.+?)\s+(-->|---|\.\->|-\.\-|==>|===)/, Kn = [
+var ARROW_REGEX = /^(<)?(-->|-.->|==>|---|-\.-|===)(?:\|([^|]*)\|)?/, TEXT_ARROW_REGEX = /^(<)?(--|-\.|==)\s+(.+?)\s+(-->|---|\.\->|-\.\-|==>|===)/, NODE_PATTERNS = [
   // Triple delimiters (must be first)
   { regex: /^((?:\w|-(?![-.>]))+)\(\(\((.+?)\)\)\)/, shape: "doublecircle" },
   // A(((text)))
@@ -207,108 +207,108 @@ var qn = /^(<)?(-->|-.->|==>|---|-\.-|===)(?:\|([^|]*)\|)?/, Vn = /^(<)?(--|-\.|
   // A(text)
   { regex: /^((?:\w|-(?![-.>]))+)\{(.+?)\}/, shape: "diamond" }
   // A{text}
-], Qn = /^((?:\w|-(?![-.>]))+)/, Zn = /^:::([\w][\w-]*)/;
-function tr(t, e, n) {
-  let o = t.trim(), s = Re(o, e, n);
-  if (!s || s.ids.length === 0) return;
-  o = s.remaining.trim();
-  let r = s.ids;
-  for (; o.length > 0; ) {
-    let i, a, c, l, d = o.match(qn);
-    if (d) {
-      i = !!d[1];
-      let f = d[2], u = d[3]?.trim();
-      l = u ? dt(u) : void 0, o = o.slice(d[0].length).trim(), a = nr(f), c = f.endsWith(">");
+], BARE_NODE_REGEX = /^((?:\w|-(?![-.>]))+)/, CLASS_SHORTHAND_REGEX = /^:::([\w][\w-]*)/;
+function parseEdgeLine(line, graph, subgraphStack) {
+  let remaining = line.trim(), firstGroup = consumeNodeGroup(remaining, graph, subgraphStack);
+  if (!firstGroup || firstGroup.ids.length === 0) return;
+  remaining = firstGroup.remaining.trim();
+  let prevGroupIds = firstGroup.ids;
+  for (; remaining.length > 0; ) {
+    let hasArrowStart, style, hasArrowEnd, edgeLabel, arrowMatch = remaining.match(ARROW_REGEX);
+    if (arrowMatch) {
+      hasArrowStart = !!arrowMatch[1];
+      let arrowOp = arrowMatch[2], rawEdgeLabel = arrowMatch[3]?.trim();
+      edgeLabel = rawEdgeLabel ? normalizeBrTags(rawEdgeLabel) : void 0, remaining = remaining.slice(arrowMatch[0].length).trim(), style = arrowStyleFromOp(arrowOp), hasArrowEnd = arrowOp.endsWith(">");
     } else {
-      let f = o.match(Vn);
-      if (!f) break;
-      i = !!f[1];
-      let u = f[3].trim();
-      l = u ? dt(u) : void 0;
-      let m = f[2], p = f[4];
-      o = o.slice(f[0].length).trim(), a = rr(m, p), c = p.endsWith(">");
+      let textMatch = remaining.match(TEXT_ARROW_REGEX);
+      if (!textMatch) break;
+      hasArrowStart = !!textMatch[1];
+      let rawLabel = textMatch[3].trim();
+      edgeLabel = rawLabel ? normalizeBrTags(rawLabel) : void 0;
+      let openOp = textMatch[2], closeOp = textMatch[4];
+      remaining = remaining.slice(textMatch[0].length).trim(), style = textArrowStyleFromOps(openOp, closeOp), hasArrowEnd = closeOp.endsWith(">");
     }
-    let h = Re(o, e, n);
-    if (!h || h.ids.length === 0) break;
-    o = h.remaining.trim();
-    for (let f of r)
-      for (let u of h.ids)
-        e.edges.push({
-          source: f,
-          target: u,
-          label: l,
-          style: a,
-          hasArrowStart: i,
-          hasArrowEnd: c
+    let nextGroup = consumeNodeGroup(remaining, graph, subgraphStack);
+    if (!nextGroup || nextGroup.ids.length === 0) break;
+    remaining = nextGroup.remaining.trim();
+    for (let sourceId of prevGroupIds)
+      for (let targetId of nextGroup.ids)
+        graph.edges.push({
+          source: sourceId,
+          target: targetId,
+          label: edgeLabel,
+          style,
+          hasArrowStart,
+          hasArrowEnd
         });
-    r = h.ids;
+    prevGroupIds = nextGroup.ids;
   }
 }
-function Re(t, e, n) {
-  let o = De(t, e, n);
-  if (!o) return null;
-  let s = [o.id], r = o.remaining.trim();
-  for (; r.startsWith("&"); ) {
-    r = r.slice(1).trim();
-    let i = De(r, e, n);
-    if (!i) break;
-    s.push(i.id), r = i.remaining.trim();
+function consumeNodeGroup(text, graph, subgraphStack) {
+  let first = consumeNode(text, graph, subgraphStack);
+  if (!first) return null;
+  let ids = [first.id], remaining = first.remaining.trim();
+  for (; remaining.startsWith("&"); ) {
+    remaining = remaining.slice(1).trim();
+    let next = consumeNode(remaining, graph, subgraphStack);
+    if (!next) break;
+    ids.push(next.id), remaining = next.remaining.trim();
   }
-  return { ids: s, remaining: r };
+  return { ids, remaining };
 }
-function De(t, e, n) {
-  let o = null, s = t;
-  for (let { regex: i, shape: a } of Kn) {
-    let c = t.match(i);
-    if (c) {
-      o = c[1];
-      let l = dt(c[2]);
-      Te(e, n, { id: o, label: l, shape: a }), s = t.slice(c[0].length);
+function consumeNode(text, graph, subgraphStack) {
+  let id = null, remaining = text;
+  for (let { regex, shape } of NODE_PATTERNS) {
+    let match = text.match(regex);
+    if (match) {
+      id = match[1];
+      let label = normalizeBrTags(match[2]);
+      registerNode(graph, subgraphStack, { id, label, shape }), remaining = text.slice(match[0].length);
       break;
     }
   }
-  if (o === null) {
-    let i = t.match(Qn);
-    i && (o = i[1], e.nodes.has(o) || Te(e, n, { id: o, label: o, shape: "rectangle" }), s = t.slice(i[0].length));
+  if (id === null) {
+    let bareMatch = text.match(BARE_NODE_REGEX);
+    bareMatch && (id = bareMatch[1], graph.nodes.has(id) || registerNode(graph, subgraphStack, { id, label: id, shape: "rectangle" }), remaining = text.slice(bareMatch[0].length));
   }
-  if (o === null) return null;
-  let r = s.match(Zn);
-  return r && (e.classAssignments.set(o, r[1]), s = s.slice(r[0].length)), { id: o, remaining: s };
+  if (id === null) return null;
+  let classMatch = remaining.match(CLASS_SHORTHAND_REGEX);
+  return classMatch && (graph.classAssignments.set(id, classMatch[1]), remaining = remaining.slice(classMatch[0].length)), { id, remaining };
 }
-function Te(t, e, n) {
-  !t.nodes.has(n.id) && t.nodes.set(n.id, n), er(e, n.id);
+function registerNode(graph, subgraphStack, node) {
+  !graph.nodes.has(node.id) && graph.nodes.set(node.id, node), trackInSubgraph(subgraphStack, node.id);
 }
-function er(t, e) {
-  if (t.length > 0) {
-    let n = t[t.length - 1];
-    n.nodeIds.includes(e) || n.nodeIds.push(e);
+function trackInSubgraph(subgraphStack, nodeId) {
+  if (subgraphStack.length > 0) {
+    let current = subgraphStack[subgraphStack.length - 1];
+    current.nodeIds.includes(nodeId) || current.nodeIds.push(nodeId);
   }
 }
-function nr(t) {
-  return t === "-.->" || t === "-.-" ? "dotted" : t === "==>" || t === "===" ? "thick" : "solid";
+function arrowStyleFromOp(op) {
+  return op === "-.->" || op === "-.-" ? "dotted" : op === "==>" || op === "===" ? "thick" : "solid";
 }
-function rr(t, e) {
-  return t === "-." || e === ".->" || e === "-.-" ? "dotted" : t === "==" || e === "==>" || e === "===" ? "thick" : "solid";
+function textArrowStyleFromOps(openOp, closeOp) {
+  return openOp === "-." || closeOp === ".->" || closeOp === "-.-" ? "dotted" : openOp === "==" || closeOp === "==>" || closeOp === "===" ? "thick" : "solid";
 }
 
 // node_modules/beautiful-mermaid/src/ascii/types.ts
-var _ = { x: 1, y: 0 }, Y = { x: 1, y: 2 }, j = { x: 0, y: 1 }, P = { x: 2, y: 1 }, wt = { x: 2, y: 0 }, Mt = { x: 0, y: 0 }, Rt = { x: 2, y: 2 }, vt = { x: 0, y: 2 }, Gt = { x: 1, y: 1 };
-function ae(t, e) {
-  return t.x === e.x && t.y === e.y;
+var Up = { x: 1, y: 0 }, Down = { x: 1, y: 2 }, Left = { x: 0, y: 1 }, Right = { x: 2, y: 1 }, UpperRight = { x: 2, y: 0 }, UpperLeft = { x: 0, y: 0 }, LowerRight = { x: 2, y: 2 }, LowerLeft = { x: 0, y: 2 }, Middle = { x: 1, y: 1 };
+function gridCoordEquals(a, b) {
+  return a.x === b.x && a.y === b.y;
 }
-function Kt(t, e) {
-  return t.x === e.x && t.y === e.y;
+function drawingCoordEquals(a, b) {
+  return a.x === b.x && a.y === b.y;
 }
-function Ft(t, e) {
-  return { x: t.x + e.x, y: t.y + e.y };
+function gridCoordDirection(c, dir) {
+  return { x: c.x + dir.x, y: c.y + dir.y };
 }
-function It(t) {
-  return `${t.x},${t.y}`;
+function gridKey(c) {
+  return `${c.x},${c.y}`;
 }
-var Ee = { name: "", styles: {} };
+var EMPTY_STYLE = { name: "", styles: {} };
 
 // node_modules/beautiful-mermaid/src/ascii/ansi.ts
-var Zt = {
+var DEFAULT_ASCII_THEME = {
   fg: "#27272a",
   // zinc-800 — primary text
   border: "#a1a1aa",
@@ -322,192 +322,192 @@ var Zt = {
   junction: "#a1a1aa"
   // same as border
 };
-function ke() {
-  let t = globalThis.process;
-  if (t) {
-    if (!t.stdout?.isTTY)
+function detectColorMode() {
+  let proc = globalThis.process;
+  if (proc) {
+    if (!proc.stdout?.isTTY)
       return "none";
-    let e = t.env?.COLORTERM?.toLowerCase() ?? "", n = t.env?.TERM?.toLowerCase() ?? "";
-    return e === "truecolor" || e === "24bit" ? "truecolor" : n.includes("256color") || n.includes("256") ? "ansi256" : n && n !== "dumb" ? "ansi16" : "none";
+    let colorTerm = proc.env?.COLORTERM?.toLowerCase() ?? "", term = proc.env?.TERM?.toLowerCase() ?? "";
+    return colorTerm === "truecolor" || colorTerm === "24bit" ? "truecolor" : term.includes("256color") || term.includes("256") ? "ansi256" : term && term !== "dumb" ? "ansi16" : "none";
   }
   return typeof document < "u" ? "html" : "none";
 }
-function le(t) {
-  let e = t.replace("#", "");
-  return e.length === 3 ? {
-    r: parseInt(e[0] + e[0], 16),
-    g: parseInt(e[1] + e[1], 16),
-    b: parseInt(e[2] + e[2], 16)
+function parseHex(hex) {
+  let h = hex.replace("#", "");
+  return h.length === 3 ? {
+    r: parseInt(h[0] + h[0], 16),
+    g: parseInt(h[1] + h[1], 16),
+    b: parseInt(h[2] + h[2], 16)
   } : {
-    r: parseInt(e.substring(0, 2), 16),
-    g: parseInt(e.substring(2, 4), 16),
-    b: parseInt(e.substring(4, 6), 16)
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16)
   };
 }
-var te = "\x1B[", Qt = `${te}0m`;
-function Ge(t) {
-  let { r: e, g: n, b: o } = le(t);
-  return `${te}38;2;${e};${n};${o}m`;
+var ESC = "\x1B[", RESET = `${ESC}0m`;
+function truecolorFg(hex) {
+  let { r, g, b } = parseHex(hex);
+  return `${ESC}38;2;${r};${g};${b}m`;
 }
-function or(t, e, n) {
-  let o = (t + e + n) / 3;
-  if (Math.max(Math.abs(t - o), Math.abs(e - o), Math.abs(n - o)) < 10) {
-    let l = Math.round(o / 255 * 23);
-    return 232 + Math.min(23, Math.max(0, l));
+function rgbTo256(r, g, b) {
+  let avg = (r + g + b) / 3;
+  if (Math.max(Math.abs(r - avg), Math.abs(g - avg), Math.abs(b - avg)) < 10) {
+    let gray = Math.round(avg / 255 * 23);
+    return 232 + Math.min(23, Math.max(0, gray));
   }
-  let r = (l) => l < 48 ? 0 : l < 115 ? 1 : Math.min(5, Math.floor((l - 35) / 40)), i = r(t), a = r(e), c = r(n);
-  return 16 + 36 * i + 6 * a + c;
+  let toIndex = (v) => v < 48 ? 0 : v < 115 ? 1 : Math.min(5, Math.floor((v - 35) / 40)), ri = toIndex(r), gi = toIndex(g), bi = toIndex(b);
+  return 16 + 36 * ri + 6 * gi + bi;
 }
-function Ie(t) {
-  let { r: e, g: n, b: o } = le(t), s = or(e, n, o);
-  return `${te}38;5;${s}m`;
+function ansi256Fg(hex) {
+  let { r, g, b } = parseHex(hex), index = rgbTo256(r, g, b);
+  return `${ESC}38;5;${index}m`;
 }
-function Ne(t) {
-  let { r: e, g: n, b: o } = le(t), s = 0.299 * e + 0.587 * n + 0.114 * o, r = s > 100 ? 0 : 60, i;
-  return e > 180 && n < 100 && o < 100 ? i = 31 : n > 180 && e < 100 && o < 100 ? i = 32 : e > 150 && n > 150 && o < 100 ? i = 33 : o > 180 && e < 100 && n < 100 ? i = 34 : e > 150 && o > 150 && n < 100 ? i = 35 : n > 150 && o > 150 && e < 100 ? i = 36 : s > 200 ? i = 37 : s < 50 ? i = 30 : i = 37, `${te}${i + r}m`;
+function ansi16Fg(hex) {
+  let { r, g, b } = parseHex(hex), luma = 0.299 * r + 0.587 * g + 0.114 * b, bright = luma > 100 ? 0 : 60, code;
+  return r > 180 && g < 100 && b < 100 ? code = 31 : g > 180 && r < 100 && b < 100 ? code = 32 : r > 150 && g > 150 && b < 100 ? code = 33 : b > 180 && r < 100 && g < 100 ? code = 34 : r > 150 && b > 150 && g < 100 ? code = 35 : g > 150 && b > 150 && r < 100 ? code = 36 : luma > 200 ? code = 37 : luma < 50 ? code = 30 : code = 37, `${ESC}${code + bright}m`;
 }
-function Ye(t) {
-  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function escapeHtml(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-function $e(t, e) {
-  return `<span style="color:${t}">${Ye(e)}</span>`;
+function htmlSpan(hex, text) {
+  return `<span style="color:${hex}">${escapeHtml(text)}</span>`;
 }
-function Be(t, e) {
-  switch (t) {
+function getRoleColor(role, theme) {
+  switch (role) {
     case "text":
-      return e.fg;
+      return theme.fg;
     case "border":
-      return e.border;
+      return theme.border;
     case "line":
-      return e.line;
+      return theme.line;
     case "arrow":
-      return e.arrow;
+      return theme.arrow;
     case "corner":
-      return e.corner ?? e.line;
+      return theme.corner ?? theme.line;
     case "junction":
-      return e.junction ?? e.border;
+      return theme.junction ?? theme.border;
     default:
-      return e.fg;
+      return theme.fg;
   }
 }
-function ce(t, e, n) {
-  if (n === "none") return "";
-  let o = Be(t, e);
-  switch (n) {
+function getAnsiColor(role, theme, mode) {
+  if (mode === "none") return "";
+  let hex = getRoleColor(role, theme);
+  switch (mode) {
     case "truecolor":
-      return Ge(o);
+      return truecolorFg(hex);
     case "ansi256":
-      return Ie(o);
+      return ansi256Fg(hex);
     case "ansi16":
-      return Ne(o);
+      return ansi16Fg(hex);
     default:
       return "";
   }
 }
-function Xe(t, e, n, o) {
-  if (o === "none")
-    return t.join("");
-  if (o === "html")
-    return ir(t, e, n);
-  let s = "", r = null, i = "";
-  for (let a = 0; a < t.length; a++) {
-    let c = t[a], l = e[a] ?? null;
-    if (c === " ") {
-      i.length > 0 && (r !== null ? s += ce(r, n, o) + i + Qt : s += i, i = "", r = null), s += c;
+function colorizeLine(chars, roles, theme, mode) {
+  if (mode === "none")
+    return chars.join("");
+  if (mode === "html")
+    return colorizeLineHtml(chars, roles, theme);
+  let result = "", currentRole = null, buffer = "";
+  for (let i = 0; i < chars.length; i++) {
+    let char = chars[i], role = roles[i] ?? null;
+    if (char === " ") {
+      buffer.length > 0 && (currentRole !== null ? result += getAnsiColor(currentRole, theme, mode) + buffer + RESET : result += buffer, buffer = "", currentRole = null), result += char;
       continue;
     }
-    if (l === r) {
-      i += c;
+    if (role === currentRole) {
+      buffer += char;
       continue;
     }
-    i.length > 0 && (r !== null ? s += ce(r, n, o) + i + Qt : s += i), i = c, r = l;
+    buffer.length > 0 && (currentRole !== null ? result += getAnsiColor(currentRole, theme, mode) + buffer + RESET : result += buffer), buffer = char, currentRole = role;
   }
-  return i.length > 0 && r !== null ? s += ce(r, n, o) + i + Qt : i.length > 0 && (s += i), s;
+  return buffer.length > 0 && currentRole !== null ? result += getAnsiColor(currentRole, theme, mode) + buffer + RESET : buffer.length > 0 && (result += buffer), result;
 }
-function ir(t, e, n) {
-  let o = "", s = null, r = "", i = () => {
-    r.length !== 0 && (s !== null ? o += $e(Be(s, n), r) : o += Ye(r), r = "", s = null);
+function colorizeLineHtml(chars, roles, theme) {
+  let result = "", currentRole = null, buffer = "", flush = () => {
+    buffer.length !== 0 && (currentRole !== null ? result += htmlSpan(getRoleColor(currentRole, theme), buffer) : result += escapeHtml(buffer), buffer = "", currentRole = null);
   };
-  for (let a = 0; a < t.length; a++) {
-    let c = t[a], l = e[a] ?? null;
-    if (c === " ") {
-      i(), o += " ";
+  for (let i = 0; i < chars.length; i++) {
+    let char = chars[i], role = roles[i] ?? null;
+    if (char === " ") {
+      flush(), result += " ";
       continue;
     }
-    if (l === s) {
-      r += c;
+    if (role === currentRole) {
+      buffer += char;
       continue;
     }
-    i(), r = c, s = l;
+    flush(), buffer = char, currentRole = role;
   }
-  return i(), o;
+  return flush(), result;
 }
-function ee(t, e, n) {
-  if (n === "none" || t.length === 0) return t;
-  if (n === "html") return $e(e, t);
-  let o;
-  switch (n) {
+function colorizeText(text, hex, mode) {
+  if (mode === "none" || text.length === 0) return text;
+  if (mode === "html") return htmlSpan(hex, text);
+  let code;
+  switch (mode) {
     case "truecolor":
-      o = Ge(e);
+      code = truecolorFg(hex);
       break;
     case "ansi256":
-      o = Ie(e);
+      code = ansi256Fg(hex);
       break;
     case "ansi16":
-      o = Ne(e);
+      code = ansi16Fg(hex);
       break;
     default:
-      return t;
+      return text;
   }
-  return `${o}${t}${Qt}`;
+  return `${code}${text}${RESET}`;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/canvas.ts
-function it(t, e) {
-  let n = [];
-  for (let o = 0; o <= t; o++) {
-    let s = [];
-    for (let r = 0; r <= e; r++)
-      s.push(" ");
-    n.push(s);
+function mkCanvas(x, y) {
+  let canvas = [];
+  for (let i = 0; i <= x; i++) {
+    let col = [];
+    for (let j = 0; j <= y; j++)
+      col.push(" ");
+    canvas.push(col);
   }
-  return n;
+  return canvas;
 }
-function ht(t) {
-  let [e, n] = Jt(t);
-  return it(e, n);
+function copyCanvas(source) {
+  let [maxX, maxY] = getCanvasSize(source);
+  return mkCanvas(maxX, maxY);
 }
-function $t(t, e) {
-  let n = [];
-  for (let o = 0; o <= t; o++) {
-    let s = [];
-    for (let r = 0; r <= e; r++)
-      s.push(null);
-    n.push(s);
+function mkRoleCanvas(x, y) {
+  let roleCanvas = [];
+  for (let i = 0; i <= x; i++) {
+    let col = [];
+    for (let j = 0; j <= y; j++)
+      col.push(null);
+    roleCanvas.push(col);
   }
-  return n;
+  return roleCanvas;
 }
-function Nt(t, e, n) {
-  let o = t.length - 1, s = (t[0]?.length ?? 1) - 1, r = Math.max(e, o), i = Math.max(n, s), a = $t(r, i);
-  for (let c = 0; c < a.length; c++)
-    for (let l = 0; l < a[0].length; l++)
-      c < t.length && l < t[0].length && (a[c][l] = t[c][l]);
-  return t.length = 0, t.push(...a), t;
+function increaseRoleCanvasSize(roleCanvas, newX, newY) {
+  let currX = roleCanvas.length - 1, currY = (roleCanvas[0]?.length ?? 1) - 1, targetX = Math.max(newX, currX), targetY = Math.max(newY, currY), grown = mkRoleCanvas(targetX, targetY);
+  for (let x = 0; x < grown.length; x++)
+    for (let y = 0; y < grown[0].length; y++)
+      x < roleCanvas.length && y < roleCanvas[0].length && (grown[x][y] = roleCanvas[x][y]);
+  return roleCanvas.length = 0, roleCanvas.push(...grown), roleCanvas;
 }
-function Bt(t, e, n, o) {
-  (e >= t.length || n >= (t[0]?.length ?? 0)) && Nt(t, e, n), t[e][n] = o;
+function setRole(roleCanvas, x, y, role) {
+  (x >= roleCanvas.length || y >= (roleCanvas[0]?.length ?? 0)) && increaseRoleCanvasSize(roleCanvas, x, y), roleCanvas[x][y] = role;
 }
-function Jt(t) {
-  return [t.length - 1, (t[0]?.length ?? 1) - 1];
+function getCanvasSize(canvas) {
+  return [canvas.length - 1, (canvas[0]?.length ?? 1) - 1];
 }
-function Tt(t, e, n) {
-  let [o, s] = Jt(t), r = Math.max(e, o), i = Math.max(n, s), a = it(r, i);
-  for (let c = 0; c < a.length; c++)
-    for (let l = 0; l < a[0].length; l++)
-      c < t.length && l < t[0].length && (a[c][l] = t[c][l]);
-  return t.length = 0, t.push(...a), t;
+function increaseSize(canvas, newX, newY) {
+  let [currX, currY] = getCanvasSize(canvas), targetX = Math.max(newX, currX), targetY = Math.max(newY, currY), grown = mkCanvas(targetX, targetY);
+  for (let x = 0; x < grown.length; x++)
+    for (let y = 0; y < grown[0].length; y++)
+      x < canvas.length && y < canvas[0].length && (grown[x][y] = canvas[x][y]);
+  return canvas.length = 0, canvas.push(...grown), canvas;
 }
-var sr = /* @__PURE__ */ new Set([
+var JUNCTION_CHARS = /* @__PURE__ */ new Set([
   "\u2500",
   "\u2502",
   "\u250C",
@@ -524,21 +524,21 @@ var sr = /* @__PURE__ */ new Set([
   "\u2576",
   "\u2577"
 ]);
-function He(t, e) {
-  for (let n = 0; n < (e[0]?.length ?? 0); n++) {
-    let o = e.map((s, r) => s[n] !== " " ? r : -1).filter((s) => s >= 0);
-    if (o.length !== 0)
-      for (let s = o[0]; s <= o[o.length - 1]; s++)
-        e[s][n] === " " && !fe(t[s][n]) && (t[s][n] = " ");
+function clearLabelGaps(canvas, label) {
+  for (let y = 0; y < (label[0]?.length ?? 0); y++) {
+    let xs = label.map((col, x) => col[y] !== " " ? x : -1).filter((x) => x >= 0);
+    if (xs.length !== 0)
+      for (let x = xs[0]; x <= xs[xs.length - 1]; x++)
+        label[x][y] === " " && !isAlphanumeric(canvas[x][y]) && (canvas[x][y] = " ");
   }
 }
-function Pe(t) {
-  return sr.has(t);
+function isJunctionChar(c) {
+  return JUNCTION_CHARS.has(c);
 }
-function fe(t) {
-  return /^[a-zA-Z0-9]$/.test(t);
+function isAlphanumeric(c) {
+  return /^[a-zA-Z0-9]$/.test(c);
 }
-var ar = {
+var JUNCTION_MAP = {
   "\u2500": { "\u2502": "\u253C", "\u250C": "\u252C", "\u2510": "\u252C", "\u2514": "\u2534", "\u2518": "\u2534", "\u251C": "\u253C", "\u2524": "\u253C", "\u252C": "\u252C", "\u2534": "\u2534" },
   "\u2502": { "\u2500": "\u253C", "\u250C": "\u251C", "\u2510": "\u2524", "\u2514": "\u251C", "\u2518": "\u2524", "\u251C": "\u251C", "\u2524": "\u2524", "\u252C": "\u253C", "\u2534": "\u253C" },
   "\u250C": { "\u2500": "\u252C", "\u2502": "\u251C", "\u2510": "\u252C", "\u2514": "\u251C", "\u2518": "\u253C", "\u251C": "\u251C", "\u2524": "\u253C", "\u252C": "\u252C", "\u2534": "\u253C" },
@@ -550,48 +550,48 @@ var ar = {
   "\u252C": { "\u2500": "\u252C", "\u2502": "\u253C", "\u250C": "\u252C", "\u2510": "\u252C", "\u2514": "\u253C", "\u2518": "\u253C", "\u251C": "\u253C", "\u2524": "\u253C", "\u2534": "\u253C" },
   "\u2534": { "\u2500": "\u2534", "\u2502": "\u253C", "\u250C": "\u253C", "\u2510": "\u253C", "\u2514": "\u2534", "\u2518": "\u2534", "\u251C": "\u253C", "\u2524": "\u253C", "\u252C": "\u253C" }
 };
-function cr(t, e) {
-  return ar[t]?.[e] ?? t;
+function mergeJunctions(c1, c2) {
+  return JUNCTION_MAP[c1]?.[c2] ?? c1;
 }
-function Lt(t, e, n, ...o) {
-  let [s, r] = Jt(t);
-  for (let a of o) {
-    let [c, l] = Jt(a);
-    s = Math.max(s, c + e.x), r = Math.max(r, l + e.y);
+function mergeCanvases(base, offset, useAscii, ...overlays) {
+  let [maxX, maxY] = getCanvasSize(base);
+  for (let overlay of overlays) {
+    let [oX, oY] = getCanvasSize(overlay);
+    maxX = Math.max(maxX, oX + offset.x), maxY = Math.max(maxY, oY + offset.y);
   }
-  let i = it(s, r);
-  for (let a = 0; a <= s; a++)
-    for (let c = 0; c <= r; c++)
-      a < t.length && c < t[0].length && (i[a][c] = t[a][c]);
-  for (let a of o)
-    for (let c = 0; c < a.length; c++)
-      for (let l = 0; l < a[0].length; l++) {
-        let d = a[c][l];
-        if (d !== " ") {
-          let h = c + e.x, f = l + e.y, u = i[h][f];
-          !n && Pe(d) && Pe(u) ? i[h][f] = cr(u, d) : fe(u) && fe(d) || (i[h][f] = d);
+  let merged = mkCanvas(maxX, maxY);
+  for (let x = 0; x <= maxX; x++)
+    for (let y = 0; y <= maxY; y++)
+      x < base.length && y < base[0].length && (merged[x][y] = base[x][y]);
+  for (let overlay of overlays)
+    for (let x = 0; x < overlay.length; x++)
+      for (let y = 0; y < overlay[0].length; y++) {
+        let c = overlay[x][y];
+        if (c !== " ") {
+          let mx = x + offset.x, my = y + offset.y, current = merged[mx][my];
+          !useAscii && isJunctionChar(c) && isJunctionChar(current) ? merged[mx][my] = mergeJunctions(current, c) : isAlphanumeric(current) && isAlphanumeric(c) || (merged[mx][my] = c);
         }
       }
-  return i;
+  return merged;
 }
-function Pt(t, e) {
-  let [n, o] = Jt(t), s = [], r = e?.roleCanvas, i = e?.colorMode ?? "none", a = e?.theme ?? Zt;
-  for (let c = 0; c <= o; c++)
-    if (i === "none" || !r) {
-      let l = "";
-      for (let d = 0; d <= n; d++)
-        l += t[d][c];
-      s.push(l);
+function canvasToString(canvas, options) {
+  let [maxX, maxY] = getCanvasSize(canvas), lines = [], roleCanvas = options?.roleCanvas, colorMode = options?.colorMode ?? "none", theme = options?.theme ?? DEFAULT_ASCII_THEME;
+  for (let y = 0; y <= maxY; y++)
+    if (colorMode === "none" || !roleCanvas) {
+      let line = "";
+      for (let x = 0; x <= maxX; x++)
+        line += canvas[x][y];
+      lines.push(line);
     } else {
-      let l = [], d = [];
-      for (let h = 0; h <= n; h++)
-        l.push(t[h][c]), d.push(r[h]?.[c] ?? null);
-      s.push(Xe(l, d, a, i));
+      let chars = [], roles = [];
+      for (let x = 0; x <= maxX; x++)
+        chars.push(canvas[x][y]), roles.push(roleCanvas[x]?.[y] ?? null);
+      lines.push(colorizeLine(chars, roles, theme, colorMode));
     }
-  return s.join(`
+  return lines.join(`
 `);
 }
-var lr = {
+var VERTICAL_FLIP_MAP = {
   // Unicode arrows
   "\u25B2": "\u25BC",
   "\u25BC": "\u25B2",
@@ -614,448 +614,448 @@ var lr = {
   "\u2575": "\u2577",
   "\u2577": "\u2575"
 };
-function We(t) {
-  for (let e of t)
-    e.reverse();
-  for (let e of t)
-    for (let n = 0; n < e.length; n++) {
-      let o = lr[e[n]];
-      o && (e[n] = o);
+function flipCanvasVertically(canvas) {
+  for (let col of canvas)
+    col.reverse();
+  for (let col of canvas)
+    for (let y = 0; y < col.length; y++) {
+      let flipped = VERTICAL_FLIP_MAP[col[y]];
+      flipped && (col[y] = flipped);
     }
-  return t;
+  return canvas;
 }
-function _e(t) {
-  for (let e of t)
-    e.reverse();
-  return t;
+function flipRoleCanvasVertically(roleCanvas) {
+  for (let col of roleCanvas)
+    col.reverse();
+  return roleCanvas;
 }
-function de(t, e, n, o = !1) {
-  Tt(t, e.x + n.length, e.y);
-  for (let s = 0; s < n.length; s++) {
-    let r = e.x + s, i = t[r][e.y];
-    (o || i === " ") && (t[r][e.y] = n[s]);
+function drawText(canvas, start, text, forceOverwrite = !1) {
+  increaseSize(canvas, start.x + text.length, start.y);
+  for (let i = 0; i < text.length; i++) {
+    let x = start.x + i, current = canvas[x][start.y];
+    (forceOverwrite || current === " ") && (canvas[x][start.y] = text[i]);
   }
 }
-function je(t, e, n) {
-  let o = 0, s = 0;
-  for (let r of e.values()) o += r;
-  for (let r of n.values()) s += r;
-  Tt(t, o - 1, s - 1);
+function setCanvasSizeToGrid(canvas, columnWidth, rowHeight) {
+  let maxX = 0, maxY = 0;
+  for (let w of columnWidth.values()) maxX += w;
+  for (let h of rowHeight.values()) maxY += h;
+  increaseSize(canvas, maxX - 1, maxY - 1);
 }
-function ze(t, e, n) {
-  let o = 0, s = 0;
-  for (let r of e.values()) o += r;
-  for (let r of n.values()) s += r;
-  Nt(t, o - 1, s - 1);
+function setRoleCanvasSizeToGrid(roleCanvas, columnWidth, rowHeight) {
+  let maxX = 0, maxY = 0;
+  for (let w of columnWidth.values()) maxX += w;
+  for (let h of rowHeight.values()) maxY += h;
+  increaseRoleCanvasSize(roleCanvas, maxX - 1, maxY - 1);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/converter.ts
-function Oe(t, e) {
-  let n = /* @__PURE__ */ new Map(), o = 0;
-  for (let [a, c] of t.nodes) {
-    let l = {
+function convertToAsciiGraph(parsed, config) {
+  let nodeMap = /* @__PURE__ */ new Map(), index = 0;
+  for (let [id, mNode] of parsed.nodes) {
+    let asciiNode = {
       // Use the parser ID as the unique identity key to avoid collisions
       // when multiple nodes share the same label (e.g. A[Web Server], C[Web Server]).
-      name: a,
+      name: id,
       // The label is used for rendering inside the box.
-      displayLabel: c.label,
+      displayLabel: mNode.label,
       // Preserve shape from parser for shape-aware rendering
-      shape: c.shape,
-      index: o,
+      shape: mNode.shape,
+      index,
       gridCoord: null,
       drawingCoord: null,
       drawing: null,
       drawn: !1,
       styleClassName: "",
-      styleClass: Ee
+      styleClass: EMPTY_STYLE
     };
-    n.set(a, l), o++;
+    nodeMap.set(id, asciiNode), index++;
   }
-  let s = [...n.values()], r = [];
-  for (let a of t.edges) {
-    let c = n.get(a.source), l = n.get(a.target);
-    !c || !l || r.push({
-      from: c,
-      to: l,
-      text: a.label ?? "",
+  let nodes = [...nodeMap.values()], edges = [];
+  for (let mEdge of parsed.edges) {
+    let from = nodeMap.get(mEdge.source), to = nodeMap.get(mEdge.target);
+    !from || !to || edges.push({
+      from,
+      to,
+      text: mEdge.label ?? "",
       path: [],
       labelLine: [],
       startDir: { x: 0, y: 0 },
       endDir: { x: 0, y: 0 },
-      style: a.style,
-      hasArrowStart: a.hasArrowStart,
-      hasArrowEnd: a.hasArrowEnd
+      style: mEdge.style,
+      hasArrowStart: mEdge.hasArrowStart,
+      hasArrowEnd: mEdge.hasArrowEnd
     });
   }
-  let i = [];
-  for (let a of t.subgraphs)
-    Fe(a, null, n, i);
-  fr(t.subgraphs, i, n, t);
-  for (let [a, c] of t.classAssignments) {
-    let l = n.get(a), d = t.classDefs.get(c);
-    l && d && (l.styleClassName = c, l.styleClass = { name: c, styles: d });
+  let subgraphs = [];
+  for (let mSg of parsed.subgraphs)
+    convertSubgraph(mSg, null, nodeMap, subgraphs);
+  deduplicateSubgraphNodes(parsed.subgraphs, subgraphs, nodeMap, parsed);
+  for (let [nodeId, className] of parsed.classAssignments) {
+    let node = nodeMap.get(nodeId), classDef = parsed.classDefs.get(className);
+    node && classDef && (node.styleClassName = className, node.styleClass = { name: className, styles: classDef });
   }
   return {
-    nodes: s,
-    edges: r,
-    canvas: it(0, 0),
-    roleCanvas: $t(0, 0),
+    nodes,
+    edges,
+    canvas: mkCanvas(0, 0),
+    roleCanvas: mkRoleCanvas(0, 0),
     grid: /* @__PURE__ */ new Map(),
     columnWidth: /* @__PURE__ */ new Map(),
     rowHeight: /* @__PURE__ */ new Map(),
-    subgraphs: i,
-    config: e,
+    subgraphs,
+    config,
     offsetX: 0,
     offsetY: 0,
     bundles: []
     // Populated by analyzeEdgeBundles() during layout
   };
 }
-function Fe(t, e, n, o) {
-  let s;
-  t.direction && (s = t.direction === "LR" || t.direction === "RL" ? "LR" : "TD");
-  let r = {
-    name: t.label,
+function convertSubgraph(mSg, parent, nodeMap, allSubgraphs) {
+  let normalizedDirection;
+  mSg.direction && (normalizedDirection = mSg.direction === "LR" || mSg.direction === "RL" ? "LR" : "TD");
+  let sg = {
+    name: mSg.label,
     nodes: [],
-    parent: e,
+    parent,
     children: [],
     minX: 0,
     minY: 0,
     maxX: 0,
     maxY: 0,
-    direction: s
+    direction: normalizedDirection
   };
-  for (let i of t.nodeIds) {
-    let a = n.get(i);
-    a && r.nodes.push(a);
+  for (let nodeId of mSg.nodeIds) {
+    let node = nodeMap.get(nodeId);
+    node && sg.nodes.push(node);
   }
-  o.push(r);
-  for (let i of t.children) {
-    let a = Fe(i, r, n, o);
-    r.children.push(a);
-    for (let c of a.nodes)
-      r.nodes.includes(c) || r.nodes.push(c);
+  allSubgraphs.push(sg);
+  for (let childMSg of mSg.children) {
+    let child = convertSubgraph(childMSg, sg, nodeMap, allSubgraphs);
+    sg.children.push(child);
+    for (let childNode of child.nodes)
+      sg.nodes.includes(childNode) || sg.nodes.push(childNode);
   }
-  return r;
+  return sg;
 }
-function fr(t, e, n, o) {
-  let s = /* @__PURE__ */ new Map();
-  ur(t, e, s);
-  let r = /* @__PURE__ */ new Map();
-  function i(a) {
-    let c = s.get(a);
-    if (c) {
-      for (let l of a.children)
-        i(l);
-      for (let l of a.nodeIds)
-        r.has(l) || r.set(l, c);
+function deduplicateSubgraphNodes(mermaidSubgraphs, asciiSubgraphs, nodeMap, parsed) {
+  let sgMap = /* @__PURE__ */ new Map();
+  buildSgMap(mermaidSubgraphs, asciiSubgraphs, sgMap);
+  let nodeOwner = /* @__PURE__ */ new Map();
+  function claimNodes(mSg) {
+    let asciiSg = sgMap.get(mSg);
+    if (asciiSg) {
+      for (let child of mSg.children)
+        claimNodes(child);
+      for (let nodeId of mSg.nodeIds)
+        nodeOwner.has(nodeId) || nodeOwner.set(nodeId, asciiSg);
     }
   }
-  for (let a of t)
-    i(a);
-  for (let a of e)
-    a.nodes = a.nodes.filter((c) => {
-      let l;
-      for (let [h, f] of n)
-        if (f === c) {
-          l = h;
+  for (let mSg of mermaidSubgraphs)
+    claimNodes(mSg);
+  for (let asciiSg of asciiSubgraphs)
+    asciiSg.nodes = asciiSg.nodes.filter((node) => {
+      let nodeId;
+      for (let [id, n] of nodeMap)
+        if (n === node) {
+          nodeId = id;
           break;
         }
-      if (!l) return !1;
-      let d = r.get(l);
-      return d ? dr(a, d) : !0;
+      if (!nodeId) return !1;
+      let owner = nodeOwner.get(nodeId);
+      return owner ? isAncestorOrSelf(asciiSg, owner) : !0;
     });
 }
-function dr(t, e) {
-  let n = e;
-  for (; n !== null; ) {
-    if (n === t) return !0;
-    n = n.parent;
+function isAncestorOrSelf(candidate, target) {
+  let current = target;
+  for (; current !== null; ) {
+    if (current === candidate) return !0;
+    current = current.parent;
   }
   return !1;
 }
-function ur(t, e, n) {
-  let o = [];
-  function s(r) {
-    for (let i of r)
-      o.push(i), s(i.children);
+function buildSgMap(mSgs, aSgs, result) {
+  let flatMermaid = [];
+  function flatten(sgs) {
+    for (let sg of sgs)
+      flatMermaid.push(sg), flatten(sg.children);
   }
-  s(t);
-  for (let r = 0; r < o.length && r < e.length; r++)
-    n.set(o[r], e[r]);
+  flatten(mSgs);
+  for (let i = 0; i < flatMermaid.length && i < aSgs.length; i++)
+    result.set(flatMermaid[i], aSgs[i]);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/pathfinder.ts
-var ue = class {
+var MinHeap = class {
   items = [];
   size() {
     return this.items.length;
   }
-  push(e) {
-    this.items.push(e), this.bubbleUp(this.items.length - 1);
+  push(item) {
+    this.items.push(item), this.bubbleUp(this.items.length - 1);
   }
   pop() {
     if (this.items.length === 0) return;
-    let e = this.items[0], n = this.items.pop();
-    return this.items.length > 0 && (this.items[0] = n, this.sinkDown(0)), e;
+    let top = this.items[0], last = this.items.pop();
+    return this.items.length > 0 && (this.items[0] = last, this.sinkDown(0)), top;
   }
-  bubbleUp(e) {
-    for (; e > 0; ) {
-      let n = e - 1 >> 1;
-      if (this.items[e].priority < this.items[n].priority)
-        [this.items[e], this.items[n]] = [this.items[n], this.items[e]], e = n;
+  bubbleUp(i) {
+    for (; i > 0; ) {
+      let parent = i - 1 >> 1;
+      if (this.items[i].priority < this.items[parent].priority)
+        [this.items[i], this.items[parent]] = [this.items[parent], this.items[i]], i = parent;
       else
         break;
     }
   }
-  sinkDown(e) {
+  sinkDown(i) {
     let n = this.items.length;
     for (; ; ) {
-      let o = e, s = 2 * e + 1, r = 2 * e + 2;
-      if (s < n && this.items[s].priority < this.items[o].priority && (o = s), r < n && this.items[r].priority < this.items[o].priority && (o = r), o !== e)
-        [this.items[e], this.items[o]] = [this.items[o], this.items[e]], e = o;
+      let smallest = i, left = 2 * i + 1, right = 2 * i + 2;
+      if (left < n && this.items[left].priority < this.items[smallest].priority && (smallest = left), right < n && this.items[right].priority < this.items[smallest].priority && (smallest = right), smallest !== i)
+        [this.items[i], this.items[smallest]] = [this.items[smallest], this.items[i]], i = smallest;
       else
         break;
     }
   }
 };
-function hr(t, e) {
-  let n = Math.abs(t.x - e.x), o = Math.abs(t.y - e.y);
-  return n === 0 || o === 0 ? n + o : n + o + 1;
+function heuristic(a, b) {
+  let absX = Math.abs(a.x - b.x), absY = Math.abs(a.y - b.y);
+  return absX === 0 || absY === 0 ? absX + absY : absX + absY + 1;
 }
-var gr = [
+var MOVE_DIRS = [
   { x: 1, y: 0 },
   { x: -1, y: 0 },
   { x: 0, y: 1 },
   { x: 0, y: -1 }
 ];
-function mr(t, e) {
-  return e.x < 0 || e.y < 0 ? !1 : !t.has(It(e));
+function isFreeInGrid(grid, c) {
+  return c.x < 0 || c.y < 0 ? !1 : !grid.has(gridKey(c));
 }
-function Ht(t, e, n) {
-  let o = new ue();
-  o.push({ coord: e, priority: 0 });
-  let s = /* @__PURE__ */ new Map();
-  s.set(It(e), 0);
-  let r = /* @__PURE__ */ new Map();
-  r.set(It(e), null);
-  let i = 0;
-  for (; o.size() > 0; ) {
-    if (++i > 5e4) throw new Error("mermaid edge routing gave up");
-    let a = o.pop().coord;
-    if (ae(a, n)) {
-      let l = [], d = a;
-      for (; d !== null; )
-        l.unshift(d), d = r.get(It(d)) ?? null;
-      return l;
+function getPath(grid, from, to) {
+  let pq = new MinHeap();
+  pq.push({ coord: from, priority: 0 });
+  let costSoFar = /* @__PURE__ */ new Map();
+  costSoFar.set(gridKey(from), 0);
+  let cameFrom = /* @__PURE__ */ new Map();
+  cameFrom.set(gridKey(from), null);
+  let steps = 0;
+  for (; pq.size() > 0; ) {
+    if (++steps > 5e4) throw new Error("mermaid edge routing gave up");
+    let current = pq.pop().coord;
+    if (gridCoordEquals(current, to)) {
+      let path = [], c = current;
+      for (; c !== null; )
+        path.unshift(c), c = cameFrom.get(gridKey(c)) ?? null;
+      return path;
     }
-    let c = s.get(It(a));
-    for (let l of gr) {
-      let d = { x: a.x + l.x, y: a.y + l.y };
-      if (!mr(t, d) && !ae(d, n))
+    let currentCost = costSoFar.get(gridKey(current));
+    for (let dir of MOVE_DIRS) {
+      let next = { x: current.x + dir.x, y: current.y + dir.y };
+      if (!isFreeInGrid(grid, next) && !gridCoordEquals(next, to))
         continue;
-      let h = c + 1, f = It(d), u = s.get(f);
-      if (u === void 0 || h < u) {
-        s.set(f, h);
-        let m = h + hr(d, n);
-        o.push({ coord: d, priority: m }), r.set(f, a);
+      let newCost = currentCost + 1, nextKey = gridKey(next), existingCost = costSoFar.get(nextKey);
+      if (existingCost === void 0 || newCost < existingCost) {
+        costSoFar.set(nextKey, newCost);
+        let priority = newCost + heuristic(next, to);
+        pq.push({ coord: next, priority }), cameFrom.set(nextKey, current);
       }
     }
   }
   return null;
 }
-function Yt(t) {
-  if (t.length <= 2) return t;
-  let e = /* @__PURE__ */ new Set(), n = t[0], o = t[1];
-  for (let s = 2; s < t.length; s++) {
-    let r = t[s], i = o.x - n.x, a = o.y - n.y, c = r.x - o.x, l = r.y - o.y;
-    i === c && a === l && e.add(s - 1), n = o, o = r;
+function mergePath(path) {
+  if (path.length <= 2) return path;
+  let toRemove = /* @__PURE__ */ new Set(), step0 = path[0], step1 = path[1];
+  for (let idx = 2; idx < path.length; idx++) {
+    let step2 = path[idx], prevDx = step1.x - step0.x, prevDy = step1.y - step0.y, dx = step2.x - step1.x, dy = step2.y - step1.y;
+    prevDx === dx && prevDy === dy && toRemove.add(idx - 1), step0 = step1, step1 = step2;
   }
-  return t.filter((s, r) => !e.has(r));
+  return path.filter((_, i) => !toRemove.has(i));
 }
 
 // node_modules/beautiful-mermaid/src/ascii/edge-routing.ts
-function ne(t) {
-  return t === _ ? Y : t === Y ? _ : t === j ? P : t === P ? j : t === wt ? vt : t === Mt ? Rt : t === Rt ? Mt : t === vt ? wt : Gt;
+function getOpposite(d) {
+  return d === Up ? Down : d === Down ? Up : d === Left ? Right : d === Right ? Left : d === UpperRight ? LowerLeft : d === UpperLeft ? LowerRight : d === LowerRight ? UpperLeft : d === LowerLeft ? UpperRight : Middle;
 }
-function x(t, e) {
-  return t.x === e.x && t.y === e.y;
+function dirEquals(a, b) {
+  return a.x === b.x && a.y === b.y;
 }
-function pt(t, e) {
-  return t.x === e.x ? t.y < e.y ? Y : _ : t.y === e.y ? t.x < e.x ? P : j : t.x < e.x ? t.y < e.y ? Rt : wt : t.y < e.y ? vt : Mt;
+function determineDirection(from, to) {
+  return from.x === to.x ? from.y < to.y ? Down : Up : from.y === to.y ? from.x < to.x ? Right : Left : from.x < to.x ? from.y < to.y ? LowerRight : UpperRight : from.y < to.y ? LowerLeft : UpperLeft;
 }
-function pr(t) {
-  return t === "LR" ? [P, Y, Y, P] : [Y, P, P, Y];
+function selfReferenceDirection(graphDirection) {
+  return graphDirection === "LR" ? [Right, Down, Down, Right] : [Down, Right, Right, Down];
 }
-function xr(t, e) {
-  if (t.from === t.to) return pr(e);
-  let n = pt(t.from.gridCoord, t.to.gridCoord), o, s, r, i, a = e === "LR" ? x(n, j) || x(n, Mt) || x(n, vt) : x(n, _) || x(n, Mt) || x(n, wt);
-  return x(n, Rt) ? e === "LR" ? (o = Y, s = j, r = P, i = _) : (o = P, s = _, r = Y, i = j) : x(n, wt) ? e === "LR" ? (o = _, s = j, r = P, i = Y) : (o = P, s = Y, r = _, i = j) : x(n, vt) ? e === "LR" ? (o = Y, s = Y, r = j, i = _) : (o = j, s = _, r = Y, i = P) : x(n, Mt) ? e === "LR" ? (o = Y, s = Y, r = j, i = Y) : (o = P, s = P, r = _, i = P) : a ? e === "LR" && x(n, j) ? (o = Y, s = Y, r = j, i = P) : e === "TD" && x(n, _) ? (o = P, s = P, r = _, i = Y) : (o = n, s = ne(n), r = n, i = ne(n)) : (o = n, s = ne(n), r = n, i = ne(n)), [o, s, r, i];
+function determineStartAndEndDir(edge, graphDirection) {
+  if (edge.from === edge.to) return selfReferenceDirection(graphDirection);
+  let d = determineDirection(edge.from.gridCoord, edge.to.gridCoord), preferredDir, preferredOppositeDir, alternativeDir, alternativeOppositeDir, isBackwards = graphDirection === "LR" ? dirEquals(d, Left) || dirEquals(d, UpperLeft) || dirEquals(d, LowerLeft) : dirEquals(d, Up) || dirEquals(d, UpperLeft) || dirEquals(d, UpperRight);
+  return dirEquals(d, LowerRight) ? graphDirection === "LR" ? (preferredDir = Down, preferredOppositeDir = Left, alternativeDir = Right, alternativeOppositeDir = Up) : (preferredDir = Right, preferredOppositeDir = Up, alternativeDir = Down, alternativeOppositeDir = Left) : dirEquals(d, UpperRight) ? graphDirection === "LR" ? (preferredDir = Up, preferredOppositeDir = Left, alternativeDir = Right, alternativeOppositeDir = Down) : (preferredDir = Right, preferredOppositeDir = Down, alternativeDir = Up, alternativeOppositeDir = Left) : dirEquals(d, LowerLeft) ? graphDirection === "LR" ? (preferredDir = Down, preferredOppositeDir = Down, alternativeDir = Left, alternativeOppositeDir = Up) : (preferredDir = Left, preferredOppositeDir = Up, alternativeDir = Down, alternativeOppositeDir = Right) : dirEquals(d, UpperLeft) ? graphDirection === "LR" ? (preferredDir = Down, preferredOppositeDir = Down, alternativeDir = Left, alternativeOppositeDir = Down) : (preferredDir = Right, preferredOppositeDir = Right, alternativeDir = Up, alternativeOppositeDir = Right) : isBackwards ? graphDirection === "LR" && dirEquals(d, Left) ? (preferredDir = Down, preferredOppositeDir = Down, alternativeDir = Left, alternativeOppositeDir = Right) : graphDirection === "TD" && dirEquals(d, Up) ? (preferredDir = Right, preferredOppositeDir = Right, alternativeDir = Up, alternativeOppositeDir = Down) : (preferredDir = d, preferredOppositeDir = getOpposite(d), alternativeDir = d, alternativeOppositeDir = getOpposite(d)) : (preferredDir = d, preferredOppositeDir = getOpposite(d), alternativeDir = d, alternativeOppositeDir = getOpposite(d)), [preferredDir, preferredOppositeDir, alternativeDir, alternativeOppositeDir];
 }
-function Je(t, e) {
-  let n = yt(t, e.from), o = yt(t, e.to), s = n && n === o && n.direction ? n.direction : t.config.graphDirection, [r, i, a, c] = xr(e, s), l = Ft(e.from.gridCoord, r), d = Ft(e.to.gridCoord, i), h = Ht(t.grid, l, d), f = Ft(e.from.gridCoord, a), u = Ft(e.to.gridCoord, c), m = Ht(t.grid, f, u);
-  if (h !== null && m !== null) {
-    h = Yt(h), m = Yt(m), h.length <= m.length ? (e.startDir = r, e.endDir = i, e.path = h) : (e.startDir = a, e.endDir = c, e.path = m);
+function determinePath(graph, edge) {
+  let sourceSg = getNodeSubgraph(graph, edge.from), targetSg = getNodeSubgraph(graph, edge.to), effectiveDir = sourceSg && sourceSg === targetSg && sourceSg.direction ? sourceSg.direction : graph.config.graphDirection, [preferredDir, preferredOppositeDir, alternativeDir, alternativeOppositeDir] = determineStartAndEndDir(edge, effectiveDir), prefFrom = gridCoordDirection(edge.from.gridCoord, preferredDir), prefTo = gridCoordDirection(edge.to.gridCoord, preferredOppositeDir), preferredPath = getPath(graph.grid, prefFrom, prefTo), altFrom = gridCoordDirection(edge.from.gridCoord, alternativeDir), altTo = gridCoordDirection(edge.to.gridCoord, alternativeOppositeDir), alternativePath = getPath(graph.grid, altFrom, altTo);
+  if (preferredPath !== null && alternativePath !== null) {
+    preferredPath = mergePath(preferredPath), alternativePath = mergePath(alternativePath), preferredPath.length <= alternativePath.length ? (edge.startDir = preferredDir, edge.endDir = preferredOppositeDir, edge.path = preferredPath) : (edge.startDir = alternativeDir, edge.endDir = alternativeOppositeDir, edge.path = alternativePath);
     return;
   }
-  if (h !== null) {
-    e.startDir = r, e.endDir = i, e.path = Yt(h);
+  if (preferredPath !== null) {
+    edge.startDir = preferredDir, edge.endDir = preferredOppositeDir, edge.path = mergePath(preferredPath);
     return;
   }
-  if (m !== null) {
-    e.startDir = a, e.endDir = c, e.path = Yt(m);
+  if (alternativePath !== null) {
+    edge.startDir = alternativeDir, edge.endDir = alternativeOppositeDir, edge.path = mergePath(alternativePath);
     return;
   }
-  e.startDir = r, e.endDir = i, e.path = [l, d];
+  edge.startDir = preferredDir, edge.endDir = preferredOppositeDir, edge.path = [prefFrom, prefTo];
 }
-function he(t, e) {
-  if (e.text.length === 0) return;
-  let n = e.text.length, o = e.path.length, s = t.config.graphDirection === "TD", r = [];
-  for (let f = 1; f < o; f++) {
-    let u = e.path[f - 1], m = e.path[f], p = [u, m], b = br(t, p), A = u.x === m.x;
-    r.push({ line: p, width: b, index: f, isVertical: A });
+function determineLabelLine(graph, edge) {
+  if (edge.text.length === 0) return;
+  let lenLabel = edge.text.length, pathLen = edge.path.length, isVerticalFlow = graph.config.graphDirection === "TD", segments = [];
+  for (let i = 1; i < pathLen; i++) {
+    let p1 = edge.path[i - 1], p2 = edge.path[i], line = [p1, p2], width = calculateLineWidth(graph, line), isVertical = p1.x === p2.x;
+    segments.push({ line, width, index: i, isVertical });
   }
-  let i = r.filter((f) => f.width >= n && f.index > 1), a;
-  if (i.length > 0)
-    i.sort((f, u) => u.index - f.index), a = i[0].line;
+  let suitableSegments = segments.filter((s) => s.width >= lenLabel && s.index > 1), largestLine;
+  if (suitableSegments.length > 0)
+    suitableSegments.sort((a, b) => b.index - a.index), largestLine = suitableSegments[0].line;
   else {
-    let f = r.filter((u) => u.width >= n);
-    f.length > 0 ? (f.sort((u, m) => m.index - u.index), a = f[0].line) : (r.sort((u, m) => m.width - u.width), a = r[0]?.line ?? [e.path[0], e.path[1]]);
+    let fallbackSegments = segments.filter((s) => s.width >= lenLabel);
+    fallbackSegments.length > 0 ? (fallbackSegments.sort((a, b) => b.index - a.index), largestLine = fallbackSegments[0].line) : (segments.sort((a, b) => b.width - a.width), largestLine = segments[0]?.line ?? [edge.path[0], edge.path[1]]);
   }
-  let c = Math.min(a[0].x, a[1].x), l = Math.max(a[0].x, a[1].x), d = c + Math.floor((l - c) / 2), h = t.columnWidth.get(d) ?? 0;
-  t.columnWidth.set(d, Math.max(h, n + 2)), e.labelLine = [a[0], a[1]];
+  let minX = Math.min(largestLine[0].x, largestLine[1].x), maxX = Math.max(largestLine[0].x, largestLine[1].x), middleX = minX + Math.floor((maxX - minX) / 2), current = graph.columnWidth.get(middleX) ?? 0;
+  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2)), edge.labelLine = [largestLine[0], largestLine[1]];
 }
-function br(t, e) {
-  let n = 0, o = Math.min(e[0].x, e[1].x), s = Math.max(e[0].x, e[1].x);
-  for (let r = o; r <= s; r++)
-    n += t.columnWidth.get(r) ?? 0;
-  return n;
+function calculateLineWidth(graph, line) {
+  let total = 0, startX = Math.min(line[0].x, line[1].x), endX = Math.max(line[0].x, line[1].x);
+  for (let x = startX; x <= endX; x++)
+    total += graph.columnWidth.get(x) ?? 0;
+  return total;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/edge-bundling.ts
-function qe(t) {
-  if (t.config.graphDirection !== "TD")
+function analyzeEdgeBundles(graph) {
+  if (graph.config.graphDirection !== "TD")
     return [];
-  let e = [], n = /* @__PURE__ */ new Set(), o = /* @__PURE__ */ new Map();
-  for (let r of t.edges) {
-    if (r.from === r.to) continue;
-    let i = o.get(r.to) ?? [];
-    i.push(r), o.set(r.to, i);
+  let bundles = [], bundledEdges = /* @__PURE__ */ new Set(), edgesByTarget = /* @__PURE__ */ new Map();
+  for (let edge of graph.edges) {
+    if (edge.from === edge.to) continue;
+    let existing = edgesByTarget.get(edge.to) ?? [];
+    existing.push(edge), edgesByTarget.set(edge.to, existing);
   }
-  for (let [r, i] of o) {
-    if (i.length < 2 || !Ue(i, t) || i.some((c) => n.has(c))) continue;
-    let a = {
+  for (let [target, edges] of edgesByTarget) {
+    if (edges.length < 2 || !canBundle(edges, graph) || edges.some((e) => bundledEdges.has(e))) continue;
+    let bundle = {
       type: "fan-in",
-      edges: [...i],
-      sharedNode: r,
-      otherNodes: i.map((c) => c.from),
+      edges: [...edges],
+      sharedNode: target,
+      otherNodes: edges.map((e) => e.from),
       junctionPoint: null,
       sharedPath: [],
-      junctionDir: Gt,
-      sharedNodeDir: Gt
+      junctionDir: Middle,
+      sharedNodeDir: Middle
     };
-    for (let c of i)
-      c.bundle = a, n.add(c);
-    e.push(a);
+    for (let edge of edges)
+      edge.bundle = bundle, bundledEdges.add(edge);
+    bundles.push(bundle);
   }
-  let s = /* @__PURE__ */ new Map();
-  for (let r of t.edges) {
-    if (r.from === r.to || n.has(r)) continue;
-    let i = s.get(r.from) ?? [];
-    i.push(r), s.set(r.from, i);
+  let edgesBySource = /* @__PURE__ */ new Map();
+  for (let edge of graph.edges) {
+    if (edge.from === edge.to || bundledEdges.has(edge)) continue;
+    let existing = edgesBySource.get(edge.from) ?? [];
+    existing.push(edge), edgesBySource.set(edge.from, existing);
   }
-  for (let [r, i] of s) {
-    if (i.length < 2 || !Ue(i, t)) continue;
-    let a = {
+  for (let [source, edges] of edgesBySource) {
+    if (edges.length < 2 || !canBundle(edges, graph)) continue;
+    let bundle = {
       type: "fan-out",
-      edges: [...i],
-      sharedNode: r,
-      otherNodes: i.map((c) => c.to),
+      edges: [...edges],
+      sharedNode: source,
+      otherNodes: edges.map((e) => e.to),
       junctionPoint: null,
       sharedPath: [],
-      junctionDir: Gt,
-      sharedNodeDir: Gt
+      junctionDir: Middle,
+      sharedNodeDir: Middle
     };
-    for (let c of i)
-      c.bundle = a, n.add(c);
-    e.push(a);
+    for (let edge of edges)
+      edge.bundle = bundle, bundledEdges.add(edge);
+    bundles.push(bundle);
   }
-  return e;
+  return bundles;
 }
-function Ue(t, e) {
-  if (t.length < 2) return !1;
-  let n = t[0].style, o = yt(e, t[0].from), s = yt(e, t[0].to);
-  for (let r of t) {
-    if (r.style !== n || r.text.length > 0) return !1;
-    let i = yt(e, r.from), a = yt(e, r.to);
-    if (i !== o || a !== s || i !== a) return !1;
+function canBundle(edges, graph) {
+  if (edges.length < 2) return !1;
+  let firstStyle = edges[0].style, firstFromSg = getNodeSubgraph(graph, edges[0].from), firstToSg = getNodeSubgraph(graph, edges[0].to);
+  for (let edge of edges) {
+    if (edge.style !== firstStyle || edge.text.length > 0) return !1;
+    let fromSg = getNodeSubgraph(graph, edge.from), toSg = getNodeSubgraph(graph, edge.to);
+    if (fromSg !== firstFromSg || toSg !== firstToSg || fromSg !== toSg) return !1;
   }
   return !0;
 }
-function yr(t, e) {
-  let n = t.config.graphDirection, o = e.sharedNode.gridCoord, s = e.otherNodes.map((r) => r.gridCoord);
-  if (e.type === "fan-in") {
-    let r = Math.min(...s.map((l) => l.x)), i = Math.max(...s.map((l) => l.x)), a = Math.min(...s.map((l) => l.y)), c = Math.max(...s.map((l) => l.y));
-    if (n === "TD") {
-      let l = o.y - 1, d = Math.floor((r + i) / 2) + 1;
-      return { x: o.x + 1, y: l };
+function calculateJunctionPoint(graph, bundle) {
+  let dir = graph.config.graphDirection, sharedCoord = bundle.sharedNode.gridCoord, otherCoords = bundle.otherNodes.map((n) => n.gridCoord);
+  if (bundle.type === "fan-in") {
+    let minX = Math.min(...otherCoords.map((c) => c.x)), maxX = Math.max(...otherCoords.map((c) => c.x)), minY = Math.min(...otherCoords.map((c) => c.y)), maxY = Math.max(...otherCoords.map((c) => c.y));
+    if (dir === "TD") {
+      let junctionY = sharedCoord.y - 1, centerX = Math.floor((minX + maxX) / 2) + 1;
+      return { x: sharedCoord.x + 1, y: junctionY };
     } else {
-      let l = o.x - 1, d = o.y + 1;
-      return { x: l, y: d };
+      let junctionX = sharedCoord.x - 1, junctionY = sharedCoord.y + 1;
+      return { x: junctionX, y: junctionY };
     }
   } else {
-    let r = Math.min(...s.map((l) => l.x)), i = Math.max(...s.map((l) => l.x)), a = Math.min(...s.map((l) => l.y)), c = Math.max(...s.map((l) => l.y));
-    if (n === "TD") {
-      let l = o.y + 3;
-      return { x: o.x + 1, y: l };
+    let minX = Math.min(...otherCoords.map((c) => c.x)), maxX = Math.max(...otherCoords.map((c) => c.x)), minY = Math.min(...otherCoords.map((c) => c.y)), maxY = Math.max(...otherCoords.map((c) => c.y));
+    if (dir === "TD") {
+      let junctionY = sharedCoord.y + 3;
+      return { x: sharedCoord.x + 1, y: junctionY };
     } else {
-      let l = o.x + 3, d = o.y + 1;
-      return { x: l, y: d };
+      let junctionX = sharedCoord.x + 3, junctionY = sharedCoord.y + 1;
+      return { x: junctionX, y: junctionY };
     }
   }
 }
-function Cr(t, e) {
-  let n = t.config.graphDirection;
-  e.junctionPoint = yr(t, e);
-  let o = e.junctionPoint;
-  if (e.type === "fan-in") {
-    e.junctionDir = n === "TD" ? _ : j, e.sharedNodeDir = n === "TD" ? Y : P;
-    let s = e.sharedNode.gridCoord, r = n === "TD" ? { x: s.x + 1, y: s.y } : { x: s.x, y: s.y + 1 }, i = Ht(t.grid, o, r);
-    e.sharedPath = i ? Yt(i) : [o, r];
-    for (let a of e.edges) {
-      let c = a.from.gridCoord, l = n === "TD" ? { x: c.x + 1, y: c.y + 2 } : { x: c.x + 2, y: c.y + 1 }, d = Ht(t.grid, l, o);
-      a.pathToJunction = d ? Yt(d) : [l, o], a.startDir = n === "TD" ? Y : P, a.endDir = n === "TD" ? _ : j, a.path = [...a.pathToJunction, ...e.sharedPath.slice(1)];
+function routeBundledEdges(graph, bundle) {
+  let dir = graph.config.graphDirection;
+  bundle.junctionPoint = calculateJunctionPoint(graph, bundle);
+  let junction = bundle.junctionPoint;
+  if (bundle.type === "fan-in") {
+    bundle.junctionDir = dir === "TD" ? Up : Left, bundle.sharedNodeDir = dir === "TD" ? Down : Right;
+    let targetCoord = bundle.sharedNode.gridCoord, targetEntry = dir === "TD" ? { x: targetCoord.x + 1, y: targetCoord.y } : { x: targetCoord.x, y: targetCoord.y + 1 }, sharedPath = getPath(graph.grid, junction, targetEntry);
+    bundle.sharedPath = sharedPath ? mergePath(sharedPath) : [junction, targetEntry];
+    for (let edge of bundle.edges) {
+      let sourceCoord = edge.from.gridCoord, sourceExit = dir === "TD" ? { x: sourceCoord.x + 1, y: sourceCoord.y + 2 } : { x: sourceCoord.x + 2, y: sourceCoord.y + 1 }, pathToJunction = getPath(graph.grid, sourceExit, junction);
+      edge.pathToJunction = pathToJunction ? mergePath(pathToJunction) : [sourceExit, junction], edge.startDir = dir === "TD" ? Down : Right, edge.endDir = dir === "TD" ? Up : Left, edge.path = [...edge.pathToJunction, ...bundle.sharedPath.slice(1)];
     }
   } else {
-    e.junctionDir = n === "TD" ? Y : P, e.sharedNodeDir = n === "TD" ? _ : j;
-    let s = e.sharedNode.gridCoord, r = n === "TD" ? { x: s.x + 1, y: s.y + 2 } : { x: s.x + 2, y: s.y + 1 }, i = Ht(t.grid, r, o);
-    e.sharedPath = i ? Yt(i) : [r, o];
-    for (let a of e.edges) {
-      let c = a.to.gridCoord, l = n === "TD" ? { x: c.x + 1, y: c.y } : { x: c.x, y: c.y + 1 }, d = Ht(t.grid, o, l);
-      a.pathToJunction = d ? Yt(d) : [o, l], a.startDir = n === "TD" ? Y : P, a.endDir = n === "TD" ? _ : j, a.path = [...e.sharedPath, ...a.pathToJunction.slice(1)];
+    bundle.junctionDir = dir === "TD" ? Down : Right, bundle.sharedNodeDir = dir === "TD" ? Up : Left;
+    let sourceCoord = bundle.sharedNode.gridCoord, sourceExit = dir === "TD" ? { x: sourceCoord.x + 1, y: sourceCoord.y + 2 } : { x: sourceCoord.x + 2, y: sourceCoord.y + 1 }, sharedPath = getPath(graph.grid, sourceExit, junction);
+    bundle.sharedPath = sharedPath ? mergePath(sharedPath) : [sourceExit, junction];
+    for (let edge of bundle.edges) {
+      let targetCoord = edge.to.gridCoord, targetEntry = dir === "TD" ? { x: targetCoord.x + 1, y: targetCoord.y } : { x: targetCoord.x, y: targetCoord.y + 1 }, pathToJunction = getPath(graph.grid, junction, targetEntry);
+      edge.pathToJunction = pathToJunction ? mergePath(pathToJunction) : [junction, targetEntry], edge.startDir = dir === "TD" ? Down : Right, edge.endDir = dir === "TD" ? Up : Left, edge.path = [...bundle.sharedPath, ...edge.pathToJunction.slice(1)];
     }
   }
 }
-function Ve(t) {
-  for (let e of t.bundles)
-    Cr(t, e);
+function processBundles(graph) {
+  for (let bundle of graph.bundles)
+    routeBundledEdges(graph, bundle);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/multiline-utils.ts
-function rt(t) {
-  return t.split(`
+function splitLines(label) {
+  return label.split(`
 `);
 }
-function re(t) {
-  let e = rt(t);
-  return Math.max(...e.map((n) => n.length), 0);
+function maxLineWidth(label) {
+  let lines = splitLines(label);
+  return Math.max(...lines.map((l) => l.length), 0);
 }
-function ge(t) {
-  return rt(t).length;
+function lineCount(label) {
+  return splitLines(label).length;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/corners.ts
-var Ke = {
+var SHAPE_CORNERS = {
   // Standard rectangular shapes
   rectangle: {
     unicode: { tl: "\u250C", tr: "\u2510", bl: "\u2514", br: "\u2518" },
@@ -1124,81 +1124,81 @@ var Ke = {
     ascii: { tl: "@", tr: "@", bl: "@", br: "@" }
   }
 };
-function xt(t, e) {
-  let n = Ke[t] ?? Ke.rectangle;
-  return e ? n.ascii : n.unicode;
+function getCorners(shape, useAscii) {
+  let corners = SHAPE_CORNERS[shape] ?? SHAPE_CORNERS.rectangle;
+  return useAscii ? corners.ascii : corners.unicode;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/rectangle.ts
-function At(t, e) {
-  let n = rt(t), o = Math.max(...n.map((d) => d.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 2, a = s + 2 * e.padding, c = a % 2 === 0 ? a + 1 : a, l = c + 2;
+function getBoxDimensions(label, options) {
+  let lines = splitLines(label), maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0), lineCount2 = lines.length, innerWidth = 2 * options.padding + maxLineWidth2, width = innerWidth + 2, rawInnerHeight = lineCount2 + 2 * options.padding, innerHeight = rawInnerHeight % 2 === 0 ? rawInnerHeight + 1 : rawInnerHeight, height = innerHeight + 2;
   return {
-    width: i,
-    height: l,
+    width,
+    height,
     labelArea: {
-      x: 1 + e.padding,
-      y: 1 + e.padding,
-      width: o,
-      height: s
+      x: 1 + options.padding,
+      y: 1 + options.padding,
+      width: maxLineWidth2,
+      height: lineCount2
     },
     // Grid layout: [border=1, content, border=1]
-    gridColumns: [1, r, 1],
-    gridRows: [1, c, 1]
+    gridColumns: [1, innerWidth, 1],
+    gridRows: [1, innerHeight, 1]
   };
 }
-function St(t, e, n, o) {
-  let { width: s, height: r } = e, i = it(s - 1, r - 1), a = { x: 0, y: 0 }, c = { x: s - 1, y: r - 1 }, l = o ? "-" : "\u2500", d = o ? "|" : "\u2502";
-  for (let b = a.x + 1; b < c.x; b++)
-    i[b][a.y] = l, i[b][c.y] = l;
-  for (let b = a.y + 1; b < c.y; b++)
-    i[a.x][b] = d, i[c.x][b] = d;
-  i[a.x][a.y] = n.tl, i[c.x][a.y] = n.tr, i[a.x][c.y] = n.bl, i[c.x][c.y] = n.br;
-  let h = rt(t), f = s - 1, u = r - 1, p = Math.floor(u / 2) - Math.floor((h.length - 1) / 2);
-  for (let b = 0; b < h.length; b++) {
-    let A = h[b], B = Math.floor(f / 2) - Math.ceil(A.length / 2) + 1;
-    for (let v = 0; v < A.length; v++) {
-      let H = B + v, L = p + b;
-      H >= 0 && H < i.length && L >= 0 && L < i[0].length && (i[H][L] = A[v]);
+function renderBox(label, dimensions, corners, useAscii) {
+  let { width, height } = dimensions, canvas = mkCanvas(width - 1, height - 1), from = { x: 0, y: 0 }, to = { x: width - 1, y: height - 1 }, hLine = useAscii ? "-" : "\u2500", vLine = useAscii ? "|" : "\u2502";
+  for (let x = from.x + 1; x < to.x; x++)
+    canvas[x][from.y] = hLine, canvas[x][to.y] = hLine;
+  for (let y = from.y + 1; y < to.y; y++)
+    canvas[from.x][y] = vLine, canvas[to.x][y] = vLine;
+  canvas[from.x][from.y] = corners.tl, canvas[to.x][from.y] = corners.tr, canvas[from.x][to.y] = corners.bl, canvas[to.x][to.y] = corners.br;
+  let lines = splitLines(label), w = width - 1, h = height - 1, startY = Math.floor(h / 2) - Math.floor((lines.length - 1) / 2);
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i], textX = Math.floor(w / 2) - Math.ceil(line.length / 2) + 1;
+    for (let j = 0; j < line.length; j++) {
+      let x = textX + j, y = startY + i;
+      x >= 0 && x < canvas.length && y >= 0 && y < canvas[0].length && (canvas[x][y] = line[j]);
     }
   }
-  return i;
+  return canvas;
 }
-function gt(t, e, n) {
-  let { width: o, height: s } = e, r = n.x + Math.floor(o / 2), i = n.y + Math.floor(s / 2);
-  return x(t, _) ? { x: r, y: n.y } : x(t, Y) ? { x: r, y: n.y + s - 1 } : x(t, j) ? { x: n.x, y: i } : x(t, P) ? { x: n.x + o - 1, y: i } : x(t, Mt) ? { x: n.x, y: n.y } : x(t, wt) ? { x: n.x + o - 1, y: n.y } : x(t, vt) ? { x: n.x, y: n.y + s - 1 } : x(t, Rt) ? { x: n.x + o - 1, y: n.y + s - 1 } : { x: r, y: i };
+function getBoxAttachmentPoint(dir, dimensions, baseCoord) {
+  let { width, height } = dimensions, centerX = baseCoord.x + Math.floor(width / 2), centerY = baseCoord.y + Math.floor(height / 2);
+  return dirEquals(dir, Up) ? { x: centerX, y: baseCoord.y } : dirEquals(dir, Down) ? { x: centerX, y: baseCoord.y + height - 1 } : dirEquals(dir, Left) ? { x: baseCoord.x, y: centerY } : dirEquals(dir, Right) ? { x: baseCoord.x + width - 1, y: centerY } : dirEquals(dir, UpperLeft) ? { x: baseCoord.x, y: baseCoord.y } : dirEquals(dir, UpperRight) ? { x: baseCoord.x + width - 1, y: baseCoord.y } : dirEquals(dir, LowerLeft) ? { x: baseCoord.x, y: baseCoord.y + height - 1 } : dirEquals(dir, LowerRight) ? { x: baseCoord.x + width - 1, y: baseCoord.y + height - 1 } : { x: centerX, y: centerY };
 }
-var me = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("rectangle", n.useAscii);
-    return St(t, e, o, n.useAscii);
+var rectangleRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("rectangle", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
+  getAttachmentPoint: getBoxAttachmentPoint
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/diamond.ts
-var Qe = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("diamond", n.useAscii);
-    return St(t, e, o, n.useAscii);
+var diamondRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("diamond", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
+  getAttachmentPoint: getBoxAttachmentPoint
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/circle.ts
-var Ze = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("circle", n.useAscii);
-    return St(t, e, o, n.useAscii);
+var circleRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("circle", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
+  getAttachmentPoint: getBoxAttachmentPoint
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/state.ts
-var tn = {
-  getDimensions(t, e) {
+var stateStartRenderer = {
+  getDimensions(_label, _options) {
     return {
       width: 5,
       height: 3,
@@ -1207,16 +1207,16 @@ var tn = {
       gridRows: [1, 1, 1]
     };
   },
-  render(t, e, n) {
-    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = Math.floor(o / 2);
-    return n.useAscii ? (r[0][0] = ".", r[1][0] = "-", r[2][0] = "-", r[3][0] = "-", r[4][0] = ".", r[0][1] = "|", r[i][1] = "*", r[4][1] = "|", r[0][2] = "'", r[1][2] = "-", r[2][2] = "-", r[3][2] = "-", r[4][2] = "'") : (r[0][0] = "\u256D", r[1][0] = "\u2500", r[2][0] = "\u2500", r[3][0] = "\u2500", r[4][0] = "\u256E", r[0][1] = "\u2502", r[i][1] = "\u25CF", r[4][1] = "\u2502", r[0][2] = "\u2570", r[1][2] = "\u2500", r[2][2] = "\u2500", r[3][2] = "\u2500", r[4][2] = "\u256F"), r;
+  render(_label, dimensions, options) {
+    let { width, height } = dimensions, canvas = mkCanvas(width - 1, height - 1), centerX = Math.floor(width / 2);
+    return options.useAscii ? (canvas[0][0] = ".", canvas[1][0] = "-", canvas[2][0] = "-", canvas[3][0] = "-", canvas[4][0] = ".", canvas[0][1] = "|", canvas[centerX][1] = "*", canvas[4][1] = "|", canvas[0][2] = "'", canvas[1][2] = "-", canvas[2][2] = "-", canvas[3][2] = "-", canvas[4][2] = "'") : (canvas[0][0] = "\u256D", canvas[1][0] = "\u2500", canvas[2][0] = "\u2500", canvas[3][0] = "\u2500", canvas[4][0] = "\u256E", canvas[0][1] = "\u2502", canvas[centerX][1] = "\u25CF", canvas[4][1] = "\u2502", canvas[0][2] = "\u2570", canvas[1][2] = "\u2500", canvas[2][2] = "\u2500", canvas[3][2] = "\u2500", canvas[4][2] = "\u256F"), canvas;
   },
-  getAttachmentPoint(t, e, n) {
-    let { width: o, height: s } = e, r = n.x + Math.floor(o / 2), i = n.y + Math.floor(s / 2);
-    return x(t, _) ? { x: r, y: n.y } : x(t, Y) ? { x: r, y: n.y + s - 1 } : x(t, j) ? { x: n.x, y: i } : x(t, P) ? { x: n.x + o - 1, y: i } : { x: r, y: i };
+  getAttachmentPoint(dir, dimensions, baseCoord) {
+    let { width, height } = dimensions, centerX = baseCoord.x + Math.floor(width / 2), centerY = baseCoord.y + Math.floor(height / 2);
+    return dirEquals(dir, Up) ? { x: centerX, y: baseCoord.y } : dirEquals(dir, Down) ? { x: centerX, y: baseCoord.y + height - 1 } : dirEquals(dir, Left) ? { x: baseCoord.x, y: centerY } : dirEquals(dir, Right) ? { x: baseCoord.x + width - 1, y: centerY } : { x: centerX, y: centerY };
   }
-}, en = {
-  getDimensions(t, e) {
+}, stateEndRenderer = {
+  getDimensions(_label, _options) {
     return {
       width: 5,
       height: 3,
@@ -1225,287 +1225,287 @@ var tn = {
       gridRows: [1, 1, 1]
     };
   },
-  render(t, e, n) {
-    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = Math.floor(o / 2);
-    return n.useAscii ? (r[0][0] = "#", r[1][0] = "=", r[2][0] = "=", r[3][0] = "=", r[4][0] = "#", r[0][1] = "#", r[i][1] = "*", r[4][1] = "#", r[0][2] = "#", r[1][2] = "=", r[2][2] = "=", r[3][2] = "=", r[4][2] = "#") : (r[0][0] = "\u2554", r[1][0] = "\u2550", r[2][0] = "\u2550", r[3][0] = "\u2550", r[4][0] = "\u2557", r[0][1] = "\u2551", r[i][1] = "\u25CE", r[4][1] = "\u2551", r[0][2] = "\u255A", r[1][2] = "\u2550", r[2][2] = "\u2550", r[3][2] = "\u2550", r[4][2] = "\u255D"), r;
+  render(_label, dimensions, options) {
+    let { width, height } = dimensions, canvas = mkCanvas(width - 1, height - 1), centerX = Math.floor(width / 2);
+    return options.useAscii ? (canvas[0][0] = "#", canvas[1][0] = "=", canvas[2][0] = "=", canvas[3][0] = "=", canvas[4][0] = "#", canvas[0][1] = "#", canvas[centerX][1] = "*", canvas[4][1] = "#", canvas[0][2] = "#", canvas[1][2] = "=", canvas[2][2] = "=", canvas[3][2] = "=", canvas[4][2] = "#") : (canvas[0][0] = "\u2554", canvas[1][0] = "\u2550", canvas[2][0] = "\u2550", canvas[3][0] = "\u2550", canvas[4][0] = "\u2557", canvas[0][1] = "\u2551", canvas[centerX][1] = "\u25CE", canvas[4][1] = "\u2551", canvas[0][2] = "\u255A", canvas[1][2] = "\u2550", canvas[2][2] = "\u2550", canvas[3][2] = "\u2550", canvas[4][2] = "\u255D"), canvas;
   },
-  getAttachmentPoint(t, e, n) {
-    let { width: o, height: s } = e, r = n.x + Math.floor(o / 2), i = n.y + Math.floor(s / 2);
-    return x(t, _) ? { x: r, y: n.y } : x(t, Y) ? { x: r, y: n.y + s - 1 } : x(t, j) ? { x: n.x, y: i } : x(t, P) ? { x: n.x + o - 1, y: i } : { x: r, y: i };
+  getAttachmentPoint(dir, dimensions, baseCoord) {
+    let { width, height } = dimensions, centerX = baseCoord.x + Math.floor(width / 2), centerY = baseCoord.y + Math.floor(height / 2);
+    return dirEquals(dir, Up) ? { x: centerX, y: baseCoord.y } : dirEquals(dir, Down) ? { x: centerX, y: baseCoord.y + height - 1 } : dirEquals(dir, Left) ? { x: baseCoord.x, y: centerY } : dirEquals(dir, Right) ? { x: baseCoord.x + width - 1, y: centerY } : { x: centerX, y: centerY };
   }
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/rounded.ts
-var nn = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("rounded", n.useAscii);
-    return St(t, e, o, n.useAscii);
+var roundedRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("rounded", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
+  getAttachmentPoint: getBoxAttachmentPoint
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/stadium.ts
-var rn = {
-  getDimensions(t, e) {
-    let n = rt(t), o = Math.max(...n.map((l) => l.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 4, a = s + 2 * e.padding, c = Math.max(a + 2, 3);
+var stadiumRenderer = {
+  getDimensions(label, options) {
+    let lines = splitLines(label), maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0), lineCount2 = lines.length, innerWidth = 2 * options.padding + maxLineWidth2, width = innerWidth + 4, innerHeight = lineCount2 + 2 * options.padding, height = Math.max(innerHeight + 2, 3);
     return {
-      width: i,
-      height: c,
+      width,
+      height,
       labelArea: {
-        x: 2 + e.padding,
-        y: 1 + e.padding,
-        width: o,
-        height: s
+        x: 2 + options.padding,
+        y: 1 + options.padding,
+        width: maxLineWidth2,
+        height: lineCount2
       },
-      gridColumns: [2, r, 2],
-      gridRows: [1, a, 1]
+      gridColumns: [2, innerWidth, 2],
+      gridRows: [1, innerHeight, 1]
     };
   },
-  render(t, e, n) {
-    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = Math.floor(s / 2), a = n.useAscii ? "-" : "\u2500";
-    if (s === 3)
-      r[0][i] = "(", r[o - 1][i] = ")";
-    else if (n.useAscii) {
-      for (let d = 0; d < s; d++)
-        r[0][d] = "(", r[o - 1][d] = ")";
-      for (let d = 1; d < o - 1; d++)
-        r[d][0] = a, r[d][s - 1] = a;
+  render(label, dimensions, options) {
+    let { width, height } = dimensions, canvas = mkCanvas(width - 1, height - 1), centerY = Math.floor(height / 2), hChar = options.useAscii ? "-" : "\u2500";
+    if (height === 3)
+      canvas[0][centerY] = "(", canvas[width - 1][centerY] = ")";
+    else if (options.useAscii) {
+      for (let y = 0; y < height; y++)
+        canvas[0][y] = "(", canvas[width - 1][y] = ")";
+      for (let x = 1; x < width - 1; x++)
+        canvas[x][0] = hChar, canvas[x][height - 1] = hChar;
     } else {
-      r[0][0] = "\u256D";
-      for (let d = 1; d < o - 1; d++) r[d][0] = a;
-      r[o - 1][0] = "\u256E";
-      for (let d = 1; d < s - 1; d++)
-        r[0][d] = "\u2502", r[o - 1][d] = "\u2502";
-      r[0][s - 1] = "\u2570";
-      for (let d = 1; d < o - 1; d++) r[d][s - 1] = a;
-      r[o - 1][s - 1] = "\u256F";
+      canvas[0][0] = "\u256D";
+      for (let x = 1; x < width - 1; x++) canvas[x][0] = hChar;
+      canvas[width - 1][0] = "\u256E";
+      for (let y = 1; y < height - 1; y++)
+        canvas[0][y] = "\u2502", canvas[width - 1][y] = "\u2502";
+      canvas[0][height - 1] = "\u2570";
+      for (let x = 1; x < width - 1; x++) canvas[x][height - 1] = hChar;
+      canvas[width - 1][height - 1] = "\u256F";
     }
-    let c = rt(t), l = i - Math.floor((c.length - 1) / 2);
-    for (let d = 0; d < c.length; d++) {
-      let h = c[d], f = Math.floor(o / 2) - Math.floor(h.length / 2);
-      for (let u = 0; u < h.length; u++) {
-        let m = f + u, p = l + d;
-        m > 0 && m < o - 1 && p >= 0 && p < s && (r[m][p] = h[u]);
+    let lines = splitLines(label), startY = centerY - Math.floor((lines.length - 1) / 2);
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i], textX = Math.floor(width / 2) - Math.floor(line.length / 2);
+      for (let j = 0; j < line.length; j++) {
+        let x = textX + j, y = startY + i;
+        x > 0 && x < width - 1 && y >= 0 && y < height && (canvas[x][y] = line[j]);
       }
     }
-    return r;
+    return canvas;
   },
-  getAttachmentPoint: gt
+  getAttachmentPoint: getBoxAttachmentPoint
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/hexagon.ts
-var on = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("hexagon", n.useAscii);
-    return St(t, e, o, n.useAscii);
+var hexagonRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("hexagon", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
+  getAttachmentPoint: getBoxAttachmentPoint
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/special.ts
-var sn = {
-  getDimensions(t, e) {
-    let n = rt(t), o = Math.max(...n.map((l) => l.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 4, a = s + 2 * e.padding, c = a + 2;
+var subroutineRenderer = {
+  getDimensions(label, options) {
+    let lines = splitLines(label), maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0), lineCount2 = lines.length, innerWidth = 2 * options.padding + maxLineWidth2, width = innerWidth + 4, innerHeight = lineCount2 + 2 * options.padding, height = innerHeight + 2;
     return {
-      width: i,
-      height: c,
+      width,
+      height,
       labelArea: {
-        x: 2 + e.padding,
-        y: 1 + e.padding,
-        width: o,
-        height: s
+        x: 2 + options.padding,
+        y: 1 + options.padding,
+        width: maxLineWidth2,
+        height: lineCount2
       },
-      gridColumns: [2, r, 2],
-      gridRows: [1, a, 1]
+      gridColumns: [2, innerWidth, 2],
+      gridRows: [1, innerHeight, 1]
     };
   },
-  render(t, e, n) {
-    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = n.useAscii ? "-" : "\u2500", a = n.useAscii ? "|" : "\u2502";
-    r[0][0] = n.useAscii ? "+" : "\u250C", r[1][0] = n.useAscii ? "+" : "\u252C";
-    for (let h = 2; h < o - 2; h++) r[h][0] = i;
-    r[o - 2][0] = n.useAscii ? "+" : "\u252C", r[o - 1][0] = n.useAscii ? "+" : "\u2510";
-    for (let h = 1; h < s - 1; h++)
-      r[0][h] = a, r[1][h] = a, r[o - 2][h] = a, r[o - 1][h] = a;
-    r[0][s - 1] = n.useAscii ? "+" : "\u2514", r[1][s - 1] = n.useAscii ? "+" : "\u2534";
-    for (let h = 2; h < o - 2; h++) r[h][s - 1] = i;
-    r[o - 2][s - 1] = n.useAscii ? "+" : "\u2534", r[o - 1][s - 1] = n.useAscii ? "+" : "\u2518";
-    let c = rt(t), d = Math.floor(s / 2) - Math.floor((c.length - 1) / 2);
-    for (let h = 0; h < c.length; h++) {
-      let f = c[h], u = Math.floor(o / 2) - Math.floor(f.length / 2);
-      for (let m = 0; m < f.length; m++) {
-        let p = u + m, b = d + h;
-        p > 1 && p < o - 2 && b > 0 && b < s - 1 && (r[p][b] = f[m]);
+  render(label, dimensions, options) {
+    let { width, height } = dimensions, canvas = mkCanvas(width - 1, height - 1), hChar = options.useAscii ? "-" : "\u2500", vChar = options.useAscii ? "|" : "\u2502";
+    canvas[0][0] = options.useAscii ? "+" : "\u250C", canvas[1][0] = options.useAscii ? "+" : "\u252C";
+    for (let x = 2; x < width - 2; x++) canvas[x][0] = hChar;
+    canvas[width - 2][0] = options.useAscii ? "+" : "\u252C", canvas[width - 1][0] = options.useAscii ? "+" : "\u2510";
+    for (let y = 1; y < height - 1; y++)
+      canvas[0][y] = vChar, canvas[1][y] = vChar, canvas[width - 2][y] = vChar, canvas[width - 1][y] = vChar;
+    canvas[0][height - 1] = options.useAscii ? "+" : "\u2514", canvas[1][height - 1] = options.useAscii ? "+" : "\u2534";
+    for (let x = 2; x < width - 2; x++) canvas[x][height - 1] = hChar;
+    canvas[width - 2][height - 1] = options.useAscii ? "+" : "\u2534", canvas[width - 1][height - 1] = options.useAscii ? "+" : "\u2518";
+    let lines = splitLines(label), startY = Math.floor(height / 2) - Math.floor((lines.length - 1) / 2);
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i], textX = Math.floor(width / 2) - Math.floor(line.length / 2);
+      for (let j = 0; j < line.length; j++) {
+        let x = textX + j, y = startY + i;
+        x > 1 && x < width - 2 && y > 0 && y < height - 1 && (canvas[x][y] = line[j]);
       }
     }
-    return r;
+    return canvas;
   },
-  getAttachmentPoint: gt
-}, an = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("doublecircle", n.useAscii);
-    return St(t, e, o, n.useAscii);
+  getAttachmentPoint: getBoxAttachmentPoint
+}, doublecircleRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("doublecircle", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
-}, cn = {
-  getDimensions(t, e) {
-    let n = rt(t), o = Math.max(...n.map((l) => l.length), 0), s = n.length, r = 2 * e.padding + o, i = r + 2, a = s + 2 * e.padding + 2, c = a + 2;
+  getAttachmentPoint: getBoxAttachmentPoint
+}, cylinderRenderer = {
+  getDimensions(label, options) {
+    let lines = splitLines(label), maxLineWidth2 = Math.max(...lines.map((l) => l.length), 0), lineCount2 = lines.length, innerWidth = 2 * options.padding + maxLineWidth2, width = innerWidth + 2, innerHeight = lineCount2 + 2 * options.padding + 2, height = innerHeight + 2;
     return {
-      width: i,
-      height: c,
+      width,
+      height,
       labelArea: {
-        x: 1 + e.padding,
-        y: 2 + e.padding,
-        width: o,
-        height: s
+        x: 1 + options.padding,
+        y: 2 + options.padding,
+        width: maxLineWidth2,
+        height: lineCount2
       },
-      gridColumns: [1, r, 1],
-      gridRows: [2, a - 2, 2]
+      gridColumns: [1, innerWidth, 1],
+      gridRows: [2, innerHeight - 2, 2]
     };
   },
-  render(t, e, n) {
-    let { width: o, height: s } = e, r = it(o - 1, s - 1), i = n.useAscii ? "-" : "\u2500", a = n.useAscii ? "|" : "\u2502";
-    r[0][0] = n.useAscii ? "." : "\u256D";
-    for (let h = 1; h < o - 1; h++) r[h][0] = i;
-    r[o - 1][0] = n.useAscii ? "." : "\u256E", r[0][1] = a;
-    for (let h = 1; h < o - 1; h++) r[h][1] = i;
-    r[o - 1][1] = a;
-    for (let h = 2; h < s - 2; h++)
-      r[0][h] = a, r[o - 1][h] = a;
-    r[0][s - 2] = a;
-    for (let h = 1; h < o - 1; h++) r[h][s - 2] = i;
-    r[o - 1][s - 2] = a, r[0][s - 1] = n.useAscii ? "'" : "\u2570";
-    for (let h = 1; h < o - 1; h++) r[h][s - 1] = i;
-    r[o - 1][s - 1] = n.useAscii ? "'" : "\u256F";
-    let c = rt(t), d = Math.floor(s / 2) - Math.floor((c.length - 1) / 2);
-    for (let h = 0; h < c.length; h++) {
-      let f = c[h], u = Math.floor(o / 2) - Math.floor(f.length / 2);
-      for (let m = 0; m < f.length; m++) {
-        let p = u + m, b = d + h;
-        p > 0 && p < o - 1 && b > 1 && b < s - 2 && (r[p][b] = f[m]);
+  render(label, dimensions, options) {
+    let { width, height } = dimensions, canvas = mkCanvas(width - 1, height - 1), hChar = options.useAscii ? "-" : "\u2500", vChar = options.useAscii ? "|" : "\u2502";
+    canvas[0][0] = options.useAscii ? "." : "\u256D";
+    for (let x = 1; x < width - 1; x++) canvas[x][0] = hChar;
+    canvas[width - 1][0] = options.useAscii ? "." : "\u256E", canvas[0][1] = vChar;
+    for (let x = 1; x < width - 1; x++) canvas[x][1] = hChar;
+    canvas[width - 1][1] = vChar;
+    for (let y = 2; y < height - 2; y++)
+      canvas[0][y] = vChar, canvas[width - 1][y] = vChar;
+    canvas[0][height - 2] = vChar;
+    for (let x = 1; x < width - 1; x++) canvas[x][height - 2] = hChar;
+    canvas[width - 1][height - 2] = vChar, canvas[0][height - 1] = options.useAscii ? "'" : "\u2570";
+    for (let x = 1; x < width - 1; x++) canvas[x][height - 1] = hChar;
+    canvas[width - 1][height - 1] = options.useAscii ? "'" : "\u256F";
+    let lines = splitLines(label), startY = Math.floor(height / 2) - Math.floor((lines.length - 1) / 2);
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i], textX = Math.floor(width / 2) - Math.floor(line.length / 2);
+      for (let j = 0; j < line.length; j++) {
+        let x = textX + j, y = startY + i;
+        x > 0 && x < width - 1 && y > 1 && y < height - 2 && (canvas[x][y] = line[j]);
       }
     }
-    return r;
+    return canvas;
   },
-  getAttachmentPoint: gt
-}, ln = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("asymmetric", n.useAscii);
-    return St(t, e, o, n.useAscii);
+  getAttachmentPoint: getBoxAttachmentPoint
+}, asymmetricRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("asymmetric", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
-}, fn = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("trapezoid", n.useAscii);
-    return St(t, e, o, n.useAscii);
+  getAttachmentPoint: getBoxAttachmentPoint
+}, trapezoidRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("trapezoid", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
-}, dn = {
-  getDimensions: At,
-  render(t, e, n) {
-    let o = xt("trapezoid-alt", n.useAscii);
-    return St(t, e, o, n.useAscii);
+  getAttachmentPoint: getBoxAttachmentPoint
+}, trapezoidAltRenderer = {
+  getDimensions: getBoxDimensions,
+  render(label, dimensions, options) {
+    let corners = getCorners("trapezoid-alt", options.useAscii);
+    return renderBox(label, dimensions, corners, options.useAscii);
   },
-  getAttachmentPoint: gt
+  getAttachmentPoint: getBoxAttachmentPoint
 };
 
 // node_modules/beautiful-mermaid/src/ascii/shapes/index.ts
-var Mr = /* @__PURE__ */ new Map([
+var shapeRegistry = /* @__PURE__ */ new Map([
   // Core shapes
-  ["rectangle", me],
-  ["rounded", nn],
-  ["diamond", Qe],
-  ["stadium", rn],
-  ["circle", Ze],
+  ["rectangle", rectangleRenderer],
+  ["rounded", roundedRenderer],
+  ["diamond", diamondRenderer],
+  ["stadium", stadiumRenderer],
+  ["circle", circleRenderer],
   // Batch 1 additions
-  ["subroutine", sn],
-  ["doublecircle", an],
-  ["hexagon", on],
+  ["subroutine", subroutineRenderer],
+  ["doublecircle", doublecircleRenderer],
+  ["hexagon", hexagonRenderer],
   // Batch 2 additions
-  ["cylinder", cn],
-  ["asymmetric", ln],
-  ["trapezoid", fn],
-  ["trapezoid-alt", dn],
+  ["cylinder", cylinderRenderer],
+  ["asymmetric", asymmetricRenderer],
+  ["trapezoid", trapezoidRenderer],
+  ["trapezoid-alt", trapezoidAltRenderer],
   // State diagram pseudo-states
-  ["state-start", tn],
-  ["state-end", en]
+  ["state-start", stateStartRenderer],
+  ["state-end", stateEndRenderer]
 ]);
-function un(t) {
-  return Mr.get(t) ?? me;
+function getShapeRenderer(shape) {
+  return shapeRegistry.get(shape) ?? rectangleRenderer;
 }
-function hn(t, e, n) {
-  return un(t).getDimensions(e, n);
+function getShapeDimensions(shape, label, options) {
+  return getShapeRenderer(shape).getDimensions(label, options);
 }
-function gn(t, e, n, o) {
-  return un(t).getAttachmentPoint(e, n, o);
+function getShapeAttachmentPoint(shape, dir, dimensions, baseCoord) {
+  return getShapeRenderer(shape).getAttachmentPoint(dir, dimensions, baseCoord);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/draw.ts
-function wr(t, e) {
-  return vr(t, e);
+function drawNode(node, graph) {
+  return drawBoxWithGridDimensions(node, graph);
 }
-function vr(t, e) {
-  let n = t.gridCoord, o = e.config.useAscii, s = 0;
-  for (let v = 0; v < 2; v++)
-    s += e.columnWidth.get(n.x + v) ?? 0;
-  let r = 0;
-  for (let v = 0; v < 2; v++)
-    r += e.rowHeight.get(n.y + v) ?? 0;
-  let i = { x: 0, y: 0 }, a = { x: s, y: r }, c = it(Math.max(i.x, a.x), Math.max(i.y, a.y)), l = xt(t.shape, o), d = t.shape === "state-end", h = o ? d ? "=" : "-" : d ? "\u2550" : "\u2500", f = o ? d ? "\u2016" : "|" : d ? "\u2551" : "\u2502", m = d ? o ? { tl: "#", tr: "#", bl: "#", br: "#" } : { tl: "\u2554", tr: "\u2557", bl: "\u255A", br: "\u255D" } : l;
-  for (let v = i.x + 1; v < a.x; v++) c[v][i.y] = h;
-  for (let v = i.x + 1; v < a.x; v++) c[v][a.y] = h;
-  for (let v = i.y + 1; v < a.y; v++) c[i.x][v] = f;
-  for (let v = i.y + 1; v < a.y; v++) c[a.x][v] = f;
-  c[i.x][i.y] = m.tl, c[a.x][i.y] = m.tr, c[i.x][a.y] = m.bl, c[a.x][a.y] = m.br;
-  let p = t.displayLabel, b = rt(p), B = i.y + Math.floor(r / 2) - Math.floor((b.length - 1) / 2);
-  for (let v = 0; v < b.length; v++) {
-    let H = b[v], L = i.x + Math.floor(s / 2) - Math.ceil(H.length / 2) + 1;
-    for (let q = 0; q < H.length; q++)
-      L + q >= 0 && L + q < c.length && B + v >= 0 && B + v < c[0].length && (c[L + q][B + v] = H[q]);
+function drawBoxWithGridDimensions(node, graph) {
+  let gc = node.gridCoord, useAscii = graph.config.useAscii, w = 0;
+  for (let i = 0; i < 2; i++)
+    w += graph.columnWidth.get(gc.x + i) ?? 0;
+  let h = 0;
+  for (let i = 0; i < 2; i++)
+    h += graph.rowHeight.get(gc.y + i) ?? 0;
+  let from = { x: 0, y: 0 }, to = { x: w, y: h }, box = mkCanvas(Math.max(from.x, to.x), Math.max(from.y, to.y)), corners = getCorners(node.shape, useAscii), isDoubleBox = node.shape === "state-end", hChar = useAscii ? isDoubleBox ? "=" : "-" : isDoubleBox ? "\u2550" : "\u2500", vChar = useAscii ? isDoubleBox ? "\u2016" : "|" : isDoubleBox ? "\u2551" : "\u2502", effectiveCorners = isDoubleBox ? useAscii ? { tl: "#", tr: "#", bl: "#", br: "#" } : { tl: "\u2554", tr: "\u2557", bl: "\u255A", br: "\u255D" } : corners;
+  for (let x = from.x + 1; x < to.x; x++) box[x][from.y] = hChar;
+  for (let x = from.x + 1; x < to.x; x++) box[x][to.y] = hChar;
+  for (let y = from.y + 1; y < to.y; y++) box[from.x][y] = vChar;
+  for (let y = from.y + 1; y < to.y; y++) box[to.x][y] = vChar;
+  box[from.x][from.y] = effectiveCorners.tl, box[to.x][from.y] = effectiveCorners.tr, box[from.x][to.y] = effectiveCorners.bl, box[to.x][to.y] = effectiveCorners.br;
+  let label = node.displayLabel, lines = splitLines(label), startY = from.y + Math.floor(h / 2) - Math.floor((lines.length - 1) / 2);
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i], textX = from.x + Math.floor(w / 2) - Math.ceil(line.length / 2) + 1;
+    for (let j = 0; j < line.length; j++)
+      textX + j >= 0 && textX + j < box.length && startY + i >= 0 && startY + i < box[0].length && (box[textX + j][startY + i] = line[j]);
   }
-  return c;
+  return box;
 }
-function pn(t, e) {
-  return wr(t, e);
+function drawBox(node, graph) {
+  return drawNode(node, graph);
 }
-function oe(t, e, n = 1) {
-  let o = 0;
-  for (let v of t)
-    for (let H of v)
-      o = Math.max(o, H.length);
-  let r = o + 2 * n + 2, i = 0;
-  for (let v of t)
-    i += Math.max(v.length, 1);
-  let a = t.length - 1, c = i + a + 2, l = e ? "-" : "\u2500", d = e ? "|" : "\u2502", h = e ? "+" : "\u250C", f = e ? "+" : "\u2510", u = e ? "+" : "\u2514", m = e ? "+" : "\u2518", p = e ? "+" : "\u251C", b = e ? "+" : "\u2524", A = it(r - 1, c - 1);
-  A[0][0] = h;
-  for (let v = 1; v < r - 1; v++) A[v][0] = l;
-  A[r - 1][0] = f, A[0][c - 1] = u;
-  for (let v = 1; v < r - 1; v++) A[v][c - 1] = l;
-  A[r - 1][c - 1] = m;
-  for (let v = 1; v < c - 1; v++)
-    A[0][v] = d, A[r - 1][v] = d;
-  let B = 1;
-  for (let v = 0; v < t.length; v++) {
-    let H = t[v], L = H.length > 0 ? H : [""];
-    for (let q of L) {
-      let ut = 1 + n;
-      for (let O = 0; O < q.length; O++)
-        A[ut + O][B] = q[O];
-      B++;
+function drawMultiBox(sections, useAscii, padding = 1) {
+  let maxTextWidth = 0;
+  for (let section of sections)
+    for (let line of section)
+      maxTextWidth = Math.max(maxTextWidth, line.length);
+  let boxWidth = maxTextWidth + 2 * padding + 2, totalLines = 0;
+  for (let section of sections)
+    totalLines += Math.max(section.length, 1);
+  let numDividers = sections.length - 1, boxHeight = totalLines + numDividers + 2, hLine = useAscii ? "-" : "\u2500", vLine = useAscii ? "|" : "\u2502", tl = useAscii ? "+" : "\u250C", tr = useAscii ? "+" : "\u2510", bl = useAscii ? "+" : "\u2514", br = useAscii ? "+" : "\u2518", divL = useAscii ? "+" : "\u251C", divR = useAscii ? "+" : "\u2524", canvas = mkCanvas(boxWidth - 1, boxHeight - 1);
+  canvas[0][0] = tl;
+  for (let x = 1; x < boxWidth - 1; x++) canvas[x][0] = hLine;
+  canvas[boxWidth - 1][0] = tr, canvas[0][boxHeight - 1] = bl;
+  for (let x = 1; x < boxWidth - 1; x++) canvas[x][boxHeight - 1] = hLine;
+  canvas[boxWidth - 1][boxHeight - 1] = br;
+  for (let y = 1; y < boxHeight - 1; y++)
+    canvas[0][y] = vLine, canvas[boxWidth - 1][y] = vLine;
+  let row = 1;
+  for (let s = 0; s < sections.length; s++) {
+    let section = sections[s], lines = section.length > 0 ? section : [""];
+    for (let line of lines) {
+      let startX = 1 + padding;
+      for (let i = 0; i < line.length; i++)
+        canvas[startX + i][row] = line[i];
+      row++;
     }
-    if (v < t.length - 1) {
-      A[0][B] = p;
-      for (let q = 1; q < r - 1; q++) A[q][B] = l;
-      A[r - 1][B] = b, B++;
+    if (s < sections.length - 1) {
+      canvas[0][row] = divL;
+      for (let x = 1; x < boxWidth - 1; x++) canvas[x][row] = hLine;
+      canvas[boxWidth - 1][row] = divR, row++;
     }
   }
-  return A;
+  return canvas;
 }
-var Ar = {
+var LINE_CHARS = {
   solid: {
     h: { unicode: "\u2500", ascii: "-" },
     v: { unicode: "\u2502", ascii: "|" }
@@ -1519,933 +1519,933 @@ var Ar = {
     v: { unicode: "\u2503", ascii: "\u2016" }
   }
 };
-function xe(t, e, n, o, s, r, i = "solid") {
-  let a = pt(e, n), c = [], l = Ar[i], d = r ? l.h.ascii : l.h.unicode, h = r ? l.v.ascii : l.v.unicode;
-  if (x(a, _))
-    for (let f = e.y - o; f >= n.y - s; f--)
-      c.push({ x: e.x, y: f }), t[e.x][f] = h;
-  else if (x(a, Y))
-    for (let f = e.y + o; f <= n.y + s; f++)
-      c.push({ x: e.x, y: f }), t[e.x][f] = h;
-  else if (x(a, j))
-    for (let f = e.x - o; f >= n.x - s; f--)
-      c.push({ x: f, y: e.y }), t[f][e.y] = d;
-  else if (x(a, P))
-    for (let f = e.x + o; f <= n.x + s; f++)
-      c.push({ x: f, y: e.y }), t[f][e.y] = d;
-  else if (x(a, Mt)) {
-    for (let f = e.x - o; f >= n.x; f--)
-      c.push({ x: f, y: e.y }), t[f][e.y] = d;
-    for (let f = e.y - 1; f >= n.y - s; f--)
-      c.push({ x: n.x, y: f }), t[n.x][f] = h;
-  } else if (x(a, wt)) {
-    for (let f = e.x + o; f <= n.x; f++)
-      c.push({ x: f, y: e.y }), t[f][e.y] = d;
-    for (let f = e.y - 1; f >= n.y - s; f--)
-      c.push({ x: n.x, y: f }), t[n.x][f] = h;
-  } else if (x(a, vt)) {
-    for (let f = e.x - o; f >= n.x; f--)
-      c.push({ x: f, y: e.y }), t[f][e.y] = d;
-    for (let f = e.y + 1; f <= n.y + s; f++)
-      c.push({ x: n.x, y: f }), t[n.x][f] = h;
-  } else if (x(a, Rt))
-    if (n.x - e.x <= 1)
-      for (let u = e.y + o; u <= n.y + s; u++)
-        c.push({ x: e.x, y: u }), t[e.x][u] = h;
+function drawLine(canvas, from, to, offsetFrom, offsetTo, useAscii, style = "solid") {
+  let dir = determineDirection(from, to), drawnCoords = [], chars = LINE_CHARS[style], hChar = useAscii ? chars.h.ascii : chars.h.unicode, vChar = useAscii ? chars.v.ascii : chars.v.unicode;
+  if (dirEquals(dir, Up))
+    for (let y = from.y - offsetFrom; y >= to.y - offsetTo; y--)
+      drawnCoords.push({ x: from.x, y }), canvas[from.x][y] = vChar;
+  else if (dirEquals(dir, Down))
+    for (let y = from.y + offsetFrom; y <= to.y + offsetTo; y++)
+      drawnCoords.push({ x: from.x, y }), canvas[from.x][y] = vChar;
+  else if (dirEquals(dir, Left))
+    for (let x = from.x - offsetFrom; x >= to.x - offsetTo; x--)
+      drawnCoords.push({ x, y: from.y }), canvas[x][from.y] = hChar;
+  else if (dirEquals(dir, Right))
+    for (let x = from.x + offsetFrom; x <= to.x + offsetTo; x++)
+      drawnCoords.push({ x, y: from.y }), canvas[x][from.y] = hChar;
+  else if (dirEquals(dir, UpperLeft)) {
+    for (let x = from.x - offsetFrom; x >= to.x; x--)
+      drawnCoords.push({ x, y: from.y }), canvas[x][from.y] = hChar;
+    for (let y = from.y - 1; y >= to.y - offsetTo; y--)
+      drawnCoords.push({ x: to.x, y }), canvas[to.x][y] = vChar;
+  } else if (dirEquals(dir, UpperRight)) {
+    for (let x = from.x + offsetFrom; x <= to.x; x++)
+      drawnCoords.push({ x, y: from.y }), canvas[x][from.y] = hChar;
+    for (let y = from.y - 1; y >= to.y - offsetTo; y--)
+      drawnCoords.push({ x: to.x, y }), canvas[to.x][y] = vChar;
+  } else if (dirEquals(dir, LowerLeft)) {
+    for (let x = from.x - offsetFrom; x >= to.x; x--)
+      drawnCoords.push({ x, y: from.y }), canvas[x][from.y] = hChar;
+    for (let y = from.y + 1; y <= to.y + offsetTo; y++)
+      drawnCoords.push({ x: to.x, y }), canvas[to.x][y] = vChar;
+  } else if (dirEquals(dir, LowerRight))
+    if (to.x - from.x <= 1)
+      for (let y = from.y + offsetFrom; y <= to.y + offsetTo; y++)
+        drawnCoords.push({ x: from.x, y }), canvas[from.x][y] = vChar;
     else {
-      for (let u = e.x + o; u <= n.x; u++)
-        c.push({ x: u, y: e.y }), t[u][e.y] = d;
-      for (let u = e.y + 1; u <= n.y + s; u++)
-        c.push({ x: n.x, y: u }), t[n.x][u] = h;
+      for (let x = from.x + offsetFrom; x <= to.x; x++)
+        drawnCoords.push({ x, y: from.y }), canvas[x][from.y] = hChar;
+      for (let y = from.y + 1; y <= to.y + offsetTo; y++)
+        drawnCoords.push({ x: to.x, y }), canvas[to.x][y] = vChar;
     }
-  return c;
+  return drawnCoords;
 }
-function Sr(t, e) {
-  if (e.path.length === 0) {
-    let d = ht(t.canvas);
-    return [d, d, d, d, d, d];
+function drawArrow(graph, edge) {
+  if (edge.path.length === 0) {
+    let empty = copyCanvas(graph.canvas);
+    return [empty, empty, empty, empty, empty, empty];
   }
-  let n = Er(t, e), [o, s, r] = Dr(t, e.path, e.style), i = Tr(t, e.path, s[0], e.from.shape), a;
-  e.hasArrowEnd ? a = mn(
-    t,
-    s[s.length - 1],
-    r[r.length - 1]
-  ) : a = ht(t.canvas);
-  let c;
-  if (e.hasArrowStart && s.length > 0) {
-    let h = s[0][0], f = Rr(r[0]), u = { x: h.x, y: h.y };
-    x(r[0], P) ? u.x = h.x - 1 : x(r[0], j) ? u.x = h.x + 1 : x(r[0], Y) ? u.y = h.y - 1 : x(r[0], _) && (u.y = h.y + 1), c = mn(t, [h, u], f);
+  let labelCanvas = drawArrowLabel(graph, edge), [pathCanvas, linesDrawn, lineDirs] = drawPath(graph, edge.path, edge.style), boxStartCanvas = drawBoxStart(graph, edge.path, linesDrawn[0], edge.from.shape), arrowHeadEndCanvas;
+  edge.hasArrowEnd ? arrowHeadEndCanvas = drawArrowHead(
+    graph,
+    linesDrawn[linesDrawn.length - 1],
+    lineDirs[lineDirs.length - 1]
+  ) : arrowHeadEndCanvas = copyCanvas(graph.canvas);
+  let arrowHeadStartCanvas;
+  if (edge.hasArrowStart && linesDrawn.length > 0) {
+    let firstPoint = linesDrawn[0][0], startDir = reverseDirection(lineDirs[0]), arrowPos = { x: firstPoint.x, y: firstPoint.y };
+    dirEquals(lineDirs[0], Right) ? arrowPos.x = firstPoint.x - 1 : dirEquals(lineDirs[0], Left) ? arrowPos.x = firstPoint.x + 1 : dirEquals(lineDirs[0], Down) ? arrowPos.y = firstPoint.y - 1 : dirEquals(lineDirs[0], Up) && (arrowPos.y = firstPoint.y + 1), arrowHeadStartCanvas = drawArrowHead(graph, [firstPoint, arrowPos], startDir);
   } else
-    c = ht(t.canvas);
-  let l = Lr(t, e.path);
-  return [o, i, a, c, l, n];
+    arrowHeadStartCanvas = copyCanvas(graph.canvas);
+  let cornersCanvas = drawCorners(graph, edge.path);
+  return [pathCanvas, boxStartCanvas, arrowHeadEndCanvas, arrowHeadStartCanvas, cornersCanvas, labelCanvas];
 }
-function Rr(t) {
-  return x(t, _) ? Y : x(t, Y) ? _ : x(t, j) ? P : x(t, P) ? j : x(t, Mt) ? Rt : x(t, wt) ? vt : x(t, vt) ? wt : x(t, Rt) ? Mt : Gt;
+function reverseDirection(dir) {
+  return dirEquals(dir, Up) ? Down : dirEquals(dir, Down) ? Up : dirEquals(dir, Left) ? Right : dirEquals(dir, Right) ? Left : dirEquals(dir, UpperLeft) ? LowerRight : dirEquals(dir, UpperRight) ? LowerLeft : dirEquals(dir, LowerLeft) ? UpperRight : dirEquals(dir, LowerRight) ? UpperLeft : Middle;
 }
-function Dr(t, e, n = "solid") {
-  let o = ht(t.canvas), s = e[0], r = [], i = [];
-  for (let a = 1; a < e.length; a++) {
-    let c = e[a], l = Et(t, s), d = Et(t, c);
-    if (Kt(l, d)) {
-      s = c;
+function drawPath(graph, path, style = "solid") {
+  let canvas = copyCanvas(graph.canvas), previousCoord = path[0], linesDrawn = [], lineDirs = [];
+  for (let i = 1; i < path.length; i++) {
+    let nextCoord = path[i], prevDC = gridToDrawingCoord(graph, previousCoord), nextDC = gridToDrawingCoord(graph, nextCoord);
+    if (drawingCoordEquals(prevDC, nextDC)) {
+      previousCoord = nextCoord;
       continue;
     }
-    let h = pt(s, c), f = xe(o, l, d, 1, -1, t.config.useAscii, n);
-    f.length === 0 && f.push(l), r.push(f), i.push(h), s = c;
+    let dir = determineDirection(previousCoord, nextCoord), segment = drawLine(canvas, prevDC, nextDC, 1, -1, graph.config.useAscii, style);
+    segment.length === 0 && segment.push(prevDC), linesDrawn.push(segment), lineDirs.push(dir), previousCoord = nextCoord;
   }
-  return [o, r, i];
+  return [canvas, linesDrawn, lineDirs];
 }
-function Tr(t, e, n, o) {
-  let s = ht(t.canvas);
-  if (t.config.useAscii || o === "state-start" || o === "state-end")
-    return s;
-  let r = n[0], i = pt(e[0], e[1]);
-  return x(i, _) ? s[r.x][r.y + 1] = "\u2534" : x(i, Y) ? s[r.x][r.y - 1] = "\u252C" : x(i, j) ? s[r.x + 1][r.y] = "\u2524" : x(i, P) && (s[r.x - 1][r.y] = "\u251C"), s;
+function drawBoxStart(graph, path, firstLine, sourceShape) {
+  let canvas = copyCanvas(graph.canvas);
+  if (graph.config.useAscii || sourceShape === "state-start" || sourceShape === "state-end")
+    return canvas;
+  let from = firstLine[0], dir = determineDirection(path[0], path[1]);
+  return dirEquals(dir, Up) ? canvas[from.x][from.y + 1] = "\u2534" : dirEquals(dir, Down) ? canvas[from.x][from.y - 1] = "\u252C" : dirEquals(dir, Left) ? canvas[from.x + 1][from.y] = "\u2524" : dirEquals(dir, Right) && (canvas[from.x - 1][from.y] = "\u251C"), canvas;
 }
-function mn(t, e, n) {
-  let o = ht(t.canvas);
-  if (e.length === 0) return o;
-  let s = e[0], r = e[e.length - 1], i = pt(s, r);
-  (e.length === 1 || x(i, Gt)) && (i = n);
-  let a;
-  return t.config.useAscii ? x(i, _) ? a = "^" : x(i, Y) ? a = "v" : x(i, j) ? a = "<" : x(i, P) ? a = ">" : x(n, _) ? a = "^" : x(n, Y) ? a = "v" : x(n, j) ? a = "<" : x(n, P) ? a = ">" : a = "*" : x(i, _) ? a = "\u25B2" : x(i, Y) ? a = "\u25BC" : x(i, j) ? a = "\u25C4" : x(i, P) ? a = "\u25BA" : x(i, wt) ? a = "\u25E5" : x(i, Mt) ? a = "\u25E4" : x(i, Rt) ? a = "\u25E2" : x(i, vt) ? a = "\u25E3" : x(n, _) ? a = "\u25B2" : x(n, Y) ? a = "\u25BC" : x(n, j) ? a = "\u25C4" : x(n, P) ? a = "\u25BA" : x(n, wt) ? a = "\u25E5" : x(n, Mt) ? a = "\u25E4" : x(n, Rt) ? a = "\u25E2" : x(n, vt) ? a = "\u25E3" : a = "\u25CF", o[r.x][r.y] = a, o;
+function drawArrowHead(graph, lastLine, fallbackDir) {
+  let canvas = copyCanvas(graph.canvas);
+  if (lastLine.length === 0) return canvas;
+  let from = lastLine[0], lastPos = lastLine[lastLine.length - 1], dir = determineDirection(from, lastPos);
+  (lastLine.length === 1 || dirEquals(dir, Middle)) && (dir = fallbackDir);
+  let char;
+  return graph.config.useAscii ? dirEquals(dir, Up) ? char = "^" : dirEquals(dir, Down) ? char = "v" : dirEquals(dir, Left) ? char = "<" : dirEquals(dir, Right) ? char = ">" : dirEquals(fallbackDir, Up) ? char = "^" : dirEquals(fallbackDir, Down) ? char = "v" : dirEquals(fallbackDir, Left) ? char = "<" : dirEquals(fallbackDir, Right) ? char = ">" : char = "*" : dirEquals(dir, Up) ? char = "\u25B2" : dirEquals(dir, Down) ? char = "\u25BC" : dirEquals(dir, Left) ? char = "\u25C4" : dirEquals(dir, Right) ? char = "\u25BA" : dirEquals(dir, UpperRight) ? char = "\u25E5" : dirEquals(dir, UpperLeft) ? char = "\u25E4" : dirEquals(dir, LowerRight) ? char = "\u25E2" : dirEquals(dir, LowerLeft) ? char = "\u25E3" : dirEquals(fallbackDir, Up) ? char = "\u25B2" : dirEquals(fallbackDir, Down) ? char = "\u25BC" : dirEquals(fallbackDir, Left) ? char = "\u25C4" : dirEquals(fallbackDir, Right) ? char = "\u25BA" : dirEquals(fallbackDir, UpperRight) ? char = "\u25E5" : dirEquals(fallbackDir, UpperLeft) ? char = "\u25E4" : dirEquals(fallbackDir, LowerRight) ? char = "\u25E2" : dirEquals(fallbackDir, LowerLeft) ? char = "\u25E3" : char = "\u25CF", canvas[lastPos.x][lastPos.y] = char, canvas;
 }
-function Lr(t, e) {
-  let n = ht(t.canvas);
-  for (let o = 1; o < e.length - 1; o++) {
-    let s = e[o], r = Et(t, s), i = pt(e[o - 1], s), a = pt(s, e[o + 1]), c;
-    t.config.useAscii ? c = "+" : x(i, P) && x(a, Y) || x(i, _) && x(a, j) ? c = "\u2510" : x(i, P) && x(a, _) || x(i, Y) && x(a, j) ? c = "\u2518" : x(i, j) && x(a, Y) || x(i, _) && x(a, P) ? c = "\u250C" : x(i, j) && x(a, _) || x(i, Y) && x(a, P) ? c = "\u2514" : c = "+", n[r.x][r.y] = c;
+function drawCorners(graph, path) {
+  let canvas = copyCanvas(graph.canvas);
+  for (let idx = 1; idx < path.length - 1; idx++) {
+    let coord = path[idx], dc = gridToDrawingCoord(graph, coord), prevDir = determineDirection(path[idx - 1], coord), nextDir = determineDirection(coord, path[idx + 1]), corner;
+    graph.config.useAscii ? corner = "+" : dirEquals(prevDir, Right) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Left) ? corner = "\u2510" : dirEquals(prevDir, Right) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Left) ? corner = "\u2518" : dirEquals(prevDir, Left) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Right) ? corner = "\u250C" : dirEquals(prevDir, Left) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Right) ? corner = "\u2514" : corner = "+", canvas[dc.x][dc.y] = corner;
   }
-  return n;
+  return canvas;
 }
-function Er(t, e) {
-  let n = ht(t.canvas);
-  if (e.text.length === 0) return n;
-  let o = bn(t, e.labelLine), s;
-  if (e.path.length >= 2) {
-    let r = e.path[0].y, i = e.path[e.path.length - 1].y;
-    i < r ? s = !0 : i > r && (s = !1);
+function drawArrowLabel(graph, edge) {
+  let canvas = copyCanvas(graph.canvas);
+  if (edge.text.length === 0) return canvas;
+  let drawingLine = lineToDrawing(graph, edge.labelLine), isUpwardEdge;
+  if (edge.path.length >= 2) {
+    let startY = edge.path[0].y, endY = edge.path[edge.path.length - 1].y;
+    endY < startY ? isUpwardEdge = !0 : endY > startY && (isUpwardEdge = !1);
   }
-  return kr(n, o, e.text, s), n;
+  return drawTextOnLine(canvas, drawingLine, edge.text, isUpwardEdge), canvas;
 }
-function kr(t, e, n, o) {
-  if (e.length < 2) return;
-  let s = Math.min(e[0].x, e[1].x), r = Math.max(e[0].x, e[1].x), i = Math.min(e[0].y, e[1].y), a = Math.max(e[0].y, e[1].y), c = s + Math.floor((r - s) / 2), l = i + Math.floor((a - i) / 2);
-  if (o !== void 0 && s === r) {
-    let f = a - i, u = Math.max(1, Math.floor(f / 4));
-    o ? l = l + u : l = l - u;
+function drawTextOnLine(canvas, line, label, isUpwardEdge) {
+  if (line.length < 2) return;
+  let minX = Math.min(line[0].x, line[1].x), maxX = Math.max(line[0].x, line[1].x), minY = Math.min(line[0].y, line[1].y), maxY = Math.max(line[0].y, line[1].y), middleX = minX + Math.floor((maxX - minX) / 2), middleY = minY + Math.floor((maxY - minY) / 2);
+  if (isUpwardEdge !== void 0 && minX === maxX) {
+    let segmentHeight = maxY - minY, offset = Math.max(1, Math.floor(segmentHeight / 4));
+    isUpwardEdge ? middleY = middleY + offset : middleY = middleY - offset;
   }
-  let d = rt(n), h = l - Math.floor((d.length - 1) / 2);
-  for (let f = 0; f < d.length; f++) {
-    let u = d[f], m = c - Math.floor(u.length / 2);
-    de(t, { x: m, y: h + f }, u);
+  let lines = splitLines(label), startY = middleY - Math.floor((lines.length - 1) / 2);
+  for (let i = 0; i < lines.length; i++) {
+    let lineText = lines[i], startX = middleX - Math.floor(lineText.length / 2);
+    drawText(canvas, { x: startX, y: startY + i }, lineText);
   }
 }
-function jt(t, e, n) {
-  let o = e.gridCoord, s = 0;
-  for (let c = 0; c < 2; c++)
-    s += t.columnWidth.get(o.x + c) ?? 0;
-  let r = 0;
-  for (let c = 0; c < 2; c++)
-    r += t.rowHeight.get(o.y + c) ?? 0;
-  let i = {
-    width: s + 1,
-    height: r + 1,
+function getNodeAttachmentPoint(graph, node, dir) {
+  let gc = node.gridCoord, w = 0;
+  for (let i = 0; i < 2; i++)
+    w += graph.columnWidth.get(gc.x + i) ?? 0;
+  let h = 0;
+  for (let i = 0; i < 2; i++)
+    h += graph.rowHeight.get(gc.y + i) ?? 0;
+  let gridDimensions = {
+    width: w + 1,
+    height: h + 1,
     labelArea: { x: 0, y: 0, width: 0, height: 0 },
     gridColumns: [0, 0, 0],
     gridRows: [0, 0, 0]
-  }, a = e.drawingCoord;
-  return gn(e.shape, n, i, a);
+  }, baseCoord = node.drawingCoord;
+  return getShapeAttachmentPoint(node.shape, dir, gridDimensions, baseCoord);
 }
-function Gr(t, e, n) {
-  let o = ht(t.canvas);
-  if (!e.pathToJunction || e.pathToJunction.length === 0)
-    return [o, o, o, o, o, o];
-  let s = ht(t.canvas), r = t.config.useAscii, i = e.pathToJunction.map((d, h) => n.type === "fan-in" && h === 0 ? jt(t, e.from, e.startDir) : n.type === "fan-out" && h === e.pathToJunction.length - 1 ? jt(t, e.to, e.endDir) : Et(t, d));
-  for (let d = 1; d < i.length; d++) {
-    let h = i[d - 1], f = i[d];
-    Kt(h, f) || xe(s, h, f, 1, -1, r, e.style);
+function drawBundledEdgeSegment(graph, edge, bundle) {
+  let empty = copyCanvas(graph.canvas);
+  if (!edge.pathToJunction || edge.pathToJunction.length === 0)
+    return [empty, empty, empty, empty, empty, empty];
+  let pathCanvas = copyCanvas(graph.canvas), useAscii = graph.config.useAscii, drawingPath = edge.pathToJunction.map((gc, idx) => bundle.type === "fan-in" && idx === 0 ? getNodeAttachmentPoint(graph, edge.from, edge.startDir) : bundle.type === "fan-out" && idx === edge.pathToJunction.length - 1 ? getNodeAttachmentPoint(graph, edge.to, edge.endDir) : gridToDrawingCoord(graph, gc));
+  for (let i = 1; i < drawingPath.length; i++) {
+    let from = drawingPath[i - 1], to = drawingPath[i];
+    drawingCoordEquals(from, to) || drawLine(pathCanvas, from, to, 1, -1, useAscii, edge.style);
   }
-  let a = ht(t.canvas);
-  for (let d = 1; d < e.pathToJunction.length - 1; d++) {
-    let h = e.pathToJunction[d], f = Et(t, h), u = pt(e.pathToJunction[d - 1], h), m = pt(h, e.pathToJunction[d + 1]), p;
-    r ? p = "+" : x(u, P) && x(m, Y) || x(u, _) && x(m, j) ? p = "\u2510" : x(u, P) && x(m, _) || x(u, Y) && x(m, j) ? p = "\u2518" : x(u, j) && x(m, Y) || x(u, _) && x(m, P) ? p = "\u250C" : x(u, j) && x(m, _) || x(u, Y) && x(m, P) ? p = "\u2514" : p = "+", a[f.x][f.y] = p;
+  let cornersCanvas = copyCanvas(graph.canvas);
+  for (let idx = 1; idx < edge.pathToJunction.length - 1; idx++) {
+    let coord = edge.pathToJunction[idx], dc = gridToDrawingCoord(graph, coord), prevDir = determineDirection(edge.pathToJunction[idx - 1], coord), nextDir = determineDirection(coord, edge.pathToJunction[idx + 1]), corner;
+    useAscii ? corner = "+" : dirEquals(prevDir, Right) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Left) ? corner = "\u2510" : dirEquals(prevDir, Right) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Left) ? corner = "\u2518" : dirEquals(prevDir, Left) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Right) ? corner = "\u250C" : dirEquals(prevDir, Left) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Right) ? corner = "\u2514" : corner = "+", cornersCanvas[dc.x][dc.y] = corner;
   }
-  let c = ht(t.canvas);
-  if (n.type === "fan-in" && e.pathToJunction.length >= 2) {
-    let d = i[0], h = pt(e.pathToJunction[0], e.pathToJunction[1]);
-    r || (x(h, _) ? c[d.x][d.y] = "\u2534" : x(h, Y) ? c[d.x][d.y] = "\u252C" : x(h, j) ? c[d.x][d.y] = "\u2524" : x(h, P) && (c[d.x][d.y] = "\u251C"));
+  let boxStartCanvas = copyCanvas(graph.canvas);
+  if (bundle.type === "fan-in" && edge.pathToJunction.length >= 2) {
+    let firstPoint = drawingPath[0], dir = determineDirection(edge.pathToJunction[0], edge.pathToJunction[1]);
+    useAscii || (dirEquals(dir, Up) ? boxStartCanvas[firstPoint.x][firstPoint.y] = "\u2534" : dirEquals(dir, Down) ? boxStartCanvas[firstPoint.x][firstPoint.y] = "\u252C" : dirEquals(dir, Left) ? boxStartCanvas[firstPoint.x][firstPoint.y] = "\u2524" : dirEquals(dir, Right) && (boxStartCanvas[firstPoint.x][firstPoint.y] = "\u251C"));
   }
-  let l = ht(t.canvas);
-  return [s, c, o, o, a, l];
+  let labelCanvas = copyCanvas(graph.canvas);
+  return [pathCanvas, boxStartCanvas, empty, empty, cornersCanvas, labelCanvas];
 }
-function Ir(t, e) {
-  let n = ht(t.canvas), o = ht(t.canvas);
-  if (e.sharedPath.length < 2)
-    return [n, o];
-  let s = t.config.useAscii, r = e.edges[0]?.style ?? "solid", i = t.config.graphDirection, a = e.sharedPath.map((c, l) => {
-    if (e.type === "fan-in" && l === e.sharedPath.length - 1) {
-      let d = i === "TD" ? _ : j;
-      return jt(t, e.sharedNode, d);
+function drawBundleSharedPath(graph, bundle) {
+  let pathCanvas = copyCanvas(graph.canvas), cornersCanvas = copyCanvas(graph.canvas);
+  if (bundle.sharedPath.length < 2)
+    return [pathCanvas, cornersCanvas];
+  let useAscii = graph.config.useAscii, style = bundle.edges[0]?.style ?? "solid", graphDir = graph.config.graphDirection, drawingPath = bundle.sharedPath.map((gc, idx) => {
+    if (bundle.type === "fan-in" && idx === bundle.sharedPath.length - 1) {
+      let entryDir = graphDir === "TD" ? Up : Left;
+      return getNodeAttachmentPoint(graph, bundle.sharedNode, entryDir);
     }
-    if (e.type === "fan-out" && l === 0) {
-      let d = i === "TD" ? Y : P;
-      return jt(t, e.sharedNode, d);
+    if (bundle.type === "fan-out" && idx === 0) {
+      let exitDir = graphDir === "TD" ? Down : Right;
+      return getNodeAttachmentPoint(graph, bundle.sharedNode, exitDir);
     }
-    return Et(t, c);
+    return gridToDrawingCoord(graph, gc);
   });
-  for (let c = 1; c < a.length; c++) {
-    let l = a[c - 1], d = a[c];
-    Kt(l, d) || xe(n, l, d, 1, -1, s, r);
+  for (let i = 1; i < drawingPath.length; i++) {
+    let from = drawingPath[i - 1], to = drawingPath[i];
+    drawingCoordEquals(from, to) || drawLine(pathCanvas, from, to, 1, -1, useAscii, style);
   }
-  for (let c = 1; c < e.sharedPath.length - 1; c++) {
-    let l = e.sharedPath[c], d = Et(t, l), h = pt(e.sharedPath[c - 1], l), f = pt(l, e.sharedPath[c + 1]), u;
-    s ? u = "+" : x(h, P) && x(f, Y) || x(h, _) && x(f, j) ? u = "\u2510" : x(h, P) && x(f, _) || x(h, Y) && x(f, j) ? u = "\u2518" : x(h, j) && x(f, Y) || x(h, _) && x(f, P) ? u = "\u250C" : x(h, j) && x(f, _) || x(h, Y) && x(f, P) ? u = "\u2514" : u = "+", o[d.x][d.y] = u;
+  for (let idx = 1; idx < bundle.sharedPath.length - 1; idx++) {
+    let coord = bundle.sharedPath[idx], dc = gridToDrawingCoord(graph, coord), prevDir = determineDirection(bundle.sharedPath[idx - 1], coord), nextDir = determineDirection(coord, bundle.sharedPath[idx + 1]), corner;
+    useAscii ? corner = "+" : dirEquals(prevDir, Right) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Left) ? corner = "\u2510" : dirEquals(prevDir, Right) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Left) ? corner = "\u2518" : dirEquals(prevDir, Left) && dirEquals(nextDir, Down) || dirEquals(prevDir, Up) && dirEquals(nextDir, Right) ? corner = "\u250C" : dirEquals(prevDir, Left) && dirEquals(nextDir, Up) || dirEquals(prevDir, Down) && dirEquals(nextDir, Right) ? corner = "\u2514" : corner = "+", cornersCanvas[dc.x][dc.y] = corner;
   }
-  return [n, o];
+  return [pathCanvas, cornersCanvas];
 }
-function Nr(t, e) {
-  let n = ht(t.canvas);
-  if (e.sharedPath.length < 2) return n;
-  let o = e.sharedPath.length - 1, s = e.sharedPath[o - 1], r = e.sharedPath[o], i = pt(s, r), a = t.config.graphDirection, c = a === "TD" ? _ : j, l = jt(t, e.sharedNode, c);
-  a === "TD" ? l.y -= 1 : l.x -= 1;
-  let d;
-  return t.config.useAscii ? x(i, _) ? d = "^" : x(i, Y) ? d = "v" : x(i, j) ? d = "<" : x(i, P) ? d = ">" : d = "v" : x(i, _) ? d = "\u25B2" : x(i, Y) ? d = "\u25BC" : x(i, j) ? d = "\u25C4" : x(i, P) ? d = "\u25BA" : d = "\u25BC", n[l.x][l.y] = d, n;
+function drawBundleArrowhead(graph, bundle) {
+  let canvas = copyCanvas(graph.canvas);
+  if (bundle.sharedPath.length < 2) return canvas;
+  let lastIdx = bundle.sharedPath.length - 1, secondLast = bundle.sharedPath[lastIdx - 1], last = bundle.sharedPath[lastIdx], dir = determineDirection(secondLast, last), graphDir = graph.config.graphDirection, entryDir = graphDir === "TD" ? Up : Left, dc = getNodeAttachmentPoint(graph, bundle.sharedNode, entryDir);
+  graphDir === "TD" ? dc.y -= 1 : dc.x -= 1;
+  let char;
+  return graph.config.useAscii ? dirEquals(dir, Up) ? char = "^" : dirEquals(dir, Down) ? char = "v" : dirEquals(dir, Left) ? char = "<" : dirEquals(dir, Right) ? char = ">" : char = "v" : dirEquals(dir, Up) ? char = "\u25B2" : dirEquals(dir, Down) ? char = "\u25BC" : dirEquals(dir, Left) ? char = "\u25C4" : dirEquals(dir, Right) ? char = "\u25BA" : char = "\u25BC", canvas[dc.x][dc.y] = char, canvas;
 }
-function Yr(t, e) {
-  let n = ht(t.canvas);
-  if (!e.pathToJunction || e.pathToJunction.length < 2) return n;
-  let o = e.pathToJunction.length - 1, s = e.pathToJunction[o - 1], r = e.pathToJunction[o], i = pt(s, r), a = t.config.graphDirection, c = a === "TD" ? _ : j, l = jt(t, e.to, c);
-  a === "TD" ? l.y -= 1 : l.x -= 1;
-  let d;
-  return t.config.useAscii ? x(i, _) ? d = "^" : x(i, Y) ? d = "v" : x(i, j) ? d = "<" : x(i, P) ? d = ">" : d = "v" : x(i, _) ? d = "\u25B2" : x(i, Y) ? d = "\u25BC" : x(i, j) ? d = "\u25C4" : x(i, P) ? d = "\u25BA" : d = "\u25BC", n[l.x][l.y] = d, n;
+function drawBundledEdgeArrowhead(graph, edge) {
+  let canvas = copyCanvas(graph.canvas);
+  if (!edge.pathToJunction || edge.pathToJunction.length < 2) return canvas;
+  let lastIdx = edge.pathToJunction.length - 1, secondLast = edge.pathToJunction[lastIdx - 1], last = edge.pathToJunction[lastIdx], dir = determineDirection(secondLast, last), graphDir = graph.config.graphDirection, entryDir = graphDir === "TD" ? Up : Left, dc = getNodeAttachmentPoint(graph, edge.to, entryDir);
+  graphDir === "TD" ? dc.y -= 1 : dc.x -= 1;
+  let char;
+  return graph.config.useAscii ? dirEquals(dir, Up) ? char = "^" : dirEquals(dir, Down) ? char = "v" : dirEquals(dir, Left) ? char = "<" : dirEquals(dir, Right) ? char = ">" : char = "v" : dirEquals(dir, Up) ? char = "\u25B2" : dirEquals(dir, Down) ? char = "\u25BC" : dirEquals(dir, Left) ? char = "\u25C4" : dirEquals(dir, Right) ? char = "\u25BA" : char = "\u25BC", canvas[dc.x][dc.y] = char, canvas;
 }
-function $r(t, e) {
-  let n = ht(t.canvas);
-  if (!e.junctionPoint) return n;
-  let o = Et(t, e.junctionPoint), s = t.config.useAscii, r = !1, i = !1, a = !1, c = !1;
-  if (e.sharedPath.length >= 2) {
-    let d = e.type === "fan-in" ? 0 : e.sharedPath.length - 1, h = e.type === "fan-in" ? 1 : e.sharedPath.length - 2, f = pt(
-      e.sharedPath[d],
-      e.sharedPath[h]
+function drawJunctionCharacter(graph, bundle) {
+  let canvas = copyCanvas(graph.canvas);
+  if (!bundle.junctionPoint) return canvas;
+  let dc = gridToDrawingCoord(graph, bundle.junctionPoint), useAscii = graph.config.useAscii, hasUp = !1, hasDown = !1, hasLeft = !1, hasRight = !1;
+  if (bundle.sharedPath.length >= 2) {
+    let junctionIdx = bundle.type === "fan-in" ? 0 : bundle.sharedPath.length - 1, adjacentIdx = bundle.type === "fan-in" ? 1 : bundle.sharedPath.length - 2, sharedDir = determineDirection(
+      bundle.sharedPath[junctionIdx],
+      bundle.sharedPath[adjacentIdx]
     );
-    x(f, Y) ? i = !0 : x(f, _) ? r = !0 : x(f, P) ? c = !0 : x(f, j) && (a = !0);
+    dirEquals(sharedDir, Down) ? hasDown = !0 : dirEquals(sharedDir, Up) ? hasUp = !0 : dirEquals(sharedDir, Right) ? hasRight = !0 : dirEquals(sharedDir, Left) && (hasLeft = !0);
   }
-  for (let d of e.edges)
-    if (d.pathToJunction && d.pathToJunction.length >= 2) {
-      let h = e.type === "fan-in" ? d.pathToJunction.length - 1 : 0, f = e.type === "fan-in" ? d.pathToJunction.length - 2 : 1, u = pt(
-        d.pathToJunction[f],
-        d.pathToJunction[h]
+  for (let edge of bundle.edges)
+    if (edge.pathToJunction && edge.pathToJunction.length >= 2) {
+      let junctionIdx = bundle.type === "fan-in" ? edge.pathToJunction.length - 1 : 0, adjacentIdx = bundle.type === "fan-in" ? edge.pathToJunction.length - 2 : 1, arrivalDir = determineDirection(
+        edge.pathToJunction[adjacentIdx],
+        edge.pathToJunction[junctionIdx]
       );
-      x(u, Y) ? r = !0 : x(u, _) ? i = !0 : x(u, P) ? a = !0 : x(u, j) && (c = !0);
+      dirEquals(arrivalDir, Down) ? hasUp = !0 : dirEquals(arrivalDir, Up) ? hasDown = !0 : dirEquals(arrivalDir, Right) ? hasLeft = !0 : dirEquals(arrivalDir, Left) && (hasRight = !0);
     }
-  let l;
-  return s ? l = "+" : r && i && a && c ? l = "\u253C" : i && a && c && !r ? l = "\u252C" : r && a && c && !i ? l = "\u2534" : r && i && c && !a ? l = "\u251C" : r && i && a && !c ? l = "\u2524" : a && c ? l = "\u2500" : r && i ? l = "\u2502" : i && c ? l = "\u250C" : i && a ? l = "\u2510" : r && c ? l = "\u2514" : r && a ? l = "\u2518" : l = "\u253C", n[o.x][o.y] = l, n;
+  let char;
+  return useAscii ? char = "+" : hasUp && hasDown && hasLeft && hasRight ? char = "\u253C" : hasDown && hasLeft && hasRight && !hasUp ? char = "\u252C" : hasUp && hasLeft && hasRight && !hasDown ? char = "\u2534" : hasUp && hasDown && hasRight && !hasLeft ? char = "\u251C" : hasUp && hasDown && hasLeft && !hasRight ? char = "\u2524" : hasLeft && hasRight ? char = "\u2500" : hasUp && hasDown ? char = "\u2502" : hasDown && hasRight ? char = "\u250C" : hasDown && hasLeft ? char = "\u2510" : hasUp && hasRight ? char = "\u2514" : hasUp && hasLeft ? char = "\u2518" : char = "\u253C", canvas[dc.x][dc.y] = char, canvas;
 }
-function Br(t, e) {
-  let n = t.maxX - t.minX, o = t.maxY - t.minY;
-  if (n <= 0 || o <= 0) return it(0, 0);
-  let s = { x: 0, y: 0 }, r = { x: n, y: o }, i = it(n, o);
-  if (e.config.useAscii) {
-    for (let a = s.x + 1; a < r.x; a++) i[a][s.y] = "-";
-    for (let a = s.x + 1; a < r.x; a++) i[a][r.y] = "-";
-    for (let a = s.y + 1; a < r.y; a++) i[s.x][a] = "|";
-    for (let a = s.y + 1; a < r.y; a++) i[r.x][a] = "|";
-    i[s.x][s.y] = "+", i[r.x][s.y] = "+", i[s.x][r.y] = "+", i[r.x][r.y] = "+";
+function drawSubgraphBox(sg, graph) {
+  let width = sg.maxX - sg.minX, height = sg.maxY - sg.minY;
+  if (width <= 0 || height <= 0) return mkCanvas(0, 0);
+  let from = { x: 0, y: 0 }, to = { x: width, y: height }, canvas = mkCanvas(width, height);
+  if (graph.config.useAscii) {
+    for (let x = from.x + 1; x < to.x; x++) canvas[x][from.y] = "-";
+    for (let x = from.x + 1; x < to.x; x++) canvas[x][to.y] = "-";
+    for (let y = from.y + 1; y < to.y; y++) canvas[from.x][y] = "|";
+    for (let y = from.y + 1; y < to.y; y++) canvas[to.x][y] = "|";
+    canvas[from.x][from.y] = "+", canvas[to.x][from.y] = "+", canvas[from.x][to.y] = "+", canvas[to.x][to.y] = "+";
   } else {
-    for (let a = s.x + 1; a < r.x; a++) i[a][s.y] = "\u2500";
-    for (let a = s.x + 1; a < r.x; a++) i[a][r.y] = "\u2500";
-    for (let a = s.y + 1; a < r.y; a++) i[s.x][a] = "\u2502";
-    for (let a = s.y + 1; a < r.y; a++) i[r.x][a] = "\u2502";
-    i[s.x][s.y] = "\u250C", i[r.x][s.y] = "\u2510", i[s.x][r.y] = "\u2514", i[r.x][r.y] = "\u2518";
+    for (let x = from.x + 1; x < to.x; x++) canvas[x][from.y] = "\u2500";
+    for (let x = from.x + 1; x < to.x; x++) canvas[x][to.y] = "\u2500";
+    for (let y = from.y + 1; y < to.y; y++) canvas[from.x][y] = "\u2502";
+    for (let y = from.y + 1; y < to.y; y++) canvas[to.x][y] = "\u2502";
+    canvas[from.x][from.y] = "\u250C", canvas[to.x][from.y] = "\u2510", canvas[from.x][to.y] = "\u2514", canvas[to.x][to.y] = "\u2518";
   }
-  return i;
+  return canvas;
 }
-function Xr(t, e) {
-  let n = t.maxX - t.minX, o = t.maxY - t.minY;
-  if (n <= 0 || o <= 0) return [it(0, 0), { x: 0, y: 0 }];
-  let s = it(n, o), r = rt(t.name);
-  for (let i = 0; i < r.length; i++) {
-    let a = r[i], c = 1 + i, l = Math.floor(n / 2) - Math.floor(a.length / 2);
-    l < 1 && (l = 1);
-    for (let d = 0; d < a.length; d++)
-      l + d < n && c < o && (s[l + d][c] = a[d]);
+function drawSubgraphLabel(sg, graph) {
+  let width = sg.maxX - sg.minX, height = sg.maxY - sg.minY;
+  if (width <= 0 || height <= 0) return [mkCanvas(0, 0), { x: 0, y: 0 }];
+  let canvas = mkCanvas(width, height), lines = splitLines(sg.name);
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i], labelY = 1 + i, labelX = Math.floor(width / 2) - Math.floor(line.length / 2);
+    labelX < 1 && (labelX = 1);
+    for (let j = 0; j < line.length; j++)
+      labelX + j < width && labelY < height && (canvas[labelX + j][labelY] = line[j]);
   }
-  return [s, { x: t.minX, y: t.minY }];
+  return [canvas, { x: sg.minX, y: sg.minY }];
 }
-function Pr(t) {
-  function e(o) {
-    return o.parent === null ? 0 : 1 + e(o.parent);
+function sortSubgraphsByDepth(subgraphs) {
+  function getDepth(sg) {
+    return sg.parent === null ? 0 : 1 + getDepth(sg.parent);
   }
-  let n = [...t];
-  return n.sort((o, s) => e(o) - e(s)), n;
+  let sorted = [...subgraphs];
+  return sorted.sort((a, b) => getDepth(a) - getDepth(b)), sorted;
 }
-function pe(t, e, n, o) {
-  for (let s = 0; s < e.length; s++)
-    for (let r = 0; r < (e[0]?.length ?? 0); r++) {
-      let i = e[s]?.[r];
-      if (i && i !== " ") {
-        let a = s + n.x, c = r + n.y;
-        a >= 0 && c >= 0 && Bt(t, a, c, o);
+function fillRolesFromCanvas(roleCanvas, canvas, offset, role) {
+  for (let x = 0; x < canvas.length; x++)
+    for (let y = 0; y < (canvas[0]?.length ?? 0); y++) {
+      let char = canvas[x]?.[y];
+      if (char && char !== " ") {
+        let rx = x + offset.x, ry = y + offset.y;
+        rx >= 0 && ry >= 0 && setRole(roleCanvas, rx, ry, role);
       }
     }
 }
-function _t(t, e, n, o) {
-  for (let s of e)
-    pe(t, s, n, o);
+function fillRolesFromCanvases(roleCanvas, canvases, offset, role) {
+  for (let canvas of canvases)
+    fillRolesFromCanvas(roleCanvas, canvas, offset, role);
 }
-function Hr(t, e, n) {
-  let o = (s) => /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|.':]$/.test(s);
-  for (let s = 0; s < e.length; s++)
-    for (let r = 0; r < (e[0]?.length ?? 0); r++) {
-      let i = e[s]?.[r];
-      if (i && i !== " ") {
-        let a = s + n.x, c = r + n.y;
-        a >= 0 && c >= 0 && Bt(t, a, c, o(i) ? "border" : "text");
+function fillRolesForNodeBox(roleCanvas, canvas, offset) {
+  let isBorderChar = (c) => /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|.':]$/.test(c);
+  for (let x = 0; x < canvas.length; x++)
+    for (let y = 0; y < (canvas[0]?.length ?? 0); y++) {
+      let char = canvas[x]?.[y];
+      if (char && char !== " ") {
+        let rx = x + offset.x, ry = y + offset.y;
+        rx >= 0 && ry >= 0 && setRole(roleCanvas, rx, ry, isBorderChar(char) ? "border" : "text");
       }
     }
 }
-function xn(t) {
-  let e = t.config.useAscii, n = { x: 0, y: 0 }, o = Pr(t.subgraphs);
-  for (let f of o) {
-    let u = Br(f, t), m = { x: f.minX, y: f.minY };
-    t.canvas = Lt(t.canvas, m, e, u), pe(t.roleCanvas, u, m, "border");
+function drawGraph(graph) {
+  let useAscii = graph.config.useAscii, zero = { x: 0, y: 0 }, sortedSgs = sortSubgraphsByDepth(graph.subgraphs);
+  for (let sg of sortedSgs) {
+    let sgCanvas = drawSubgraphBox(sg, graph), offset = { x: sg.minX, y: sg.minY };
+    graph.canvas = mergeCanvases(graph.canvas, offset, useAscii, sgCanvas), fillRolesFromCanvas(graph.roleCanvas, sgCanvas, offset, "border");
   }
-  for (let f of t.nodes)
-    !f.drawn && f.drawingCoord && f.drawing && (t.canvas = Lt(t.canvas, f.drawingCoord, e, f.drawing), Hr(t.roleCanvas, f.drawing, f.drawingCoord), f.drawn = !0);
-  let s = [], r = [], i = [], a = [], c = [], l = [], d = [], h = /* @__PURE__ */ new Set();
-  for (let f of t.edges)
-    if (f.bundle && f.pathToJunction) {
-      let u = f.bundle, [m, p, , , b, A] = Gr(t, f, u);
-      if (s.push(m), r.push(b), c.push(p), l.push(A), !h.has(u)) {
-        h.add(u);
-        let [B, v] = Ir(t, u);
-        if (s.push(B), r.push(v), u.type === "fan-in") {
-          let L = Nr(t, u);
-          i.push(L);
+  for (let node of graph.nodes)
+    !node.drawn && node.drawingCoord && node.drawing && (graph.canvas = mergeCanvases(graph.canvas, node.drawingCoord, useAscii, node.drawing), fillRolesForNodeBox(graph.roleCanvas, node.drawing, node.drawingCoord), node.drawn = !0);
+  let lineCanvases = [], cornerCanvases = [], arrowHeadEndCanvases = [], arrowHeadStartCanvases = [], boxStartCanvases = [], labelCanvases = [], junctionCanvases = [], processedBundles = /* @__PURE__ */ new Set();
+  for (let edge of graph.edges)
+    if (edge.bundle && edge.pathToJunction) {
+      let bundle = edge.bundle, [pathC, boxStartC, , , cornersC, labelC] = drawBundledEdgeSegment(graph, edge, bundle);
+      if (lineCanvases.push(pathC), cornerCanvases.push(cornersC), boxStartCanvases.push(boxStartC), labelCanvases.push(labelC), !processedBundles.has(bundle)) {
+        processedBundles.add(bundle);
+        let [sharedPathC, sharedCornersC] = drawBundleSharedPath(graph, bundle);
+        if (lineCanvases.push(sharedPathC), cornerCanvases.push(sharedCornersC), bundle.type === "fan-in") {
+          let arrowHeadC = drawBundleArrowhead(graph, bundle);
+          arrowHeadEndCanvases.push(arrowHeadC);
         }
-        let H = $r(t, u);
-        d.push(H);
+        let junctionC = drawJunctionCharacter(graph, bundle);
+        junctionCanvases.push(junctionC);
       }
-      if (u.type === "fan-out" && f.hasArrowEnd) {
-        let B = Yr(t, f);
-        i.push(B);
+      if (bundle.type === "fan-out" && edge.hasArrowEnd) {
+        let arrowHeadC = drawBundledEdgeArrowhead(graph, edge);
+        arrowHeadEndCanvases.push(arrowHeadC);
       }
     } else {
-      let [u, m, p, b, A, B] = Sr(t, f);
-      s.push(u), r.push(A), i.push(p), a.push(b), c.push(m), l.push(B);
+      let [pathC, boxStartC, arrowHeadEndC, arrowHeadStartC, cornersC, labelC] = drawArrow(graph, edge);
+      lineCanvases.push(pathC), cornerCanvases.push(cornersC), arrowHeadEndCanvases.push(arrowHeadEndC), arrowHeadStartCanvases.push(arrowHeadStartC), boxStartCanvases.push(boxStartC), labelCanvases.push(labelC);
     }
-  t.canvas = Lt(t.canvas, n, e, ...s), _t(t.roleCanvas, s, n, "line"), t.canvas = Lt(t.canvas, n, e, ...r), _t(t.roleCanvas, r, n, "corner"), t.canvas = Lt(t.canvas, n, e, ...d), _t(t.roleCanvas, d, n, "junction"), t.canvas = Lt(t.canvas, n, e, ...i), _t(t.roleCanvas, i, n, "arrow"), t.canvas = Lt(t.canvas, n, e, ...c), _t(t.roleCanvas, c, n, "junction"), t.canvas = Lt(t.canvas, n, e, ...a), _t(t.roleCanvas, a, n, "arrow"), t.canvas = Lt(t.canvas, n, e, ...l);
-  for (let f of l) He(t.canvas, f);
-  _t(t.roleCanvas, l, n, "text");
-  for (let f of t.subgraphs) {
-    if (f.nodes.length === 0) continue;
-    let [u, m] = Xr(f, t);
-    t.canvas = Lt(t.canvas, m, e, u), pe(t.roleCanvas, u, m, "text");
+  graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...lineCanvases), fillRolesFromCanvases(graph.roleCanvas, lineCanvases, zero, "line"), graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...cornerCanvases), fillRolesFromCanvases(graph.roleCanvas, cornerCanvases, zero, "corner"), graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...junctionCanvases), fillRolesFromCanvases(graph.roleCanvas, junctionCanvases, zero, "junction"), graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...arrowHeadEndCanvases), fillRolesFromCanvases(graph.roleCanvas, arrowHeadEndCanvases, zero, "arrow"), graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...boxStartCanvases), fillRolesFromCanvases(graph.roleCanvas, boxStartCanvases, zero, "junction"), graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...arrowHeadStartCanvases), fillRolesFromCanvases(graph.roleCanvas, arrowHeadStartCanvases, zero, "arrow"), graph.canvas = mergeCanvases(graph.canvas, zero, useAscii, ...labelCanvases);
+  for (let label of labelCanvases) clearLabelGaps(graph.canvas, label);
+  fillRolesFromCanvases(graph.roleCanvas, labelCanvases, zero, "text");
+  for (let sg of graph.subgraphs) {
+    if (sg.nodes.length === 0) continue;
+    let [labelCanvas, offset] = drawSubgraphLabel(sg, graph);
+    graph.canvas = mergeCanvases(graph.canvas, offset, useAscii, labelCanvas), fillRolesFromCanvas(graph.roleCanvas, labelCanvas, offset, "text");
   }
-  return t.canvas;
+  return graph.canvas;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/grid.ts
-function Et(t, e, n) {
-  let o = n ? { x: e.x + n.x, y: e.y + n.y } : e, s = 0;
-  for (let c = 0; c < o.x; c++)
-    s += t.columnWidth.get(c) ?? 0;
-  let r = 0;
-  for (let c = 0; c < o.y; c++)
-    r += t.rowHeight.get(c) ?? 0;
-  let i = t.columnWidth.get(o.x) ?? 0, a = t.rowHeight.get(o.y) ?? 0;
+function gridToDrawingCoord(graph, c, dir) {
+  let target = dir ? { x: c.x + dir.x, y: c.y + dir.y } : c, x = 0;
+  for (let col = 0; col < target.x; col++)
+    x += graph.columnWidth.get(col) ?? 0;
+  let y = 0;
+  for (let row = 0; row < target.y; row++)
+    y += graph.rowHeight.get(row) ?? 0;
+  let colW = graph.columnWidth.get(target.x) ?? 0, rowH = graph.rowHeight.get(target.y) ?? 0;
   return {
-    x: s + Math.floor(i / 2) + t.offsetX,
-    y: r + Math.floor(a / 2) + t.offsetY
+    x: x + Math.floor(colW / 2) + graph.offsetX,
+    y: y + Math.floor(rowH / 2) + graph.offsetY
   };
 }
-function bn(t, e) {
-  return e.map((n) => Et(t, n));
+function lineToDrawing(graph, line) {
+  return line.map((c) => gridToDrawingCoord(graph, c));
 }
-function Ut(t, e, n, o) {
-  let s = o ?? jr(t, e);
-  if (t.grid.has(It(n)))
-    return s === "LR" ? Ut(t, e, { x: n.x, y: n.y + 4 }, s) : Ut(t, e, { x: n.x + 4, y: n.y }, s);
-  for (let r = 0; r < 3; r++)
-    for (let i = 0; i < 3; i++) {
-      let a = { x: n.x + r, y: n.y + i };
-      t.grid.set(It(a), e);
+function reserveSpotInGrid(graph, node, requested, effectiveDir) {
+  let dir = effectiveDir ?? getEffectiveDirection2(graph, node);
+  if (graph.grid.has(gridKey(requested)))
+    return dir === "LR" ? reserveSpotInGrid(graph, node, { x: requested.x, y: requested.y + 4 }, dir) : reserveSpotInGrid(graph, node, { x: requested.x + 4, y: requested.y }, dir);
+  for (let dx = 0; dx < 3; dx++)
+    for (let dy = 0; dy < 3; dy++) {
+      let reserved = { x: requested.x + dx, y: requested.y + dy };
+      graph.grid.set(gridKey(reserved), node);
     }
-  return e.gridCoord = n, n;
+  return node.gridCoord = requested, requested;
 }
-function Wr(t, e) {
-  let n = e.gridCoord, o = t.config.boxBorderPadding, s = hn(e.shape, e.displayLabel, {
-    useAscii: t.config.useAscii,
-    padding: o
-  }), r = s.gridColumns, i = s.gridRows;
-  for (let a = 0; a < r.length; a++) {
-    let c = n.x + a, l = t.columnWidth.get(c) ?? 0;
-    t.columnWidth.set(c, Math.max(l, r[a]));
+function setColumnWidth(graph, node) {
+  let gc = node.gridCoord, padding = graph.config.boxBorderPadding, shapeDims = getShapeDimensions(node.shape, node.displayLabel, {
+    useAscii: graph.config.useAscii,
+    padding
+  }), colWidths = shapeDims.gridColumns, rowHeights = shapeDims.gridRows;
+  for (let idx = 0; idx < colWidths.length; idx++) {
+    let xCoord = gc.x + idx, current = graph.columnWidth.get(xCoord) ?? 0;
+    graph.columnWidth.set(xCoord, Math.max(current, colWidths[idx]));
   }
-  for (let a = 0; a < i.length; a++) {
-    let c = n.y + a, l = t.rowHeight.get(c) ?? 0;
-    t.rowHeight.set(c, Math.max(l, i[a]));
+  for (let idx = 0; idx < rowHeights.length; idx++) {
+    let yCoord = gc.y + idx, current = graph.rowHeight.get(yCoord) ?? 0;
+    graph.rowHeight.set(yCoord, Math.max(current, rowHeights[idx]));
   }
-  if (n.x > 0) {
-    let a = t.columnWidth.get(n.x - 1) ?? 0;
-    t.columnWidth.set(n.x - 1, Math.max(a, t.config.paddingX));
+  if (gc.x > 0) {
+    let current = graph.columnWidth.get(gc.x - 1) ?? 0;
+    graph.columnWidth.set(gc.x - 1, Math.max(current, graph.config.paddingX));
   }
-  if (n.y > 0) {
-    let a = t.config.paddingY;
-    zr(t, e) && (a += 4);
-    let c = t.rowHeight.get(n.y - 1) ?? 0;
-    t.rowHeight.set(n.y - 1, Math.max(c, a));
+  if (gc.y > 0) {
+    let basePadding = graph.config.paddingY;
+    hasIncomingEdgeFromOutsideSubgraph(graph, node) && (basePadding += 4);
+    let current = graph.rowHeight.get(gc.y - 1) ?? 0;
+    graph.rowHeight.set(gc.y - 1, Math.max(current, basePadding));
   }
 }
-function yn(t, e) {
-  for (let n of e)
-    t.columnWidth.has(n.x) || t.columnWidth.set(n.x, Math.floor(t.config.paddingX / 2)), t.rowHeight.has(n.y) || t.rowHeight.set(n.y, Math.floor(t.config.paddingY / 2));
+function increaseGridSizeForPath(graph, path) {
+  for (let c of path)
+    graph.columnWidth.has(c.x) || graph.columnWidth.set(c.x, Math.floor(graph.config.paddingX / 2)), graph.rowHeight.has(c.y) || graph.rowHeight.set(c.y, Math.floor(graph.config.paddingY / 2));
 }
-function be(t, e) {
-  return t.subgraphs.some((n) => n.nodes.includes(e));
+function isNodeInAnySubgraph(graph, node) {
+  return graph.subgraphs.some((sg) => sg.nodes.includes(node));
 }
-function yt(t, e) {
-  let n = null;
-  for (let o of t.subgraphs)
-    o.nodes.includes(e) && (!n || _r(n, o)) && (n = o);
-  return n;
+function getNodeSubgraph(graph, node) {
+  let innermost = null;
+  for (let sg of graph.subgraphs)
+    sg.nodes.includes(node) && (!innermost || isAncestorOrSelf2(innermost, sg)) && (innermost = sg);
+  return innermost;
 }
-function _r(t, e) {
-  let n = e;
-  for (; n !== null; ) {
-    if (n === t) return !0;
-    n = n.parent;
+function isAncestorOrSelf2(candidate, target) {
+  let current = target;
+  for (; current !== null; ) {
+    if (current === candidate) return !0;
+    current = current.parent;
   }
   return !1;
 }
-function jr(t, e) {
-  let n = yt(t, e);
-  return n?.direction ? n.direction : t.config.graphDirection;
+function getEffectiveDirection2(graph, node) {
+  let sg = getNodeSubgraph(graph, node);
+  return sg?.direction ? sg.direction : graph.config.graphDirection;
 }
-function zr(t, e) {
-  let n = yt(t, e);
-  if (!n) return !1;
-  let o = !1;
-  for (let s of t.edges)
-    if (s.to === e && yt(t, s.from) !== n) {
-      o = !0;
+function hasIncomingEdgeFromOutsideSubgraph(graph, node) {
+  let nodeSg = getNodeSubgraph(graph, node);
+  if (!nodeSg) return !1;
+  let hasExternalEdge = !1;
+  for (let edge of graph.edges)
+    if (edge.to === node && getNodeSubgraph(graph, edge.from) !== nodeSg) {
+      hasExternalEdge = !0;
       break;
     }
-  if (!o) return !1;
-  for (let s of n.nodes) {
-    if (s === e || !s.gridCoord) continue;
-    let r = !1;
-    for (let i of t.edges)
-      if (i.to === s && yt(t, i.from) !== n) {
-        r = !0;
+  if (!hasExternalEdge) return !1;
+  for (let otherNode of nodeSg.nodes) {
+    if (otherNode === node || !otherNode.gridCoord) continue;
+    let otherHasExternal = !1;
+    for (let edge of graph.edges)
+      if (edge.to === otherNode && getNodeSubgraph(graph, edge.from) !== nodeSg) {
+        otherHasExternal = !0;
         break;
       }
-    if (r && s.gridCoord.y < e.gridCoord.y)
+    if (otherHasExternal && otherNode.gridCoord.y < node.gridCoord.y)
       return !1;
   }
   return !0;
 }
-function Cn(t, e) {
-  if (e.nodes.length === 0) return;
-  let n = 1e6, o = 1e6, s = -1e6, r = -1e6;
-  for (let c of e.children)
-    Cn(t, c), c.nodes.length > 0 && (n = Math.min(n, c.minX), o = Math.min(o, c.minY), s = Math.max(s, c.maxX), r = Math.max(r, c.maxY));
-  for (let c of e.nodes) {
-    if (!c.drawingCoord || !c.drawing) continue;
-    let l = c.drawingCoord.x, d = c.drawingCoord.y, h = l + c.drawing.length - 1, f = d + c.drawing[0].length - 1;
-    n = Math.min(n, l), o = Math.min(o, d), s = Math.max(s, h), r = Math.max(r, f);
+function calculateSubgraphBoundingBox(graph, sg) {
+  if (sg.nodes.length === 0) return;
+  let minX = 1e6, minY = 1e6, maxX = -1e6, maxY = -1e6;
+  for (let child of sg.children)
+    calculateSubgraphBoundingBox(graph, child), child.nodes.length > 0 && (minX = Math.min(minX, child.minX), minY = Math.min(minY, child.minY), maxX = Math.max(maxX, child.maxX), maxY = Math.max(maxY, child.maxY));
+  for (let node of sg.nodes) {
+    if (!node.drawingCoord || !node.drawing) continue;
+    let nodeMinX = node.drawingCoord.x, nodeMinY = node.drawingCoord.y, nodeMaxX = nodeMinX + node.drawing.length - 1, nodeMaxY = nodeMinY + node.drawing[0].length - 1;
+    minX = Math.min(minX, nodeMinX), minY = Math.min(minY, nodeMinY), maxX = Math.max(maxX, nodeMaxX), maxY = Math.max(maxY, nodeMaxY);
   }
-  let i = 2, a = 2;
-  e.minX = n - i, e.minY = o - i - a, e.maxX = s + i, e.maxY = r + i;
+  let subgraphPadding = 2, subgraphLabelSpace = 2;
+  sg.minX = minX - subgraphPadding, sg.minY = minY - subgraphPadding - subgraphLabelSpace, sg.maxX = maxX + subgraphPadding, sg.maxY = maxY + subgraphPadding;
 }
-function Or(t) {
-  let n = t.subgraphs.filter((o) => o.parent === null && o.nodes.length > 0);
-  for (let o = 0; o < n.length; o++)
-    for (let s = o + 1; s < n.length; s++) {
-      let r = n[o], i = n[s];
-      r.minX < i.maxX && r.maxX > i.minX && (r.maxY >= i.minY - 1 && r.minY < i.minY ? i.minY = r.maxY + 1 + 1 : i.maxY >= r.minY - 1 && i.minY < r.minY && (r.minY = i.maxY + 1 + 1)), r.minY < i.maxY && r.maxY > i.minY && (r.maxX >= i.minX - 1 && r.minX < i.minX ? i.minX = r.maxX + 1 + 1 : i.maxX >= r.minX - 1 && i.minX < r.minX && (r.minX = i.maxX + 1 + 1));
+function ensureSubgraphSpacing(graph) {
+  let rootSubgraphs = graph.subgraphs.filter((sg) => sg.parent === null && sg.nodes.length > 0);
+  for (let i = 0; i < rootSubgraphs.length; i++)
+    for (let j = i + 1; j < rootSubgraphs.length; j++) {
+      let sg1 = rootSubgraphs[i], sg2 = rootSubgraphs[j];
+      sg1.minX < sg2.maxX && sg1.maxX > sg2.minX && (sg1.maxY >= sg2.minY - 1 && sg1.minY < sg2.minY ? sg2.minY = sg1.maxY + 1 + 1 : sg2.maxY >= sg1.minY - 1 && sg2.minY < sg1.minY && (sg1.minY = sg2.maxY + 1 + 1)), sg1.minY < sg2.maxY && sg1.maxY > sg2.minY && (sg1.maxX >= sg2.minX - 1 && sg1.minX < sg2.minX ? sg2.minX = sg1.maxX + 1 + 1 : sg2.maxX >= sg1.minX - 1 && sg2.minX < sg1.minX && (sg1.minX = sg2.maxX + 1 + 1));
     }
 }
-function Fr(t) {
-  for (let e of t.subgraphs)
-    Cn(t, e);
-  Or(t);
+function calculateSubgraphBoundingBoxes(graph) {
+  for (let sg of graph.subgraphs)
+    calculateSubgraphBoundingBox(graph, sg);
+  ensureSubgraphSpacing(graph);
 }
-function Jr(t) {
-  if (t.subgraphs.length === 0) return;
-  let e = 0, n = 0;
-  for (let r of t.subgraphs)
-    e = Math.min(e, r.minX), n = Math.min(n, r.minY);
-  let o = -e, s = -n;
-  if (!(o === 0 && s === 0)) {
-    t.offsetX = o, t.offsetY = s;
-    for (let r of t.subgraphs)
-      r.minX += o, r.minY += s, r.maxX += o, r.maxY += s;
-    for (let r of t.nodes)
-      r.drawingCoord && (r.drawingCoord.x += o, r.drawingCoord.y += s);
+function offsetDrawingForSubgraphs(graph) {
+  if (graph.subgraphs.length === 0) return;
+  let minX = 0, minY = 0;
+  for (let sg of graph.subgraphs)
+    minX = Math.min(minX, sg.minX), minY = Math.min(minY, sg.minY);
+  let offsetX = -minX, offsetY = -minY;
+  if (!(offsetX === 0 && offsetY === 0)) {
+    graph.offsetX = offsetX, graph.offsetY = offsetY;
+    for (let sg of graph.subgraphs)
+      sg.minX += offsetX, sg.minY += offsetY, sg.maxX += offsetX, sg.maxY += offsetY;
+    for (let node of graph.nodes)
+      node.drawingCoord && (node.drawingCoord.x += offsetX, node.drawingCoord.y += offsetY);
   }
 }
-function Mn(t) {
-  let e = t.config.graphDirection, n = new Array(1e4).fill(0), o = /* @__PURE__ */ new Set(), s = [];
-  for (let f of t.nodes) {
-    o.has(f.name) || s.push(f), o.add(f.name);
-    for (let u of ye(t, f))
-      o.add(u.name);
+function createMapping(graph) {
+  let dir = graph.config.graphDirection, highestPositionPerLevel = new Array(1e4).fill(0), nodesFound = /* @__PURE__ */ new Set(), initialRoots = [];
+  for (let node of graph.nodes) {
+    nodesFound.has(node.name) || initialRoots.push(node), nodesFound.add(node.name);
+    for (let child of getChildren(graph, node))
+      nodesFound.add(child.name);
   }
-  let r = s.filter((f) => {
-    let u = yt(t, f);
-    if (!u) return !0;
-    for (let m of t.edges)
-      if (m.to === f && yt(t, m.from) !== u)
+  let rootNodes = initialRoots.filter((node) => {
+    let nodeSg = getNodeSubgraph(graph, node);
+    if (!nodeSg) return !0;
+    for (let edge of graph.edges)
+      if (edge.to === node && getNodeSubgraph(graph, edge.from) !== nodeSg)
         return !1;
     return !0;
-  }), i = !1, a = !1;
-  for (let f of r)
-    be(t, f) ? ye(t, f).length > 0 && (a = !0) : i = !0;
-  let c = e === "LR" && i && a, l, d = [];
-  c ? (l = r.filter((f) => !be(t, f)), d = r.filter((f) => be(t, f))) : l = r;
-  for (let f of l) {
-    let u = e === "LR" ? { x: 0, y: n[0] } : { x: n[0], y: 0 };
-    Ut(t, t.nodes[f.index], u), n[0] = n[0] + 4;
+  }), hasExternalRoots = !1, hasSubgraphRootsWithEdges = !1;
+  for (let node of rootNodes)
+    isNodeInAnySubgraph(graph, node) ? getChildren(graph, node).length > 0 && (hasSubgraphRootsWithEdges = !0) : hasExternalRoots = !0;
+  let shouldSeparate = dir === "LR" && hasExternalRoots && hasSubgraphRootsWithEdges, externalRootNodes, subgraphRootNodes = [];
+  shouldSeparate ? (externalRootNodes = rootNodes.filter((n) => !isNodeInAnySubgraph(graph, n)), subgraphRootNodes = rootNodes.filter((n) => isNodeInAnySubgraph(graph, n))) : externalRootNodes = rootNodes;
+  for (let node of externalRootNodes) {
+    let requested = dir === "LR" ? { x: 0, y: highestPositionPerLevel[0] } : { x: highestPositionPerLevel[0], y: 0 };
+    reserveSpotInGrid(graph, graph.nodes[node.index], requested), highestPositionPerLevel[0] = highestPositionPerLevel[0] + 4;
   }
-  if (c && d.length > 0)
-    for (let u of d) {
-      let m = e === "LR" ? { x: 4, y: n[4] } : { x: n[4], y: 4 };
-      Ut(t, t.nodes[u.index], m), n[4] = n[4] + 4;
+  if (shouldSeparate && subgraphRootNodes.length > 0)
+    for (let node of subgraphRootNodes) {
+      let requested = dir === "LR" ? { x: 4, y: highestPositionPerLevel[4] } : { x: highestPositionPerLevel[4], y: 4 };
+      reserveSpotInGrid(graph, graph.nodes[node.index], requested), highestPositionPerLevel[4] = highestPositionPerLevel[4] + 4;
     }
-  let h = l.length + d.length;
-  for (; h < t.nodes.length; ) {
-    let f = h;
-    for (let u of t.nodes) {
-      if (u.gridCoord === null) continue;
-      let m = u.gridCoord;
-      for (let p of ye(t, u)) {
-        if (p.gridCoord !== null) continue;
-        let b = yt(t, u), A = yt(t, p), B = b && b === A && b.direction ? b.direction : t.config.graphDirection, v = B === "LR" ? m.x + 4 : m.y + 4, H;
-        B !== t.config.graphDirection ? H = B === "LR" ? m.y : m.x : H = n[v];
-        let L = B === "LR" ? { x: v, y: H } : { x: H, y: v };
-        Ut(t, t.nodes[p.index], L, B), B === t.config.graphDirection && (n[v] = H + 4), h++;
+  let placedCount = externalRootNodes.length + subgraphRootNodes.length;
+  for (; placedCount < graph.nodes.length; ) {
+    let prevCount = placedCount;
+    for (let node of graph.nodes) {
+      if (node.gridCoord === null) continue;
+      let gc = node.gridCoord;
+      for (let child of getChildren(graph, node)) {
+        if (child.gridCoord !== null) continue;
+        let parentSg = getNodeSubgraph(graph, node), childSg = getNodeSubgraph(graph, child), edgeDir = parentSg && parentSg === childSg && parentSg.direction ? parentSg.direction : graph.config.graphDirection, childLevel = edgeDir === "LR" ? gc.x + 4 : gc.y + 4, highestPosition;
+        edgeDir !== graph.config.graphDirection ? highestPosition = edgeDir === "LR" ? gc.y : gc.x : highestPosition = highestPositionPerLevel[childLevel];
+        let requested = edgeDir === "LR" ? { x: childLevel, y: highestPosition } : { x: highestPosition, y: childLevel };
+        reserveSpotInGrid(graph, graph.nodes[child.index], requested, edgeDir), edgeDir === graph.config.graphDirection && (highestPositionPerLevel[childLevel] = highestPosition + 4), placedCount++;
       }
     }
-    if (h === f) break;
+    if (placedCount === prevCount) break;
   }
-  for (let f of t.nodes)
-    Wr(t, f);
-  t.bundles = qe(t), Ve(t);
-  for (let f of t.edges) {
-    if (f.bundle && f.path.length > 0) {
-      yn(t, f.path), he(t, f);
+  for (let node of graph.nodes)
+    setColumnWidth(graph, node);
+  graph.bundles = analyzeEdgeBundles(graph), processBundles(graph);
+  for (let edge of graph.edges) {
+    if (edge.bundle && edge.path.length > 0) {
+      increaseGridSizeForPath(graph, edge.path), determineLabelLine(graph, edge);
       continue;
     }
-    Je(t, f), yn(t, f.path), he(t, f);
+    determinePath(graph, edge), increaseGridSizeForPath(graph, edge.path), determineLabelLine(graph, edge);
   }
-  for (let f of t.nodes)
-    f.drawingCoord = Et(t, f.gridCoord), f.drawing = pn(f, t);
-  je(t.canvas, t.columnWidth, t.rowHeight), ze(t.roleCanvas, t.columnWidth, t.rowHeight), Fr(t), Jr(t);
+  for (let node of graph.nodes)
+    node.drawingCoord = gridToDrawingCoord(graph, node.gridCoord), node.drawing = drawBox(node, graph);
+  setCanvasSizeToGrid(graph.canvas, graph.columnWidth, graph.rowHeight), setRoleCanvasSizeToGrid(graph.roleCanvas, graph.columnWidth, graph.rowHeight), calculateSubgraphBoundingBoxes(graph), offsetDrawingForSubgraphs(graph);
 }
-function Ur(t, e) {
-  return t.edges.filter((n) => n.from.name === e.name);
+function getEdgesFromNode(graph, node) {
+  return graph.edges.filter((e) => e.from.name === node.name);
 }
-function ye(t, e) {
-  return Ur(t, e).map((n) => n.to);
+function getChildren(graph, node) {
+  return getEdgesFromNode(graph, node).map((e) => e.to);
 }
 
 // node_modules/beautiful-mermaid/src/sequence/parser.ts
-function wn(t) {
-  let e = {
+function parseSequenceDiagram(lines) {
+  let diagram = {
     actors: [],
     messages: [],
     blocks: [],
     notes: []
-  }, n = /* @__PURE__ */ new Set(), o = [];
-  for (let s = 1; s < t.length; s++) {
-    let r = t[s], i = r.match(/^(participant|actor)\s+(\S+?)(?:\s+as\s+(.+))?$/);
-    if (i) {
-      let f = i[1], u = i[2], m = i[3]?.trim() ?? u, p = dt(m);
-      n.has(u) || (n.add(u), e.actors.push({ id: u, label: p, type: f }));
+  }, actorIds = /* @__PURE__ */ new Set(), blockStack = [];
+  for (let i = 1; i < lines.length; i++) {
+    let line = lines[i], actorMatch = line.match(/^(participant|actor)\s+(\S+?)(?:\s+as\s+(.+))?$/);
+    if (actorMatch) {
+      let type = actorMatch[1], id = actorMatch[2], rawLabel = actorMatch[3]?.trim() ?? id, label = normalizeBrTags(rawLabel);
+      actorIds.has(id) || (actorIds.add(id), diagram.actors.push({ id, label, type }));
       continue;
     }
-    let a = r.match(/^Note\s+(left of|right of|over)\s+([^:]+):\s*(.+)$/i);
-    if (a) {
-      let f = a[1].toLowerCase(), u = a[2].trim(), m = dt(a[3].trim()), p = u.split(",").map((A) => A.trim());
-      for (let A of p)
-        qt(e, n, A);
-      let b = "over";
-      f === "left of" ? b = "left" : f === "right of" && (b = "right"), e.notes.push({
-        actorIds: p,
-        text: m,
-        position: b,
-        afterIndex: e.messages.length - 1
+    let noteMatch = line.match(/^Note\s+(left of|right of|over)\s+([^:]+):\s*(.+)$/i);
+    if (noteMatch) {
+      let posStr = noteMatch[1].toLowerCase(), actorsStr = noteMatch[2].trim(), text = normalizeBrTags(noteMatch[3].trim()), noteActorIds = actorsStr.split(",").map((s) => s.trim());
+      for (let aid of noteActorIds)
+        ensureActor(diagram, actorIds, aid);
+      let position = "over";
+      posStr === "left of" ? position = "left" : posStr === "right of" && (position = "right"), diagram.notes.push({
+        actorIds: noteActorIds,
+        text,
+        position,
+        afterIndex: diagram.messages.length - 1
       });
       continue;
     }
-    let c = r.match(/^(loop|alt|opt|par|critical|break|rect)\s*(.*)$/);
-    if (c) {
-      let f = c[1], u = c[2]?.trim() ?? "", m = dt(u);
-      o.push({
-        type: f,
-        label: m,
-        startIndex: e.messages.length,
+    let blockMatch = line.match(/^(loop|alt|opt|par|critical|break|rect)\s*(.*)$/);
+    if (blockMatch) {
+      let blockType = blockMatch[1], rawBlockLabel = blockMatch[2]?.trim() ?? "", label = normalizeBrTags(rawBlockLabel);
+      blockStack.push({
+        type: blockType,
+        label,
+        startIndex: diagram.messages.length,
         dividers: []
       });
       continue;
     }
-    let l = r.match(/^(else|and)\s*(.*)$/);
-    if (l && o.length > 0) {
-      let f = l[2]?.trim() ?? "", u = dt(f);
-      o[o.length - 1].dividers.push({
-        index: e.messages.length,
-        label: u
+    let dividerMatch = line.match(/^(else|and)\s*(.*)$/);
+    if (dividerMatch && blockStack.length > 0) {
+      let rawDividerLabel = dividerMatch[2]?.trim() ?? "", label = normalizeBrTags(rawDividerLabel);
+      blockStack[blockStack.length - 1].dividers.push({
+        index: diagram.messages.length,
+        label
       });
       continue;
     }
-    if (r === "end" && o.length > 0) {
-      let f = o.pop();
-      e.blocks.push({
-        type: f.type,
-        label: f.label,
-        startIndex: f.startIndex,
-        endIndex: Math.max(e.messages.length - 1, f.startIndex),
-        dividers: f.dividers
+    if (line === "end" && blockStack.length > 0) {
+      let completed = blockStack.pop();
+      diagram.blocks.push({
+        type: completed.type,
+        label: completed.label,
+        startIndex: completed.startIndex,
+        endIndex: Math.max(diagram.messages.length - 1, completed.startIndex),
+        dividers: completed.dividers
       });
       continue;
     }
-    let d = r.match(
+    let msgMatch = line.match(
       /^(\S+?)\s*(--?>?>|--?[)x]|--?>>|--?>)\s*([+-]?)(\S+?)\s*:\s*(.+)$/
     );
-    if (d) {
-      let f = d[1], u = d[2], m = d[3], p = d[4], b = dt(d[5].trim());
-      qt(e, n, f), qt(e, n, p);
-      let A = u.startsWith("--") ? "dashed" : "solid", B = u.includes(">>") || u.includes("x") ? "filled" : "open", v = {
-        from: f,
-        to: p,
-        label: b,
-        lineStyle: A,
-        arrowHead: B
+    if (msgMatch) {
+      let from = msgMatch[1], arrow = msgMatch[2], activationMark = msgMatch[3], to = msgMatch[4], label = normalizeBrTags(msgMatch[5].trim());
+      ensureActor(diagram, actorIds, from), ensureActor(diagram, actorIds, to);
+      let lineStyle = arrow.startsWith("--") ? "dashed" : "solid", arrowHead = arrow.includes(">>") || arrow.includes("x") ? "filled" : "open", msg = {
+        from,
+        to,
+        label,
+        lineStyle,
+        arrowHead
       };
-      m === "+" && (v.activate = !0), m === "-" && (v.deactivate = !0), e.messages.push(v);
+      activationMark === "+" && (msg.activate = !0), activationMark === "-" && (msg.deactivate = !0), diagram.messages.push(msg);
       continue;
     }
-    let h = r.match(
+    let simpleMsgMatch = line.match(
       /^(\S+?)\s*(->>|-->>|-\)|--\)|-x|--x|->|-->)\s*([+-]?)(\S+?)\s*:\s*(.+)$/
     );
-    if (h) {
-      let f = h[1], u = h[2], m = h[3], p = h[4], b = dt(h[5].trim());
-      qt(e, n, f), qt(e, n, p);
-      let A = u.startsWith("--") ? "dashed" : "solid", B = u.includes(">>") || u.includes("x") ? "filled" : "open", v = { from: f, to: p, label: b, lineStyle: A, arrowHead: B };
-      m === "+" && (v.activate = !0), m === "-" && (v.deactivate = !0), e.messages.push(v);
+    if (simpleMsgMatch) {
+      let from = simpleMsgMatch[1], arrow = simpleMsgMatch[2], activationMark = simpleMsgMatch[3], to = simpleMsgMatch[4], label = normalizeBrTags(simpleMsgMatch[5].trim());
+      ensureActor(diagram, actorIds, from), ensureActor(diagram, actorIds, to);
+      let lineStyle = arrow.startsWith("--") ? "dashed" : "solid", arrowHead = arrow.includes(">>") || arrow.includes("x") ? "filled" : "open", msg = { from, to, label, lineStyle, arrowHead };
+      activationMark === "+" && (msg.activate = !0), activationMark === "-" && (msg.deactivate = !0), diagram.messages.push(msg);
       continue;
     }
   }
-  return e;
+  return diagram;
 }
-function qt(t, e, n) {
-  e.has(n) || (e.add(n), t.actors.push({ id: n, label: n, type: "participant" }));
+function ensureActor(diagram, actorIds, id) {
+  actorIds.has(id) || (actorIds.add(id), diagram.actors.push({ id, label: id, type: "participant" }));
 }
 
 // node_modules/beautiful-mermaid/src/ascii/sequence.ts
-function vn(t, e, n, o) {
-  let s = t.split(`
-`).map((g) => g.trim()).filter((g) => g.length > 0 && !g.startsWith("%%")), r = wn(s);
-  if (r.actors.length === 0) return "";
-  let i = e.useAscii, a = i ? "-" : "\u2500", c = i ? "|" : "\u2502", l = i ? "+" : "\u250C", d = i ? "+" : "\u2510", h = i ? "+" : "\u2514", f = i ? "+" : "\u2518", u = i ? "+" : "\u252C", m = i ? "+" : "\u2534", p = i ? "+" : "\u251C", b = i ? "+" : "\u2524", A = /* @__PURE__ */ new Map();
-  r.actors.forEach((g, y) => A.set(g.id, y));
-  let B = 1, H = r.actors.map((g) => re(g.label) + 2 * B + 2).map((g) => Math.ceil(g / 2)), L = r.actors.map((g) => ge(g.label) + 2), q = Math.max(...L, 3), ut = new Array(Math.max(r.actors.length - 1, 0)).fill(0);
-  for (let g of r.messages) {
-    let y = A.get(g.from), E = A.get(g.to);
-    if (y === E) continue;
-    let T = Math.min(y, E), k = Math.max(y, E), R = re(g.label) + 4, J = k - T, G = Math.ceil(R / J);
-    for (let S = T; S < k; S++)
-      ut[S] = Math.max(ut[S], G);
+function renderSequenceAscii(text, config, colorMode, theme) {
+  let lines = text.split(`
+`).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%")), diagram = parseSequenceDiagram(lines);
+  if (diagram.actors.length === 0) return "";
+  let useAscii = config.useAscii, H = useAscii ? "-" : "\u2500", V = useAscii ? "|" : "\u2502", TL = useAscii ? "+" : "\u250C", TR = useAscii ? "+" : "\u2510", BL = useAscii ? "+" : "\u2514", BR = useAscii ? "+" : "\u2518", JT = useAscii ? "+" : "\u252C", JB = useAscii ? "+" : "\u2534", JL = useAscii ? "+" : "\u251C", JR = useAscii ? "+" : "\u2524", actorIdx = /* @__PURE__ */ new Map();
+  diagram.actors.forEach((a, i) => actorIdx.set(a.id, i));
+  let boxPad = 1, halfBox = diagram.actors.map((a) => maxLineWidth(a.label) + 2 * boxPad + 2).map((w) => Math.ceil(w / 2)), actorBoxHeights = diagram.actors.map((a) => lineCount(a.label) + 2), actorBoxH = Math.max(...actorBoxHeights, 3), adjMaxWidth = new Array(Math.max(diagram.actors.length - 1, 0)).fill(0);
+  for (let msg of diagram.messages) {
+    let fi = actorIdx.get(msg.from), ti = actorIdx.get(msg.to);
+    if (fi === ti) continue;
+    let lo = Math.min(fi, ti), hi = Math.max(fi, ti), needed = maxLineWidth(msg.label) + 4, numGaps = hi - lo, perGap = Math.ceil(needed / numGaps);
+    for (let g = lo; g < hi; g++)
+      adjMaxWidth[g] = Math.max(adjMaxWidth[g], perGap);
   }
-  let O = [H[0]];
-  for (let g = 1; g < r.actors.length; g++) {
-    let y = Math.max(
-      H[g - 1] + H[g] + 2,
-      ut[g - 1] + 2,
+  let llX = [halfBox[0]];
+  for (let i = 1; i < diagram.actors.length; i++) {
+    let gap = Math.max(
+      halfBox[i - 1] + halfBox[i] + 2,
+      adjMaxWidth[i - 1] + 2,
       10
     );
-    O[g] = O[g - 1] + y;
+    llX[i] = llX[i - 1] + gap;
   }
-  let ft = [], I = [], U = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new Map(), F = /* @__PURE__ */ new Map(), V = [], K = q;
-  for (let g = 0; g < r.messages.length; g++) {
-    for (let k = 0; k < r.blocks.length; k++)
-      r.blocks[k].startIndex === g && (K += 2, U.set(k, K - 1));
-    for (let k = 0; k < r.blocks.length; k++)
-      for (let R = 0; R < r.blocks[k].dividers.length; R++)
-        r.blocks[k].dividers[R].index === g && (K += 1, F.set(`${k}:${R}`, K), K += 1);
-    K += 1;
-    let y = r.messages[g], E = y.from === y.to, T = ge(y.label);
-    E ? (I[g] = K + 1, ft[g] = K, K += 2 + T) : (I[g] = K, ft[g] = K + T, K += T + 1);
-    for (let k = 0; k < r.notes.length; k++)
-      if (r.notes[k].afterIndex === g) {
-        K += 1;
-        let R = r.notes[k], J = rt(R.text), G = Math.max(...J.map(($) => $.length)) + 4, S = J.length + 2, z = A.get(R.actorIds[0]) ?? 0, D;
-        if (R.position === "left")
-          D = O[z] - G - 1;
-        else if (R.position === "right")
-          D = O[z] + 2;
-        else if (R.actorIds.length >= 2) {
-          let $ = A.get(R.actorIds[1]) ?? z;
-          D = Math.floor((O[z] + O[$]) / 2) - Math.floor(G / 2);
+  let msgArrowY = [], msgLabelY = [], blockStartY = /* @__PURE__ */ new Map(), blockEndY = /* @__PURE__ */ new Map(), divYMap = /* @__PURE__ */ new Map(), notePositions = [], curY = actorBoxH;
+  for (let m = 0; m < diagram.messages.length; m++) {
+    for (let b = 0; b < diagram.blocks.length; b++)
+      diagram.blocks[b].startIndex === m && (curY += 2, blockStartY.set(b, curY - 1));
+    for (let b = 0; b < diagram.blocks.length; b++)
+      for (let d = 0; d < diagram.blocks[b].dividers.length; d++)
+        diagram.blocks[b].dividers[d].index === m && (curY += 1, divYMap.set(`${b}:${d}`, curY), curY += 1);
+    curY += 1;
+    let msg = diagram.messages[m], isSelf = msg.from === msg.to, msgLineCount = lineCount(msg.label);
+    isSelf ? (msgLabelY[m] = curY + 1, msgArrowY[m] = curY, curY += 2 + msgLineCount) : (msgLabelY[m] = curY, msgArrowY[m] = curY + msgLineCount, curY += msgLineCount + 1);
+    for (let n = 0; n < diagram.notes.length; n++)
+      if (diagram.notes[n].afterIndex === m) {
+        curY += 1;
+        let note = diagram.notes[n], nLines = splitLines(note.text), nWidth = Math.max(...nLines.map((l) => l.length)) + 4, nHeight = nLines.length + 2, aIdx = actorIdx.get(note.actorIds[0]) ?? 0, nx;
+        if (note.position === "left")
+          nx = llX[aIdx] - nWidth - 1;
+        else if (note.position === "right")
+          nx = llX[aIdx] + 2;
+        else if (note.actorIds.length >= 2) {
+          let aIdx2 = actorIdx.get(note.actorIds[1]) ?? aIdx;
+          nx = Math.floor((llX[aIdx] + llX[aIdx2]) / 2) - Math.floor(nWidth / 2);
         } else
-          D = O[z] - Math.floor(G / 2);
-        D = Math.max(0, D), V.push({ x: D, y: K, width: G, height: S, lines: J }), K += S;
+          nx = llX[aIdx] - Math.floor(nWidth / 2);
+        nx = Math.max(0, nx), notePositions.push({ x: nx, y: curY, width: nWidth, height: nHeight, lines: nLines }), curY += nHeight;
       }
-    for (let k = 0; k < r.blocks.length; k++)
-      r.blocks[k].endIndex === g && (K += 1, C.set(k, K), K += 1);
+    for (let b = 0; b < diagram.blocks.length; b++)
+      diagram.blocks[b].endIndex === m && (curY += 1, blockEndY.set(b, curY), curY += 1);
   }
-  K += 1;
-  let at = K, ct = at + q, ot = O[O.length - 1] ?? 0, st = H[H.length - 1] ?? 0, w = ot + st + 2;
-  for (let g = 0; g < r.messages.length; g++) {
-    let y = r.messages[g];
-    if (y.from === y.to) {
-      let E = A.get(y.from), T = O[E] + 6 + 2 + y.label.length;
-      w = Math.max(w, T + 1);
+  curY += 1;
+  let footerY = curY, totalH = footerY + actorBoxH, lastLL = llX[llX.length - 1] ?? 0, lastHalf = halfBox[halfBox.length - 1] ?? 0, totalW = lastLL + lastHalf + 2;
+  for (let m = 0; m < diagram.messages.length; m++) {
+    let msg = diagram.messages[m];
+    if (msg.from === msg.to) {
+      let fi = actorIdx.get(msg.from), selfRight = llX[fi] + 6 + 2 + msg.label.length;
+      totalW = Math.max(totalW, selfRight + 1);
     }
   }
-  for (let g of V)
-    w = Math.max(w, g.x + g.width + 1);
-  let X = it(w, ct - 1), N = $t(w, ct - 1);
-  function M(g, y, E, T) {
-    g >= 0 && g < X.length && y >= 0 && y < (X[0]?.length ?? 0) && (X[g][y] = E, Bt(N, g, y, T));
+  for (let np of notePositions)
+    totalW = Math.max(totalW, np.x + np.width + 1);
+  let canvas = mkCanvas(totalW, totalH - 1), rc = mkRoleCanvas(totalW, totalH - 1);
+  function setC(x, y, ch, role) {
+    x >= 0 && x < canvas.length && y >= 0 && y < (canvas[0]?.length ?? 0) && (canvas[x][y] = ch, setRole(rc, x, y, role));
   }
-  function W(g, y, E) {
-    let T = rt(E), k = re(E), R = k + 2 * B + 2, J = T.length + 2, G = g - Math.floor(R / 2);
-    M(G, y, l, "border");
-    for (let z = 1; z < R - 1; z++) M(G + z, y, a, "border");
-    M(G + R - 1, y, d, "border");
-    for (let z = 0; z < T.length; z++) {
-      let D = y + 1 + z;
-      M(G, D, c, "border"), M(G + R - 1, D, c, "border");
-      let $ = T[z], tt = G + 1 + B + Math.floor((k - $.length) / 2);
-      for (let Z = 0; Z < $.length; Z++)
-        M(tt + Z, D, $[Z], "text");
+  function drawActorBox(cx, topY, label) {
+    let lines2 = splitLines(label), maxW = maxLineWidth(label), w = maxW + 2 * boxPad + 2, h = lines2.length + 2, left = cx - Math.floor(w / 2);
+    setC(left, topY, TL, "border");
+    for (let x = 1; x < w - 1; x++) setC(left + x, topY, H, "border");
+    setC(left + w - 1, topY, TR, "border");
+    for (let i = 0; i < lines2.length; i++) {
+      let row = topY + 1 + i;
+      setC(left, row, V, "border"), setC(left + w - 1, row, V, "border");
+      let line = lines2[i], ls = left + 1 + boxPad + Math.floor((maxW - line.length) / 2);
+      for (let j = 0; j < line.length; j++)
+        setC(ls + j, row, line[j], "text");
     }
-    let S = y + J - 1;
-    M(G, S, h, "border");
-    for (let z = 1; z < R - 1; z++) M(G + z, S, a, "border");
-    M(G + R - 1, S, f, "border");
+    let bottomY = topY + h - 1;
+    setC(left, bottomY, BL, "border");
+    for (let x = 1; x < w - 1; x++) setC(left + x, bottomY, H, "border");
+    setC(left + w - 1, bottomY, BR, "border");
   }
-  for (let g = 0; g < r.actors.length; g++) {
-    let y = O[g];
-    for (let E = q; E <= at; E++)
-      M(y, E, c, "line");
+  for (let i = 0; i < diagram.actors.length; i++) {
+    let x = llX[i];
+    for (let y = actorBoxH; y <= footerY; y++)
+      setC(x, y, V, "line");
   }
-  for (let g = 0; g < r.actors.length; g++) {
-    let y = r.actors[g];
-    W(O[g], 0, y.label), W(O[g], at, y.label), i || (M(O[g], q - 1, u, "junction"), M(O[g], at, m, "junction"));
+  for (let i = 0; i < diagram.actors.length; i++) {
+    let actor = diagram.actors[i];
+    drawActorBox(llX[i], 0, actor.label), drawActorBox(llX[i], footerY, actor.label), useAscii || (setC(llX[i], actorBoxH - 1, JT, "junction"), setC(llX[i], footerY, JB, "junction"));
   }
-  for (let g = 0; g < r.messages.length; g++) {
-    let y = r.messages[g], E = A.get(y.from), T = A.get(y.to), k = O[E], R = O[T], J = E === T, G = y.lineStyle === "dashed", S = y.arrowHead === "filled", z = G ? i ? "." : "\u254C" : a;
-    if (J) {
-      let D = ft[g], $ = Math.max(4, 4);
-      M(k, D, p, "junction");
-      for (let et = k + 1; et < k + $; et++) M(et, D, z, "line");
-      M(k + $, D, i ? "+" : "\u2510", "corner"), M(k + $, D + 1, c, "line");
-      let tt = k + $ + 2;
-      for (let et = 0; et < y.label.length; et++)
-        tt + et < w && M(tt + et, D + 1, y.label[et], "text");
-      let Z = S ? i ? "<" : "\u25C0" : i ? "<" : "\u25C1";
-      M(k, D + 2, Z, "arrow");
-      for (let et = k + 1; et < k + $; et++) M(et, D + 2, z, "line");
-      M(k + $, D + 2, i ? "+" : "\u2518", "corner");
+  for (let m = 0; m < diagram.messages.length; m++) {
+    let msg = diagram.messages[m], fi = actorIdx.get(msg.from), ti = actorIdx.get(msg.to), fromX = llX[fi], toX = llX[ti], isSelf = fi === ti, isDashed = msg.lineStyle === "dashed", isFilled = msg.arrowHead === "filled", lineChar = isDashed ? useAscii ? "." : "\u254C" : H;
+    if (isSelf) {
+      let y0 = msgArrowY[m], loopW = Math.max(4, 4);
+      setC(fromX, y0, JL, "junction");
+      for (let x = fromX + 1; x < fromX + loopW; x++) setC(x, y0, lineChar, "line");
+      setC(fromX + loopW, y0, useAscii ? "+" : "\u2510", "corner"), setC(fromX + loopW, y0 + 1, V, "line");
+      let labelX = fromX + loopW + 2;
+      for (let i = 0; i < msg.label.length; i++)
+        labelX + i < totalW && setC(labelX + i, y0 + 1, msg.label[i], "text");
+      let arrowChar = isFilled ? useAscii ? "<" : "\u25C0" : useAscii ? "<" : "\u25C1";
+      setC(fromX, y0 + 2, arrowChar, "arrow");
+      for (let x = fromX + 1; x < fromX + loopW; x++) setC(x, y0 + 2, lineChar, "line");
+      setC(fromX + loopW, y0 + 2, useAscii ? "+" : "\u2518", "corner");
     } else {
-      let D = I[g], $ = ft[g], tt = k < R, Z = Math.floor((k + R) / 2), et = rt(y.label);
-      for (let nt = 0; nt < et.length; nt++) {
-        let lt = et[nt], mt = Z - Math.floor(lt.length / 2), Dt = D + nt;
-        for (let Ct = 0; Ct < lt.length; Ct++) {
-          let kt = mt + Ct;
-          kt >= 0 && kt < w && M(kt, Dt, lt[Ct], "text");
+      let labelY = msgLabelY[m], arrowY = msgArrowY[m], leftToRight = fromX < toX, midX = Math.floor((fromX + toX) / 2), msgLines = splitLines(msg.label);
+      for (let lineIdx = 0; lineIdx < msgLines.length; lineIdx++) {
+        let line = msgLines[lineIdx], labelStart = midX - Math.floor(line.length / 2), y = labelY + lineIdx;
+        for (let i = 0; i < line.length; i++) {
+          let lx = labelStart + i;
+          lx >= 0 && lx < totalW && setC(lx, y, line[i], "text");
         }
       }
-      if (tt) {
-        for (let lt = k + 1; lt < R; lt++) M(lt, $, z, "line");
-        M(R, $, S ? i ? ">" : "\u25B6" : i ? ">" : "\u25B7", "arrow");
+      if (leftToRight) {
+        for (let x = fromX + 1; x < toX; x++) setC(x, arrowY, lineChar, "line");
+        setC(toX, arrowY, isFilled ? useAscii ? ">" : "\u25B6" : useAscii ? ">" : "\u25B7", "arrow");
       } else {
-        for (let lt = R + 1; lt < k; lt++) M(lt, $, z, "line");
-        M(R, $, S ? i ? "<" : "\u25C0" : i ? "<" : "\u25C1", "arrow");
+        for (let x = toX + 1; x < fromX; x++) setC(x, arrowY, lineChar, "line");
+        setC(toX, arrowY, isFilled ? useAscii ? "<" : "\u25C0" : useAscii ? "<" : "\u25C1", "arrow");
       }
     }
   }
-  for (let g = 0; g < r.blocks.length; g++) {
-    let y = r.blocks[g], E = U.get(g), T = C.get(g);
-    if (E === void 0 || T === void 0) continue;
-    let k = w, R = 0;
-    for (let D = y.startIndex; D <= y.endIndex && !(D >= r.messages.length); D++) {
-      let $ = r.messages[D], tt = A.get($.from) ?? 0, Z = A.get($.to) ?? 0;
-      k = Math.min(k, O[Math.min(tt, Z)]), R = Math.max(R, O[Math.max(tt, Z)]);
+  for (let b = 0; b < diagram.blocks.length; b++) {
+    let block = diagram.blocks[b], topY = blockStartY.get(b), botY = blockEndY.get(b);
+    if (topY === void 0 || botY === void 0) continue;
+    let minLX = totalW, maxLX = 0;
+    for (let m = block.startIndex; m <= block.endIndex && !(m >= diagram.messages.length); m++) {
+      let msg = diagram.messages[m], f = actorIdx.get(msg.from) ?? 0, t = actorIdx.get(msg.to) ?? 0;
+      minLX = Math.min(minLX, llX[Math.min(f, t)]), maxLX = Math.max(maxLX, llX[Math.max(f, t)]);
     }
-    let J = Math.max(0, k - 4), G = Math.min(w - 1, R + 4);
-    M(J, E, l, "border");
-    for (let D = J + 1; D < G; D++) M(D, E, a, "border");
-    M(G, E, d, "border");
-    let S = y.label ? `${y.type} [${y.label}]` : y.type, z = rt(S);
-    for (let D = 0; D < z.length && E + D < T; D++) {
-      let $ = z[D];
-      for (let tt = 0; tt < $.length && J + 1 + tt < G; tt++)
-        M(J + 1 + tt, E + D, $[tt], "text");
+    let bLeft = Math.max(0, minLX - 4), bRight = Math.min(totalW - 1, maxLX + 4);
+    setC(bLeft, topY, TL, "border");
+    for (let x = bLeft + 1; x < bRight; x++) setC(x, topY, H, "border");
+    setC(bRight, topY, TR, "border");
+    let hdrLabel = block.label ? `${block.type} [${block.label}]` : block.type, hdrLines = splitLines(hdrLabel);
+    for (let lineIdx = 0; lineIdx < hdrLines.length && topY + lineIdx < botY; lineIdx++) {
+      let line = hdrLines[lineIdx];
+      for (let i = 0; i < line.length && bLeft + 1 + i < bRight; i++)
+        setC(bLeft + 1 + i, topY + lineIdx, line[i], "text");
     }
-    M(J, T, h, "border");
-    for (let D = J + 1; D < G; D++) M(D, T, a, "border");
-    M(G, T, f, "border");
-    for (let D = E + 1; D < T; D++)
-      M(J, D, c, "border"), M(G, D, c, "border");
-    for (let D = 0; D < y.dividers.length; D++) {
-      let $ = F.get(`${g}:${D}`);
-      if ($ === void 0) continue;
-      let tt = Q();
-      M(J, $, p, "junction");
-      for (let et = J + 1; et < G; et++) M(et, $, tt, "line");
-      M(G, $, b, "junction");
-      let Z = y.dividers[D].label;
-      if (Z) {
-        let et = `[${Z}]`;
-        for (let nt = 0; nt < et.length && J + 1 + nt < G; nt++)
-          M(J + 1 + nt, $, et[nt], "text");
+    setC(bLeft, botY, BL, "border");
+    for (let x = bLeft + 1; x < bRight; x++) setC(x, botY, H, "border");
+    setC(bRight, botY, BR, "border");
+    for (let y = topY + 1; y < botY; y++)
+      setC(bLeft, y, V, "border"), setC(bRight, y, V, "border");
+    for (let d = 0; d < block.dividers.length; d++) {
+      let dY = divYMap.get(`${b}:${d}`);
+      if (dY === void 0) continue;
+      let dashChar = isDashedH();
+      setC(bLeft, dY, JL, "junction");
+      for (let x = bLeft + 1; x < bRight; x++) setC(x, dY, dashChar, "line");
+      setC(bRight, dY, JR, "junction");
+      let dLabel = block.dividers[d].label;
+      if (dLabel) {
+        let dStr = `[${dLabel}]`;
+        for (let i = 0; i < dStr.length && bLeft + 1 + i < bRight; i++)
+          setC(bLeft + 1 + i, dY, dStr[i], "text");
       }
     }
   }
-  for (let g of V) {
-    Tt(X, g.x + g.width, g.y + g.height), Nt(N, g.x + g.width, g.y + g.height), M(g.x, g.y, l, "border");
-    for (let E = 1; E < g.width - 1; E++) M(g.x + E, g.y, a, "border");
-    M(g.x + g.width - 1, g.y, d, "border");
-    for (let E = 0; E < g.lines.length; E++) {
-      let T = g.y + 1 + E;
-      M(g.x, T, c, "border"), M(g.x + g.width - 1, T, c, "border");
-      for (let k = 0; k < g.lines[E].length; k++)
-        M(g.x + 2 + k, T, g.lines[E][k], "text");
+  for (let np of notePositions) {
+    increaseSize(canvas, np.x + np.width, np.y + np.height), increaseRoleCanvasSize(rc, np.x + np.width, np.y + np.height), setC(np.x, np.y, TL, "border");
+    for (let x = 1; x < np.width - 1; x++) setC(np.x + x, np.y, H, "border");
+    setC(np.x + np.width - 1, np.y, TR, "border");
+    for (let l = 0; l < np.lines.length; l++) {
+      let ly = np.y + 1 + l;
+      setC(np.x, ly, V, "border"), setC(np.x + np.width - 1, ly, V, "border");
+      for (let i = 0; i < np.lines[l].length; i++)
+        setC(np.x + 2 + i, ly, np.lines[l][i], "text");
     }
-    let y = g.y + g.height - 1;
-    M(g.x, y, h, "border");
-    for (let E = 1; E < g.width - 1; E++) M(g.x + E, y, a, "border");
-    M(g.x + g.width - 1, y, f, "border");
+    let by = np.y + np.height - 1;
+    setC(np.x, by, BL, "border");
+    for (let x = 1; x < np.width - 1; x++) setC(np.x + x, by, H, "border");
+    setC(np.x + np.width - 1, by, BR, "border");
   }
-  return Pt(X, { roleCanvas: N, colorMode: n, theme: o });
-  function Q() {
-    return i ? "-" : "\u254C";
+  return canvasToString(canvas, { roleCanvas: rc, colorMode, theme });
+  function isDashedH() {
+    return useAscii ? "-" : "\u254C";
   }
 }
 
 // node_modules/beautiful-mermaid/src/class/parser.ts
-function Sn(t) {
-  let e = {
+function parseClassDiagram(lines) {
+  let diagram = {
     classes: [],
     relationships: [],
     namespaces: []
-  }, n = /* @__PURE__ */ new Map(), o = null, s = null, r = 0;
-  for (let i = 1; i < t.length; i++) {
-    let a = t[i];
-    if (s && r > 0) {
-      if (a === "}") {
-        r--, r === 0 && (s = null);
+  }, classMap = /* @__PURE__ */ new Map(), currentNamespace = null, currentClass = null, braceDepth = 0;
+  for (let i = 1; i < lines.length; i++) {
+    let line = lines[i];
+    if (currentClass && braceDepth > 0) {
+      if (line === "}") {
+        braceDepth--, braceDepth === 0 && (currentClass = null);
         continue;
       }
-      let m = a.match(/^<<(\w+)>>$/);
-      if (m) {
-        s.annotation = m[1];
+      let annotMatch = line.match(/^<<(\w+)>>$/);
+      if (annotMatch) {
+        currentClass.annotation = annotMatch[1];
         continue;
       }
-      let p = An(a);
-      p && (p.isMethod ? s.methods.push(p.member) : s.attributes.push(p.member));
+      let member = parseMember(line);
+      member && (member.isMethod ? currentClass.methods.push(member.member) : currentClass.attributes.push(member.member));
       continue;
     }
-    let c = a.match(/^namespace\s+(\S+)\s*\{$/);
-    if (c) {
-      o = { name: c[1], classIds: [] };
+    let nsMatch = line.match(/^namespace\s+(\S+)\s*\{$/);
+    if (nsMatch) {
+      currentNamespace = { name: nsMatch[1], classIds: [] };
       continue;
     }
-    if (a === "}" && o) {
-      e.namespaces.push(o), o = null;
+    if (line === "}" && currentNamespace) {
+      diagram.namespaces.push(currentNamespace), currentNamespace = null;
       continue;
     }
-    let l = a.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*\{$/);
-    if (l) {
-      let m = l[1], p = l[2], b = zt(n, m);
-      p && (b.label = `${m}<${p}>`), s = b, r = 1, o && o.classIds.push(m);
+    let classBlockMatch = line.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*\{$/);
+    if (classBlockMatch) {
+      let id = classBlockMatch[1], generic = classBlockMatch[2], cls = ensureClass(classMap, id);
+      generic && (cls.label = `${id}<${generic}>`), currentClass = cls, braceDepth = 1, currentNamespace && currentNamespace.classIds.push(id);
       continue;
     }
-    let d = a.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*$/);
-    if (d) {
-      let m = d[1], p = d[2], b = zt(n, m);
-      p && (b.label = `${m}<${p}>`), o && o.classIds.push(m);
+    let classOnlyMatch = line.match(/^class\s+(\S+?)(?:\s*~(\w+)~)?\s*$/);
+    if (classOnlyMatch) {
+      let id = classOnlyMatch[1], generic = classOnlyMatch[2], cls = ensureClass(classMap, id);
+      generic && (cls.label = `${id}<${generic}>`), currentNamespace && currentNamespace.classIds.push(id);
       continue;
     }
-    let h = a.match(/^class\s+(\S+?)\s*\{\s*<<(\w+)>>\s*\}$/);
-    if (h) {
-      let m = zt(n, h[1]);
-      m.annotation = h[2];
+    let inlineAnnotMatch = line.match(/^class\s+(\S+?)\s*\{\s*<<(\w+)>>\s*\}$/);
+    if (inlineAnnotMatch) {
+      let cls = ensureClass(classMap, inlineAnnotMatch[1]);
+      cls.annotation = inlineAnnotMatch[2];
       continue;
     }
-    let f = a.match(/^(\S+?)\s*:\s*(.+)$/);
-    if (f) {
-      let m = f[2];
-      if (!m.match(/<\|--|--|\*--|o--|-->|\.\.>|\.\.\|>/)) {
-        let p = zt(n, f[1]), b = An(m);
-        b && (b.isMethod ? p.methods.push(b.member) : p.attributes.push(b.member));
+    let inlineAttrMatch = line.match(/^(\S+?)\s*:\s*(.+)$/);
+    if (inlineAttrMatch) {
+      let rest = inlineAttrMatch[2];
+      if (!rest.match(/<\|--|--|\*--|o--|-->|\.\.>|\.\.\|>/)) {
+        let cls = ensureClass(classMap, inlineAttrMatch[1]), member = parseMember(rest);
+        member && (member.isMethod ? cls.methods.push(member.member) : cls.attributes.push(member.member));
         continue;
       }
     }
-    let u = qr(a);
-    if (u) {
-      zt(n, u.from), zt(n, u.to), e.relationships.push(u);
+    let rel = parseRelationship(line);
+    if (rel) {
+      ensureClass(classMap, rel.from), ensureClass(classMap, rel.to), diagram.relationships.push(rel);
       continue;
     }
   }
-  return e.classes = [...n.values()], e;
+  return diagram.classes = [...classMap.values()], diagram;
 }
-function zt(t, e) {
-  let n = t.get(e);
-  return n || (n = { id: e, label: e, attributes: [], methods: [] }, t.set(e, n)), n;
+function ensureClass(classMap, id) {
+  let cls = classMap.get(id);
+  return cls || (cls = { id, label: id, attributes: [], methods: [] }, classMap.set(id, cls)), cls;
 }
-function An(t) {
-  let e = t.trim().replace(/;$/, "");
-  if (!e) return null;
-  let n = "", o = e;
-  /^[+\-#~]/.test(o) && (n = o[0], o = o.slice(1).trim());
-  let s = o.match(/^(.+?)\(([^)]*)\)(?:\s*(.+))?$/);
-  if (s) {
-    let d = s[1].trim(), h = s[2]?.trim() || void 0, f = s[3]?.trim(), u = d.endsWith("$") || o.includes("$"), m = d.endsWith("*") || o.includes("*");
+function parseMember(line) {
+  let trimmed = line.trim().replace(/;$/, "");
+  if (!trimmed) return null;
+  let visibility = "", rest = trimmed;
+  /^[+\-#~]/.test(rest) && (visibility = rest[0], rest = rest.slice(1).trim());
+  let methodMatch = rest.match(/^(.+?)\(([^)]*)\)(?:\s*(.+))?$/);
+  if (methodMatch) {
+    let name2 = methodMatch[1].trim(), params = methodMatch[2]?.trim() || void 0, type2 = methodMatch[3]?.trim(), isStatic2 = name2.endsWith("$") || rest.includes("$"), isAbstract2 = name2.endsWith("*") || rest.includes("*");
     return {
       member: {
-        visibility: n,
-        name: d.replace(/[$*]$/, ""),
-        type: f || void 0,
-        isStatic: u,
-        isAbstract: m,
+        visibility,
+        name: name2.replace(/[$*]$/, ""),
+        type: type2 || void 0,
+        isStatic: isStatic2,
+        isAbstract: isAbstract2,
         isMethod: !0,
-        params: h
+        params
       },
       isMethod: !0
     };
   }
-  let r = o.split(/\s+/), i, a;
-  r.length >= 2 ? (a = r[0], i = r.slice(1).join(" ")) : i = r[0] ?? o;
-  let c = i.endsWith("$"), l = i.endsWith("*");
+  let parts = rest.split(/\s+/), name, type;
+  parts.length >= 2 ? (type = parts[0], name = parts.slice(1).join(" ")) : name = parts[0] ?? rest;
+  let isStatic = name.endsWith("$"), isAbstract = name.endsWith("*");
   return {
     member: {
-      visibility: n,
-      name: i.replace(/[$*]$/, ""),
-      type: a || void 0,
-      isStatic: c,
-      isAbstract: l,
+      visibility,
+      name: name.replace(/[$*]$/, ""),
+      type: type || void 0,
+      isStatic,
+      isAbstract,
       isMethod: !1
     },
     isMethod: !1
   };
 }
-function qr(t) {
-  let e = t.match(
+function parseRelationship(line) {
+  let match = line.match(
     /^(\S+?)\s+(?:"([^"]*?)"\s+)?(<\|--|<\|\.\.|\*--|o--|-->|--\*|--o|--\|>|\.\.>|\.\.\|>|<--|<\.\.?|--)\s+(?:"([^"]*?)"\s+)?(\S+?)(?:\s*:\s*(.+))?$/
   );
-  if (!e) return null;
-  let n = e[1], o = e[2], s = o ? dt(o) : void 0, r = e[3].trim(), i = e[4], a = i ? dt(i) : void 0, c = e[5], l = e[6]?.trim(), d = l ? dt(l) : void 0, h = Vr(r);
-  return h ? { from: n, to: c, type: h.type, markerAt: h.markerAt, label: d, fromCardinality: s, toCardinality: a } : null;
+  if (!match) return null;
+  let from = match[1], rawFromCardinality = match[2], fromCardinality = rawFromCardinality ? normalizeBrTags(rawFromCardinality) : void 0, arrow = match[3].trim(), rawToCardinality = match[4], toCardinality = rawToCardinality ? normalizeBrTags(rawToCardinality) : void 0, to = match[5], rawLabel = match[6]?.trim(), label = rawLabel ? normalizeBrTags(rawLabel) : void 0, parsed = parseArrow(arrow);
+  return parsed ? { from, to, type: parsed.type, markerAt: parsed.markerAt, label, fromCardinality, toCardinality } : null;
 }
-function Vr(t) {
-  switch (t.trim()) {
+function parseArrow(arrow) {
+  switch (arrow.trim()) {
     case "<|--":
       return { type: "inheritance", markerAt: "from" };
     case "--|>":
@@ -2478,604 +2478,604 @@ function Vr(t) {
 }
 
 // node_modules/beautiful-mermaid/src/ascii/class-diagram.ts
-function Kr(t) {
-  return /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(t) ? "border" : "text";
+function classifyBoxChar(ch) {
+  return /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(ch) ? "border" : "text";
 }
-function Rn(t) {
-  let e = t.visibility || "", n = t.type ? `: ${t.type}` : "";
-  return `${e}${t.name}${n}`;
+function formatMember(m) {
+  let vis = m.visibility || "", type = m.type ? `: ${m.type}` : "";
+  return `${vis}${m.name}${type}`;
 }
-function Qr(t) {
-  let e = [];
-  t.annotation && e.push(`<<${t.annotation}>>`);
-  let n = rt(t.label);
-  e.push(...n);
-  let o = t.attributes.map(Rn), s = t.methods.map(Rn);
-  return o.length === 0 && s.length === 0 ? [e] : s.length === 0 ? [e, o] : [e, o, s];
+function buildClassSections(cls) {
+  let header = [];
+  cls.annotation && header.push(`<<${cls.annotation}>>`);
+  let nameLines = splitLines(cls.label);
+  header.push(...nameLines);
+  let attrs = cls.attributes.map(formatMember), methods = cls.methods.map(formatMember);
+  return attrs.length === 0 && methods.length === 0 ? [header] : methods.length === 0 ? [header, attrs] : [header, attrs, methods];
 }
-function Zr(t, e) {
-  return { type: t, markerAt: e, dashed: t === "dependency" || t === "realization" };
+function getRelMarker(type, markerAt) {
+  return { type, markerAt, dashed: type === "dependency" || type === "realization" };
 }
-function Wt(t, e, n) {
-  switch (t) {
+function getMarkerShape(type, useAscii, direction) {
+  switch (type) {
     case "inheritance":
     case "realization":
-      return n === "down" ? e ? "^" : "\u25B3" : n === "up" ? e ? "v" : "\u25BD" : n === "left" ? e ? ">" : "\u25C1" : e ? "<" : "\u25B7";
+      return direction === "down" ? useAscii ? "^" : "\u25B3" : direction === "up" ? useAscii ? "v" : "\u25BD" : direction === "left" ? useAscii ? ">" : "\u25C1" : useAscii ? "<" : "\u25B7";
     case "composition":
-      return e ? "*" : "\u25C6";
+      return useAscii ? "*" : "\u25C6";
     case "aggregation":
-      return e ? "o" : "\u25C7";
+      return useAscii ? "o" : "\u25C7";
     case "association":
     case "dependency":
-      return n === "down" ? e ? "v" : "\u25BC" : n === "up" ? e ? "^" : "\u25B2" : n === "left" ? e ? "<" : "\u25C0" : e ? ">" : "\u25B6";
+      return direction === "down" ? useAscii ? "v" : "\u25BC" : direction === "up" ? useAscii ? "^" : "\u25B2" : direction === "left" ? useAscii ? "<" : "\u25C0" : useAscii ? ">" : "\u25B6";
   }
 }
-function Dn(t, e, n, o) {
-  let s = t.split(`
-`).map((w) => w.trim()).filter((w) => w.length > 0 && !w.startsWith("%%")), r = Sn(s);
-  if (r.classes.length === 0) return "";
-  let i = e.useAscii, a = 4, c = 3, l = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map();
-  for (let w of r.classes) {
-    let X = Qr(w);
-    l.set(w.id, X);
-    let N = 0;
-    for (let g of X)
-      for (let y of g) N = Math.max(N, y.length);
-    let M = N + 4, W = 0;
-    for (let g of X) W += Math.max(g.length, 1);
-    let Q = W + (X.length - 1) + 2;
-    d.set(w.id, M), h.set(w.id, Q);
+function renderClassAscii(text, config, colorMode, theme) {
+  let lines = text.split(`
+`).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%")), diagram = parseClassDiagram(lines);
+  if (diagram.classes.length === 0) return "";
+  let useAscii = config.useAscii, hGap = 4, vGap = 3, classSections = /* @__PURE__ */ new Map(), classBoxW = /* @__PURE__ */ new Map(), classBoxH = /* @__PURE__ */ new Map();
+  for (let cls of diagram.classes) {
+    let sections = buildClassSections(cls);
+    classSections.set(cls.id, sections);
+    let maxTextW = 0;
+    for (let section of sections)
+      for (let line of section) maxTextW = Math.max(maxTextW, line.length);
+    let boxW = maxTextW + 4, totalLines = 0;
+    for (let section of sections) totalLines += Math.max(section.length, 1);
+    let boxH = totalLines + (sections.length - 1) + 2;
+    classBoxW.set(cls.id, boxW), classBoxH.set(cls.id, boxH);
   }
-  let f = /* @__PURE__ */ new Map();
-  for (let w of r.classes) f.set(w.id, w);
-  let u = /* @__PURE__ */ new Map(), m = /* @__PURE__ */ new Map();
-  for (let w of r.relationships) {
-    let X = w.type === "inheritance" || w.type === "realization", N = X && w.markerAt === "to" ? w.to : w.from, M = X && w.markerAt === "to" ? w.from : w.to;
-    u.has(M) || u.set(M, /* @__PURE__ */ new Set()), u.get(M).add(N), m.has(N) || m.set(N, /* @__PURE__ */ new Set()), m.get(N).add(M);
+  let classById = /* @__PURE__ */ new Map();
+  for (let cls of diagram.classes) classById.set(cls.id, cls);
+  let parents = /* @__PURE__ */ new Map(), children = /* @__PURE__ */ new Map();
+  for (let rel of diagram.relationships) {
+    let isHierarchical = rel.type === "inheritance" || rel.type === "realization", parentId = isHierarchical && rel.markerAt === "to" ? rel.to : rel.from, childId = isHierarchical && rel.markerAt === "to" ? rel.from : rel.to;
+    parents.has(childId) || parents.set(childId, /* @__PURE__ */ new Set()), parents.get(childId).add(parentId), children.has(parentId) || children.set(parentId, /* @__PURE__ */ new Set()), children.get(parentId).add(childId);
   }
-  let p = /* @__PURE__ */ new Map(), A = r.classes.filter((w) => !u.has(w.id) || u.get(w.id).size === 0).map((w) => w.id);
-  for (let w of A) p.set(w, 0);
-  let B = r.classes.length - 1, v = 0;
-  for (; v < A.length; ) {
-    let w = A[v++], X = m.get(w);
-    if (X)
-      for (let N of X) {
-        let M = (p.get(w) ?? 0) + 1;
-        M > B || (!p.has(N) || p.get(N) < M) && (p.set(N, M), A.push(N));
+  let level = /* @__PURE__ */ new Map(), queue = diagram.classes.filter((c) => !parents.has(c.id) || parents.get(c.id).size === 0).map((c) => c.id);
+  for (let id of queue) level.set(id, 0);
+  let levelCap = diagram.classes.length - 1, qi = 0;
+  for (; qi < queue.length; ) {
+    let id = queue[qi++], childSet = children.get(id);
+    if (childSet)
+      for (let childId of childSet) {
+        let newLevel = (level.get(id) ?? 0) + 1;
+        newLevel > levelCap || (!level.has(childId) || level.get(childId) < newLevel) && (level.set(childId, newLevel), queue.push(childId));
       }
   }
-  for (let w of r.classes)
-    p.has(w.id) || p.set(w.id, 0);
-  let H = Math.max(...p.values(), 0), L = Array.from({ length: H + 1 }, () => []);
-  for (let w of r.classes)
-    L[p.get(w.id)].push(w.id);
-  let q = /* @__PURE__ */ new Map(), ut = 0;
-  for (let w = 0; w <= H; w++) {
-    let X = L[w];
-    if (X.length === 0) continue;
-    let N = 0, M = 0;
-    for (let W of X) {
-      let Q = f.get(W), g = d.get(W), y = h.get(W);
-      q.set(W, {
-        cls: Q,
-        sections: l.get(W),
-        x: N,
-        y: ut,
-        width: g,
-        height: y
-      }), N += g + a, M = Math.max(M, y);
+  for (let cls of diagram.classes)
+    level.has(cls.id) || level.set(cls.id, 0);
+  let maxLevel = Math.max(...level.values(), 0), levelGroups = Array.from({ length: maxLevel + 1 }, () => []);
+  for (let cls of diagram.classes)
+    levelGroups[level.get(cls.id)].push(cls.id);
+  let placed = /* @__PURE__ */ new Map(), currentY = 0;
+  for (let lv = 0; lv <= maxLevel; lv++) {
+    let group = levelGroups[lv];
+    if (group.length === 0) continue;
+    let currentX = 0, maxH = 0;
+    for (let id of group) {
+      let cls = classById.get(id), w = classBoxW.get(id), h = classBoxH.get(id);
+      placed.set(id, {
+        cls,
+        sections: classSections.get(id),
+        x: currentX,
+        y: currentY,
+        width: w,
+        height: h
+      }), currentX += w + hGap, maxH = Math.max(maxH, h);
     }
-    ut += M + c;
+    currentY += maxH + vGap;
   }
-  let O = 0, ft = 0;
-  for (let w of q.values())
-    O = Math.max(O, w.x + w.width), ft = Math.max(ft, w.y + w.height);
-  O += 4, ft += 2;
-  let I = it(O - 1, ft - 1), U = $t(O - 1, ft - 1);
-  function C(w, X, N, M) {
-    w >= 0 && w < I.length && X >= 0 && X < (I[0]?.length ?? 0) && (I[w][X] = N, Bt(U, w, X, M));
+  let totalW = 0, totalH = 0;
+  for (let p of placed.values())
+    totalW = Math.max(totalW, p.x + p.width), totalH = Math.max(totalH, p.y + p.height);
+  totalW += 4, totalH += 2;
+  let canvas = mkCanvas(totalW - 1, totalH - 1), rc = mkRoleCanvas(totalW - 1, totalH - 1);
+  function setC(x, y, ch, role) {
+    x >= 0 && x < canvas.length && y >= 0 && y < (canvas[0]?.length ?? 0) && (canvas[x][y] = ch, setRole(rc, x, y, role));
   }
-  for (let w of q.values()) {
-    let X = oe(w.sections, i);
-    for (let N = 0; N < X.length; N++)
-      for (let M = 0; M < X[0].length; M++) {
-        let W = X[N][M];
-        if (W !== " ") {
-          let Q = w.x + N, g = w.y + M;
-          Q < O && g < ft && C(Q, g, W, Kr(W));
+  for (let p of placed.values()) {
+    let boxCanvas = drawMultiBox(p.sections, useAscii);
+    for (let bx = 0; bx < boxCanvas.length; bx++)
+      for (let by = 0; by < boxCanvas[0].length; by++) {
+        let ch = boxCanvas[bx][by];
+        if (ch !== " ") {
+          let cx = p.x + bx, cy = p.y + by;
+          cx < totalW && cy < totalH && setC(cx, cy, ch, classifyBoxChar(ch));
         }
       }
   }
-  let F = [];
-  for (let w of q.values())
-    F.push({
-      x1: w.x,
-      x2: w.x + w.width - 1,
-      y1: w.y,
-      y2: w.y + w.height - 1
+  let boxOccupancy = [];
+  for (let p of placed.values())
+    boxOccupancy.push({
+      x1: p.x,
+      x2: p.x + p.width - 1,
+      y1: p.y,
+      y2: p.y + p.height - 1
     });
-  function V(w, X, N) {
-    for (let [M, W] of q.entries())
-      if (!N?.has(M) && w >= W.x && w <= W.x + W.width - 1 && X >= W.y && X <= W.y + W.height - 1)
+  function isInsideBox(x, y, excludeIds) {
+    for (let [id, p] of placed.entries())
+      if (!excludeIds?.has(id) && x >= p.x && x <= p.x + p.width - 1 && y >= p.y && y <= p.y + p.height - 1)
         return !0;
     return !1;
   }
-  function K(w, X, N, M) {
-    let W = !0;
-    for (let Q = Math.min(X, N); Q <= Math.max(X, N); Q++)
-      if (V(w, Q, M)) {
-        W = !1;
+  function findClearColumn(startX, y1, y2, excludeIds) {
+    let clear = !0;
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++)
+      if (isInsideBox(startX, y, excludeIds)) {
+        clear = !1;
         break;
       }
-    if (W) return w;
-    for (let Q = 1; Q < O + 10; Q++) {
-      let g = w + Q;
-      W = !0;
-      for (let E = Math.min(X, N); E <= Math.max(X, N); E++)
-        if (V(g, E, M)) {
-          W = !1;
+    if (clear) return startX;
+    for (let offset = 1; offset < totalW + 10; offset++) {
+      let rightX = startX + offset;
+      clear = !0;
+      for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++)
+        if (isInsideBox(rightX, y, excludeIds)) {
+          clear = !1;
           break;
         }
-      if (W) return g;
-      let y = w - Q;
-      if (y >= 0) {
-        W = !0;
-        for (let E = Math.min(X, N); E <= Math.max(X, N); E++)
-          if (V(y, E, M)) {
-            W = !1;
+      if (clear) return rightX;
+      let leftX = startX - offset;
+      if (leftX >= 0) {
+        clear = !0;
+        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++)
+          if (isInsideBox(leftX, y, excludeIds)) {
+            clear = !1;
             break;
           }
-        if (W) return y;
+        if (clear) return leftX;
       }
     }
-    return O + 2;
+    return totalW + 2;
   }
-  let at = i ? "-" : "\u2500", ct = i ? "|" : "\u2502", ot = i ? "." : "\u254C", st = i ? ":" : "\u250A";
-  for (let w of r.relationships) {
-    let X = q.get(w.from), N = q.get(w.to);
-    if (!X || !N) continue;
-    let M = Zr(w.type, w.markerAt), W = M.dashed ? ot : at, Q = M.dashed ? st : ct, g = /* @__PURE__ */ new Set([w.from, w.to]), y = X.x + Math.floor(X.width / 2), E = X.y + X.height - 1, T = N.x + Math.floor(N.width / 2), k = N.y;
-    if (E < k) {
-      let R = K(y, E + 1, k - 1, g), J = R !== y;
-      if (R >= O && Tt(I, R + 2, ft), J) {
-        let G = E + 1, S = k - 1, z = Math.min(y, R), D = Math.max(y, R);
-        for (let $ = z; $ <= D; $++)
-          C($, G, W, "line");
-        !i && G < (I[0]?.length ?? 0) && (y < R ? (C(y, G, "\u2514", "corner"), C(R, G, "\u2510", "corner")) : (C(y, G, "\u2518", "corner"), C(R, G, "\u250C", "corner")));
-        for (let $ = G + 1; $ <= S; $++)
-          C(R, $, Q, "line");
-        if (R !== T) {
-          let $ = Math.min(R, T), tt = Math.max(R, T);
-          for (let Z = $; Z <= tt; Z++)
-            C(Z, S, W, "line");
-          !i && S < (I[0]?.length ?? 0) && (R < T ? (C(R, S, "\u2514", "corner"), C(T, S, "\u2510", "corner")) : (C(R, S, "\u2518", "corner"), C(T, S, "\u250C", "corner")));
+  let H = useAscii ? "-" : "\u2500", V = useAscii ? "|" : "\u2502", dashH = useAscii ? "." : "\u254C", dashV = useAscii ? ":" : "\u250A";
+  for (let rel of diagram.relationships) {
+    let fromP = placed.get(rel.from), toP = placed.get(rel.to);
+    if (!fromP || !toP) continue;
+    let marker = getRelMarker(rel.type, rel.markerAt), lineH = marker.dashed ? dashH : H, lineV = marker.dashed ? dashV : V, excludeIds = /* @__PURE__ */ new Set([rel.from, rel.to]), fromCX = fromP.x + Math.floor(fromP.width / 2), fromBY = fromP.y + fromP.height - 1, toCX = toP.x + Math.floor(toP.width / 2), toTY = toP.y;
+    if (fromBY < toTY) {
+      let routeX = findClearColumn(fromCX, fromBY + 1, toTY - 1, excludeIds), needsDetour = routeX !== fromCX;
+      if (routeX >= totalW && increaseSize(canvas, routeX + 2, totalH), needsDetour) {
+        let exitY = fromBY + 1, entryY = toTY - 1, lx1 = Math.min(fromCX, routeX), rx1 = Math.max(fromCX, routeX);
+        for (let x = lx1; x <= rx1; x++)
+          setC(x, exitY, lineH, "line");
+        !useAscii && exitY < (canvas[0]?.length ?? 0) && (fromCX < routeX ? (setC(fromCX, exitY, "\u2514", "corner"), setC(routeX, exitY, "\u2510", "corner")) : (setC(fromCX, exitY, "\u2518", "corner"), setC(routeX, exitY, "\u250C", "corner")));
+        for (let y = exitY + 1; y <= entryY; y++)
+          setC(routeX, y, lineV, "line");
+        if (routeX !== toCX) {
+          let lx2 = Math.min(routeX, toCX), rx2 = Math.max(routeX, toCX);
+          for (let x = lx2; x <= rx2; x++)
+            setC(x, entryY, lineH, "line");
+          !useAscii && entryY < (canvas[0]?.length ?? 0) && (routeX < toCX ? (setC(routeX, entryY, "\u2514", "corner"), setC(toCX, entryY, "\u2510", "corner")) : (setC(routeX, entryY, "\u2518", "corner"), setC(toCX, entryY, "\u250C", "corner")));
         }
-        if (M.markerAt === "to") {
-          let $ = Wt(M.type, i, "down");
-          C(T, S, $, "arrow");
+        if (marker.markerAt === "to") {
+          let markerChar = getMarkerShape(marker.type, useAscii, "down");
+          setC(toCX, entryY, markerChar, "arrow");
         }
-        if (M.markerAt === "from") {
-          let $ = Wt(M.type, i, "down");
-          C(y, E + 1, $, "arrow");
+        if (marker.markerAt === "from") {
+          let markerChar = getMarkerShape(marker.type, useAscii, "down");
+          setC(fromCX, fromBY + 1, markerChar, "arrow");
         }
       } else {
-        let G = E + Math.floor((k - E) / 2);
-        for (let S = E + 1; S <= G; S++)
-          C(y, S, Q, "line");
-        if (y !== T && G < (I[0]?.length ?? 0)) {
-          let S = Math.min(y, T), z = Math.max(y, T);
-          for (let D = S; D <= z; D++)
-            C(D, G, W, "line");
-          i || (C(y, G, y < T ? "\u2514" : "\u2518", "corner"), C(T, G, y < T ? "\u2510" : "\u250C", "corner"));
+        let midY = fromBY + Math.floor((toTY - fromBY) / 2);
+        for (let y = fromBY + 1; y <= midY; y++)
+          setC(fromCX, y, lineV, "line");
+        if (fromCX !== toCX && midY < (canvas[0]?.length ?? 0)) {
+          let lx = Math.min(fromCX, toCX), rx = Math.max(fromCX, toCX);
+          for (let x = lx; x <= rx; x++)
+            setC(x, midY, lineH, "line");
+          useAscii || (setC(fromCX, midY, fromCX < toCX ? "\u2514" : "\u2518", "corner"), setC(toCX, midY, fromCX < toCX ? "\u2510" : "\u250C", "corner"));
         }
-        for (let S = G + 1; S < k; S++)
-          C(T, S, Q, "line");
-        M.markerAt === "to" && C(T, k - 1, Wt(M.type, i, "down"), "arrow"), M.markerAt === "from" && C(y, E + 1, Wt(M.type, i, "down"), "arrow");
+        for (let y = midY + 1; y < toTY; y++)
+          setC(toCX, y, lineV, "line");
+        marker.markerAt === "to" && setC(toCX, toTY - 1, getMarkerShape(marker.type, useAscii, "down"), "arrow"), marker.markerAt === "from" && setC(fromCX, fromBY + 1, getMarkerShape(marker.type, useAscii, "down"), "arrow");
       }
-    } else if (N.y + N.height - 1 < X.y) {
-      let R = X.y, J = N.y + N.height - 1, G = J + Math.floor((R - J) / 2);
-      for (let S = R - 1; S >= G; S--)
-        C(y, S, Q, "line");
-      if (y !== T) {
-        let S = Math.min(y, T), z = Math.max(y, T);
-        for (let D = S; D <= z; D++)
-          C(D, G, W, "line");
-        !i && G >= 0 && G < ft && (C(y, G, y < T ? "\u250C" : "\u2510", "corner"), C(T, G, y < T ? "\u2518" : "\u2514", "corner"));
+    } else if (toP.y + toP.height - 1 < fromP.y) {
+      let fromTY = fromP.y, toBY = toP.y + toP.height - 1, midY = toBY + Math.floor((fromTY - toBY) / 2);
+      for (let y = fromTY - 1; y >= midY; y--)
+        setC(fromCX, y, lineV, "line");
+      if (fromCX !== toCX) {
+        let lx = Math.min(fromCX, toCX), rx = Math.max(fromCX, toCX);
+        for (let x = lx; x <= rx; x++)
+          setC(x, midY, lineH, "line");
+        !useAscii && midY >= 0 && midY < totalH && (setC(fromCX, midY, fromCX < toCX ? "\u250C" : "\u2510", "corner"), setC(toCX, midY, fromCX < toCX ? "\u2518" : "\u2514", "corner"));
       }
-      for (let S = G - 1; S > J; S--)
-        C(T, S, Q, "line");
-      if (M.markerAt === "from") {
-        let S = Wt(M.type, i, "up"), z = R - 1;
-        for (let D = 0; D < S.length; D++)
-          C(y - Math.floor(S.length / 2) + D, z, S[D], "arrow");
+      for (let y = midY - 1; y > toBY; y--)
+        setC(toCX, y, lineV, "line");
+      if (marker.markerAt === "from") {
+        let markerChar = getMarkerShape(marker.type, useAscii, "up"), my = fromTY - 1;
+        for (let i = 0; i < markerChar.length; i++)
+          setC(fromCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
       }
-      if (M.markerAt === "to") {
-        let z = M.type === "inheritance" || M.type === "realization" ? "down" : "up", D = Wt(M.type, i, z), $ = J + 1;
-        for (let tt = 0; tt < D.length; tt++)
-          C(T - Math.floor(D.length / 2) + tt, $, D[tt], "arrow");
+      if (marker.markerAt === "to") {
+        let markerDir = marker.type === "inheritance" || marker.type === "realization" ? "down" : "up", markerChar = getMarkerShape(marker.type, useAscii, markerDir), my = toBY + 1;
+        for (let i = 0; i < markerChar.length; i++)
+          setC(toCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
       }
     } else {
-      let R = Math.max(E, N.y + N.height - 1) + 2;
-      Tt(I, O, R + 1), Nt(U, O, R + 1);
-      for (let S = E + 1; S <= R; S++)
-        C(y, S, Q, "line");
-      let J = Math.min(y, T), G = Math.max(y, T);
-      for (let S = J; S <= G; S++)
-        C(S, R, W, "line");
-      for (let S = R - 1; S >= N.y + N.height; S--)
-        C(T, S, Q, "line");
-      if (M.markerAt === "from") {
-        let S = Wt(M.type, i, "down"), z = E + 1;
-        for (let D = 0; D < S.length; D++)
-          C(y - Math.floor(S.length / 2) + D, z, S[D], "arrow");
+      let detourY = Math.max(fromBY, toP.y + toP.height - 1) + 2;
+      increaseSize(canvas, totalW, detourY + 1), increaseRoleCanvasSize(rc, totalW, detourY + 1);
+      for (let y = fromBY + 1; y <= detourY; y++)
+        setC(fromCX, y, lineV, "line");
+      let lx = Math.min(fromCX, toCX), rx = Math.max(fromCX, toCX);
+      for (let x = lx; x <= rx; x++)
+        setC(x, detourY, lineH, "line");
+      for (let y = detourY - 1; y >= toP.y + toP.height; y--)
+        setC(toCX, y, lineV, "line");
+      if (marker.markerAt === "from") {
+        let markerChar = getMarkerShape(marker.type, useAscii, "down"), my = fromBY + 1;
+        for (let i = 0; i < markerChar.length; i++)
+          setC(fromCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
       }
-      if (M.markerAt === "to") {
-        let S = Wt(M.type, i, "up"), z = N.y + N.height;
-        for (let D = 0; D < S.length; D++)
-          C(T - Math.floor(S.length / 2) + D, z, S[D], "arrow");
+      if (marker.markerAt === "to") {
+        let markerChar = getMarkerShape(marker.type, useAscii, "up"), my = toP.y + toP.height;
+        for (let i = 0; i < markerChar.length; i++)
+          setC(toCX - Math.floor(markerChar.length / 2) + i, my, markerChar[i], "arrow");
       }
     }
-    if (w.label) {
-      let R = rt(w.label), J = Math.max(...R.map((Z) => Z.length)) + 2, G, S;
-      if (E < k)
-        G = Math.floor((E + 1 + k - 1) / 2), S = Math.floor((y + T) / 2);
-      else if (N.y + N.height - 1 < X.y) {
-        let Z = N.y + N.height - 1;
-        G = Math.floor((Z + 1 + X.y - 1) / 2), S = Math.floor((y + T) / 2);
+    if (rel.label) {
+      let lines2 = splitLines(rel.label), maxLabelWidth = Math.max(...lines2.map((l) => l.length)) + 2, baseMidY, idealMidX;
+      if (fromBY < toTY)
+        baseMidY = Math.floor((fromBY + 1 + toTY - 1) / 2), idealMidX = Math.floor((fromCX + toCX) / 2);
+      else if (toP.y + toP.height - 1 < fromP.y) {
+        let toBY = toP.y + toP.height - 1;
+        baseMidY = Math.floor((toBY + 1 + fromP.y - 1) / 2), idealMidX = Math.floor((fromCX + toCX) / 2);
       } else
-        G = Math.max(E, N.y + N.height - 1) + 2, S = Math.floor((y + T) / 2);
-      let z = G, D = Math.floor(R.length / 2), $ = !1;
-      for (let Z = 0; Z < R.length; Z++) {
-        let et = z - D + Z, nt = S - Math.floor(J / 2), lt = Math.max(0, nt);
-        for (let mt = lt; mt < lt + J; mt++)
-          if (V(mt, et, g)) {
-            $ = !0;
+        baseMidY = Math.max(fromBY, toP.y + toP.height - 1) + 2, idealMidX = Math.floor((fromCX + toCX) / 2);
+      let labelY = baseMidY, halfHeight = Math.floor(lines2.length / 2), labelInBox = !1;
+      for (let i = 0; i < lines2.length; i++) {
+        let y = labelY - halfHeight + i, idealLabelStart = idealMidX - Math.floor(maxLabelWidth / 2), labelStart = Math.max(0, idealLabelStart);
+        for (let x = labelStart; x < labelStart + maxLabelWidth; x++)
+          if (isInsideBox(x, y, excludeIds)) {
+            labelInBox = !0;
             break;
           }
-        if ($) break;
+        if (labelInBox) break;
       }
-      if ($) {
-        let Z = E + 1, et = k - 1;
-        for (let nt = Z; nt <= et; nt++) {
-          let lt = !0, mt = S - Math.floor(J / 2), Dt = Math.max(0, mt);
-          for (let Ct = Dt; Ct < Dt + J; Ct++)
-            if (V(Ct, nt, g)) {
-              lt = !1;
+      if (labelInBox) {
+        let gapTop = fromBY + 1, gapBottom = toTY - 1;
+        for (let y = gapTop; y <= gapBottom; y++) {
+          let clearRow = !0, idealLabelStart = idealMidX - Math.floor(maxLabelWidth / 2), labelStart = Math.max(0, idealLabelStart);
+          for (let x = labelStart; x < labelStart + maxLabelWidth; x++)
+            if (isInsideBox(x, y, excludeIds)) {
+              clearRow = !1;
               break;
             }
-          if (lt) {
-            z = nt;
+          if (clearRow) {
+            labelY = y;
             break;
           }
         }
       }
-      let tt = z - D;
-      for (let Z = 0; Z < R.length; Z++) {
-        let et = ` ${R[Z]} `, nt = S - Math.floor(et.length / 2), lt = Math.max(0, nt), mt = tt + Z, Dt = lt + et.length;
-        Dt > 0 && mt >= 0 && (Tt(I, Math.max(Dt, 1), Math.max(mt + 1, 1)), Nt(U, Math.max(Dt, 1), Math.max(mt + 1, 1)));
-        for (let Ct = 0; Ct < et.length; Ct++) {
-          let kt = lt + Ct;
-          kt >= 0 && mt >= 0 && C(kt, mt, et[Ct], "text");
+      let startY = labelY - halfHeight;
+      for (let lineIdx = 0; lineIdx < lines2.length; lineIdx++) {
+        let paddedLine = ` ${lines2[lineIdx]} `, idealLabelStart = idealMidX - Math.floor(paddedLine.length / 2), labelStart = Math.max(0, idealLabelStart), y = startY + lineIdx, labelEnd = labelStart + paddedLine.length;
+        labelEnd > 0 && y >= 0 && (increaseSize(canvas, Math.max(labelEnd, 1), Math.max(y + 1, 1)), increaseRoleCanvasSize(rc, Math.max(labelEnd, 1), Math.max(y + 1, 1)));
+        for (let i = 0; i < paddedLine.length; i++) {
+          let lx = labelStart + i;
+          lx >= 0 && y >= 0 && setC(lx, y, paddedLine[i], "text");
         }
       }
     }
   }
-  return Pt(I, { roleCanvas: U, colorMode: n, theme: o });
+  return canvasToString(canvas, { roleCanvas: rc, colorMode, theme });
 }
 
 // node_modules/beautiful-mermaid/src/er/parser.ts
-function Ln(t) {
-  let e = {
+function parseErDiagram(lines) {
+  let diagram = {
     entities: [],
     relationships: []
-  }, n = /* @__PURE__ */ new Map(), o = null;
-  for (let s = 1; s < t.length; s++) {
-    let r = t[s];
-    if (o) {
-      if (r === "}") {
-        o = null;
+  }, entityMap = /* @__PURE__ */ new Map(), currentEntity = null;
+  for (let i = 1; i < lines.length; i++) {
+    let line = lines[i];
+    if (currentEntity) {
+      if (line === "}") {
+        currentEntity = null;
         continue;
       }
-      let c = to(r);
-      c && o.attributes.push(c);
+      let attr = parseAttribute(line);
+      attr && currentEntity.attributes.push(attr);
       continue;
     }
-    let i = r.match(/^(\S+)\s*\{$/);
-    if (i) {
-      let c = i[1];
-      o = Ce(n, c);
+    let entityBlockMatch = line.match(/^(\S+)\s*\{$/);
+    if (entityBlockMatch) {
+      let id = entityBlockMatch[1];
+      currentEntity = ensureEntity(entityMap, id);
       continue;
     }
-    let a = eo(r);
-    if (a) {
-      Ce(n, a.entity1), Ce(n, a.entity2), e.relationships.push(a);
+    let rel = parseRelationshipLine(line);
+    if (rel) {
+      ensureEntity(entityMap, rel.entity1), ensureEntity(entityMap, rel.entity2), diagram.relationships.push(rel);
       continue;
     }
   }
-  return e.entities = [...n.values()], e;
+  return diagram.entities = [...entityMap.values()], diagram;
 }
-function Ce(t, e) {
-  let n = t.get(e);
-  return n || (n = { id: e, label: e, attributes: [] }, t.set(e, n)), n;
+function ensureEntity(entityMap, id) {
+  let entity = entityMap.get(id);
+  return entity || (entity = { id, label: id, attributes: [] }, entityMap.set(id, entity)), entity;
 }
-function to(t) {
-  let e = t.match(/^(\S+)\s+(\S+)(?:\s+(.+))?$/);
-  if (!e) return null;
-  let n = e[1], o = e[2], s = e[3]?.trim() ?? "", r = [], i, a = s.match(/"([^"]*)"/);
-  a && (i = dt(a[1]));
-  let c = s.replace(/"[^"]*"/, "").trim();
-  for (let l of c.split(/\s+/)) {
-    let d = l.toUpperCase();
-    (d === "PK" || d === "FK" || d === "UK") && r.push(d);
+function parseAttribute(line) {
+  let match = line.match(/^(\S+)\s+(\S+)(?:\s+(.+))?$/);
+  if (!match) return null;
+  let type = match[1], name = match[2], rest = match[3]?.trim() ?? "", keys = [], comment, commentMatch = rest.match(/"([^"]*)"/);
+  commentMatch && (comment = normalizeBrTags(commentMatch[1]));
+  let restWithoutComment = rest.replace(/"[^"]*"/, "").trim();
+  for (let part of restWithoutComment.split(/\s+/)) {
+    let upper = part.toUpperCase();
+    (upper === "PK" || upper === "FK" || upper === "UK") && keys.push(upper);
   }
-  return { type: n, name: o, keys: r, comment: i };
+  return { type, name, keys, comment };
 }
-function eo(t) {
-  let e = t.match(/^(\S+)\s+([|o}{]+(?:--|\.\.)[|o}{]+)\s+(\S+)\s*:\s*(.+)$/);
-  if (!e) return null;
-  let n = e[1], o = e[2], s = e[3], r = e[4].trim().replace(/^["']|["']$/g, ""), i = dt(r), a = o.match(/^([|o}{]+)(--|\.\.?)([|o}{]+)$/);
-  if (!a) return null;
-  let c = a[1], l = a[2], d = a[3], h = Tn(c), f = Tn(d), u = l === "--";
-  return !h || !f ? null : { entity1: n, entity2: s, cardinality1: h, cardinality2: f, label: i, identifying: u };
+function parseRelationshipLine(line) {
+  let match = line.match(/^(\S+)\s+([|o}{]+(?:--|\.\.)[|o}{]+)\s+(\S+)\s*:\s*(.+)$/);
+  if (!match) return null;
+  let entity1 = match[1], cardinalityStr = match[2], entity2 = match[3], rawLabel = match[4].trim().replace(/^["']|["']$/g, ""), label = normalizeBrTags(rawLabel), lineMatch = cardinalityStr.match(/^([|o}{]+)(--|\.\.?)([|o}{]+)$/);
+  if (!lineMatch) return null;
+  let leftStr = lineMatch[1], lineStyle = lineMatch[2], rightStr = lineMatch[3], cardinality1 = parseCardinality(leftStr), cardinality2 = parseCardinality(rightStr), identifying = lineStyle === "--";
+  return !cardinality1 || !cardinality2 ? null : { entity1, entity2, cardinality1, cardinality2, label, identifying };
 }
-function Tn(t) {
-  let e = t.split("").sort().join("");
-  return e === "||" ? "one" : e === "o|" ? "zero-one" : e === "|}" || e === "{|" ? "many" : e === "{o" || e === "o{" ? "zero-many" : null;
+function parseCardinality(str) {
+  let sorted = str.split("").sort().join("");
+  return sorted === "||" ? "one" : sorted === "o|" ? "zero-one" : sorted === "|}" || sorted === "{|" ? "many" : sorted === "{o" || sorted === "o{" ? "zero-many" : null;
 }
 
 // node_modules/beautiful-mermaid/src/ascii/er-diagram.ts
-function no(t) {
-  return /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(t) ? "border" : "text";
+function classifyBoxChar2(ch) {
+  return /^[┌┐└┘├┤┬┴┼│─╭╮╰╯+\-|]$/.test(ch) ? "border" : "text";
 }
-function ro(t) {
-  return `${t.keys.length > 0 ? t.keys.join(",") + " " : "   "}${t.type} ${t.name}`;
+function formatAttribute(attr) {
+  return `${attr.keys.length > 0 ? attr.keys.join(",") + " " : "   "}${attr.type} ${attr.name}`;
 }
-function oo(t) {
-  let e = rt(t.label), n = t.attributes.map(ro);
-  return n.length === 0 ? [e] : [e, n];
+function buildEntitySections(entity) {
+  let header = splitLines(entity.label), attrs = entity.attributes.map(formatAttribute);
+  return attrs.length === 0 ? [header] : [header, attrs];
 }
-function ie(t, e, n = !1) {
-  if (e)
-    switch (t) {
+function getCrowsFootChars(card, useAscii, isRight = !1) {
+  if (useAscii)
+    switch (card) {
       case "one":
         return "|";
       case "zero-one":
         return "o|";
       case "many":
-        return n ? "<" : ">";
+        return isRight ? "<" : ">";
       case "zero-many":
-        return n ? "o<" : ">o";
+        return isRight ? "o<" : ">o";
     }
   else
-    switch (t) {
+    switch (card) {
       case "one":
         return "\u2502";
       case "zero-one":
         return "\u25CB\u2502";
       case "many":
-        return n ? "\u255F" : "\u2562";
+        return isRight ? "\u255F" : "\u2562";
       case "zero-many":
-        return n ? "\u25CB\u255F" : "\u2562\u25CB";
+        return isRight ? "\u25CB\u255F" : "\u2562\u25CB";
     }
 }
-function io(t) {
-  let e = /* @__PURE__ */ new Set(), n = [], o = /* @__PURE__ */ new Map();
-  for (let r of t.entities)
-    o.set(r.id, /* @__PURE__ */ new Set());
-  for (let r of t.relationships)
-    o.get(r.entity1)?.add(r.entity2), o.get(r.entity2)?.add(r.entity1);
-  function s(r, i) {
-    let a = [r];
-    for (; a.length > 0; ) {
-      let c = a.pop();
-      if (!e.has(c)) {
-        e.add(c), i.add(c);
-        for (let l of o.get(c) ?? [])
-          e.has(l) || a.push(l);
+function findConnectedComponents(diagram) {
+  let visited = /* @__PURE__ */ new Set(), components = [], neighbors = /* @__PURE__ */ new Map();
+  for (let ent of diagram.entities)
+    neighbors.set(ent.id, /* @__PURE__ */ new Set());
+  for (let rel of diagram.relationships)
+    neighbors.get(rel.entity1)?.add(rel.entity2), neighbors.get(rel.entity2)?.add(rel.entity1);
+  function dfs(startId, component) {
+    let stack = [startId];
+    for (; stack.length > 0; ) {
+      let nodeId = stack.pop();
+      if (!visited.has(nodeId)) {
+        visited.add(nodeId), component.add(nodeId);
+        for (let neighbor of neighbors.get(nodeId) ?? [])
+          visited.has(neighbor) || stack.push(neighbor);
       }
     }
   }
-  for (let r of t.entities)
-    if (!e.has(r.id)) {
-      let i = /* @__PURE__ */ new Set();
-      s(r.id, i), i.size > 0 && n.push(i);
+  for (let ent of diagram.entities)
+    if (!visited.has(ent.id)) {
+      let component = /* @__PURE__ */ new Set();
+      dfs(ent.id, component), component.size > 0 && components.push(component);
     }
-  return n;
+  return components;
 }
-function En(t, e, n, o) {
-  let s = t.split(`
-`).map((I) => I.trim()).filter((I) => I.length > 0 && !I.startsWith("%%")), r = Ln(s);
-  if (r.entities.length === 0) return "";
-  let i = e.useAscii, a = 6, c = 4, l = 6, d = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Map(), f = /* @__PURE__ */ new Map(), u = /* @__PURE__ */ new Map();
-  for (let I of r.entities) {
-    u.set(I.id, I);
-    let U = oo(I);
-    d.set(I.id, U);
-    let C = 0;
-    for (let at of U)
-      for (let ct of at) C = Math.max(C, ct.length);
-    let F = C + 4, V = 0;
-    for (let at of U) V += Math.max(at.length, 1);
-    let K = V + (U.length - 1) + 2;
-    h.set(I.id, F), f.set(I.id, K);
+function renderErAscii(text, config, colorMode, theme) {
+  let lines = text.split(`
+`).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%")), diagram = parseErDiagram(lines);
+  if (diagram.entities.length === 0) return "";
+  let useAscii = config.useAscii, hGap = 6, vGap = 4, componentGap = 6, entitySections = /* @__PURE__ */ new Map(), entityBoxW = /* @__PURE__ */ new Map(), entityBoxH = /* @__PURE__ */ new Map(), entityById = /* @__PURE__ */ new Map();
+  for (let ent of diagram.entities) {
+    entityById.set(ent.id, ent);
+    let sections = buildEntitySections(ent);
+    entitySections.set(ent.id, sections);
+    let maxTextW = 0;
+    for (let section of sections)
+      for (let line of section) maxTextW = Math.max(maxTextW, line.length);
+    let boxW = maxTextW + 4, totalLines = 0;
+    for (let section of sections) totalLines += Math.max(section.length, 1);
+    let boxH = totalLines + (sections.length - 1) + 2;
+    entityBoxW.set(ent.id, boxW), entityBoxH.set(ent.id, boxH);
   }
-  let m = io(r), p = /* @__PURE__ */ new Map(), b = 0;
-  for (let I of m) {
-    let U = r.entities.filter((ct) => I.has(ct.id)), C = Math.max(2, Math.ceil(Math.sqrt(U.length))), F = 0, V = 0, K = 0, at = b;
-    for (let ct of U) {
-      let ot = h.get(ct.id), st = f.get(ct.id);
-      K >= C && (b += V + c, F = 0, V = 0, K = 0), p.set(ct.id, {
-        entity: ct,
-        sections: d.get(ct.id),
-        x: F,
-        y: b,
-        width: ot,
-        height: st
-      }), F += ot + a, V = Math.max(V, st), K++;
+  let components = findConnectedComponents(diagram), placed = /* @__PURE__ */ new Map(), currentY = 0;
+  for (let component of components) {
+    let componentEntities = diagram.entities.filter((e) => component.has(e.id)), maxPerRow = Math.max(2, Math.ceil(Math.sqrt(componentEntities.length))), currentX = 0, maxRowH = 0, colCount = 0, componentStartY = currentY;
+    for (let ent of componentEntities) {
+      let w = entityBoxW.get(ent.id), h = entityBoxH.get(ent.id);
+      colCount >= maxPerRow && (currentY += maxRowH + vGap, currentX = 0, maxRowH = 0, colCount = 0), placed.set(ent.id, {
+        entity: ent,
+        sections: entitySections.get(ent.id),
+        x: currentX,
+        y: currentY,
+        width: w,
+        height: h
+      }), currentX += w + hGap, maxRowH = Math.max(maxRowH, h), colCount++;
     }
-    b += V + l;
+    currentY += maxRowH + componentGap;
   }
-  let A = 0, B = 0;
-  for (let I of p.values())
-    A = Math.max(A, I.x + I.width), B = Math.max(B, I.y + I.height);
-  A += 4, B += 2;
-  let v = it(A - 1, B - 1), H = $t(A - 1, B - 1);
-  function L(I, U, C, F) {
-    I >= 0 && I < v.length && U >= 0 && U < (v[0]?.length ?? 0) && (v[I][U] = C, Bt(H, I, U, F));
+  let totalW = 0, totalH = 0;
+  for (let p of placed.values())
+    totalW = Math.max(totalW, p.x + p.width), totalH = Math.max(totalH, p.y + p.height);
+  totalW += 4, totalH += 2;
+  let canvas = mkCanvas(totalW - 1, totalH - 1), rc = mkRoleCanvas(totalW - 1, totalH - 1);
+  function setC(x, y, ch, role) {
+    x >= 0 && x < canvas.length && y >= 0 && y < (canvas[0]?.length ?? 0) && (canvas[x][y] = ch, setRole(rc, x, y, role));
   }
-  for (let I of p.values()) {
-    let U = oe(I.sections, i);
-    for (let C = 0; C < U.length; C++)
-      for (let F = 0; F < U[0].length; F++) {
-        let V = U[C][F];
-        if (V !== " ") {
-          let K = I.x + C, at = I.y + F;
-          K < A && at < B && L(K, at, V, no(V));
+  for (let p of placed.values()) {
+    let boxCanvas = drawMultiBox(p.sections, useAscii);
+    for (let bx = 0; bx < boxCanvas.length; bx++)
+      for (let by = 0; by < boxCanvas[0].length; by++) {
+        let ch = boxCanvas[bx][by];
+        if (ch !== " ") {
+          let cx = p.x + bx, cy = p.y + by;
+          cx < totalW && cy < totalH && setC(cx, cy, ch, classifyBoxChar2(ch));
         }
       }
   }
-  let q = i ? "-" : "\u2500", ut = i ? "|" : "\u2502", O = i ? "." : "\u254C", ft = i ? ":" : "\u250A";
-  for (let I of r.relationships) {
-    let U = p.get(I.entity1), C = p.get(I.entity2);
-    if (!U || !C) continue;
-    let F = I.identifying ? q : O, V = I.identifying ? ut : ft, K = U.x + Math.floor(U.width / 2), at = U.y + Math.floor(U.height / 2), ct = C.x + Math.floor(C.width / 2), ot = C.y + Math.floor(C.height / 2);
-    if (Math.abs(at - ot) < Math.max(U.height, C.height)) {
-      let [w, X] = K < ct ? [U, C] : [C, U], [N, M] = K < ct ? [I.cardinality1, I.cardinality2] : [I.cardinality2, I.cardinality1], W = w.x + w.width, Q = X.x - 1, g = w.y + Math.floor(w.height / 2);
-      for (let T = W; T <= Q; T++)
-        L(T, g, F, "line");
-      let y = ie(N, i, !1);
-      for (let T = 0; T < y.length; T++)
-        L(W + T, g, y[T], "arrow");
-      let E = ie(M, i, !0);
-      for (let T = 0; T < E.length; T++)
-        L(Q - E.length + 1 + T, g, E[T], "arrow");
-      if (I.label) {
-        let T = rt(I.label), k = Math.floor((W + Q) / 2);
-        for (let R = 0; R < T.length; R++) {
-          let J = T[R], G = Math.max(W, k - Math.floor(J.length / 2)), S = g + 1 + R;
-          Tt(v, Math.max(G + J.length, 1), Math.max(S + 1, 1)), Nt(H, Math.max(G + J.length, 1), Math.max(S + 1, 1));
-          for (let z = 0; z < J.length; z++) {
-            let D = G + z;
-            D >= W && D <= Q && L(D, S, J[z], "text");
+  let H = useAscii ? "-" : "\u2500", V = useAscii ? "|" : "\u2502", dashH = useAscii ? "." : "\u254C", dashV = useAscii ? ":" : "\u250A";
+  for (let rel of diagram.relationships) {
+    let e1 = placed.get(rel.entity1), e2 = placed.get(rel.entity2);
+    if (!e1 || !e2) continue;
+    let lineH = rel.identifying ? H : dashH, lineV = rel.identifying ? V : dashV, e1CX = e1.x + Math.floor(e1.width / 2), e1CY = e1.y + Math.floor(e1.height / 2), e2CX = e2.x + Math.floor(e2.width / 2), e2CY = e2.y + Math.floor(e2.height / 2);
+    if (Math.abs(e1CY - e2CY) < Math.max(e1.height, e2.height)) {
+      let [left, right] = e1CX < e2CX ? [e1, e2] : [e2, e1], [leftCard, rightCard] = e1CX < e2CX ? [rel.cardinality1, rel.cardinality2] : [rel.cardinality2, rel.cardinality1], startX = left.x + left.width, endX = right.x - 1, lineY = left.y + Math.floor(left.height / 2);
+      for (let x = startX; x <= endX; x++)
+        setC(x, lineY, lineH, "line");
+      let leftChars = getCrowsFootChars(leftCard, useAscii, !1);
+      for (let i = 0; i < leftChars.length; i++)
+        setC(startX + i, lineY, leftChars[i], "arrow");
+      let rightChars = getCrowsFootChars(rightCard, useAscii, !0);
+      for (let i = 0; i < rightChars.length; i++)
+        setC(endX - rightChars.length + 1 + i, lineY, rightChars[i], "arrow");
+      if (rel.label) {
+        let lines2 = splitLines(rel.label), gapMid = Math.floor((startX + endX) / 2);
+        for (let lineIdx = 0; lineIdx < lines2.length; lineIdx++) {
+          let line = lines2[lineIdx], labelStart = Math.max(startX, gapMid - Math.floor(line.length / 2)), labelY = lineY + 1 + lineIdx;
+          increaseSize(canvas, Math.max(labelStart + line.length, 1), Math.max(labelY + 1, 1)), increaseRoleCanvasSize(rc, Math.max(labelStart + line.length, 1), Math.max(labelY + 1, 1));
+          for (let i = 0; i < line.length; i++) {
+            let lx = labelStart + i;
+            lx >= startX && lx <= endX && setC(lx, labelY, line[i], "text");
           }
         }
       }
     } else {
-      let [w, X] = at < ot ? [U, C] : [C, U], [N, M] = at < ot ? [I.cardinality1, I.cardinality2] : [I.cardinality2, I.cardinality1], W = w.y + w.height, Q = X.y - 1, g = w.x + Math.floor(w.width / 2);
-      for (let R = W; R <= Q; R++)
-        L(g, R, V, "line");
-      let y = X.x + Math.floor(X.width / 2);
-      if (g !== y) {
-        let R = Math.floor((W + Q) / 2), J = Math.min(g, y), G = Math.max(g, y);
-        for (let S = J; S <= G; S++)
-          L(S, R, F, "line");
-        for (let S = R + 1; S <= Q; S++)
-          L(y, S, V, "line");
+      let [upper, lower] = e1CY < e2CY ? [e1, e2] : [e2, e1], [upperCard, lowerCard] = e1CY < e2CY ? [rel.cardinality1, rel.cardinality2] : [rel.cardinality2, rel.cardinality1], startY = upper.y + upper.height, endY = lower.y - 1, lineX = upper.x + Math.floor(upper.width / 2);
+      for (let y = startY; y <= endY; y++)
+        setC(lineX, y, lineV, "line");
+      let lowerCX = lower.x + Math.floor(lower.width / 2);
+      if (lineX !== lowerCX) {
+        let midY = Math.floor((startY + endY) / 2), lx = Math.min(lineX, lowerCX), rx = Math.max(lineX, lowerCX);
+        for (let x = lx; x <= rx; x++)
+          setC(x, midY, lineH, "line");
+        for (let y = midY + 1; y <= endY; y++)
+          setC(lowerCX, y, lineV, "line");
       }
-      let E = ie(N, i, !1);
-      for (let R = 0; R < E.length; R++)
-        L(g - Math.floor(E.length / 2) + R, W, E[R], "arrow");
-      let T = g !== y ? y : g, k = ie(M, i, !0);
-      for (let R = 0; R < k.length; R++)
-        L(T - Math.floor(k.length / 2) + R, Q, k[R], "arrow");
-      if (I.label) {
-        let R = rt(I.label), G = Math.floor((W + Q) / 2) - Math.floor((R.length - 1) / 2);
-        for (let S = 0; S < R.length; S++) {
-          let z = R[S], D = g + 2, $ = G + S;
-          if ($ >= 0)
-            for (let tt = 0; tt < z.length; tt++) {
-              let Z = D + tt;
-              Z >= 0 && (Tt(v, Z + 1, $ + 1), Nt(H, Z + 1, $ + 1), L(Z, $, z[tt], "text"));
+      let upperChars = getCrowsFootChars(upperCard, useAscii, !1);
+      for (let i = 0; i < upperChars.length; i++)
+        setC(lineX - Math.floor(upperChars.length / 2) + i, startY, upperChars[i], "arrow");
+      let targetX = lineX !== lowerCX ? lowerCX : lineX, lowerChars = getCrowsFootChars(lowerCard, useAscii, !0);
+      for (let i = 0; i < lowerChars.length; i++)
+        setC(targetX - Math.floor(lowerChars.length / 2) + i, endY, lowerChars[i], "arrow");
+      if (rel.label) {
+        let lines2 = splitLines(rel.label), startLabelY = Math.floor((startY + endY) / 2) - Math.floor((lines2.length - 1) / 2);
+        for (let lineIdx = 0; lineIdx < lines2.length; lineIdx++) {
+          let line = lines2[lineIdx], labelX = lineX + 2, y = startLabelY + lineIdx;
+          if (y >= 0)
+            for (let i = 0; i < line.length; i++) {
+              let lx = labelX + i;
+              lx >= 0 && (increaseSize(canvas, lx + 1, y + 1), increaseRoleCanvasSize(rc, lx + 1, y + 1), setC(lx, y, line[i], "text"));
             }
         }
       }
     }
   }
-  return Pt(v, { roleCanvas: H, colorMode: n, theme: o });
+  return canvasToString(canvas, { roleCanvas: rc, colorMode, theme });
 }
 
 // node_modules/beautiful-mermaid/src/xychart/parser.ts
-function Gn(t) {
-  let e = {}, n = {}, o = [], s, r = !1;
-  for (let i of t) {
-    if (/^xychart(-beta)?\b/i.test(i)) {
-      /\bhorizontal\b/i.test(i) && (r = !0);
+function parseXYChart(lines) {
+  let xAxis = {}, yAxis = {}, series = [], title, horizontal = !1;
+  for (let line of lines) {
+    if (/^xychart(-beta)?\b/i.test(line)) {
+      /\bhorizontal\b/i.test(line) && (horizontal = !0);
       continue;
     }
-    let a = i.match(/^title\s+"([^"]+)"/);
-    if (a) {
-      s = a[1];
+    let titleMatch = line.match(/^title\s+"([^"]+)"/);
+    if (titleMatch) {
+      title = titleMatch[1];
       continue;
     }
-    let c = i.match(/^x-axis\s+(?:"([^"]*)"\s*)?\[([^\]]+)\]/);
-    if (c) {
-      c[1] && (e.title = c[1]), e.categories = c[2].split(",").map((m) => m.trim());
+    let xCatMatch = line.match(/^x-axis\s+(?:"([^"]*)"\s*)?\[([^\]]+)\]/);
+    if (xCatMatch) {
+      xCatMatch[1] && (xAxis.title = xCatMatch[1]), xAxis.categories = xCatMatch[2].split(",").map((s) => s.trim());
       continue;
     }
-    let l = i.match(/^x-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
-    if (l) {
-      l[1] && (e.title = l[1]), e.range = { min: parseFloat(l[2]), max: parseFloat(l[3]) };
+    let xRangeMatch = line.match(/^x-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
+    if (xRangeMatch) {
+      xRangeMatch[1] && (xAxis.title = xRangeMatch[1]), xAxis.range = { min: parseFloat(xRangeMatch[2]), max: parseFloat(xRangeMatch[3]) };
       continue;
     }
-    let d = i.match(/^y-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
-    if (d) {
-      d[1] && (n.title = d[1]), n.range = { min: parseFloat(d[2]), max: parseFloat(d[3]) };
+    let yRangeMatch = line.match(/^y-axis\s+(?:"([^"]*)"\s+)?(-?\d+(?:\.\d+)?)\s*-->\s*(-?\d+(?:\.\d+)?)/);
+    if (yRangeMatch) {
+      yRangeMatch[1] && (yAxis.title = yRangeMatch[1]), yAxis.range = { min: parseFloat(yRangeMatch[2]), max: parseFloat(yRangeMatch[3]) };
       continue;
     }
-    let h = i.match(/^y-axis\s+"([^"]+)"\s*$/);
-    if (h) {
-      n.title = h[1];
+    let yTitleOnly = line.match(/^y-axis\s+"([^"]+)"\s*$/);
+    if (yTitleOnly) {
+      yAxis.title = yTitleOnly[1];
       continue;
     }
-    let f = i.match(/^bar\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
-    if (f) {
-      o.push({ type: "bar", name: f[1] ?? f[2], data: kn(f[3]) });
+    let barMatch = line.match(/^bar\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
+    if (barMatch) {
+      series.push({ type: "bar", name: barMatch[1] ?? barMatch[2], data: parseNumericArray(barMatch[3]) });
       continue;
     }
-    let u = i.match(/^line\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
-    if (u) {
-      o.push({ type: "line", name: u[1] ?? u[2], data: kn(u[3]) });
+    let lineMatch = line.match(/^line\s+(?:"([^"]*)"\s*|([^\s"[]+)\s+)?\[([^\]]+)\]/);
+    if (lineMatch) {
+      series.push({ type: "line", name: lineMatch[1] ?? lineMatch[2], data: parseNumericArray(lineMatch[3]) });
       continue;
     }
   }
-  if (!n.range && o.length > 0) {
-    let i = o.flatMap((d) => d.data), a = Math.min(...i), c = Math.max(...i), l = c - a || 1;
-    a = a - l * 0.1, c = c + l * 0.1, a > 0 && a < l * 0.5 && (a = 0), n.range = { min: a, max: c };
+  if (!yAxis.range && series.length > 0) {
+    let allValues = series.flatMap((s) => s.data), min = Math.min(...allValues), max = Math.max(...allValues), span = max - min || 1;
+    min = min - span * 0.1, max = max + span * 0.1, min > 0 && min < span * 0.5 && (min = 0), yAxis.range = { min, max };
   }
-  return n.range || (n.range = { min: 0, max: 100 }), { title: s, horizontal: r, xAxis: e, yAxis: n, series: o };
+  return yAxis.range || (yAxis.range = { min: 0, max: 100 }), { title, horizontal, xAxis, yAxis, series };
 }
-function kn(t) {
-  return t.split(",").map((e) => parseFloat(e.trim()));
+function parseNumericArray(str) {
+  return str.split(",").map((s) => parseFloat(s.trim()));
 }
 
 // node_modules/beautiful-mermaid/src/xychart/colors.ts
-var Me = "#3b82f6";
-function Nn(t) {
-  let e = t.replace("#", ""), n = parseInt(e.substring(0, 2), 16) / 255, o = parseInt(e.substring(2, 4), 16) / 255, s = parseInt(e.substring(4, 6), 16) / 255, r = Math.max(n, o, s), i = Math.min(n, o, s), a = (r + i) / 2;
-  if (r === i) return [0, 0, a * 100];
-  let c = r - i, l = a > 0.5 ? c / (2 - r - i) : c / (r + i), d;
-  return r === n ? d = ((o - s) / c + (o < s ? 6 : 0)) / 6 : r === o ? d = ((s - n) / c + 2) / 6 : d = ((n - o) / c + 4) / 6, [d * 360, l * 100, a * 100];
+var CHART_ACCENT_FALLBACK = "#3b82f6";
+function hexToHsl(hex) {
+  let h = hex.replace("#", ""), ri = parseInt(h.substring(0, 2), 16) / 255, gi = parseInt(h.substring(2, 4), 16) / 255, bi = parseInt(h.substring(4, 6), 16) / 255, max = Math.max(ri, gi, bi), min = Math.min(ri, gi, bi), l = (max + min) / 2;
+  if (max === min) return [0, 0, l * 100];
+  let d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min), hue;
+  return max === ri ? hue = ((gi - bi) / d + (gi < bi ? 6 : 0)) / 6 : max === gi ? hue = ((bi - ri) / d + 2) / 6 : hue = ((ri - gi) / d + 4) / 6, [hue * 360, s * 100, l * 100];
 }
-function so(t, e, n) {
-  let o = e / 100, s = n / 100, r = (1 - Math.abs(2 * s - 1)) * o, i = r * (1 - Math.abs(t / 60 % 2 - 1)), a = s - r / 2, c, l, d;
-  t < 60 ? (c = r, l = i, d = 0) : t < 120 ? (c = i, l = r, d = 0) : t < 180 ? (c = 0, l = r, d = i) : t < 240 ? (c = 0, l = i, d = r) : t < 300 ? (c = i, l = 0, d = r) : (c = r, l = 0, d = i);
-  let h = (f) => Math.round((f + a) * 255).toString(16).padStart(2, "0");
-  return `#${h(c)}${h(l)}${h(d)}`;
+function hslToHex(h, s, l) {
+  let si = s / 100, li = l / 100, c = (1 - Math.abs(2 * li - 1)) * si, x = c * (1 - Math.abs(h / 60 % 2 - 1)), m = li - c / 2, r, g, b;
+  h < 60 ? (r = c, g = x, b = 0) : h < 120 ? (r = x, g = c, b = 0) : h < 180 ? (r = 0, g = c, b = x) : h < 240 ? (r = 0, g = x, b = c) : h < 300 ? (r = x, g = 0, b = c) : (r = c, g = 0, b = x);
+  let toHex = (v) => Math.round((v + m) * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
-function In(t) {
-  return /^#[0-9a-fA-F]{6}$/.test(t);
+function isValidHex(color) {
+  return /^#[0-9a-fA-F]{6}$/.test(color);
 }
-function ao(t) {
-  return Nn(t)[2] < 50;
+function isDarkBackground(bgHex) {
+  return hexToHsl(bgHex)[2] < 50;
 }
-function Yn(t, e, n) {
-  if (t === 0) return e;
-  let o = In(e) ? e : Me, s = n && In(n) ? n : void 0, [r, i] = Nn(o), a = Math.max(55, Math.min(85, i)), c = Math.ceil(t / 2), l = t % 2 === 1, d = s && ao(s) ? !l : l, h = d ? Math.max(25, 48 - c * 13) : Math.min(78, 55 + c * 11), f = (d ? -8 : 12) * c, u = ((r + f) % 360 + 360) % 360;
-  return so(u, a, h);
+function getSeriesColor(index, accentColor, bgColor) {
+  if (index === 0) return accentColor;
+  let safeAccent = isValidHex(accentColor) ? accentColor : CHART_ACCENT_FALLBACK, safeBg = bgColor && isValidHex(bgColor) ? bgColor : void 0, [h, s] = hexToHsl(safeAccent), chartS = Math.max(55, Math.min(85, s)), tier = Math.ceil(index / 2), oddIndex = index % 2 === 1, dark = safeBg && isDarkBackground(safeBg) ? !oddIndex : oddIndex, l = dark ? Math.max(25, 48 - tier * 13) : Math.min(78, 55 + tier * 11), hShift = (dark ? -8 : 12) * tier, newH = ((h + hShift) % 360 + 360) % 360;
+  return hslToHex(newH, chartS, l);
 }
 
 // node_modules/beautiful-mermaid/src/ascii/xychart.ts
-var we = 60, ve = 20, co = {
+var PLOT_WIDTH = 60, PLOT_HEIGHT = 20, UNI = {
   hLine: "\u2500",
   vLine: "\u2502",
   origin: "\u253C",
@@ -3091,7 +3091,7 @@ var we = 60, ve = 20, co = {
   // bottom-left: up+right
   cornerBR: "\u256F"
   // bottom-right: up+left
-}, $n = {
+}, ASC = {
   hLine: "-",
   vLine: "|",
   origin: "+",
@@ -3104,371 +3104,371 @@ var we = 60, ve = 20, co = {
   cornerBL: "+",
   cornerBR: "+"
 };
-function Bn(t, e) {
-  let n = e.accent ?? Me;
-  return t <= 1 ? [n] : Array.from({ length: t }, (o, s) => Yn(s, n, e.bg));
+function getSeriesColors(total, theme) {
+  let accent = theme.accent ?? CHART_ACCENT_FALLBACK;
+  return total <= 1 ? [accent] : Array.from({ length: total }, (_, i) => getSeriesColor(i, accent, theme.bg));
 }
-function lo(t, e) {
-  switch (t) {
+function roleToHex(role, theme) {
+  switch (role) {
     case "text":
-      return e.fg;
+      return theme.fg;
     case "border":
-      return e.border;
+      return theme.border;
     case "line":
-      return e.line;
+      return theme.line;
     case "arrow":
-      return e.arrow;
+      return theme.arrow;
     case "corner":
-      return e.corner ?? e.line;
+      return theme.corner ?? theme.line;
     case "junction":
-      return e.junction ?? e.border;
+      return theme.junction ?? theme.border;
     default:
-      return e.fg;
+      return theme.fg;
   }
 }
-function Xn(t, e, n, o) {
-  let s = t.split(`
-`).map((a) => a.trim()).filter((a) => a.length > 0 && !a.startsWith("%%")), r = Gn(s), i = e.useAscii ? $n : co;
-  return r.horizontal ? uo(r, i, n, o) : fo(r, i, n, o);
+function renderXYChartAscii(text, config, colorMode, theme) {
+  let lines = text.split(`
+`).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("%%")), chart = parseXYChart(lines), ch = config.useAscii ? ASC : UNI;
+  return chart.horizontal ? renderHorizontal(chart, ch, colorMode, theme) : renderVertical(chart, ch, colorMode, theme);
 }
-function fo(t, e, n, o) {
-  let s = zn(t);
-  if (s === 0) return "";
-  let r = t.yAxis.range, i = Fn(r.min, r.max), a = i.length > 1 ? i[1] - i[0] : Math.abs(r.max - r.min) || 1, c = Math.floor(r.min / a + 1e-9) * a, l = Math.max(c + a, Math.ceil(r.max / a - 1e-9) * a), d = Math.round((l - c) / a), h = Array.from({ length: d + 1 }, (g, y) => Math.round((c + y * a) * 1e10) / 1e10), f = h.map((g) => se(g)), u = Math.max(...f.map((g) => g.length)) + 1, m = Math.max(we, s * 6), p = Math.max(1, Math.round(ve / d)), b = d * p, A = a / p, B = (g) => (g - c) / A, v = B(Math.min(Math.max(0, c), l)), H = Math.round(v) - 1, L = Math.floor(m / s), q = On(t, s), ut = !!t.title, O = !!t.xAxis.title, ft = t.series.length > 1, I = ut ? 0 : -1, U = (ut ? 2 : 0) + (ft ? 1 : 0), C = u + 1, F = C + L * s + 2, V = U + b, K = V + 1, at = O ? K + 1 : -1, ct = K + 1 + (O ? 1 : 0) + 0, ot = Hn(F, ct), st = Wn(F, ct), w = _n(F, ct), X = Bn(t.series.length, o), N = (g) => Math.min(b - 1, Math.max(-1, Math.round(B(g)) - 1)), M = (g) => C + Math.floor(L * (g + 0.5));
-  ut && I >= 0 && Xt(ot, st, I, Math.floor(F / 2 - t.title.length / 2), t.title, "text"), ft && Pn(ot, st, w, t, ut ? 1 : 0, F, e, X);
-  for (let g = 0; g < b; g++) {
-    let y = U + (b - 1 - g);
-    bt(ot, st, y, C - 1, e.vLine, "border");
+function renderVertical(chart, ch, colorMode, theme) {
+  let dataCount = getDataCount(chart);
+  if (dataCount === 0) return "";
+  let yRange = chart.yAxis.range, rawTicks = niceTickValues(yRange.min, yRange.max), step = rawTicks.length > 1 ? rawTicks[1] - rawTicks[0] : Math.abs(yRange.max - yRange.min) || 1, lo = Math.floor(yRange.min / step + 1e-9) * step, hi = Math.max(lo + step, Math.ceil(yRange.max / step - 1e-9) * step), intervals = Math.round((hi - lo) / step), yTicks = Array.from({ length: intervals + 1 }, (_, i) => Math.round((lo + i * step) * 1e10) / 1e10), yLabels = yTicks.map((v) => formatTickValue(v)), yGutter = Math.max(...yLabels.map((l) => l.length)) + 1, plotW = Math.max(PLOT_WIDTH, dataCount * 6), perTick = Math.max(1, Math.round(PLOT_HEIGHT / intervals)), plotH = intervals * perTick, unit = step / perTick, level = (v) => (v - lo) / unit, base = level(Math.min(Math.max(0, lo), hi)), zero = Math.round(base) - 1, bandW = Math.floor(plotW / dataCount), catLabels = getCategoryLabels(chart, dataCount), hasTitle = !!chart.title, hasXTitle = !!chart.xAxis.title, hasLegend = chart.series.length > 1, titleRow = hasTitle ? 0 : -1, plotTop = (hasTitle ? 2 : 0) + (hasLegend ? 1 : 0), plotLeft = yGutter + 1, totalW = plotLeft + bandW * dataCount + 2, xAxisRow = plotTop + plotH, xLabelRow = xAxisRow + 1, xTitleRow = hasXTitle ? xLabelRow + 1 : -1, totalH = xLabelRow + 1 + (hasXTitle ? 1 : 0) + 0, canvas = createCanvas(totalW, totalH), roles = createRoleCanvas(totalW, totalH), hexColors = createHexCanvas(totalW, totalH), seriesColors = getSeriesColors(chart.series.length, theme), valueToRow = (v) => Math.min(plotH - 1, Math.max(-1, Math.round(level(v)) - 1)), bandCenter = (i) => plotLeft + Math.floor(bandW * (i + 0.5));
+  hasTitle && titleRow >= 0 && writeText(canvas, roles, titleRow, Math.floor(totalW / 2 - chart.title.length / 2), chart.title, "text"), hasLegend && drawLegend(canvas, roles, hexColors, chart, hasTitle ? 1 : 0, totalW, ch, seriesColors);
+  for (let row = 0; row < plotH; row++) {
+    let displayRow = plotTop + (plotH - 1 - row);
+    set(canvas, roles, displayRow, plotLeft - 1, ch.vLine, "border");
   }
-  bt(ot, st, V, C - 1, e.origin, "border");
-  for (let g of h) {
-    let y = Math.round(B(g)) - 1;
-    if (y < -1 || y >= b) continue;
-    let E = U + (b - 1 - y), T = se(g);
-    bt(ot, st, E, C - 1, y === -1 || y === H ? e.origin : e.yTick, "border");
-    let k = u - T.length;
-    Xt(ot, st, E, Math.max(0, k), T, "text");
+  set(canvas, roles, xAxisRow, plotLeft - 1, ch.origin, "border");
+  for (let tick of yTicks) {
+    let row = Math.round(level(tick)) - 1;
+    if (row < -1 || row >= plotH) continue;
+    let displayRow = plotTop + (plotH - 1 - row), label = formatTickValue(tick);
+    set(canvas, roles, displayRow, plotLeft - 1, row === -1 || row === zero ? ch.origin : ch.yTick, "border");
+    let labelStart = yGutter - label.length;
+    writeText(canvas, roles, displayRow, Math.max(0, labelStart), label, "text");
   }
-  for (let g = C; g < C + L * s; g++)
-    bt(ot, st, V, g, e.hLine, "border");
-  for (let g = 0; g < s; g++) {
-    let y = M(g);
-    bt(ot, st, V, y, e.xTick, "border");
-    let E = q[g], T = y - Math.floor(E.length / 2);
-    Xt(ot, st, K, Math.max(0, T), E, "text");
+  for (let c = plotLeft; c < plotLeft + bandW * dataCount; c++)
+    set(canvas, roles, xAxisRow, c, ch.hLine, "border");
+  for (let i = 0; i < dataCount; i++) {
+    let cx = bandCenter(i);
+    set(canvas, roles, xAxisRow, cx, ch.xTick, "border");
+    let label = catLabels[i], labelStart = cx - Math.floor(label.length / 2);
+    writeText(canvas, roles, xLabelRow, Math.max(0, labelStart), label, "text");
   }
-  if (O && at >= 0) {
-    let g = t.xAxis.title;
-    Xt(ot, st, at, Math.floor(F / 2 - g.length / 2), g, "text");
+  if (hasXTitle && xTitleRow >= 0) {
+    let title = chart.xAxis.title;
+    writeText(canvas, roles, xTitleRow, Math.floor(totalW / 2 - title.length / 2), title, "text");
   }
-  for (let g of h) {
-    let y = Math.round(B(g)) - 1;
-    if (y < 0 || y >= b) continue;
-    let E = U + (b - 1 - y);
-    for (let T = C; T < C + L * s; T++)
-      Ae(ot, E, T) === " " && bt(ot, st, E, T, y === H ? e.hLine : e.grid, y === H ? "border" : "line");
+  for (let tick of yTicks) {
+    let row = Math.round(level(tick)) - 1;
+    if (row < 0 || row >= plotH) continue;
+    let displayRow = plotTop + (plotH - 1 - row);
+    for (let c = plotLeft; c < plotLeft + bandW * dataCount; c++)
+      get(canvas, displayRow, c) === " " && set(canvas, roles, displayRow, c, row === zero ? ch.hLine : ch.grid, row === zero ? "border" : "line");
   }
-  let W = [];
-  for (let g = 0; g < t.series.length; g++)
-    t.series[g].type === "bar" && W.push({ data: t.series[g].data, globalIdx: g });
-  if (W.length > 0) {
-    let g = W.length, y = Math.max(1, L - 2), E = Math.max(1, Math.min(Math.floor(y / g), 8)), T = E * g + (g - 1);
-    for (let k = 0; k < W.length; k++) {
-      let R = W[k], J = X[R.globalIdx];
-      for (let G = 0; G < R.data.length; G++) {
-        let D = M(G) - Math.floor(T / 2) + k * (E + 1), $ = B(R.data[G]), tt = $ < v ? Math.ceil($ * 2 - 1e-9) / 2 : Math.floor($ * 2 + 1e-9) / 2, Z = Math.max(0, Math.min(v, tt)), et = Math.min(b, Math.max(v, tt));
-        for (let nt = -1; nt < b; nt++) {
-          let lt = Z <= nt + 0.5 + 1e-9 && et >= nt + 1 - 1e-9, mt = Z <= nt + 1 + 1e-9 && et >= nt + 1.5 - 1e-9, Dt = e === $n ? (tt < v ? mt : lt) && e.bar : lt && mt ? e.bar : lt ? "\u2584" : mt && "\u2580";
-          if (!Dt) continue;
-          let Ct = U + (b - 1 - nt);
-          for (let kt = D; kt < D + E; kt++)
-            bt(ot, st, Ct, kt, Dt, "arrow", w, J);
+  let barEntries = [];
+  for (let si = 0; si < chart.series.length; si++)
+    chart.series[si].type === "bar" && barEntries.push({ data: chart.series[si].data, globalIdx: si });
+  if (barEntries.length > 0) {
+    let barCount = barEntries.length, usable = Math.max(1, bandW - 2), singleBarW = Math.max(1, Math.min(Math.floor(usable / barCount), 8)), groupW = singleBarW * barCount + (barCount - 1);
+    for (let bIdx = 0; bIdx < barEntries.length; bIdx++) {
+      let entry = barEntries[bIdx], hexColor = seriesColors[entry.globalIdx];
+      for (let i = 0; i < entry.data.length; i++) {
+        let bx = bandCenter(i) - Math.floor(groupW / 2) + bIdx * (singleBarW + 1), exact = level(entry.data[i]), value = exact < base ? Math.ceil(exact * 2 - 1e-9) / 2 : Math.floor(exact * 2 + 1e-9) / 2, from = Math.max(0, Math.min(base, value)), to = Math.min(plotH, Math.max(base, value));
+        for (let row = -1; row < plotH; row++) {
+          let low = from <= row + 0.5 + 1e-9 && to >= row + 1 - 1e-9, high = from <= row + 1 + 1e-9 && to >= row + 1.5 - 1e-9, glyph = ch === ASC ? (value < base ? high : low) && ch.bar : low && high ? ch.bar : low ? "\u2584" : high && "\u2580";
+          if (!glyph) continue;
+          let displayRow = plotTop + (plotH - 1 - row);
+          for (let c = bx; c < bx + singleBarW; c++)
+            set(canvas, roles, displayRow, c, glyph, "arrow", hexColors, hexColor);
         }
       }
     }
   }
-  let Q = [];
-  for (let g = 0; g < t.series.length; g++)
-    t.series[g].type === "line" && Q.push({ data: t.series[g].data, globalIdx: g });
-  for (let g of Q) {
-    if (g.data.length === 0) continue;
-    let y = X[g.globalIdx];
-    ho(ot, st, g.data, M, N, U, b, C, L * s, e, w, y);
+  let lineEntries = [];
+  for (let si = 0; si < chart.series.length; si++)
+    chart.series[si].type === "line" && lineEntries.push({ data: chart.series[si].data, globalIdx: si });
+  for (let entry of lineEntries) {
+    if (entry.data.length === 0) continue;
+    let hexColor = seriesColors[entry.globalIdx];
+    drawStaircaseLine(canvas, roles, entry.data, bandCenter, valueToRow, plotTop, plotH, plotLeft, bandW * dataCount, ch, hexColors, hexColor);
   }
-  return jn(ot, st, w, n, o);
+  return canvasToString2(canvas, roles, hexColors, colorMode, theme);
 }
-function uo(t, e, n, o) {
-  let s = zn(t);
-  if (s === 0) return "";
-  let r = t.yAxis.range, i = Fn(r.min, r.max), a = On(t, s), c = Math.max(...a.map((C) => C.length)) + 1, l = Math.max(we, 40), d = Math.max(2, Math.floor(ve / s)), h = d * s, f = !!t.title, u = !!t.yAxis.title, m = t.series.length > 1, p = (f ? 2 : 0) + (m ? 1 : 0), b = c + 1, A = b + l + 2, B = p + h + 2 + (u ? 1 : 0), v = p + h, H = Hn(A, B), L = Wn(A, B), q = _n(A, B), ut = Bn(t.series.length, o), O = (C) => {
-    let F = (C - r.min) / (r.max - r.min || 1);
-    return b + Math.round(F * (l - 1));
-  }, ft = (C) => p + Math.floor(d * (C + 0.5));
-  f && Xt(H, L, 0, Math.floor(A / 2 - t.title.length / 2), t.title, "text"), m && Pn(H, L, q, t, f ? 1 : 0, A, e, ut);
-  for (let C = p; C < p + h; C++)
-    bt(H, L, C, b - 1, e.vLine, "border");
-  bt(H, L, v, b - 1, e.origin, "border");
-  for (let C = 0; C < s; C++) {
-    let F = ft(C), V = a[C], K = c - V.length;
-    Xt(H, L, F, Math.max(0, K), V, "text");
+function renderHorizontal(chart, ch, colorMode, theme) {
+  let dataCount = getDataCount(chart);
+  if (dataCount === 0) return "";
+  let yRange = chart.yAxis.range, valueTicks = niceTickValues(yRange.min, yRange.max), catLabels = getCategoryLabels(chart, dataCount), catGutter = Math.max(...catLabels.map((l) => l.length)) + 1, plotW = Math.max(PLOT_WIDTH, 40), bandH = Math.max(2, Math.floor(PLOT_HEIGHT / dataCount)), plotH = bandH * dataCount, hasTitle = !!chart.title, hasYTitle = !!chart.yAxis.title, hasLegend = chart.series.length > 1, plotTop = (hasTitle ? 2 : 0) + (hasLegend ? 1 : 0), plotLeft = catGutter + 1, totalW = plotLeft + plotW + 2, totalH = plotTop + plotH + 2 + (hasYTitle ? 1 : 0), xAxisRow = plotTop + plotH, canvas = createCanvas(totalW, totalH), roles = createRoleCanvas(totalW, totalH), hexColors = createHexCanvas(totalW, totalH), seriesColors = getSeriesColors(chart.series.length, theme), valueToCol = (v) => {
+    let t = (v - yRange.min) / (yRange.max - yRange.min || 1);
+    return plotLeft + Math.round(t * (plotW - 1));
+  }, bandMid = (i) => plotTop + Math.floor(bandH * (i + 0.5));
+  hasTitle && writeText(canvas, roles, 0, Math.floor(totalW / 2 - chart.title.length / 2), chart.title, "text"), hasLegend && drawLegend(canvas, roles, hexColors, chart, hasTitle ? 1 : 0, totalW, ch, seriesColors);
+  for (let r = plotTop; r < plotTop + plotH; r++)
+    set(canvas, roles, r, plotLeft - 1, ch.vLine, "border");
+  set(canvas, roles, xAxisRow, plotLeft - 1, ch.origin, "border");
+  for (let i = 0; i < dataCount; i++) {
+    let my = bandMid(i), label = catLabels[i], labelStart = catGutter - label.length;
+    writeText(canvas, roles, my, Math.max(0, labelStart), label, "text");
   }
-  for (let C = b; C < b + l; C++)
-    bt(H, L, v, C, e.hLine, "border");
-  for (let C of i) {
-    let F = O(C);
-    if (F < b || F >= b + l) continue;
-    bt(H, L, v, F, e.xTick, "border");
-    let V = se(C);
-    Xt(H, L, v + 1, F - Math.floor(V.length / 2), V, "text");
+  for (let c = plotLeft; c < plotLeft + plotW; c++)
+    set(canvas, roles, xAxisRow, c, ch.hLine, "border");
+  for (let tick of valueTicks) {
+    let cx = valueToCol(tick);
+    if (cx < plotLeft || cx >= plotLeft + plotW) continue;
+    set(canvas, roles, xAxisRow, cx, ch.xTick, "border");
+    let label = formatTickValue(tick);
+    writeText(canvas, roles, xAxisRow + 1, cx - Math.floor(label.length / 2), label, "text");
   }
-  if (u) {
-    let C = t.yAxis.title;
-    Xt(H, L, B - 1, Math.floor(A / 2 - C.length / 2), C, "text");
+  if (hasYTitle) {
+    let title = chart.yAxis.title;
+    writeText(canvas, roles, totalH - 1, Math.floor(totalW / 2 - title.length / 2), title, "text");
   }
-  for (let C of i) {
-    let F = O(C);
-    if (!(F < b || F >= b + l))
-      for (let V = p; V < p + h; V++)
-        Ae(H, V, F) === " " && bt(H, L, V, F, e.grid, "line");
+  for (let tick of valueTicks) {
+    let cx = valueToCol(tick);
+    if (!(cx < plotLeft || cx >= plotLeft + plotW))
+      for (let r = plotTop; r < plotTop + plotH; r++)
+        get(canvas, r, cx) === " " && set(canvas, roles, r, cx, ch.grid, "line");
   }
-  let I = [];
-  for (let C = 0; C < t.series.length; C++)
-    t.series[C].type === "bar" && I.push({ data: t.series[C].data, globalIdx: C });
-  if (I.length > 0) {
-    let C = I.length, F = 1, V = F * C + (C - 1), K = O(Math.max(0, r.min));
-    for (let at = 0; at < I.length; at++) {
-      let ct = I[at], ot = ut[ct.globalIdx];
-      for (let st = 0; st < ct.data.length; st++) {
-        let N = ft(st) - Math.floor(V / 2) + at * (F + 1), M = O(ct.data[st]), W = Math.min(K, M), Q = Math.max(K, M);
-        for (let g = N; g < N + F; g++)
-          for (let y = W; y <= Q; y++)
-            bt(H, L, g, y, e.bar, "arrow", q, ot);
+  let barEntries = [];
+  for (let si = 0; si < chart.series.length; si++)
+    chart.series[si].type === "bar" && barEntries.push({ data: chart.series[si].data, globalIdx: si });
+  if (barEntries.length > 0) {
+    let barCount = barEntries.length, singleBarH = 1, groupH = singleBarH * barCount + (barCount - 1), baseCol = valueToCol(Math.max(0, yRange.min));
+    for (let bIdx = 0; bIdx < barEntries.length; bIdx++) {
+      let entry = barEntries[bIdx], hexColor = seriesColors[entry.globalIdx];
+      for (let i = 0; i < entry.data.length; i++) {
+        let by = bandMid(i) - Math.floor(groupH / 2) + bIdx * (singleBarH + 1), valCol = valueToCol(entry.data[i]), fromCol = Math.min(baseCol, valCol), toCol = Math.max(baseCol, valCol);
+        for (let r = by; r < by + singleBarH; r++)
+          for (let c = fromCol; c <= toCol; c++)
+            set(canvas, roles, r, c, ch.bar, "arrow", hexColors, hexColor);
       }
     }
   }
-  let U = [];
-  for (let C = 0; C < t.series.length; C++)
-    t.series[C].type === "line" && U.push({ data: t.series[C].data, globalIdx: C });
-  for (let C of U) {
-    if (C.data.length === 0) continue;
-    let F = ut[C.globalIdx];
-    go(H, L, C.data, ft, O, p, h, b, l, e, q, F);
+  let lineEntries = [];
+  for (let si = 0; si < chart.series.length; si++)
+    chart.series[si].type === "line" && lineEntries.push({ data: chart.series[si].data, globalIdx: si });
+  for (let entry of lineEntries) {
+    if (entry.data.length === 0) continue;
+    let hexColor = seriesColors[entry.globalIdx];
+    drawHorizontalStaircaseLine(canvas, roles, entry.data, bandMid, valueToCol, plotTop, plotH, plotLeft, plotW, ch, hexColors, hexColor);
   }
-  return jn(H, L, q, n, o);
+  return canvasToString2(canvas, roles, hexColors, colorMode, theme);
 }
-function ho(t, e, n, o, s, r, i, a, c, l, d, h) {
-  if (n.length === 0) return;
-  let f = n.map((m, p) => ({
-    col: o(p),
-    row: s(m)
-  })), u = (m, p, b) => {
-    let A = r + (i - 1 - p);
-    A >= 0 && m >= a && m < a + c && ![l.bar, "\u2580", "\u2584"].includes(Ae(t, A, m)) && bt(t, e, A, m, b, "arrow", d, h);
+function drawStaircaseLine(canvas, roles, data, bandCenter, valueToRow, plotTop, plotH, plotLeft, plotTotalW, ch, hexCanvas, hexColor) {
+  if (data.length === 0) return;
+  let points = data.map((v, i) => ({
+    col: bandCenter(i),
+    row: valueToRow(v)
+  })), drawAt = (col, row, char) => {
+    let displayRow = plotTop + (plotH - 1 - row);
+    displayRow >= 0 && col >= plotLeft && col < plotLeft + plotTotalW && ![ch.bar, "\u2580", "\u2584"].includes(get(canvas, displayRow, col)) && set(canvas, roles, displayRow, col, char, "arrow", hexCanvas, hexColor);
   };
-  if (f.length === 1) {
-    u(f[0].col, f[0].row, l.hLine);
+  if (points.length === 1) {
+    drawAt(points[0].col, points[0].row, ch.hLine);
     return;
   }
-  for (let m = 0; m < f.length - 1; m++) {
-    let p = f[m], b = f[m + 1];
-    if (p.row === b.row) {
-      for (let L = p.col; L <= b.col; L++)
-        u(L, p.row, l.hLine);
+  for (let i = 0; i < points.length - 1; i++) {
+    let p1 = points[i], p2 = points[i + 1];
+    if (p1.row === p2.row) {
+      for (let c = p1.col; c <= p2.col; c++)
+        drawAt(c, p1.row, ch.hLine);
       continue;
     }
-    let A = Math.round((p.col + b.col) / 2), B = b.row > p.row;
-    for (let L = p.col; L < A; L++)
-      u(L, p.row, l.hLine);
-    B ? u(A, p.row, l.cornerBR) : u(A, p.row, l.cornerTR);
-    let v = Math.min(p.row, b.row), H = Math.max(p.row, b.row);
-    for (let L = v + 1; L < H; L++)
-      u(A, L, l.vLine);
-    B ? u(A, b.row, l.cornerTL) : u(A, b.row, l.cornerBL);
-    for (let L = A + 1; L <= b.col; L++)
-      u(L, b.row, l.hLine);
-    if (m === 0) {
-      let L = Math.max(a, p.col - Math.floor((b.col - p.col) / 4));
-      for (let q = L; q < p.col; q++)
-        u(q, p.row, l.hLine);
+    let midCol = Math.round((p1.col + p2.col) / 2), goingUp = p2.row > p1.row;
+    for (let c = p1.col; c < midCol; c++)
+      drawAt(c, p1.row, ch.hLine);
+    goingUp ? drawAt(midCol, p1.row, ch.cornerBR) : drawAt(midCol, p1.row, ch.cornerTR);
+    let minRow = Math.min(p1.row, p2.row), maxRow = Math.max(p1.row, p2.row);
+    for (let row = minRow + 1; row < maxRow; row++)
+      drawAt(midCol, row, ch.vLine);
+    goingUp ? drawAt(midCol, p2.row, ch.cornerTL) : drawAt(midCol, p2.row, ch.cornerBL);
+    for (let c = midCol + 1; c <= p2.col; c++)
+      drawAt(c, p2.row, ch.hLine);
+    if (i === 0) {
+      let leadStart = Math.max(plotLeft, p1.col - Math.floor((p2.col - p1.col) / 4));
+      for (let c = leadStart; c < p1.col; c++)
+        drawAt(c, p1.row, ch.hLine);
     }
-    if (m === f.length - 2) {
-      let L = Math.min(a + c - 1, b.col + Math.floor((b.col - p.col) / 4));
-      for (let q = b.col + 1; q <= L; q++)
-        u(q, b.row, l.hLine);
+    if (i === points.length - 2) {
+      let trailEnd = Math.min(plotLeft + plotTotalW - 1, p2.col + Math.floor((p2.col - p1.col) / 4));
+      for (let c = p2.col + 1; c <= trailEnd; c++)
+        drawAt(c, p2.row, ch.hLine);
     }
   }
 }
-function go(t, e, n, o, s, r, i, a, c, l, d, h) {
-  if (n.length === 0) return;
-  let f = n.map((m, p) => ({
-    row: o(p),
-    col: s(m)
-  })), u = (m, p, b) => {
-    m >= r && m < r + i && p >= a && p < a + c && bt(t, e, m, p, b, "arrow", d, h);
+function drawHorizontalStaircaseLine(canvas, roles, data, bandMid, valueToCol, plotTop, plotH, plotLeft, plotW, ch, hexCanvas, hexColor) {
+  if (data.length === 0) return;
+  let points = data.map((v, i) => ({
+    row: bandMid(i),
+    col: valueToCol(v)
+  })), drawAt = (row, col, char) => {
+    row >= plotTop && row < plotTop + plotH && col >= plotLeft && col < plotLeft + plotW && set(canvas, roles, row, col, char, "arrow", hexCanvas, hexColor);
   };
-  if (f.length === 1) {
-    u(f[0].row, f[0].col, l.vLine);
+  if (points.length === 1) {
+    drawAt(points[0].row, points[0].col, ch.vLine);
     return;
   }
-  for (let m = 0; m < f.length - 1; m++) {
-    let p = f[m], b = f[m + 1];
-    if (p.col === b.col) {
-      for (let L = p.row; L <= b.row; L++)
-        u(L, p.col, l.vLine);
+  for (let i = 0; i < points.length - 1; i++) {
+    let p1 = points[i], p2 = points[i + 1];
+    if (p1.col === p2.col) {
+      for (let r = p1.row; r <= p2.row; r++)
+        drawAt(r, p1.col, ch.vLine);
       continue;
     }
-    let A = Math.round((p.row + b.row) / 2), B = b.col > p.col;
-    for (let L = p.row; L < A; L++)
-      u(L, p.col, l.vLine);
-    B ? u(A, p.col, l.cornerBL) : u(A, p.col, l.cornerBR);
-    let v = Math.min(p.col, b.col), H = Math.max(p.col, b.col);
-    for (let L = v + 1; L < H; L++)
-      u(A, L, l.hLine);
-    B ? u(A, b.col, l.cornerTR) : u(A, b.col, l.cornerTL);
-    for (let L = A + 1; L <= b.row; L++)
-      u(L, b.col, l.vLine);
+    let midRow = Math.round((p1.row + p2.row) / 2), goingRight = p2.col > p1.col;
+    for (let r = p1.row; r < midRow; r++)
+      drawAt(r, p1.col, ch.vLine);
+    goingRight ? drawAt(midRow, p1.col, ch.cornerBL) : drawAt(midRow, p1.col, ch.cornerBR);
+    let minCol = Math.min(p1.col, p2.col), maxCol = Math.max(p1.col, p2.col);
+    for (let c = minCol + 1; c < maxCol; c++)
+      drawAt(midRow, c, ch.hLine);
+    goingRight ? drawAt(midRow, p2.col, ch.cornerTR) : drawAt(midRow, p2.col, ch.cornerTL);
+    for (let r = midRow + 1; r <= p2.row; r++)
+      drawAt(r, p2.col, ch.vLine);
   }
 }
-function Pn(t, e, n, o, s, r, i, a) {
-  let c = [], l = 0, d = 0;
-  for (let m = 0; m < o.series.length; m++) {
-    let p = o.series[m];
-    p.type === "bar" ? (c.push({ symbol: i.bar, label: p.name || `Bar ${l + 1}`, globalIdx: m }), l++) : (c.push({ symbol: i.hLine, label: p.name || `Line ${d + 1}`, globalIdx: m }), d++);
+function drawLegend(canvas, roles, hexCanvas, chart, row, totalW, ch, seriesColors) {
+  let items = [], barIdx = 0, lineIdx = 0;
+  for (let si = 0; si < chart.series.length; si++) {
+    let s = chart.series[si];
+    s.type === "bar" ? (items.push({ symbol: ch.bar, label: s.name || `Bar ${barIdx + 1}`, globalIdx: si }), barIdx++) : (items.push({ symbol: ch.hLine, label: s.name || `Line ${lineIdx + 1}`, globalIdx: si }), lineIdx++);
   }
-  let h = 0;
-  for (let m = 0; m < c.length; m++)
-    m > 0 && (h += 2), h += 2 + c[m].label.length;
-  let u = Math.max(0, Math.floor(r / 2 - h / 2));
-  for (let m = 0; m < c.length; m++) {
-    m > 0 && (u += 2);
-    let p = c[m];
-    bt(t, e, s, u, p.symbol, "arrow", n, a[p.globalIdx]), u += 1, u += 1, Xt(t, e, s, u, p.label, "text"), u += p.label.length;
+  let totalLen = 0;
+  for (let i = 0; i < items.length; i++)
+    i > 0 && (totalLen += 2), totalLen += 2 + items[i].label.length;
+  let col = Math.max(0, Math.floor(totalW / 2 - totalLen / 2));
+  for (let i = 0; i < items.length; i++) {
+    i > 0 && (col += 2);
+    let item = items[i];
+    set(canvas, roles, row, col, item.symbol, "arrow", hexCanvas, seriesColors[item.globalIdx]), col += 1, col += 1, writeText(canvas, roles, row, col, item.label, "text"), col += item.label.length;
   }
 }
-function Hn(t, e) {
-  return Array.from({ length: t }, () => Array.from({ length: e }, () => " "));
+function createCanvas(width, height) {
+  return Array.from({ length: width }, () => Array.from({ length: height }, () => " "));
 }
-function Wn(t, e) {
-  return Array.from({ length: t }, () => Array.from({ length: e }).fill(null));
+function createRoleCanvas(width, height) {
+  return Array.from({ length: width }, () => Array.from({ length: height }).fill(null));
 }
-function _n(t, e) {
-  return Array.from({ length: t }, () => Array.from({ length: e }).fill(null));
+function createHexCanvas(width, height) {
+  return Array.from({ length: width }, () => Array.from({ length: height }).fill(null));
 }
-function bt(t, e, n, o, s, r, i, a) {
-  o >= 0 && o < t.length && n >= 0 && n < t[0].length && (t[o][n] = s, e[o][n] = r, i && a && (i[o][n] = a));
+function set(canvas, roles, row, col, char, role, hexCanvas, hex) {
+  col >= 0 && col < canvas.length && row >= 0 && row < canvas[0].length && (canvas[col][row] = char, roles[col][row] = role, hexCanvas && hex && (hexCanvas[col][row] = hex));
 }
-function Ae(t, e, n) {
-  return n >= 0 && n < t.length && e >= 0 && e < t[0].length ? t[n][e] : " ";
+function get(canvas, row, col) {
+  return col >= 0 && col < canvas.length && row >= 0 && row < canvas[0].length ? canvas[col][row] : " ";
 }
-function Xt(t, e, n, o, s, r) {
-  for (let i = 0; i < s.length; i++)
-    bt(t, e, n, o + i, s[i], r);
+function writeText(canvas, roles, row, startCol, text, role) {
+  for (let i = 0; i < text.length; i++)
+    set(canvas, roles, row, startCol + i, text[i], role);
 }
-function jn(t, e, n, o, s) {
-  if (t.length === 0) return "";
-  let r = t[0].length, i = t.length, a = [];
-  for (let c = 0; c < r; c++) {
-    let l = [], d = [], h = [];
-    for (let u = 0; u < i; u++)
-      l.push(t[u][c]), d.push(e[u][c]), h.push(n[u][c]);
-    let f = l.length - 1;
-    for (; f >= 0 && l[f] === " "; ) f--;
-    f < 0 ? a.push("") : a.push(mo(
-      l.slice(0, f + 1),
-      d.slice(0, f + 1),
-      h.slice(0, f + 1),
-      s,
-      o
+function canvasToString2(canvas, roles, hexCanvas, colorMode, theme) {
+  if (canvas.length === 0) return "";
+  let height = canvas[0].length, width = canvas.length, lines = [];
+  for (let row = 0; row < height; row++) {
+    let chars = [], rowRoles = [], rowHex = [];
+    for (let col = 0; col < width; col++)
+      chars.push(canvas[col][row]), rowRoles.push(roles[col][row]), rowHex.push(hexCanvas[col][row]);
+    let end = chars.length - 1;
+    for (; end >= 0 && chars[end] === " "; ) end--;
+    end < 0 ? lines.push("") : lines.push(colorizeRow(
+      chars.slice(0, end + 1),
+      rowRoles.slice(0, end + 1),
+      rowHex.slice(0, end + 1),
+      theme,
+      colorMode
     ));
   }
-  for (; a.length > 0 && a[a.length - 1] === ""; )
-    a.pop();
-  return a.join(`
+  for (; lines.length > 0 && lines[lines.length - 1] === ""; )
+    lines.pop();
+  return lines.join(`
 `);
 }
-function mo(t, e, n, o, s) {
-  if (s === "none") return t.join("");
-  let r = "", i = null, a = "";
-  for (let c = 0; c < t.length; c++) {
-    let l = t[c];
-    if (l === " ") {
-      a.length > 0 && (r += i ? ee(a, i, s) : a, a = "", i = null), r += " ";
+function colorizeRow(chars, roles, hexOverrides, theme, mode) {
+  if (mode === "none") return chars.join("");
+  let result = "", currentColor = null, buffer = "";
+  for (let i = 0; i < chars.length; i++) {
+    let char = chars[i];
+    if (char === " ") {
+      buffer.length > 0 && (result += currentColor ? colorizeText(buffer, currentColor, mode) : buffer, buffer = "", currentColor = null), result += " ";
       continue;
     }
-    let d = n[c] ?? null, h = e[c] ?? null, f = d ?? (h ? lo(h, o) : null);
-    f === i ? a += l : (a.length > 0 && (r += i ? ee(a, i, s) : a), a = l, i = f);
+    let hexOvr = hexOverrides[i] ?? null, roleVal = roles[i] ?? null, color = hexOvr ?? (roleVal ? roleToHex(roleVal, theme) : null);
+    color === currentColor ? buffer += char : (buffer.length > 0 && (result += currentColor ? colorizeText(buffer, currentColor, mode) : buffer), buffer = char, currentColor = color);
   }
-  return a.length > 0 && (r += i ? ee(a, i, s) : a), r;
+  return buffer.length > 0 && (result += currentColor ? colorizeText(buffer, currentColor, mode) : buffer), result;
 }
-function zn(t) {
-  if (t.xAxis.categories) return t.xAxis.categories.length;
-  for (let e of t.series)
-    if (e.data.length > 0) return e.data.length;
+function getDataCount(chart) {
+  if (chart.xAxis.categories) return chart.xAxis.categories.length;
+  for (let s of chart.series)
+    if (s.data.length > 0) return s.data.length;
   return 0;
 }
-function On(t, e) {
-  if (t.xAxis.categories) return t.xAxis.categories;
-  if (t.xAxis.range) {
-    let { min: n, max: o } = t.xAxis.range, s = e > 1 ? (o - n) / (e - 1) : 0;
-    return Array.from({ length: e }, (r, i) => se(n + s * i));
+function getCategoryLabels(chart, count) {
+  if (chart.xAxis.categories) return chart.xAxis.categories;
+  if (chart.xAxis.range) {
+    let { min, max } = chart.xAxis.range, step = count > 1 ? (max - min) / (count - 1) : 0;
+    return Array.from({ length: count }, (_, i) => formatTickValue(min + step * i));
   }
-  return Array.from({ length: e }, (n, o) => String(o + 1));
+  return Array.from({ length: count }, (_, i) => String(i + 1));
 }
-function Fn(t, e) {
-  let n = e - t;
-  if (n <= 0) return [t];
-  let o = n / 6, s = Math.pow(10, Math.floor(Math.log10(o))), r = o / s, i;
-  r <= 1.5 ? i = s : r <= 3 ? i = 2 * s : r <= 7 ? i = 5 * s : i = 10 * s;
-  let a = Math.ceil(t / i) * i, c = [];
-  for (let l = a; l <= e + i * 1e-3; l += i)
-    c.push(Math.round(l * 1e10) / 1e10);
-  return c;
+function niceTickValues(min, max) {
+  let range = max - min;
+  if (range <= 0) return [min];
+  let rawInterval = range / 6, magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval))), residual = rawInterval / magnitude, niceInterval;
+  residual <= 1.5 ? niceInterval = magnitude : residual <= 3 ? niceInterval = 2 * magnitude : residual <= 7 ? niceInterval = 5 * magnitude : niceInterval = 10 * magnitude;
+  let start = Math.ceil(min / niceInterval) * niceInterval, ticks = [];
+  for (let v = start; v <= max + niceInterval * 1e-3; v += niceInterval)
+    ticks.push(Math.round(v * 1e10) / 1e10);
+  return ticks;
 }
-function se(t) {
-  return Number.isInteger(t) ? String(t) : t.toFixed(Math.abs(t) < 10 ? 1 : 0);
+function formatTickValue(v) {
+  return Number.isInteger(v) ? String(v) : v.toFixed(Math.abs(v) < 10 ? 1 : 0);
 }
-var po = (t, e) => {
-  we = t, ve = e;
+var setChartSize = (width, height) => {
+  PLOT_WIDTH = width, PLOT_HEIGHT = height;
 };
 
 // node_modules/beautiful-mermaid/src/ascii/index.ts
-function xo(t) {
-  let e = t.trim().split(`
+function detectDiagramType(text) {
+  let firstLine = text.trim().split(`
 `)[0]?.trim().toLowerCase() ?? "";
-  return /^xychart(-beta)?\b/.test(e) ? "xychart" : /^sequencediagram\s*$/.test(e) ? "sequence" : /^classdiagram\s*$/.test(e) ? "class" : /^erdiagram\s*$/.test(e) ? "er" : "flowchart";
+  return /^xychart(-beta)?\b/.test(firstLine) ? "xychart" : /^sequencediagram\s*$/.test(firstLine) ? "sequence" : /^classdiagram\s*$/.test(firstLine) ? "class" : /^erdiagram\s*$/.test(firstLine) ? "er" : "flowchart";
 }
-function bo(t, e = {}) {
-  let n = {
-    useAscii: e.useAscii ?? !1,
-    paddingX: e.paddingX ?? 5,
-    paddingY: e.paddingY ?? 5,
-    boxBorderPadding: e.boxBorderPadding ?? 1,
+function renderMermaidASCII(text, options = {}) {
+  let config = {
+    useAscii: options.useAscii ?? !1,
+    paddingX: options.paddingX ?? 5,
+    paddingY: options.paddingY ?? 5,
+    boxBorderPadding: options.boxBorderPadding ?? 1,
     graphDirection: "TD"
     // default, overridden for flowcharts below
-  }, o = e.colorMode === "auto" || e.colorMode === void 0 ? ke() : e.colorMode, s = { ...Zt, ...e.theme };
-  switch (xo(t)) {
+  }, colorMode = options.colorMode === "auto" || options.colorMode === void 0 ? detectColorMode() : options.colorMode, theme = { ...DEFAULT_ASCII_THEME, ...options.theme };
+  switch (detectDiagramType(text)) {
     case "xychart":
-      return Xn(t, n, o, s);
+      return renderXYChartAscii(text, config, colorMode, theme);
     case "sequence":
-      return vn(t, n, o, s);
+      return renderSequenceAscii(text, config, colorMode, theme);
     case "class":
-      return Dn(t, n, o, s);
+      return renderClassAscii(text, config, colorMode, theme);
     case "er":
-      return En(t, n, o, s);
+      return renderErAscii(text, config, colorMode, theme);
     default: {
-      let i = Le(t);
-      i.direction === "LR" || i.direction === "RL" ? n.graphDirection = "LR" : n.graphDirection = "TD";
-      let a = Oe(i, n);
-      return Mn(a), xn(a), i.direction === "BT" && (We(a.canvas), _e(a.roleCanvas)), Pt(a.canvas, {
-        roleCanvas: a.roleCanvas,
-        colorMode: o,
-        theme: s
+      let parsed = parseMermaid(text);
+      parsed.direction === "LR" || parsed.direction === "RL" ? config.graphDirection = "LR" : config.graphDirection = "TD";
+      let graph = convertToAsciiGraph(parsed, config);
+      return createMapping(graph), drawGraph(graph), parsed.direction === "BT" && (flipCanvasVertically(graph.canvas), flipRoleCanvasVertically(graph.roleCanvas)), canvasToString(graph.canvas, {
+        roleCanvas: graph.roleCanvas,
+        colorMode,
+        theme
       });
     }
   }
 }
-var yo = bo;
+var renderMermaidAscii = renderMermaidASCII;
 export {
-  yo as renderMermaidAscii,
-  po as setChartSize
+  renderMermaidAscii,
+  setChartSize
 };
