@@ -70,10 +70,10 @@ export const wrapRanges = (text: string, w: number): [number, number][] => {
   return out.length ? out : [[0, 0]]
 }
 
-export const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / w)
+export const mostLines = (text: string, w: number): number => (text.match(/\S+/g)?.length ?? 0) + Math.ceil(width(text) / Math.max(1, w))
 
 export const textRows = (text: string, w: number): number =>
-  text.split('\n').reduce((sum, line) => sum + (width(line) <= w ? 1 : mostLines(line, Math.max(1, w))), 0)
+  text.split('\n').reduce((sum, line) => sum + (width(line) <= w ? 1 : mostLines(line, w)), 0)
 
 export const longestWord = (text: string): number => Math.max(0, ...text.split(/\s+/).map(width))
 
