@@ -441,7 +441,7 @@ const runHelper = async ($: EngineInterface, backend: ClipboardBackend, build: (
   const systemRoot = backend === 'windows' ? await $.env.get('SystemRoot') : undefined
   const command = build(systemRoot)
   if (backend === 'windows' && !systemRoot) return command.failure
-  const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: backend === 'windows' ? 15000 : 5000 }).catch(() => null)
+  const result = await $.process.run(command.argv, { stdin: command.stdin, timeoutMs: Math.min(30000, (backend === 'windows' ? 15000 : 5000) + Math.ceil(command.stdin.length / 100)) }).catch(() => null)
   if (!result) return command.failure
   return result.exitCode === 0 ? null : result.stderr.trim() || command.failure
 }

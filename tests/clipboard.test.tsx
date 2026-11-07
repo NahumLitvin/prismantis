@@ -230,6 +230,39 @@ test('the image helper gets right-to-left cell text in drawn order, each letter 
   expect(lines[1].at(-1)).toEqual({ at: 14, text: '│' })
 })
 
+test('▣ png of a 500 row table gets a helper timeout sized to its input, capped at 30 s', async ($, on) => {
+  clipboardEnv(on, 'macos')
+  const timeouts: (number | undefined)[] = []
+  on('process.run', (_, e) => {
+    timeouts.push(e.init?.timeoutMs)
+    return runResult(0)
+  })
+  recordToasts(on)
+  await startSession($, on)
+  const rows = Array.from({ length: 500 }, (_, i) => `| ${i + 1} | row${i + 1} | ${(i + 1) * 37} |`).join('\n')
+  const ui = await $.ui.mount({ ...mount, props: { text: `| # | name | value |\n|--:|:--|--:|\n${rows}`, isFirstOfReply: true } })
+  await ui.press({ key: 'png0' })
+  await ui.press({ key: 'html0' })
+  expect(timeouts[0]).toBeGreaterThan(9000)
+  expect(timeouts[0]).toBeLessThanOrEqual(30000)
+  expect(timeouts[1]).toBeLessThan(timeouts[0]!)
+  await ui.unmount()
+})
+
+test('the png helper gets block glyphs as cell fractions to fill, so bars and pies draw with no seams', () => {
+  const glyphs = JSON.parse(imageCommand('macos', '█▌▀▁▏▚a─', {}).stdin).lines[0] as { text: string; fill?: number[][] }[]
+  expect(glyphs.map(g => g.fill)).toEqual([
+    [[0, 0, 0.5, 0.5], [0.5, 0, 1, 0.5], [0, 0.5, 0.5, 1], [0.5, 0.5, 1, 1]],
+    [[0, 0, 0.5, 0.5], [0, 0.5, 0.5, 1]],
+    [[0, 0, 0.5, 0.5], [0.5, 0, 1, 0.5]],
+    [[0, 0.875, 1, 1]],
+    [[0, 0, 0.125, 1]],
+    [[0, 0, 0.5, 0.5], [0.5, 0.5, 1, 1]],
+    undefined,
+    undefined,
+  ])
+})
+
 const figures = '| Item | Qty |\n|--|--:|\n| 苹果 | 3 |\n\n```mermaid\ngraph LR\nA[User] --> B[Gateway]\n```'
 const pngSetups = {
   macos: { platform: 'macos', env: {}, script: MAC_IMAGE_COPY },
