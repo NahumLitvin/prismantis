@@ -1507,12 +1507,15 @@ const nodesIn = (n: unknown): number =>
 
 const REST_ROOM = 59000
 
+const TEXT_BUDGET = 90000
+
 const textIn = (n: unknown): number =>
   Array.isArray(n) ? n.reduce<number>((sum, c) => sum + textIn(c), 0) : typeof n === 'string' ? n.length : n !== null && typeof n === 'object' ? textIn((n as { children?: unknown }).children) : 0
 
 const budgetCut = (elements: RenderElement[]): number => {
   let left = NODE_BUDGET
-  const cut = elements.findIndex(element => (left -= nodesIn(element)) < 0)
+  let room = TEXT_BUDGET
+  const cut = elements.findIndex(element => (left -= nodesIn(element)) < 0 || (room -= textIn(element)) < 0)
   return cut < 0 ? elements.length : cut
 }
 
