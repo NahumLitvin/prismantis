@@ -152,6 +152,8 @@ const PATHFINDER = /beautiful-mermaid\/src\/ascii\/pathfinder\.ts$/
 const PATH_LOOP = `  while (pq.length > 0) {
     const current = pq.pop()!.coord
 `
+const GRID = /beautiful-mermaid\/src\/ascii\/grid\.ts$/
+const LEVELS = 'new Array(100).fill(0)'
 const PARSER = /beautiful-mermaid\/src\/parser\.ts$/
 const NODE_ID_START = 'const NODE_PATTERNS'
 const NODE_ID_END = 'const CLASS_SHORTHAND_REGEX'
@@ -274,6 +276,11 @@ track(await build({
         const capped = `  let steps = 0\n  while (pq.size() > 0) {\n    if (++steps > 50000) throw new Error('mermaid edge routing gave up')\n    const current = pq.pop()!.coord\n`
         if (!src.includes(HEAP_LENGTH)) throw new Error('pathfinder.ts MinHeap no longer has a length getter')
         return { contents: src.replace(PATH_LOOP, capped).replace(HEAP_LENGTH, '  size(): number {'), loader: 'ts' }
+      })
+      api.onLoad({ filter: GRID }, args => {
+        const src = readFileSync(args.path, 'utf8')
+        if (!src.includes(LEVELS)) throw new Error(`grid.ts no longer sizes its level table with ${LEVELS}`)
+        return { contents: src.replace(LEVELS, 'new Array(10000).fill(0)'), loader: 'ts' }
       })
       api.onLoad({ filter: PARSER }, args => {
         const src = readFileSync(args.path, 'utf8')
