@@ -10,6 +10,7 @@ import type { Flow } from './rtl'
 import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import { statusEdge, statusFooter, statusHeavy, statusLook, statusOf, statusRows } from './status'
+import { testReport } from './test-report'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
 import { DEFAULT_COLUMNS, cells, clusters, columnWidths, graphemes, longestWord, mostLines, textRows, widestLine, width, wrapRanges } from './layout'
@@ -1036,9 +1037,10 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const shown = cellText(style)
   const status = statusOf(block, style.statusMatrix, plan.stack && !texts)
   const layout = statusRows(block, status, style.statusMatrix)
-  const foot = statusFooter(el, t, status, style.statusMatrix, `${key}.f`)
   const { natural, words, widths, box, gap } = plan
   if (plan.stack) return stackedTable(el, style, block, columns, key, tip)
+  const test = testReport(el, t, block, style.testMatrix, `${key}.t`)
+  const foot = test ? undefined : statusFooter(el, t, status, style.statusMatrix, `${key}.f`)
   const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
@@ -1128,7 +1130,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       lines.push(...wrappedRow(r, `${key}.r${i}`, false))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
-    return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{lines}{foot}</Box>
+    return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{lines}{foot}{test}</Box>
   }
 
   const body: RenderElement[] = [row(block.header, `${key}.h`, true), rule(`${key}.hr`, true)]
@@ -1136,7 +1138,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     body.push(row(r, `${key}.r${i}`, false))
     if (style.tableStyle !== 'minimal' && i < layout.rows.length - 1) body.push(rule(`${key}.r${i}r`, statusHeavy(style.statusMatrix, layout.buckets, i)))
   })
-  return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{body}{foot}</Box>
+  return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{body}{foot}{test}</Box>
 }
 
 const renderHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, key: string) => {

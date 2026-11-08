@@ -32,6 +32,17 @@ When a table has a status column — the one whose cells are things like ✓, pa
 | Smoke | 24 | pending |
 | Regression | 130 | ✓ |
 
+## Test report
+
+When a table draws a run — a status column of things like ✓ or failed next to durations like 120 ms — `testMatrix` `report` adds a line under the table with how much of the run passed, a count of every other kind of result and the time all of it took. The line reuses the status colors and replaces the `statusMatrix` count line when both draw. The default `off` keeps tables as written:
+
+| Check | Time | Result |
+|:------|-----:|:-------|
+| parse | 120 ms | ✓ |
+| draw | 4 s | ✓ |
+| scan | 130 ms | failed |
+| typeset | 2.6 s | pending |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings

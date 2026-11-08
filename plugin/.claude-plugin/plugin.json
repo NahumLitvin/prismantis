@@ -95,6 +95,13 @@
       "default": "off",
       "options": ["color", "summary", "group", "off"]
     },
+    "testMatrix": {
+      "type": "string",
+      "title": "Test report",
+      "description": "A report line under a table that reads like test results: a status column of things like ✓ or failed next to durations like 120 ms. report draws the share of the run that passed, a count of every other kind of result and the time all of it took, in the theme's status colors; it replaces the statusMatrix count line when both draw. off (the default) keeps tables as written.",
+      "default": "off",
+      "options": ["report", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

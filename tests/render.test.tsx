@@ -671,6 +671,15 @@ for (const surface of ['terminal', 'desktop'] as const) test(`statusMatrix ${sur
   await ui.unmount()
 })
 
+const REPORT = [
+  '| Check | Time | Result |',
+  '|:------|-----:|:-------|',
+  '| parse | 120 ms | ✓ |',
+  '| draw | 4 s | ✓ |',
+  '| scan | 130 ms | failed |',
+  '| typeset | 2.6 s | pending |',
+].join('\n')
+
 test('statusMatrix off keeps tables as written', async $ => {
   const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^failed$/ }))?.props.color).toBeUndefined()
@@ -722,6 +731,56 @@ test('statusMatrix stays off stacked tables', { options: { statusMatrix: 'summar
   const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^failed$/ }))?.props.color).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^✓ 2$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`testMatrix ${surface} draws the pass share, other results and the total time under a results table`, { options: { testMatrix: 'report' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(REPORT), surface })
+  expect((await ui.find({ type: 'Text', text: /^✓ 2$/ }))?.props.color).toBe(t.codeString)
+  expect(await ui.find({ type: 'Text', text: /^ of 4 \(50%\)$/ })).toBeTruthy()
+  expect((await ui.find({ type: 'Text', text: /^✗ 1$/ }))?.props.color).toBe(t.diffRemoved)
+  expect((await ui.find({ type: 'Text', text: /^● 1$/ }))?.props.color).toBe(t.codeComment)
+  const seps = await ui.findAll({ type: 'Text', text: /^ · $/ })
+  expect(seps).toHaveLength(3)
+  expect(seps.every(x => x.props.dimColor)).toBe(true)
+  expect((await ui.find({ type: 'Text', text: /^6\.9s total$/ }))?.props.dimColor).toBe(true)
+  expect((await ui.find({ type: 'Text', text: /^failed$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('testMatrix off keeps tables as written', { options: { testMatrix: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(REPORT), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^ of 4 / })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^ · $/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a status column with no time column draws no report', { options: { testMatrix: 'report' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^ of / })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a time column whose cells do not mostly read like durations draws no report', { options: { testMatrix: 'report' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Check | Time | Result |\n|:------|-----:|:-------|\n| parse | 120 ms | ✓ |\n| draw | a lot | ✓ |\n| scan | hard | failed |'), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^ of / })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('testMatrix report replaces the statusMatrix summary count line', { options: { statusMatrix: 'summary', testMatrix: 'report' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(REPORT), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Text', text: /^✓ 2$/ })).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^✓ 2$/ })).every(x => x.props.color === t.codeString)).toBe(true)
+  expect(await ui.findAll({ type: 'Text', text: /^ · $/ })).toHaveLength(3)
+  expect(await ui.find({ type: 'Text', text: /^6\.9s total$/ })).toBeTruthy()
+  await ui.unmount()
+})
+
+test('testMatrix stays off stacked tables', { options: { testMatrix: 'report', tableLayout: 'stacked' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(REPORT), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^ of 4 / })).toBeUndefined()
   await ui.unmount()
 })
 

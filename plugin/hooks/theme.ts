@@ -6,6 +6,7 @@ import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from './presets'
 import type { StatusMatrix } from './status'
 import type { Shape, Terminal } from './rtl'
 import { TERMINALS } from './rtl'
+import type { TestMatrix } from './test-report'
 
 const TOKENS = [
   'accent', 'heading', 'strong', 'emphasis', 'inlineCode', 'codeText', 'codeCommand', 'codeFlag', 'codeString', 'codeComment', 'codeFill', 'codeBorder',
@@ -23,6 +24,7 @@ export type Style = {
   tableStyle: 'box' | 'rules' | 'grid' | 'minimal'
   tableLayout: 'classic' | 'auto' | 'compact' | 'stacked'
   statusMatrix: StatusMatrix
+  testMatrix: TestMatrix
   taskStyle: 'checks' | 'ticks' | 'box' | 'progress'
   listMarker: 'dots' | 'dash'
   promptStyle: 'bubble' | 'framed' | 'wide' | 'bar' | 'chevron' | 'off'
@@ -113,6 +115,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     tableStyle: pick(options.tableStyle, ['box', 'rules', 'grid', 'minimal'] as const, 'box'),
     tableLayout: pick(options.tableLayout, ['classic', 'auto', 'compact', 'stacked'] as const, 'classic'),
     statusMatrix: pick(options.statusMatrix, ['off', 'color', 'summary', 'group'] as const, 'off'),
+    testMatrix: pick(options.testMatrix, ['off', 'report'] as const, 'off'),
     taskStyle: pick(options.taskStyle, ['checks', 'ticks', 'box', 'progress'] as const, 'checks'),
     listMarker: pick(options.listMarker, ['dots', 'dash'] as const, 'dots'),
     promptStyle: pick(options.promptStyle, ['bubble', 'framed', 'wide', 'bar', 'chevron', 'off'] as const, 'bubble'),

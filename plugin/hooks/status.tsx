@@ -17,9 +17,9 @@ const WORDS: Record<Bucket, readonly string[]> = {
   wait: ['●', '○', 'pending', 'running', 'queued', 'waiting', 'in-progress', 'scheduled', 'paused', 'skipped', 'skip'],
 }
 
-const GLYPH: Record<Bucket, string> = { pass: '✓', fail: '✗', warn: '⚠', wait: '●' }
+export const GLYPH: Record<Bucket, string> = { pass: '✓', fail: '✗', warn: '⚠', wait: '●' }
 
-const TOKEN: Record<Bucket, 'codeString' | 'diffRemoved' | 'tableHeader' | 'codeComment'> =
+export const TOKEN: Record<Bucket, 'codeString' | 'diffRemoved' | 'tableHeader' | 'codeComment'> =
   { pass: 'codeString', fail: 'diffRemoved', warn: 'tableHeader', wait: 'codeComment' }
 
 const BYWORD: Partial<Record<string, Bucket>> = {}
@@ -30,7 +30,7 @@ const BYGLYPH: Partial<Record<string, Bucket>> = { '✓': 'pass', '✗': 'fail',
 
 export const bucketOf = (cell: TableCell): Bucket | undefined => BYWORD[inlineText(cell).trim().toLowerCase()]
 
-type Status = { column: number; buckets: (Bucket | undefined)[]; counts: Partial<Record<Bucket, number>> }
+export type Status = { column: number; buckets: (Bucket | undefined)[]; counts: Partial<Record<Bucket, number>> }
 
 const countsOf = (buckets: (Bucket | undefined)[]): Partial<Record<Bucket, number>> => {
   const counts: Partial<Record<Bucket, number>> = {}
