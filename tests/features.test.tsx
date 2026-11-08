@@ -578,6 +578,24 @@ test('prompts another plugin sends carry the render hint, framed or as your own 
   expect(seen[2] ?? []).not.toContain(FIGURE_HINT)
 })
 
+test('surfaces terminal keeps the render hints off prompts from the desktop', { options: { surfaces: 'terminal' } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  let surfaces: ('terminal' | 'desktop')[] = ['desktop']
+  mock.env(on, {})
+  on('session.surfaces', () => ({ value: surfaces }))
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'plan it', wait: false, origin: { kind: 'composer' } })
+  surfaces = ['terminal', 'desktop']
+  await $.prompt.submit({ text: 'plan it', wait: false, origin: { kind: 'bridge' } })
+  await $.prompt.submit({ text: 'plan it', wait: false, origin: { kind: 'composer' } })
+  surfaces = ['terminal']
+  await $.prompt.submit({ text: 'plan it', wait: false, origin: { kind: 'plugin', name: 'some-plugin' } })
+  expect(seen.map(c => (c ?? []).includes(FIGURE_HINT))).toEqual([false, false, true, true])
+})
+
 test('no render hint when diagramHints is off', { options: { diagramHints: false } }, async ($, on) => {
   const seen: (readonly string[] | undefined)[] = []
   mock.env(on, {})

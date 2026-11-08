@@ -26,6 +26,12 @@ const HINTED_ORIGINS = ['composer', 'bridge', 'plugin'] as const satisfies reado
 
 const takesHint = (origin: PromptOrigin): boolean => HINTED_ORIGINS.some(kind => kind === origin.kind)
 
+const drawsWhereAsked = async ($: EngineInterface, origin: PromptOrigin, drawn: RenderSurface[]): Promise<boolean> => {
+  const all = await $.session.surfaces()
+  const asked = all.filter(s => (s === 'terminal') === (origin.kind === 'composer'))
+  return !all.length || (asked.length ? asked : all).some(s => drawn.includes(s))
+}
+
 const LATEX_HINT = 'This terminal typesets LaTeX math: a formula in $$…$$ on lines of its own, or in a ```math block, renders as an image (KaTeX syntax). Inline $…$ does not render, so write inline math as plain text or Unicode.'
 
 const detectTerminal = async ($: EngineInterface): Promise<Terminal | null> => {
@@ -938,7 +944,7 @@ export const register: Register = (on, options) => {
       await persist($, () => update($, sent, list => withRecord(list, { text: promptKey(e.text), at })))
     }
     await probe($, style, probes)
-    if (!takesHint(e.origin)) return next(e)
+    if (!takesHint(e.origin) || (style.surfaces && !(await drawsWhereAsked($, e.origin, style.surfaces)))) return next(e)
     if (style.diagramHints) void latexEngine($, latex)
     const hints = hintsFor(style, latex, prompts++, pane)
     return hints.length ? next({ ...e, context: [...(e.context ?? []), ...hints] }) : next(e)
