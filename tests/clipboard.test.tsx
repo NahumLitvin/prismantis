@@ -251,7 +251,7 @@ test('▣ png of a 500 row table gets a helper timeout sized to its input, cappe
 })
 
 test('the png helper gets block glyphs as cell fractions to fill, so bars and pies draw with no seams', () => {
-  const glyphs = JSON.parse(imageCommand('macos', '█▌▀▁▏▚a─', {}).stdin).lines[0] as { text: string; fill?: number[][] }[]
+  const glyphs = payloadOf(imageCommand('macos', '█▌▀▁▏▚a─', {}).stdin).lines[0] as { text: string; fill?: number[][] }[]
   expect(glyphs.map(g => g.fill)).toEqual([
     [[0, 0, 0.5, 0.5], [0.5, 0, 1, 0.5], [0, 0.5, 0.5, 1], [0.5, 0.5, 1, 1]],
     [[0, 0, 0.5, 0.5], [0, 0.5, 0.5, 1]],
@@ -494,7 +494,7 @@ test('▣ png in mono draws table rules and chart gridline dots dim, not in the 
   await ui.press({ key: 'png1' })
   type Payload = { lines: { text: string; color?: number[] }[][]; foreground: number[] }
   const colorOf = (input: string, glyph: string) => {
-    const payload = JSON.parse(input) as Payload
+    const payload = payloadOf(input) as Payload
     return { ink: payload.lines.flat().find(g => g.text === glyph)!.color, text: payload.foreground }
   }
   for (const [input, glyph] of [[inputs[0]!, '─'], [inputs[1]!, '·']] as const) {
