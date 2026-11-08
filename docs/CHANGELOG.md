@@ -2,12 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [0.45.3] - 2026-11-07
+## [0.45.3] - 2026-11-08
 
-Bug fixes from a third QA round.
+Bug fixes from a third QA round and two reports.
 
 ### Fixed
 
+- ▣ png and ⧉ html copy work on Macs whose security agent kills long `osascript -e` scripts. Thanks @arykhoda for the repro and the test ([#407](https://github.com/NahumLitvin/prismantis/pull/407)).
+- With `surfaces` limited to the terminal, prompts from the desktop app no longer ask Claude for figures and fenced copy blocks. Thanks @KryptoShrimp ([#476](https://github.com/NahumLitvin/prismantis/pull/476)).
 - A line holding only `<br>` is a line break again, as before 0.45.1 ([#463](https://github.com/NahumLitvin/prismantis/pull/463)).
 - Long Hebrew replies draw as fast as in 0.44.0 ([#464](https://github.com/NahumLitvin/prismantis/pull/464)).
 - `/prismantis copy` waits its turn behind a copy button pressed just before it, and a mistyped target says so instead of copying the whole reply ([#465](https://github.com/NahumLitvin/prismantis/pull/465)).
