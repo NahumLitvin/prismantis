@@ -2,12 +2,13 @@ import type { Engine } from 'claude-code/testing'
 import { expect, mock, test } from 'claude-code/testing'
 
 import type { ClipboardBackend } from '../hooks/clipboard'
-import { clipboardCommand } from '../hooks/clipboard'
+import { clipboardCommand, imageCommand } from '../hooks/clipboard'
 import { tableHtml } from '../hooks/html'
 import { mathOf } from '../hooks/latex'
 import type { Block } from '../hooks/markdown'
 import { parse } from '../hooks/markdown'
 import { claudeAt, linksHttp } from './claude-version'
+import { payloadOf } from './clipboard-env'
 
 const HOSTILE = [
   `'; do shell script "rm -rf ~" --`,
@@ -28,10 +29,20 @@ test('reply text reaches the clipboard helpers only through stdin, never their a
     for (const bad of HOSTILE) {
       const command = clipboardCommand(backend, bad, bad, 'C:\\Windows')
       expect(command.argv).toEqual(plain.argv)
-      const back = JSON.parse(command.stdin) as { html: string; text: string }
+      const back = payloadOf(command.stdin) as { html: string; text: string }
       expect(back.html).toBe(bad)
       expect(back.text).toBe(backend === 'windows' ? bad.replace(/\r?\n/g, '\r\n') : bad)
     }
+  }
+})
+
+test('the macOS helpers keep a short constant argv, with script and reply on stdin as one ASCII JSON line', () => {
+  for (const command of [clipboardCommand('macos', HOSTILE.join('\n'), HOSTILE.join('\n')), imageCommand('macos', HOSTILE.join('\n'), {})]) {
+    expect(command.argv).toEqual(['/usr/bin/osascript', '-l', 'JavaScript'])
+    expect(command.argv.join(' ').length).toBeLessThan(1000)
+    const [first] = command.stdin.split('\n')
+    expect(first).toMatch(/^var payload = [\x20-\x7e]+$/)
+    expect(JSON.parse(first!.slice('var payload = '.length))).toEqual(payloadOf(command.stdin))
   }
 })
 
