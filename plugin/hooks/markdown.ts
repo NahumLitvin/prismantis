@@ -14,6 +14,10 @@ export type Inline =
 
 export type Note = { mark: string; inline: Inline[]; note: number }
 
+export type TableAlign = 'left' | 'right' | 'center'
+export type TableCell = Inline[]
+export type TableBlock = Extract<Block, { kind: 'table' }>
+
 export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }
   | { kind: 'paragraph'; inline: Inline[] }
@@ -22,7 +26,7 @@ export type Block = { raw: string } & (
   | { kind: 'quote'; blocks: Block[] }
   | { kind: 'alert'; level: AlertLevel; blocks: Block[] }
   | { kind: 'rule' }
-  | { kind: 'table'; header: Inline[][]; align: ('left' | 'right' | 'center')[]; rows: Inline[][][] }
+  | { kind: 'table'; header: TableCell[]; align: TableAlign[]; rows: TableCell[][] }
   | { kind: 'notes'; notes: Note[] }
 )
 
@@ -504,9 +508,10 @@ const parseBlocks = (source: string, hl: Highlight, depth = 0): Block[] => {
       flush(i)
       const start = i
       const header = splitRow(line)
-      const align = splitRow(at(i + 1)).map(c =>
-        c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left',
-      )
+      const align = Array.from({ length: header.length }, (_, c) => {
+        const sep = splitRow(at(i + 1))[c] ?? ''
+        return (sep.startsWith(':') && sep.endsWith(':') ? 'center' : sep.endsWith(':') ? 'right' : 'left') as TableAlign
+      })
       const rows = tableRows(lines.slice(i + 2), header.length, hl)
       i += 2 + rows.length
       add({ kind: 'table', header: header.map(c => parseCell(c, { numbers: false, paths: false })), align, rows }, start, i)

@@ -1,7 +1,7 @@
-import type { Block, Inline } from './markdown'
+import type { Block, Inline, TableCell } from './markdown'
 import { displayText, isWebLink } from './markdown'
 
-const tsvCell = (cell: Inline[]): string => {
+const tsvCell = (cell: TableCell): string => {
   const text = displayText(cell)
   return /[\t\r\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
@@ -28,8 +28,8 @@ const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
 }).join('')
 
 export const tableHtml = (table: Extract<Block, { kind: 'table' }>, rtl = false): string => {
-  const row = (cells: Inline[][], tag: 'th' | 'td') => `    <tr>${cells.map((cell, i) =>
-    `<${tag} style="text-align: ${table.align[i] ?? 'left'}">${inlineHtml(cell)}</${tag}>`,
+  const row = (cells: TableCell[], tag: 'th' | 'td') => `    <tr>${cells.map((cell, i) =>
+    `<${tag} style="text-align: ${table.align[i]!}">${inlineHtml(cell)}</${tag}>`,
   ).join('')}</tr>`
   return [
     rtl ? '<table dir="rtl">' : '<table>',
