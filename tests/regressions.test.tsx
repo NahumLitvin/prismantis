@@ -399,6 +399,8 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('`statusMatrix`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Test report')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`testMatrix`')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('### Benchmarks')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`benchTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Status matrix')
   expect(showcaseText(Object.keys(PRESETS))).toContain('green for a pass, red for a failure, amber for a warning, gray for a wait')
   expect(showcaseText(Object.keys(PRESETS))).toContain('| Propagation | 88 | failed |')

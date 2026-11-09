@@ -572,6 +572,164 @@
   <Text color=#6e7781>
     "└─────────┴────────┴─────────┘"
 <Box>
+  <Text color=#0550ae bold>
+    <Text>
+      "Benchmarks"
+  <Text color=#0550ae>
+    "━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table compares benchmarks — a column of changes like "
+  <Text color=#0550ae>
+    "-10%"
+  <Text>
+    " or +"
+  <Text color=#0550ae>
+    "3%"
+  <Text>
+    " beside two columns of runs — "
+  <Text color=#0550ae>
+    "benchTable"
+  <Text>
+    " draws each change in theme colors, green for an improvement and red for a regression; timings read as lower is better unless a header speaks of req/s, throughput or a score. "
+  <Text color=#0550ae>
+    "trend"
+  <Text>
+    " also draws a sparkline of the runs under the table, each step colored by whether it improved. The default "
+  <Text color=#0550ae>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#6e7781>
+    "┌───────────┬─────────┬─────────┬────────┐"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text color=#953800 bold>
+        "Benchmark"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Before"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "After"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Change"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "╞═══════════╪═════════╪═════════╪════════╡"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "parse"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "12.4"
+        <Text>
+          " ms"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "11.1"
+        <Text>
+          " ms"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "-10%"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├───────────┼─────────┼─────────┼────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "layout"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "19.6"
+        <Text>
+          " ms"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "22.4"
+        <Text>
+          " ms"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "+"
+        <Text color=#0550ae>
+          "14%"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├───────────┼─────────┼─────────┼────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "paint"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "2.1"
+        <Text>
+          " ms"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "0.8"
+        <Text>
+          " ms"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "-62%"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "└───────────┴─────────┴─────────┴────────┘"
+<Box>
   <Box row>
     <Text color=#cf222e>
       "1. "

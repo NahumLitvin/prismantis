@@ -679,6 +679,15 @@ const REPORT = [
   '| scan | 130 ms | failed |',
   '| typeset | 2.6 s | pending |',
 ].join('\n')
+const BENCH = [
+  '| Benchmark | Before | After | Change |',
+  '|:----------|-------:|------:|:-------|',
+  '| parse | 12.4 ms | 11.1 ms | -10% |',
+  '| layout | 19.6 ms | 22.4 ms | +14% |',
+  '| paint | 2.1 ms | 0.8 ms | -62% |',
+  '| typeset | 0.9 ms | 0.9 ms | 0% |',
+].join('\n')
+
 
 test('statusMatrix off keeps tables as written', async $ => {
   const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
@@ -1194,5 +1203,55 @@ test('a deeply nested list stops indenting at half the width, so its deepest ite
   const pads = (await ui.findAll({ type: 'Box' })).map(b => Number(b.props.paddingLeft ?? 0))
   expect(Math.max(...pads)).toBeLessThanOrEqual(28)
   expect(await ui.find({ type: 'Text', text: /^level 50$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`benchTable ${surface} colors changes in theme colors`, { options: { benchTable: 'color' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(BENCH), surface })
+  expect((await ui.find({ type: 'Text', text: /^-10%$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^\+14%$/ }))?.props.color).toBe(t.diffRemoved)
+  expect((await ui.find({ type: 'Text', text: /^-62%$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^0%$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^parse$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('benchTable trend draws a sparkline of the runs under the table', { options: { benchTable: 'trend' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(BENCH), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^\u2585$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^\u2588$/ }))?.props.color).toBe(t.diffRemoved)
+  expect((await ui.findAll({ type: 'Text', text: /^\u2581$/ })).every(x => x.props.color === t.diffAdded)).toBe(true)
+  expect(await ui.findAll({ type: 'Text', text: /^\u2581$/ })).toHaveLength(2)
+  await ui.unmount()
+})
+
+test('benchTable off keeps tables as written', { options: { benchTable: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(BENCH), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^-10%$/ }))?.props.color).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^\u2585$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a table without a change column draws no sparkline either', { options: { benchTable: 'trend' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^\u2585$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a rate header makes higher changes the improvement', { options: { benchTable: 'color' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Suite | Score | Change |\n|---|---:|:---|\n| parse | 82 | +3% |\n| layout | 88 | +6% |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^\+3%$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^\+6%$/ }))?.props.color).toBe(t.diffAdded)
+  await ui.unmount()
+})
+
+test('benchTable stays off stacked tables', { options: { benchTable: 'trend', tableLayout: 'stacked', theme: 'dracula' } }, async $ => {
+  const t = PRESETS['dracula']
+  const ui = await $.ui.mount({ ...draw(BENCH), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^-10%$/ }))?.props.color).toBe(t.number)
+  expect(await ui.find({ type: 'Text', text: /^\u2585$/ })).toBeUndefined()
   await ui.unmount()
 })

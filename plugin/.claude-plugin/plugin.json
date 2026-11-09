@@ -102,6 +102,13 @@
       "default": "off",
       "options": ["report", "off"]
     },
+    "benchTable": {
+      "type": "string",
+      "title": "Benchmarks",
+      "description": "How a table that compares benchmarks draws: a column of changes like -10% or +3%. off (the default) keeps tables as written. color draws each change in the theme's colors, green for an improvement and red for a regression; timings read as lower is better, unless a header speaks of req/s, throughput or a score. trend also draws a sparkline of the runs under the table, each step colored by whether it improved.",
+      "default": "off",
+      "options": ["trend", "color", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

@@ -572,6 +572,164 @@
   <Text>
     "└─────────┴────────┴─────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Benchmarks"
+  <Text>
+    "━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table compares benchmarks — a column of changes like "
+  <Text>
+    "-10%"
+  <Text>
+    " or +"
+  <Text>
+    "3%"
+  <Text>
+    " beside two columns of runs — "
+  <Text>
+    "benchTable"
+  <Text>
+    " draws each change in theme colors, green for an improvement and red for a regression; timings read as lower is better unless a header speaks of req/s, throughput or a score. "
+  <Text>
+    "trend"
+  <Text>
+    " also draws a sparkline of the runs under the table, each step colored by whether it improved. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌───────────┬─────────┬─────────┬────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Benchmark"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Before"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "After"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Change"
+    <Text>
+      " │"
+  <Text>
+    "╞═══════════╪═════════╪═════════╪════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "parse"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "12.4"
+        <Text>
+          " ms"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "11.1"
+        <Text>
+          " ms"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "-10%"
+    <Text>
+      " │"
+  <Text>
+    "├───────────┼─────────┼─────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "layout"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "19.6"
+        <Text>
+          " ms"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "22.4"
+        <Text>
+          " ms"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "+"
+        <Text>
+          "14%"
+    <Text>
+      " │"
+  <Text>
+    "├───────────┼─────────┼─────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "paint"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "2.1"
+        <Text>
+          " ms"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "0.8"
+        <Text>
+          " ms"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "-62%"
+    <Text>
+      " │"
+  <Text>
+    "└───────────┴─────────┴─────────┴────────┘"
+<Box>
   <Box row>
     <Text>
       "1. "
