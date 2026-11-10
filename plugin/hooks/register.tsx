@@ -337,7 +337,7 @@ const htmlBackend = async ($: EngineInterface): Promise<ClipboardBackend | null>
   return await $.env.get('WAYLAND_DISPLAY') || await $.env.get('DISPLAY') ? 'linux' : null
 }
 
-type LinkReach = { http: boolean; editor: boolean; marks: boolean; monoText: boolean; files: string | null; paths: boolean }
+type LinkReach = { http: boolean; editor: boolean; marks: boolean; monoText: boolean; files: string | null; paths: boolean; hyperlinks: boolean }
 
 type Probes = { terminal?: Promise<Terminal | null>; multiplexed?: Promise<boolean>; htmlCopy?: Promise<ClipboardBackend | null>; links?: Promise<LinkReach>; images?: Promise<boolean> }
 
@@ -365,7 +365,8 @@ const readLinkReach = async ($: EngineInterface, style: Style): Promise<LinkReac
   const http = takesHttpLinks(base)
   if (http) await locate($, style)
   const files = http && !(await overSsh($).catch(() => true)) ? await fileRootOf($).catch(() => 'file://') : null
-  return { http, editor: takesEditorLinks(base), marks: takesClickableMarks(base), monoText: takesMonoText(base), files, paths: files !== null && drawsHyperlinks(await terminalEnv($).catch(() => ({}))) }
+  const hyperlinks = drawsHyperlinks(await terminalEnv($).catch(() => ({})))
+  return { http, editor: takesEditorLinks(base), marks: takesClickableMarks(base), monoText: takesMonoText(base), files, paths: files !== null && hyperlinks, hyperlinks }
 }
 
 const linkReach = ($: EngineInterface, probes: Probes, style: Style): Promise<LinkReach> => (probes.links ??= readLinkReach($, style))
@@ -789,7 +790,7 @@ export const register: Register = (on, options) => {
   const probes: Probes = {}
   const pathChecks: PathChecks = { asked: new Set(), batch: [], found: new Set() }
   const forSurface = (base: Style, { surface, viewport }: { surface: RenderSurface; viewport?: { isFullscreen?: boolean } }, links: LinkReach): Style => {
-    const drawn = surface === 'terminal' ? (links.http || links.editor ? { ...base, httpLinks: links.http, editorLinks: links.editor, obsidianLinks: links.editor && viewport?.isFullscreen === false, fileLinks: links.files, pathLinks: links.paths } : base) : { ...base, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop', monoFace: surface === 'desktop' && links.monoText }
+    const drawn = surface === 'terminal' ? { ...base, hyperlinks: links.hyperlinks, ...(links.http || links.editor ? { httpLinks: links.http, editorLinks: links.editor, obsidianLinks: links.editor && viewport?.isFullscreen === false, fileLinks: links.files, pathLinks: links.paths } : {}) } : { ...base, hyperlinks: true, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop', monoFace: surface === 'desktop' && links.monoText }
     return surface === 'mobile' && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
   }
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})

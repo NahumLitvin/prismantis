@@ -59,6 +59,7 @@ export type Style = {
   obsidianLinks: boolean
   fileLinks: string | null
   pathLinks: boolean
+  hyperlinks: boolean
   found?: ReadonlySet<string>
   diagramHints: boolean
   issueHint: boolean
@@ -136,6 +137,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     obsidianLinks: false,
     fileLinks: null,
     pathLinks: false,
+    hyperlinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
     issueHint: options.issueHint !== false,
     rtl,
