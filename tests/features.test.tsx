@@ -9,7 +9,7 @@ import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from '../hooks/theme'
 import { ISSUE_HINT, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, setupParts, setupSteps, setupText } from '../hooks/help'
 import type { Theme } from '../hooks/theme'
-import { BAND_STEP, BUBBLE_STEP, EDIT_NOTES, PRISM_COLORS, bashEdits, bubbleFill, replyFill, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, tint, wordTint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
+import { BAND_STEP, BUBBLE_STEP, EDIT_NOTES, PRISM_COLORS, bashEdits, bubbleFill, replyFill, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, renderDiffCard, tint, wordTint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 import { columnWidths } from '../hooks/layout'
 import { startSession } from './clipboard-env'
 import { claudeAt } from './claude-version'
@@ -1767,6 +1767,24 @@ test('edits the card cannot parse, failed edits and other tools go to the engine
       await ui.unmount()
     }
   }
+})
+
+test('an edit result that is not an object gets no diff card, without throwing', async ($, on) => {
+  let drawn: unknown[] = []
+  on('ui.render', ($, e) => {
+    const el = $.ui.resolve(e)
+    drawn = [null, undefined, 'File updated', 3].map(output => {
+      try {
+        return renderDiffCard(el, resolveStyle({}), output, () => null, 'd')
+      } catch (error) {
+        return String(error)
+      }
+    })
+    return <el.Text>engine</el.Text>
+  })
+  const ui = await $.ui.mount(editResult('terminal', 'Read', 'x'))
+  await ui.unmount()
+  expect(drawn).toEqual([undefined, undefined, undefined, undefined])
 })
 
 test('edits keep the engine diff when tool rows are off', { options: { toolRows: false } }, async ($, on) => {
