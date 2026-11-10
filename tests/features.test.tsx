@@ -2,6 +2,7 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
+import { attachmentLabel, attachmentLabels } from '../hooks/attachments'
 import { clockText, endedAt, sentAt } from '../hooks/clock'
 import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
@@ -964,6 +965,47 @@ test('markdown in your prompt draws as bold and code, not as asterisks and backt
     expect((await ui.findAll({ type: 'Text' })).filter(n => /\*\*|`/.test(n.text ?? ''))).toEqual([])
     await ui.unmount()
   }
+})
+
+test('an attached image keeps a mark in your bubble instead of vanishing', async ($, on) => {
+  mock.clock(on)
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  await $.prompt.submit({ text: 'what is wrong here?', attachments: [{ type: 'image', mediaType: 'image/png', filename: 'bug.png' }], wait: false, origin: { kind: 'composer' } })
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(prompt('what is wrong here?', 'composer', surface))
+    expect((await ui.find({ type: 'Text', text: /^\[Image bug\.png\]$/ }))?.props.color).toBe(t.codeComment)
+    expect(await ui.find({ type: 'Text', text: /^what is wrong here\?$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('an unnamed attachment marks its kind, and a prompt without one takes no mark', async ($, on) => {
+  mock.clock(on)
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => ({ text: e.text, context: e.context }))
+  await $.prompt.submit({ text: 'read this', attachments: [{ type: 'image' }, { type: 'document', filename: 'specs.pdf' }], wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'nothing attached', wait: false, origin: { kind: 'composer' } })
+  const ui = await $.ui.mount(prompt('read this'))
+  expect(await ui.find({ type: 'Text', text: /^\[Image\]$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\[Document specs\.pdf\]$/ })).toBeDefined()
+  await ui.unmount()
+  const bare = await $.ui.mount({ ...prompt('nothing attached'), requestId: 'bare-row' })
+  expect((await bare.findAll({ type: 'Text' })).filter(n => /^\[(Image|Document|Audio)/.test(n.text ?? ''))).toEqual([])
+  await bare.unmount()
+})
+
+test('attachment marks read by prompt text and never from a row drawn before them', () => {
+  const list = [{ text: 'again', at: 1, items: [{ type: 'image' as const, filename: 'one.png' }] }, { text: 'again', at: 3, items: [] }]
+  expect(attachmentLabels(list, 'again', 2)).toEqual(['[Image one.png]'])
+  expect(attachmentLabels(list, ' again\n', 3)).toEqual([])
+  expect(attachmentLabels(list, 'again', 0)).toEqual([])
+  expect(attachmentLabels(list, 'never sent', 9)).toEqual([])
+  expect(attachmentLabel({ type: 'audio', filename: 'take.wav' })).toBe('[Audio take.wav]')
+  expect(attachmentLabel({ type: 'image', filename: 'a\nb.png' })).toBe('[Image a b.png]')
+  expect(attachmentLabel({ type: 'image', filename: '\u001b[31mred\u0007.png' })).toBe('[Image red.png]')
+  expect(attachmentLabel({ type: 'image', filename: `${'wide'.repeat(40)}.png` })).toBe(`[Image ${'wide'.repeat(20)}]`)
+  expect(attachmentLabel({ type: 'image', filename: ' ' })).toBe('[Image]')
 })
 
 test('a long prompt in the bubble wraps at three quarters of the width', async $ => {

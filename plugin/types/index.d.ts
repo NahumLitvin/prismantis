@@ -19,6 +19,7 @@ declare module 'claude-code' {
       unfolded: string[]
       sent: { text: string; at: number }[]
       turnEnds: { durationMs: number; at: number }[]
+      attached: { text: string; at: number; items: { type: 'image' | 'audio' | 'document'; filename?: string }[] }[]
       setupAt: number
       setupFocus: string
       setupLand: string

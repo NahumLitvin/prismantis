@@ -2946,7 +2946,7 @@ const promptMark = (el: ElementTable, style: Style, rtl: boolean, tall: number):
   return style.promptStyle === 'bar' && tall > 1 ? quoteBar(el, glyph, style.theme.accent, tall) : <el.Text color={style.theme.accent} bold>{glyph}</el.Text>
 }
 
-export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, columns: number, time?: string, paste?: DrawPaste): RenderElement => {
+export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, columns: number, time?: string, paste?: DrawPaste, attached: readonly string[] = []): RenderElement => {
   const { Box, Text } = el
   const pastes: string[] = []
   const text = typed.replace(PASTE, (_, _id, body: string) => `\0${pastes.push(body) - 1}\0`).replace(/^\n+|\n+$/g, '')
@@ -2954,7 +2954,7 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
   const told = (line: string) => line.replace(/\0(\d+)\0/g, (_, n) => `[Pasted text +${lineCount(pastes[Number(n)]!.split('\n').length)}]`)
   const t = style.theme
   const color = promptInk(style)
-  const rows = text.split('\n')
+  const rows = text === '' && attached.length > 0 ? [] : text.split('\n')
   const marked = rows.map(line => hyperlinks(parseInline(told(line), { numbers: false, paths: false }), style))
   const lines = rows.map((line, i) => (own(line) === undefined ? flowOf(style, marked[i]!, promptRoom(style, columns) - 4 - (time === undefined ? 0 : time.length + 1)) : null))
   const hebrew = lines.some(l => l?.base === 'R')
@@ -2967,16 +2967,17 @@ export const renderUserPrompt = (el: ElementTable, style: Style, typed: string, 
         const flow = lines[i]
         return flow ? renderFlow(el, style, flow.lines, `p${i}`, { color, bold: style.promptStyle === 'chevron' }) : <Text key={`p${i}`} color={color} bold={style.promptStyle === 'chevron'}>{marked[i]!.every(n => n.kind === 'text') ? told(line) || ' ' : renderInline(el, style, marked[i]!, `p${i}`)}</Text>
       })}
+      {attached.map((label, i) => <Text key={`a${i}`} color={t.codeComment}>{label}</Text>)}
     </Box>
   )
   const stamp = time === undefined ? null : <Box flexShrink={0}><Text color={t.codeComment}>{rtl ? ` ${time}` : `${time} `}</Text></Box>
   const content = stamp === null ? body : <Box flexDirection="row">{rtl ? body : stamp}{rtl ? stamp : body}</Box>
-  if (isChatPrompt(style)) return chatPrompt(el, style, content, chatSize(style, hebrew, marked.map(inlineText), columns, time, rows.some(line => own(line) !== undefined)))
+  if (isChatPrompt(style)) return chatPrompt(el, style, content, chatSize(style, hebrew, [...marked.map(inlineText), ...attached], columns, time, rows.some(line => own(line) !== undefined)))
   if (style.promptStyle === 'wide') {
     return <Box borderStyle="round" borderColor={t.accent} paddingX={1} alignSelf={rtl ? 'flex-end' : 'flex-start'} width="100%">{content}</Box>
   }
   const room = columns - 2 - (time === undefined ? 0 : time.length + 1)
-  const tall = rows.reduce((sum, line) => sum + (own(line) === undefined ? textRows(told(line), room) : own(line)!.split('\n').length + 4), 0)
+  const tall = rows.reduce((sum, line) => sum + (own(line) === undefined ? textRows(told(line), room) : own(line)!.split('\n').length + 4), 0) + attached.reduce((sum, label) => sum + textRows(label, room), 0)
   const mark = promptMark(el, style, rtl, tall)
   return <Box flexDirection="row" alignItems="stretch" {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>{rtl ? content : mark}{rtl ? mark : content}</Box>
 }

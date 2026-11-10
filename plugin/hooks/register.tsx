@@ -1,6 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, PromptOrigin, Register, RenderElement, RenderSurface } from 'claude-code'
 
+import { attachedItems, attachmentLabels } from './attachments'
 import { clockText, endedAt, promptKey, sentAt, withRecord } from './clock'
 import type { Formula } from './latex'
 import { LATEX_DPR, LATEX_FONT_PX, MAX_IMAGE_BYTES, fitImage, fitsImage, imageFile, imageOf, keepFormulas, mathOf, oldestOver, padFor, pickFormula, pngSize, ratexColor, renderedOf } from './latex'
@@ -75,6 +76,7 @@ const latexDir = atom({ plugin: 'prismantis', key: 'dir' } as const, '')
 const unfolded = atom({ plugin: 'prismantis', key: 'unfolded' } as const, [] as string[])
 const sent = atom({ plugin: 'prismantis', key: 'sent' } as const, [])
 const turnEnds = atom({ plugin: 'prismantis', key: 'turnEnds' } as const, [])
+const attached = atom({ plugin: 'prismantis', key: 'attached' } as const, [])
 const setupAt = atom({ plugin: 'prismantis', key: 'setupAt' } as const, 0)
 const setupFocus = atom({ plugin: 'prismantis', key: 'setupFocus' } as const, '')
 const setupLand = atom({ plugin: 'prismantis', key: 'setupLand' } as const, '')
@@ -108,6 +110,18 @@ const markUnread = async ($: EngineInterface, style: Style, e: { text: string; c
   const at = await $.clock.now()
   await persist($, () => update($, awaiting, list => [...list.filter(a => a.key !== key), { key, at }].slice(-20)))
   await keepBlinking($, blinker)
+}
+
+const keepAttachments = async ($: EngineInterface, e: { text: string; attachments?: readonly { type?: string; filename?: string }[] }) => {
+  const items = attachedItems(e.attachments ?? [])
+  if (items.length === 0 && (await read($, attached)).length === 0) return
+  const at = await $.clock.now()
+  await persist($, () => update($, attached, list => withRecord(list, { text: promptKey(e.text), at, items })))
+}
+
+const attachmentMarks = async ($: EngineInterface, text: string, requestId: string): Promise<string[]> => {
+  const records = await read($, attached)
+  return records.length === 0 ? [] : attachmentLabels(records, text, await firstDrawn($, requestId))
 }
 
 const startTurn = (blinker: Blinker, key: string) => {
@@ -939,6 +953,7 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', async ($, e, next) => {
     await markUnread($, style, e, blinker)
+    await keepAttachments($, e)
     if (style.clock !== 'off' && (e.origin.kind === 'composer' || e.origin.kind === 'bridge')) {
       const at = await $.clock.now()
       await persist($, () => update($, sent, list => withRecord(list, { text: promptKey(e.text), at })))
@@ -1017,6 +1032,7 @@ export const register: Register = (on, options) => {
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
     if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
     const el = $.ui.resolve(e)
+    const marks = await attachmentMarks($, e.props.text, e.requestId)
     const drawn = await unreadLook($, style, forSurface(style, e, await linkReach($, probes, style)), e.props.text, e.requestId)
     const columns = columnsOf(e.viewport, drawn)
     const open = await read($, unfolded)
@@ -1032,7 +1048,7 @@ export const register: Register = (on, options) => {
         </el.Box>
       )
     }
-    return renderUserPrompt(el, drawn, e.props.text, columns, time, paste)
+    return renderUserPrompt(el, drawn, e.props.text, columns, time, paste, marks)
   })
 
   on('ui.render', { component: 'AssistantMessage', ...here }, async ($, e, next) => {
