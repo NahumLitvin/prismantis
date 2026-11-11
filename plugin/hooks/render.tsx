@@ -2131,6 +2131,7 @@ const editedIntoBeing = (output: unknown, rows: DiffLine[]): WholeFile | undefin
 }
 
 const written = (output: unknown): WholeFile | undefined => {
+  if (output === null || typeof output !== 'object') return undefined
   const out = output as { type?: unknown; filePath?: unknown; content?: unknown }
   return out.type === 'create' && typeof out.filePath === 'string' && typeof out.content === 'string' ? { kind: 'created', path: out.filePath, lines: lines(out.content) } : undefined
 }
