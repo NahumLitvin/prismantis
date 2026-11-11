@@ -2576,3 +2576,21 @@ test('an angle-bracket autolink drops its brackets and links the URL', async () 
   const [code] = parse('`<https://example.com>` <br> <b>', hl)
   expect(code?.kind === 'paragraph' && inlineText(code.inline)).toBe('<https://example.com> <br> <b>')
 })
+
+const QUOTED_TABLE = '> | Name | Notes |\n> |---|---|\n> | alpha | a fairly long note that will wrap at narrow widths for sure |\n> | beta | short |'
+
+const quoteBarRows = async (ui: { findAll: (query: { type: 'Text' }) => Promise<unknown[]> }) =>
+  (await ui.findAll({ type: 'Text' }))
+    .map(t => ((t as { children?: unknown[] }).children ?? []).filter(c => typeof c === 'string').join(''))
+    .filter(s => s.includes('\n') && /^[│ \n]+$/.test(s))
+    .map(s => s.split('\n').length)
+
+for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) {
+  test(`a quoted ${tableStyle} table's bar under classic is as tall as before tableLayout`, { options: { tableStyle, tableLayout: 'classic' } }, async $ => {
+    for (const [columns, rows] of [[40, 28], [60, 23]] as const) {
+      const ui = await $.ui.mount(mount(QUOTED_TABLE, columns))
+      expect(await quoteBarRows(ui)).toEqual([rows])
+      await ui.unmount()
+    }
+  })
+}

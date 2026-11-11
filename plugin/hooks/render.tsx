@@ -413,7 +413,9 @@ const blockHeight = (block: Block, w: number, style: Style): number => {
     case 'table': {
       const plan = tablePlan(block, style, w, textsOf(style, block))
       if (plan.stack) return stackedHeight(block, w)
-      const tallest = (cells: TableCell[]) => Math.max(1, ...plan.widths.map((cw, c) => textRows(displayText(cells[c]!), cw)))
+      const classic = style.tableLayout === 'classic' && tableSize(block)
+      const widths = classic ? columnWidths(classic.natural, w - 4, 3, classic.words) : plan.widths
+      const tallest = (cells: TableCell[]) => Math.max(1, ...widths.map((cw, c) => textRows(displayText(cells[c]!), cw)))
       return block.rows.reduce((sum, row) => sum + 1 + tallest(row), 4 + tallest(block.header))
     }
     case 'quote':
