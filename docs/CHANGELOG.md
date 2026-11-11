@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.45.4] - 2026-11-11
+
+### Fixed
+
+- With `copyButtonStyle: hover`, a block's copy buttons stay lit while the pointer moves onto them, so they can be clicked. Thanks @t-rajic-0 ([#488](https://github.com/NahumLitvin/prismantis/pull/488)).
+- A table column of named links is as wide as their labels wherever links draw as hyperlinks, instead of leaving room for the hidden URL. Thanks @Malorn44 ([#485](https://github.com/NahumLitvin/prismantis/pull/485)).
+- An Edit or Write result with no output no longer makes the tool result hook throw on Claude Code 2.1.321 and later. Thanks @Malorn44 ([#487](https://github.com/NahumLitvin/prismantis/pull/487)).
+
 ## [0.45.3] - 2026-11-08
 
 Bug fixes from a third QA round and two reports.
