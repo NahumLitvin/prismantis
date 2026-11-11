@@ -109,6 +109,13 @@
       "default": "off",
       "options": ["trend", "color", "off"]
     },
+    "schemaTable": {
+      "type": "string",
+      "title": "Schema",
+      "description": "How a table that describes a database schema draws: a column of fields beside a column of types. off (the default) keeps tables as written. types draws each type cell in the theme's colors by its family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. keys draws the constraint cells: PK in the accent color, FK in the link color, unique and index cells in gray. full does both.",
+      "default": "off",
+      "options": ["full", "types", "keys", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

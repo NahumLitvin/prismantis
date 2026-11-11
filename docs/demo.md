@@ -53,6 +53,17 @@ When a table compares benchmarks — a column of changes like -10% or +3% beside
 | layout | 19.6 ms | 22.4 ms | +14% |
 | paint | 2.1 ms | 0.8 ms | -62% |
 
+## Schema
+
+When a table describes a database schema — a column of fields beside a column of types — `schemaTable` draws the type cells by their family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. `keys` draws the constraint cells — PK in the accent color, FK in the link color, unique and index cells in gray — and `full` does both. The default `off` keeps tables as written:
+
+| Column | Type | Key | Default |
+|:-------|:-----|:----|:--------|
+| id | uuid | PK | |
+| email | varchar(255) | UNIQUE | |
+| org_id | bigint | FK → orgs.id | |
+| created_at | timestamp | | now() |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings
