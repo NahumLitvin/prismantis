@@ -1364,7 +1364,7 @@ export const markerRoom = (style: Style): number => (style.copyButtons && style.
 
 const codeLabel = (block: Extract<Block, { kind: 'code' }>): string => `── ${block.lang || 'code'}`
 
-type Float = { needs: number; marker: RenderElement; element: RenderElement }
+type Float = { needs: number; marker: RenderElement }
 
 const buttonText = (button: RenderElement | null | undefined): string | undefined =>
   button?.type === 'Button' ? `[ ${button.props.label} ]` : button?.type === 'Text' ? (button.children ?? []).filter((c): c is string => typeof c === 'string').join('') : undefined
@@ -1373,11 +1373,10 @@ const keyOf = (button: RenderElement): string => String(('props' in button ? (bu
 
 const markedRow = ({ Box }: ElementTable, key: string, element: RenderElement, float: Float, start: boolean) => (
   <Box key={key} flexDirection="column" {...(start ? { alignItems: 'flex-end' as const } : { alignSelf: 'flex-start' as const })}>
-    <Box flexDirection="row" columnGap={1} minWidth={float.needs} {...(start ? { justifyContent: 'flex-end' as const } : {})}>
+    <Box flexDirection="row" columnGap={1} minWidth={float.needs} justifyContent="space-between">
       {start ? float.marker : null}
       {element}
       {start ? null : float.marker}
-      {float.element}
     </Box>
   </Box>
 )
@@ -1398,8 +1397,12 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const scope = scopeOf(kept[0]!)
     return {
       needs: reserved(kept),
-      marker: <Box flexShrink={0} alignSelf={low ? 'flex-end' : 'flex-start'} hover={{ scope }}><Text dimColor>⧉</Text></Box>,
-      element: <Box position="absolute" {...(low ? { bottom: 0 } : { top: 0 })} {...(start ? { left: 0 } : { right: 0 })} display="none" hover={{ scope, display: 'flex' }}>{kept.flatMap((button, i) => (i ? [<Text key={`gap${i}`}> </Text>, button] : [button]))}</Box>,
+      marker: (
+        <Box flexShrink={0} alignSelf={low ? 'flex-end' : 'flex-start'} hover={{ scope }}>
+          <Text dimColor>⧉</Text>
+          <Box position="absolute" {...(low ? { bottom: 0 } : { top: 0 })} {...(start ? { left: 0 } : { right: 0 })} display="none" hover={{ scope, display: 'flex' }}>{kept.flatMap((button, i) => (i ? [<Text key={`gap${i}`}> </Text>, button] : [button]))}</Box>
+        </Box>
+      ),
     }
   }
   const shown = blocks.map(block => drawable(block, style))
@@ -1455,7 +1458,6 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
             <Box flexDirection="row" justifyContent="space-between" columnGap={head ? 1 : 4}>
               <Text color={t.codeComment}>{label}</Text>
               {head ? head.marker : button}
-              {head?.element}
             </Box>
             {codeBody(el, style, rows, gutter, held, toggle?.element ?? null)}
           </Box>
