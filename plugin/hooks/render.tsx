@@ -778,8 +778,10 @@ const isRtlTable = (style: Style, block: Extract<Block, { kind: 'table' }>): boo
 
 const ART_WIDTH = 100
 
-const tableSize = (block: Extract<Block, { kind: 'table' }>) => {
-  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => displayText(r[c]!)))
+const cellText = (style: Style) => (style.hyperlinks ? inlineText : displayText)
+
+const tableSize = (block: Extract<Block, { kind: 'table' }>, shown: (cell: Inline[]) => string = displayText) => {
+  const cells = [block.header, ...block.rows].map(r => block.header.map((_, c) => shown(r[c]!)))
   const column = (measure: (s: string) => number) => block.header.map((_, c) => Math.max(...cells.map(r => measure(r[c]!))))
   return { natural: column(widestLine), words: column(longestWord) }
 }
@@ -956,7 +958,8 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const t = style.theme
   const box = style.tableStyle === 'box'
   const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
-  const { natural, words } = tableSize(block)
+  const shown = cellText(style)
+  const { natural, words } = tableSize(block, shown)
   const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
   const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
@@ -1030,7 +1033,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
   const wrappedRow = (cells: Inline[][], k: string, isHeader: boolean) => {
     if (style.gridFace) return [row(cells, k, isHeader, laidWall(el, style))]
-    if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(displayText(cells[c]!), w)))))]
+    if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(shown(cells[c]!), w)))))]
     const wrapped = widths.map((w, c) => {
       const content = cells[c]!
       if (natural[c]! <= w && !inlineText(content).includes('\n')) return [content]

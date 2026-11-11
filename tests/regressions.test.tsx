@@ -1439,6 +1439,40 @@ for (const tableStyle of ['box', 'rules'] as const) {
   })
 }
 
+const LINK_TARGET = 'https://example.com/software/pinmapper/core/-/merge_requests/83'
+const LINK_TABLE = `| MR | Found |\n|---|---|\n| [core !83](${LINK_TARGET}) | A routing entry that is not a mapping raises a raw error and not the usual routing error, and nothing else in the change is a correctness or design defect |`
+
+const columnWidthsOf = async (ui: { findAll: (query: { type: 'Box' }) => Promise<{ props: { width?: unknown; flexShrink?: unknown } }[]> }) =>
+  (await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'number' && b.props.flexShrink === 0).map(b => b.props.width as number)
+
+for (const tableStyle of ['box', 'rules'] as const) {
+  test(`a ${tableStyle} table column of named links is as wide as their labels where the terminal draws hyperlinks`, { options: { tableStyle } }, async ($, on) => {
+    mock.env(on, { FORCE_HYPERLINK: '1' })
+    const ui = await $.ui.mount(mount(LINK_TABLE))
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual([LINK_TARGET])
+    const widths = await columnWidthsOf(ui)
+    expect(widths.includes('core !83'.length)).toBe(true)
+    expect(widths.includes(`(${LINK_TARGET})`.length)).toBe(false)
+    await ui.unmount()
+  })
+
+  test(`a ${tableStyle} table column of named links keeps room for their targets where the terminal draws no hyperlinks`, { options: { tableStyle } }, async ($, on) => {
+    mock.env(on, { FORCE_HYPERLINK: '0' })
+    const ui = await $.ui.mount(mount(LINK_TABLE))
+    expect((await columnWidthsOf(ui)).includes(`(${LINK_TARGET})`.length)).toBe(true)
+    await ui.unmount()
+  })
+}
+
+test('a desktop table column of named links is shared out by their labels', async $ => {
+  const ui = await $.ui.mount({ ...mount(LINK_TABLE), surface: 'desktop' })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual([LINK_TARGET])
+  const floors = (await ui.findAll({ type: 'Box' })).map(b => b.props.minWidth).filter(w => typeof w === 'number')
+  expect(floors.includes('core'.length)).toBe(true)
+  expect(floors.some(w => w >= LINK_TARGET.length)).toBe(false)
+  await ui.unmount()
+})
+
 test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
 
