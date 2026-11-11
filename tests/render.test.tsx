@@ -358,10 +358,11 @@ for (const surface of SURFACES) test(`copyButtonStyle hover hides every copy but
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(5)
   expect(await floatingCopies(ui)).toEqual(['⧉ md ⧉ art', '⧉ copy', '⧉ copy', '⧉ copy reply'])
   expect(reveals(tree).flatMap(({ node }) => withParents(node).filter(({ node: n }) => n.type === 'Button'))).toHaveLength(5)
-  for (const { node } of reveals(tree)) {
+  for (const { node, parent } of reveals(tree)) {
     const scope = node.hover?.scope ?? ''
     expect(node.hover).toEqual({ scope, display: 'flex' })
-    expect(markersOf(tree, scope).map(({ node: marker }) => ({ text: shownText(marker), flows: inFlow(marker) }))).toEqual([{ text: '⧉', flows: !scope.endsWith(':reply') }])
+    expect(parent?.hover?.scope).toBe(scope)
+    expect(markersOf(tree, scope).map(({ node: marker }) => ({ text: drawnKids(marker).filter(inFlow).map(shownText).join(''), flows: inFlow(marker) }))).toEqual([{ text: '⧉', flows: !scope.endsWith(':reply') }])
   }
   await ui.press({ key: 'copy1' })
   expect(copied).toEqual(['ls -la'])
@@ -374,8 +375,7 @@ for (const surface of SURFACES) test(`copyButtonStyle hover draws a block's butt
   const floats = reveals(tree).filter(({ node }) => labelsOf(node) !== '⧉ copy reply')
   expect(floats.map(({ node }) => labelsOf(node))).toEqual(['⧉ md ⧉ art', '⧉ copy', '⧉ copy', '⧉ copy'])
   for (const { node, parent } of floats) {
-    const flow = drawnKids(parent!).filter(inFlow)
-    const marker = flow.at(-1)!
+    const marker = parent!
     expect(marker.hover?.scope).toBe(node.hover?.scope)
     expect(['flex-start', 'flex-end']).toContain(marker.props?.alignSelf)
     expect({ right: node.props?.right, left: node.props?.left, width: node.props?.width, minWidth: node.props?.minWidth }).toEqual({ right: 0, left: undefined, width: undefined, minWidth: undefined })
