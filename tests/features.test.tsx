@@ -3437,7 +3437,7 @@ test('a narrow pane adds its width to the render hint, a wide one does not', asy
   expect(seen[1]?.some(c => c.includes('columns wide'))).toBe(false)
 })
 
-test('in the ctrl+o transcript a shell row goes to the engine whole, so its output draws once', async ($, on) => {
+test('in the ctrl+o transcript a shell row keeps its colored command and leaves the output to the engine, so it draws once', async ($, on) => {
   engine(on)
   const row = await $.ui.mount({
     plugin: 'prismantis',
@@ -3445,7 +3445,38 @@ test('in the ctrl+o transcript a shell row goes to the engine whole, so its outp
     component: 'ToolUse',
     props: { ...call('Bash', { command: 'ls -la' }, 'fx-2'), ...{ isExpanded: true }, output: { stdout: 'a\nb', stderr: '', interrupted: false } } as never,
   })
-  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  expect((await row.find({ type: 'Text', text: /^ls$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].codeCommand)
+  expect((await row.find({ type: 'Text', text: /^-la$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].codeFlag)
   expect(await row.find({ type: 'Text', text: /^a$/ })).toBeUndefined()
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await row.unmount()
+})
+
+test('under --verbose a shell row unfolded from a group keeps its colored command and draws its own output, since the group has no result row', async ($, on) => {
+  engine(on)
+  const shell = call('Bash', { command: 'ls -la' }, 'fx-4')
+  const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [shell], isActive: false, isExpanded: true } })
+  await group.unmount()
+  const row = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: { ...shell, ...{ isExpanded: true }, output: { stdout: 'a\nb', stderr: '', interrupted: false } } as never,
+  })
+  expect((await row.find({ type: 'Text', text: /^ls$/ }))?.props.color).toBe(PRESETS['catppuccin-mocha'].codeCommand)
+  expect(await row.findAll({ type: 'Text', text: /^a$/ })).toHaveLength(1)
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await row.unmount()
+})
+
+test('in the ctrl+o transcript a non-shell row still goes to the engine whole', async ($, on) => {
+  engine(on)
+  const row = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolUse',
+    props: { ...call('Read', { file_path: '/tmp/a.ts' }, 'fx-3'), ...{ isExpanded: true } } as never,
+  })
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await row.unmount()
 })
