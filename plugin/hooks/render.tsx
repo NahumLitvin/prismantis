@@ -2758,16 +2758,29 @@ const commandLine = (el: ElementTable, style: Style, row: ToolRow, line: string,
   ))
 }
 
-export const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }, columns?: number): RenderElement => {
+const commandLines = (el: ElementTable, style: Style, row: ToolRow, columns: number | undefined): RenderElement[] => {
+  const command = (field(row.input, 'command') ?? '').split('\n')
+  return command.flatMap((line, i) => commandLine(el, style, row, line, i, i === command.length - 1, columns === undefined ? undefined : columns - COMMAND_LEAD))
+}
+
+const renderShellCommand = (el: ElementTable, style: Style, row: ToolRow, columns?: number): RenderElement => (
+  <el.Box flexDirection="column">{commandLines(el, style, row, columns)}</el.Box>
+)
+
+export const renderExpandedCall = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }, withOutput: boolean, columns?: number): RenderElement | undefined => {
+  if ((row.tool !== 'Bash' && row.tool !== 'PowerShell') || typeof row.output === 'string') return undefined
+  return withOutput ? renderExpandedShell(el, style, row, columns) : renderShellCommand(el, style, row, columns)
+}
+
+const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }, columns?: number): RenderElement => {
   const { Box, Text } = el
   const t = style.theme
-  const command = (field(row.input, 'command') ?? '').split('\n')
   const out = row.output !== null && typeof row.output === 'object' ? (row.output as Record<string, unknown>) : {}
   const shown: OutputLine[] = [...lines(out.stdout).map(text => ({ text })), ...lines(out.stderr).map(text => ({ text, color: t.codeFlag }))]
   const { rows, hidden } = outputRows(style, shown, columns === undefined ? undefined : columns - SHELL_FRAME)
   return (
     <Box flexDirection="column">
-      {command.flatMap((line, i) => commandLine(el, style, row, line, i, i === command.length - 1, columns === undefined ? undefined : columns - COMMAND_LEAD))}
+      {commandLines(el, style, row, columns)}
       {row.isRunning ? null : (
         <Box paddingLeft={BOX_INDENT}>
           <Box flexDirection="column" alignSelf="flex-start" borderStyle="round" borderColor={t.codeComment} paddingRight={1}>
