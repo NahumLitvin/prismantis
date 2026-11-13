@@ -108,6 +108,11 @@ Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `s
 
 Header cells take the `tableHeader` color, and the default `box` style puts a double line under the header. `tableStyle` picks `box` (the default, every cell boxed), `rules`, `grid` or `minimal`. `:---:` and `---:` alignment is honored, numbers in cells get the number color, and columns shrink to fit the terminal. `tableLayout` picks `classic` (the default: today's look, columns share the width and shrink to the terminal), `auto` (the same, and a table that cannot even fit its longest words stacks each row as a card of label and value pairs), `compact` (every column sits at its longest word, so long cells wrap inside a narrow table) or `stacked` (always cards). In the desktop app, which sets text in a proportional font, the lines of every style are drawn as thin colored boxes instead of characters, and columns take a share of the reply's width so long cells wrap inside them; the layouts keep that there. `statusMatrix` reads a table's status column — the one whose cells are things like ✓, passed, failed or pending — and draws those cells in theme colors, green for a pass, red for a failure, amber for a warning and gray for a wait; `summary` adds a count line under the table, like `✓ 2 · ✗ 1 · ● 1`, and `group` reorders rows by status and draws a heavy rule where the status changes. The default `off` keeps tables as written.
 
+| `color` | `summary` | `group` |
+|---|---|---|
+| status cells in theme colors | a count line under the table | rows reordered by status, a heavy rule between |
+| ![color](docs/status/color.png) | ![summary](docs/status/summary.png) | ![group](docs/status/group.png) |
+
 | `classic` (default), 50 columns | `auto`, 50 columns | `compact`, 72 columns | `stacked`, 72 columns |
 |---|---|---|---|
 | columns share the width, a long path splits | the path cannot fit, so rows stack as cards | columns at their longest word | cards even when the table fits |

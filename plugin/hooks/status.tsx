@@ -19,8 +19,8 @@ const WORDS: Record<Bucket, readonly string[]> = {
 
 const GLYPH: Record<Bucket, string> = { pass: '✓', fail: '✗', warn: '⚠', wait: '●' }
 
-const TOKEN: Record<Bucket, 'codeString' | 'diffRemoved' | 'codeFlag' | 'codeComment'> =
-  { pass: 'codeString', fail: 'diffRemoved', warn: 'codeFlag', wait: 'codeComment' }
+const TOKEN: Record<Bucket, 'codeString' | 'diffRemoved' | 'tableHeader' | 'codeComment'> =
+  { pass: 'codeString', fail: 'diffRemoved', warn: 'tableHeader', wait: 'codeComment' }
 
 const BYWORD: Partial<Record<string, Bucket>> = {}
 

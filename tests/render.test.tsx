@@ -653,6 +653,7 @@ const STATUS = [
   '| Propagation | 88 | failed |',
   '| Smoke | 24 | pending |',
   '| Regression | 130 | ✓ |',
+  '| Cache | 15 | degraded |',
 ].join('\n')
 
 for (const surface of ['terminal', 'desktop'] as const) test(`statusMatrix ${surface} colors the status cells of a table in theme colors`, { options: { statusMatrix: 'color' } }, async $ => {
@@ -660,6 +661,9 @@ for (const surface of ['terminal', 'desktop'] as const) test(`statusMatrix ${sur
   const ui = await $.ui.mount({ ...draw(STATUS), surface })
   expect((await ui.find({ type: 'Text', text: /^failed$/ }))?.props.color).toBe(t.diffRemoved)
   expect((await ui.find({ type: 'Text', text: /^pending$/ }))?.props.color).toBe(t.codeComment)
+  expect((await ui.find({ type: 'Text', text: /^degraded$/ }))?.props.color).toBe(t.tableHeader)
+  expect(t.tableHeader).not.toBe(t.diffRemoved)
+  expect(t.tableHeader).not.toBe(t.codeString)
   const checks = await ui.findAll({ type: 'Text', text: /^✓$/ })
   expect(checks.length >= 2).toBe(true)
   expect(checks.filter(n => n.props.color === t.codeString).length >= 2).toBe(true)
@@ -687,9 +691,10 @@ test('statusMatrix summary draws a count line under the table, like `✓ 2 · �
   const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^✓ 2$/ }))?.props.color).toBe(t.codeString)
   expect((await ui.find({ type: 'Text', text: /^✗ 1$/ }))?.props.color).toBe(t.diffRemoved)
+  expect((await ui.find({ type: 'Text', text: /^⚠ 1$/ }))?.props.color).toBe(t.tableHeader)
   expect((await ui.find({ type: 'Text', text: /^● 1$/ }))?.props.color).toBe(t.codeComment)
   const seps = await ui.findAll({ type: 'Text', text: /^ · $/ })
-  expect(seps).toHaveLength(2)
+  expect(seps).toHaveLength(3)
   expect(seps.every(n => n.props.dimColor)).toBe(true)
   await ui.unmount()
 })
@@ -697,11 +702,12 @@ test('statusMatrix summary draws a count line under the table, like `✓ 2 · �
 test('statusMatrix group reorders rows by status and draws a heavy rule where the status changes', { options: { statusMatrix: 'group' } }, async $ => {
   const t = PRESETS['catppuccin-mocha']
   const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
-  expect((await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ }))).toHaveLength(3)
-  const suite = await ui.findAll({ type: 'Text', text: /^(Unit|Regression|Propagation|Smoke)$/ })
-  expect([...new Set(suite.map(n => n.text))]).toEqual(['Unit', 'Regression', 'Propagation', 'Smoke'])
+  expect((await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ }))).toHaveLength(4)
+  const suite = await ui.findAll({ type: 'Text', text: /^(Unit|Regression|Propagation|Smoke|Cache)$/ })
+  expect([...new Set(suite.map(n => n.text))]).toEqual(['Unit', 'Regression', 'Propagation', 'Cache', 'Smoke'])
   expect((await ui.findAll({ type: 'Text', text: /^failed$/ })).some(n => n.props.color === t.diffRemoved)).toBe(true)
   expect((await ui.findAll({ type: 'Text', text: /^pending$/ })).some(n => n.props.color === t.codeComment)).toBe(true)
+  expect((await ui.findAll({ type: 'Text', text: /^degraded$/ })).some(n => n.props.color === t.tableHeader)).toBe(true)
   await ui.unmount()
 })
 
