@@ -20,10 +20,12 @@ const only = list('only')
 const out = resolve(flag('out', join(homedir(), '.prismantis-terminal-check', new Date().toISOString().replace(/[:.]/g, '-'))))
 const boot = Number(flag('boot', 12))
 const bootLimit = Number(flag('boot-limit', 60))
+const readyText = flag('ready', 'Claude Code')
 const os = platform()
 const win = os === 'win32'
 const sleep = s => new Promise(r => setTimeout(r, s * 1000))
-for (const k of Object.keys(process.env)) if (/^(NO_COLOR|FORCE_COLOR|TERM_PROGRAM|TERM_PROGRAM_VERSION|CLAUDECODE|CLAUDE_PID)$|^(WARP_|CLAUDE_CODE_)/.test(k)) delete process.env[k]
+const INHERITED = /^(NO_COLOR|FORCE_COLOR|CLAUDECODE|CLAUDE_PID|CLAUDE_CODE_(CHILD_SESSION|ENTRYPOINT|SESSION_ID|SESSION_ATTENDED|MESSAGING_SOCKET|MESSAGING_TOKEN|PLUGIN_DIRS)|TERM_PROGRAM|TERM_PROGRAM_VERSION|TERM_SESSION_ID|TERMINAL_EMULATOR|LC_TERMINAL|LC_TERMINAL_VERSION|VTE_VERSION|KONSOLE_VERSION|KITTY_WINDOW_ID|KITTY_PID|ITERM_SESSION_ID|ITERM_PROFILE)$|^(WARP_|WT_|WEZTERM_|ALACRITTY_|GHOSTTY_)/
+for (const k of Object.keys(process.env)) if (INHERITED.test(k)) delete process.env[k]
 const run = (cmd, argv, env) => execFileSync(cmd, argv, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: win && cmd === 'claude', env: { ...process.env, ...env } })
 const tryRun = (cmd, argv) => {
   try {
@@ -44,9 +46,7 @@ const detached = (cmd, argv) => {
 const quote = a => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a)
 let opening = {}
 const background = (cmd, argv) => {
-  const [pid, id] = ps('[Wins]::Launch($env:TC_CMD, $env:TC_CWD, $env:TC_OWNER, $env:TC_BEFORE)', { TC_CMD: [cmd, ...argv].map(quote).join(' '), TC_CWD: repo, TC_OWNER: opening.owner, TC_BEFORE: opening.before }).split(':')
-  started.push(pid)
-  opening.id = id
+  opening.id = ps('[Wins]::Launch($env:TC_CMD, $env:TC_CWD, $env:TC_OWNER, $env:TC_BEFORE)', { TC_CMD: [cmd, ...argv].map(quote).join(' '), TC_CWD: repo, TC_OWNER: opening.owner, TC_BEFORE: opening.before })
 }
 const programs = win ? [process.env.ProgramFiles, process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'Programs')].filter(Boolean) : []
 const winExe = (...parts) => programs.map(p => join(p, ...parts)).find(existsSync)
@@ -137,12 +137,13 @@ public static class Wins {
     while (clock.ElapsedMilliseconds < 20000 && (found == "" || clock.ElapsedMilliseconds - foundAt < 2500)) {
       if (found == "" && clock.ElapsedMilliseconds >= scanAt) { foreach (var id in List(owner).Split(',')) if (id != "" && !old.Contains(id)) { found = id; foundAt = clock.ElapsedMilliseconds; } scanAt = clock.ElapsedMilliseconds + 100; }
       var now = GetForegroundWindow();
-      if (front != IntPtr.Zero && now != front && now != IntPtr.Zero && !old.Contains(now.ToInt64().ToString()) && Owned(now, owner)) {
-        uint pid; var thief = GetWindowThreadProcessId(now, out pid); var me = GetCurrentThreadId();
-        AttachThreadInput(me, thief, true); SetForegroundWindow(front); AttachThreadInput(me, thief, false); }
+      if (now != IntPtr.Zero && now != front) {
+        if (old.Contains(now.ToInt64().ToString()) || !Owned(now, owner)) front = now;
+        else if (front != IntPtr.Zero) { uint pid; var thief = GetWindowThreadProcessId(now, out pid); var me = GetCurrentThreadId();
+          AttachThreadInput(me, thief, true); SetForegroundWindow(front); AttachThreadInput(me, thief, false); } }
       Thread.Sleep(15);
     }
-    return pi.pid + ":" + found;
+    return found;
   }
   public static uint Type(uint pid, string spec) {
     var l = new List<INPUT_RECORD>();
@@ -195,24 +196,25 @@ const screenText = (w, file) => {
   return readFileSync(file, 'utf8')
 }
 const squash = text => text.replace(/\s/g, '')
-const shown = async (w, text) => {
+const seen = (w, text) => squash(screenText(w, w.screen)).split(squash(text)).length - 1
+const shown = async (w, text, before) => {
   for (let tries = 0; tries < 4; tries++) {
-    if (squash(screenText(w, w.screen)).includes(squash(text))) return
+    if (seen(w, text) > before) return
     await sleep(0.5)
   }
   throw new Error(`typed text did not show up on the screen: ${text}`)
 }
-const runs = w => (existsSync(w.runs) ? readFileSync(w.runs, 'utf8').length : 0)
+const starts = w => (existsSync(w.starts) ? readFileSync(w.starts, 'utf8').length : 0)
 const booted = async (w, since) => {
   let last
   for (let waited = 0; waited < bootLimit; waited += 1.5) {
     await sleep(1.5)
-    if (runs(w) <= since) continue
+    if (starts(w) <= since) continue
     const now = screenText(w, w.screen)
-    if (now.includes('Claude Code') && now === last) return
+    if (now.includes(readyText) && now === last) return
     last = now
   }
-  const top = (last ?? '').split('\n').map(line => line.trim()).find(line => /\w/.test(line))
+  const top = (last ?? screenText(w, w.screen)).split('\n').map(line => line.trim()).find(line => /\w/.test(line))
   throw new Error(`claude was not ready within ${bootLimit}s, the screen shows: ${top ?? 'nothing'}`)
 }
 const MAC_KEYS = { Enter: '\r', Down: '\x1b[B', Up: '\x1b[A', Left: '\x1b[D', Right: '\x1b[C', Tab: '\t', Esc: '\x1b', Backspace: '\x7f', Space: ' ' }
@@ -224,11 +226,13 @@ const inject = (fifo, bytes) => {
     closeSync(fd)
   }
 }
-const send = async (w, keys) => {
+const send = async (w, keys, echo = true) => {
   const parts = keys.split(/\{(\w+)\}/)
   if (win) {
+    const check = echo && parts.length === 1 && keys.trim().length > 2
+    const before = check ? seen(w, keys) : 0
     winType(w, parts.flatMap((p, i) => (i % 2 ? [WIN_KEYS[p]] : winText(p))))
-    if (parts.length === 1 && keys.trim().length > 2) await shown(w, keys)
+    if (check) await shown(w, keys, before)
     return
   }
   for (const [i, p] of parts.entries()) {
@@ -253,6 +257,7 @@ const install = () => {
   const creds = join(homedir(), '.claude', '.credentials.json')
   if (existsSync(creds)) cpSync(creds, join(cfg, '.credentials.json'))
   process.on('exit', () => rmSync(join(cfg, '.credentials.json'), { force: true }))
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => process.exit(130))
   writeFileSync(join(cfg, 'settings.json'), '{}')
   run('claude', ['plugin', 'marketplace', 'add', mkt], { CLAUDE_CONFIG_DIR: cfg })
   run('claude', ['plugin', 'install', `prismantis@${MARKET}`], { CLAUDE_CONFIG_DIR: cfg })
@@ -262,12 +267,12 @@ const install = () => {
 const launcher = dir => {
   const pid = join(dir, 'shell.pid')
   const halt = join(dir, 'stop')
-  const runs = join(dir, 'runs')
-  for (const stale of [pid, halt, runs]) rmSync(stale, { force: true })
+  const starts = join(dir, 'starts')
+  for (const stale of [pid, halt, starts]) rmSync(stale, { force: true })
   if (win) {
     const file = join(dir, 'launch.ps1')
-    writeFileSync(file, `Set-Location '${repo}'\nRemove-Item Env:CLAUDE_CODE_PLUGIN_DIRS -ErrorAction SilentlyContinue\n$env:CLAUDE_CONFIG_DIR = '${cfg}'\n$env:ENABLE_CLAUDEAI_MCP_SERVERS = 'false'\nSet-Content -Path '${pid}' -Value $PID\nwhile (-not (Test-Path '${halt}')) { Clear-Host; Add-Content -Path '${runs}' -Value 1; claude }\n`)
-    return { file, pid, halt, runs }
+    writeFileSync(file, `Set-Location '${repo}'\nRemove-Item Env:CLAUDE_CODE_PLUGIN_DIRS -ErrorAction SilentlyContinue\n$env:CLAUDE_CONFIG_DIR = '${cfg}'\n$env:ENABLE_CLAUDEAI_MCP_SERVERS = 'false'\nSet-Content -Path '${pid}' -Value $PID\nwhile (-not (Test-Path '${halt}')) { Clear-Host; Add-Content -Path '${starts}' -Value 1; claude }\n`)
+    return { file, pid, halt, starts }
   }
   const fifo = join(dir, 'keys.fifo')
   run('mkfifo', [fifo])
@@ -299,7 +304,7 @@ const play = async (w, steps, dir, name) => {
       continue
     }
     if (!action?.click) {
-      await send(w, action)
+      await send(w, action?.press ?? action, !action?.press)
       continue
     }
     const [x, y] = action.click
@@ -327,7 +332,7 @@ for (const t of terminals) {
   }
   const dir = join(out, t.id)
   mkdirSync(dir, { recursive: true })
-  const { file, pid, halt, fifo, runs: runsFile } = launcher(dir)
+  const { file, pid, halt, fifo, starts: startsFile } = launcher(dir)
   apply(configs[0][1])
   const front = win ? null : tryRun('osascript', ['-l', 'JavaScript', '-e', MAC, 'front'])?.trim()
   const before = new Set(windows(t.owner).map(w => w.id))
@@ -345,9 +350,9 @@ for (const t of terminals) {
     stop(pid)
     continue
   }
-  Object.assign(w, { fifo, pid, runs: runsFile, screen: join(dir, 'screen.txt') })
+  Object.assign(w, { fifo, pid, starts: startsFile, screen: join(dir, 'screen.txt') })
   for (const [ci, [config, values]] of configs.entries()) {
-    const since = ci ? runs(w) : 0
+    const since = ci ? starts(w) : 0
     if (ci) {
       apply(values)
       await send(w, '/exit{Enter}')

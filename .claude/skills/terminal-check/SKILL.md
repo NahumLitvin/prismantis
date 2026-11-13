@@ -15,7 +15,7 @@ From the repo or a worktree, on macOS or Windows:
 node .claude/skills/terminal-check/check.mjs
 ```
 
-Narrow it with flags. On Windows the run waits until `claude` has drawn its screen, at most `--boot-limit <seconds>` (default 60). On macOS `--boot <seconds>` (default 12) is a fixed wait after each config change:
+Narrow it with flags. On Windows the run waits until `claude` has drawn its screen, at most `--boot-limit <seconds>` (default 60). The screen counts as drawn once it holds the `--ready <text>` (default `Claude Code`) and has stopped changing. On macOS `--boot <seconds>` (default 12) is a fixed wait after each config change:
 
 ```bash
 node .claude/skills/terminal-check/check.mjs --only warp,windows-terminal --configs default,rtl-logical --scenarios demo-rtl
@@ -28,8 +28,8 @@ The script ends by printing the path of `index.html`. That page is a grid: one r
 - A throwaway `CLAUDE_CONFIG_DIR` under the output folder. The working copy is installed there from a local marketplace (the same trick as `drive-check`), so options apply and your own config is left alone. On Windows it copies `~/.claude/.credentials.json` there, so the session is logged in. On macOS the session shows "Not logged in". Slash commands such as `/prismantis demo` still run, so the scenarios stick to those.
 - `CLAUDE_CODE_PLUGIN_DIRS` is unset, so a checkout your shell points at cannot load over the install.
 - Before each launch, `settings.json` gets the config's options under `pluginConfigs`.
-- The session has no claude.ai connectors (`ENABLE_CLAUDEAI_MCP_SERVERS=false`) and skips the Claude in Chrome prompt, so a scenario that reaches the model by mistake has no mail or browser tools. The copied credentials are deleted when the script exits, also after a crash.
-- `NO_COLOR`, `TERM_PROGRAM`, `WARP_*` and the `CLAUDE_CODE_*` markers of the calling session are dropped, so a run started from Claude Code still draws in color and each terminal reports itself.
+- The session has no claude.ai connectors (`ENABLE_CLAUDEAI_MCP_SERVERS=false`) and skips the Claude in Chrome prompt, so a scenario that reaches the model by mistake has no mail or browser tools. The copied credentials are deleted when the script exits, also after a crash or Ctrl+C.
+- The calling session's markers are dropped before anything starts: `NO_COLOR`, the Claude Code session variables, and every terminal's own variables (`TERM_PROGRAM`, `WT_*`, `WARP_*`, `KITTY_WINDOW_ID` and the like). A run started from Claude Code or from another terminal still draws in color, and each window reports its own terminal. Settings such as `CLAUDE_CODE_USE_BEDROCK` stay.
 
 ## Matrix
 
@@ -39,9 +39,10 @@ The script ends by printing the path of `index.html`. That page is a grid: one r
 - `scenarios`: name → steps `[seconds to wait, action]`. An action is one of:
   - keys, such as `"/prismantis demo"`. The named keys are `{Enter}` `{Down}` `{Up}` `{Left}` `{Right}` `{Tab}` `{Esc}` `{Backspace}` `{Space}`.
   - `{ "click": [x, y] }`. `x` and `y` are the 1-based column and row, sent as a mouse report into the session. Buttons get clicks only in a config with `"tui": "fullscreen"`. Coordinates hold for one window size, so keep click scenarios in your own `--matrix` file.
+  - `{ "press": "jjj" }`: keys that the screen does not echo, such as hotkeys in a pane. Plain keys of three characters or more must show up on the screen, `press` skips that check.
   - `{ "shot": "label" }`
 
-Every scenario also ends with a shot named `end`.
+Every scenario also ends with a shot named `end`. A scenario must leave the prompt empty: the run types `/clear` and `/exit` after it, and leftover text in front of them goes to the model as a message.
 
 ## Permissions and safety
 
