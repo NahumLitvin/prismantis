@@ -730,6 +730,171 @@
   <Text color=#6e7781>
     "└───────────┴─────────┴─────────┴────────┘"
 <Box>
+  <Text color=#0550ae bold>
+    <Text>
+      "Schema"
+  <Text color=#0550ae>
+    "━━━━━━"
+<Text>
+  <Text>
+    "When a table describes a database schema — a column of fields beside a column of types — "
+  <Text color=#0550ae>
+    "schemaTable"
+  <Text>
+    " draws the type cells by their family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. "
+  <Text color=#0550ae>
+    "keys"
+  <Text>
+    " draws the constraint cells — PK in the accent color, FK in the link color, unique and index cells in gray — and "
+  <Text color=#0550ae>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text color=#0550ae>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#6e7781>
+    "┌────────────┬──────────────┬──────────────┬─────────┐"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text color=#953800 bold>
+        "Column"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Type"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Key"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Default"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "╞════════════╪══════════════╪══════════════╪═════════╡"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "id"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "uuid"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "PK"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├────────────┼──────────────┼──────────────┼─────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "email"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "varchar("
+        <Text color=#0550ae>
+          "255"
+        <Text>
+          ")"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "UNIQUE"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├────────────┼──────────────┼──────────────┼─────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "org_id"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "bigint"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "FK → orgs.id"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├────────────┼──────────────┼──────────────┼─────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "created_at"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "timestamp"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "now()"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "└────────────┴──────────────┴──────────────┴─────────┘"
+<Box>
   <Box row>
     <Text color=#cf222e>
       "1. "

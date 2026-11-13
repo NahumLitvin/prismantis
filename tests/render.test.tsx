@@ -688,6 +688,22 @@ const BENCH = [
   '| typeset | 0.9 ms | 0.9 ms | 0% |',
 ].join('\n')
 
+const SCHEMA = [
+  '| Column | Type | Key | Default |',
+  '|:-------|:-----|:----|:--------|',
+  '| id | uuid | PK | |',
+  '| email | varchar(255) | UNIQUE | |',
+  '| org_id | bigint | FK | |',
+  '| created_at | timestamp | | now() |',
+].join('\n')
+
+const KEYLESS = [
+  '| Column | Type | Notes |',
+  '|:-------|:-----|:------|',
+  '| id | uuid | PK |',
+  '| org_id | bigint | FK |',
+].join('\n')
+
 
 test('statusMatrix off keeps tables as written', async $ => {
   const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
@@ -1253,5 +1269,67 @@ test('benchTable stays off stacked tables', { options: { benchTable: 'trend', ta
   const ui = await $.ui.mount({ ...draw(BENCH), surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^-10%$/ }))?.props.color).toBe(t.number)
   expect(await ui.find({ type: 'Text', text: /^\u2585$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`schemaTable ${surface} colors type cells by their family`, { options: { schemaTable: 'types' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(SCHEMA), surface })
+  expect((await ui.find({ type: 'Text', text: /^uuid$/ }))?.props.color).toBe(t.codeString)
+  expect((await ui.find({ type: 'Text', text: /^bigint$/ }))?.props.color).toBe(t.number)
+  expect((await ui.find({ type: 'Text', text: /^timestamp$/ }))?.props.color).toBe(t.link)
+  await ui.unmount()
+})
+
+test('schemaTable keys marks the constraint cells', { options: { schemaTable: 'keys' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(SCHEMA), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^PK$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^UNIQUE$/ }))?.props.color).toBe(t.codeComment)
+  expect((await ui.find({ type: 'Text', text: /^FK/ }))?.props.color).toBe(t.link)
+  await ui.unmount()
+})
+
+test('schemaTable full colors the types and marks the keys', { options: { schemaTable: 'full' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(SCHEMA), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^uuid$/ }))?.props.color).toBe(t.codeString)
+  expect((await ui.find({ type: 'Text', text: /^PK$/ }))?.props.color).toBe(t.accent)
+  await ui.unmount()
+})
+
+test('schemaTable keys finds a key column with no header to name it', { options: { schemaTable: 'keys' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(KEYLESS), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^PK$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^uuid$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('schemaTable off keeps tables as written', async $ => {
+  const ui = await $.ui.mount({ ...draw(SCHEMA), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^uuid$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^PK$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a table with no column and type header draws no schema colors', { options: { schemaTable: 'full' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Name | Type |\n|:-----|:-----|\n| id | uuid |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^uuid$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('schemaTable stays off stacked tables', { options: { schemaTable: 'full', tableLayout: 'stacked' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(SCHEMA), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^uuid$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('schemaTable types tells the families apart in a theme where they differ', { options: { schemaTable: 'types', theme: 'dracula' } }, async $ => {
+  const t = PRESETS['dracula']
+  const ui = await $.ui.mount({ ...draw(SCHEMA), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^uuid$/ }))?.props.color).toBe(t.codeString)
+  expect((await ui.find({ type: 'Text', text: /^bigint$/ }))?.props.color).toBe(t.number)
+  expect(t.codeString).not.toBe(t.number)
   await ui.unmount()
 })

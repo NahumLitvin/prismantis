@@ -730,6 +730,171 @@
   <Text>
     "└───────────┴─────────┴─────────┴────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Schema"
+  <Text>
+    "━━━━━━"
+<Text>
+  <Text>
+    "When a table describes a database schema — a column of fields beside a column of types — "
+  <Text>
+    "schemaTable"
+  <Text>
+    " draws the type cells by their family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. "
+  <Text>
+    "keys"
+  <Text>
+    " draws the constraint cells — PK in the accent color, FK in the link color, unique and index cells in gray — and "
+  <Text>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌────────────┬──────────────┬──────────────┬─────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Column"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Type"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Key"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Default"
+    <Text>
+      " │"
+  <Text>
+    "╞════════════╪══════════════╪══════════════╪═════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "id"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "uuid"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "PK"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+    <Text>
+      " │"
+  <Text>
+    "├────────────┼──────────────┼──────────────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "email"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "varchar("
+        <Text>
+          "255"
+        <Text>
+          ")"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "UNIQUE"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+    <Text>
+      " │"
+  <Text>
+    "├────────────┼──────────────┼──────────────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "org_id"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "bigint"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "FK → orgs.id"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+    <Text>
+      " │"
+  <Text>
+    "├────────────┼──────────────┼──────────────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "created_at"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "timestamp"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "now()"
+    <Text>
+      " │"
+  <Text>
+    "└────────────┴──────────────┴──────────────┴─────────┘"
+<Box>
   <Box row>
     <Text>
       "1. "
