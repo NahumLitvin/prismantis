@@ -96,12 +96,12 @@ const artWidth = (art: string) => remember(artWidths, art, () => Math.max(...art
 
 export const mermaidText = (source: string, ascii: boolean, columns: number, pieColors = 0): string | null => mermaidArt(source, ascii, columns, pieColors)?.text ?? null
 
-const mermaidArt = (source: string, ascii: boolean, columns: number, pieColors: number): ChartArt | null =>
-  remember(fitted, `${ascii}:${columns}:${pieColors}:${source}`, () => {
+const mermaidArt = (source: string, ascii: boolean, columns: number, pieColors: number, aspect = 2): ChartArt | null =>
+  remember(fitted, `${ascii}:${columns}:${pieColors}:${aspect}:${source}`, () => {
     source = source.replace(INLINE_TAG, '')
     if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
     const own = OWN[kindOf(source).toLowerCase()]
-    if (own) return own(labelEntities(source, false), ascii, columns, pieColors)
+    if (own) return own(labelEntities(source, false), ascii, columns, pieColors, aspect)
     const art = draw(source, ascii, columns)
     const text = art === null || artWidth(art) <= columns - 2 || !SIDEWAYS.test(source) ? art : (draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art)
     return text === null ? null : { text, series: chartSeries(source, ascii, columns) }
@@ -342,6 +342,8 @@ const base64 = (bytes: Uint8Array) => {
 
 const pictures = new Map<string, string>()
 
+const cellAspect = (style: Style) => (style.gridFace ? 2.5 : 2)
+
 const piePicture = (el: ElementTable, style: Style, pie: Pie, key: string): RenderElement | null => {
   const Image = 'Image' in el ? el.Image : null
   const palette = diagramPalette(style.theme)
@@ -383,7 +385,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
       const source = block.lines.join('\n')
       let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
-        const art = mermaidArt(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns, pieColors)
+        const art = mermaidArt(max === Infinity ? source : shortenEdgeLabels(source, max), style.mermaidAscii, columns, pieColors, cellAspect(style))
         const wide = art === null ? Infinity : artWidth(art.text)
         narrowest = Math.min(narrowest, wide)
         if (art === null || wide > columns - 2) continue
