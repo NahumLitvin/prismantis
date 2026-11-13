@@ -38,6 +38,7 @@ const onPath = name => !!tryRun(win ? 'where' : 'which', [name])
 const app = name => existsSync(`/Applications/${name}.app`)
 const started = []
 const leftovers = []
+let live = null
 const detached = (cmd, argv) => {
   const child = spawn(cmd, argv, { detached: true, stdio: 'ignore', cwd: repo, windowsHide: true })
   child.unref()
@@ -139,20 +140,23 @@ public static class Wins {
     ShowWindow(thief, 6); ShowWindow(thief, 4);
   }
   public static string Launch(string cmd, string cwd, string owner, string before) {
-    var old = new HashSet<string>(before.Split(',')); var front = GetForegroundWindow();
+    var old = new HashSet<string>(before.Split(',')); var front = GetForegroundWindow(); var done = false;
+    var guard = new Thread(() => { var mine = new Dictionary<uint, bool>();
+      while (!done) { var now = GetForegroundWindow();
+        if (now != IntPtr.Zero && now != front) { uint pid; GetWindowThreadProcessId(now, out pid); bool ours;
+          if (!mine.TryGetValue(pid, out ours)) { ours = Owned(now, owner); mine[pid] = ours; }
+          if (!ours || old.Contains(now.ToInt64().ToString())) front = now; else if (front != IntPtr.Zero) GiveBack(now, front); }
+        Thread.Sleep(4); } });
+    guard.Start();
     var si = new STARTUPINFO(); si.cb = Marshal.SizeOf(typeof(STARTUPINFO)); si.flags = 1; si.show = 4; PROCESS_INFORMATION pi;
-    if (!CreateProcessW(null, new StringBuilder(cmd), IntPtr.Zero, IntPtr.Zero, false, 0x10, IntPtr.Zero, cwd, ref si, out pi)) throw new Exception("CreateProcess failed: " + Marshal.GetLastWin32Error());
+    if (!CreateProcessW(null, new StringBuilder(cmd), IntPtr.Zero, IntPtr.Zero, false, 0x10, IntPtr.Zero, cwd, ref si, out pi)) { done = true; throw new Exception("CreateProcess failed: " + Marshal.GetLastWin32Error()); }
     CloseHandle(pi.hp); CloseHandle(pi.ht);
-    var found = ""; var clock = Stopwatch.StartNew(); long foundAt = 0, scanAt = 0;
+    var found = ""; var clock = Stopwatch.StartNew(); long foundAt = 0;
     while (clock.ElapsedMilliseconds < 20000 && (found == "" || clock.ElapsedMilliseconds - foundAt < 2500)) {
-      if (found == "" && clock.ElapsedMilliseconds >= scanAt) { foreach (var id in List(owner).Split(',')) if (id != "" && !old.Contains(id)) { found = id; foundAt = clock.ElapsedMilliseconds; } scanAt = clock.ElapsedMilliseconds + 100; }
-      var now = GetForegroundWindow();
-      if (now != IntPtr.Zero && now != front) {
-        if (old.Contains(now.ToInt64().ToString()) || !Owned(now, owner)) front = now;
-        else if (front != IntPtr.Zero) GiveBack(now, front); }
-      Thread.Sleep(15);
+      if (found == "") foreach (var id in List(owner).Split(',')) if (id != "" && !old.Contains(id)) { found = id; foundAt = clock.ElapsedMilliseconds; }
+      Thread.Sleep(100);
     }
-    return found;
+    done = true; guard.Join(); return found;
   }
   public static uint Type(uint pid, string spec) {
     var l = new List<INPUT_RECORD>();
@@ -196,7 +200,7 @@ const shoot = (id, file) => {
   else run('screencapture', ['-x', '-o', '-l', id, file])
 }
 
-const WIN_KEYS = { Enter: '13:13:0', Down: '40:0:256', Up: '38:0:256', Left: '37:0:256', Right: '39:0:256', Tab: '9:9:0', Esc: '27:27:0', Backspace: '8:8:0', Space: '32:32:0' }
+const WIN_KEYS = { Enter: '13:13:0', Down: '40:0:256', Up: '38:0:256', Left: '37:0:256', Right: '39:0:256', Tab: '9:9:0', Esc: '27:27:0', Backspace: '8:8:0', Space: '32:32:0', Clear: '85:21:8' }
 const winText = text => text.split('').map(c => `0:${c.charCodeAt(0)}:0`)
 const shellPid = w => Number(readFileSync(w.pid, 'utf8'))
 const winType = (w, records) => ps(`[Wins]::Type(${shellPid(w)}, $env:TC_KEYS)`, { TC_KEYS: records.join(',') })
@@ -226,7 +230,7 @@ const booted = async (w, since) => {
   const top = (last ?? screenText(w, w.screen)).split('\n').map(line => line.trim()).find(line => /\w/.test(line))
   throw new Error(`claude was not ready within ${bootLimit}s, the screen shows: ${top ?? 'nothing'}`)
 }
-const MAC_KEYS = { Enter: '\r', Down: '\x1b[B', Up: '\x1b[A', Left: '\x1b[D', Right: '\x1b[C', Tab: '\t', Esc: '\x1b', Backspace: '\x7f', Space: ' ' }
+const MAC_KEYS = { Enter: '\r', Down: '\x1b[B', Up: '\x1b[A', Left: '\x1b[D', Right: '\x1b[C', Tab: '\t', Esc: '\x1b', Backspace: '\x7f', Space: ' ', Clear: '\x15' }
 const inject = (fifo, bytes) => {
   const fd = openSync(fifo, constants.O_WRONLY | constants.O_NONBLOCK)
   try {
@@ -265,7 +269,12 @@ const install = () => {
   writeFileSync(join(cfg, '.claude.json'), JSON.stringify({ hasCompletedOnboarding: home.hasCompletedOnboarding ?? true, theme: home.theme, claudeInChromeDefaultEnabled: false, projects: { [repo]: trusted, [repo.replace(/\\/g, '/')]: trusted } }))
   const creds = join(homedir(), '.claude', '.credentials.json')
   if (existsSync(creds)) cpSync(creds, join(cfg, '.credentials.json'))
-  process.on('exit', () => rmSync(join(cfg, '.credentials.json'), { force: true }))
+  process.on('exit', () => {
+    rmSync(join(cfg, '.credentials.json'), { force: true })
+    if (!live) return
+    writeFileSync(live.halt, '')
+    stop(live.pid)
+  })
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => process.exit(130))
   writeFileSync(join(cfg, 'settings.json'), '{}')
   run('claude', ['plugin', 'marketplace', 'add', mkt], { CLAUDE_CONFIG_DIR: cfg })
@@ -342,6 +351,7 @@ for (const t of terminals) {
   const dir = join(out, t.id)
   mkdirSync(dir, { recursive: true })
   const { file, pid, halt, fifo, starts: startsFile } = launcher(dir)
+  live = { pid, halt }
   apply(configs[0][1])
   const front = win ? null : tryRun('osascript', ['-l', 'JavaScript', '-e', MAC, 'front'])?.trim()
   const before = new Set(windows(t.owner).map(w => w.id))
@@ -364,7 +374,7 @@ for (const t of terminals) {
     const since = ci ? starts(w) : 0
     if (ci) {
       apply(values)
-      await send(w, '/exit{Enter}')
+      await send(w, '{Clear}/exit{Enter}')
     }
     const late = win ? await booted(w, since).catch(e => e.message) : await sleep(boot)
     if (late) {
@@ -376,7 +386,7 @@ for (const t of terminals) {
       const name = `${config}.${scenario}`
       const row = { terminal: t.id, config, scenario }
       try {
-        if (si) await send(w, '/clear{Enter}')
+        if (si) await send(w, '{Clear}/clear{Enter}')
         row.shots = await play(w, steps, dir, name)
         row.status = 'ok'
       } catch (e) {
@@ -387,9 +397,10 @@ for (const t of terminals) {
     }
   }
   writeFileSync(halt, '')
-  await send(w, '/exit{Enter}').catch(() => {})
+  await send(w, '{Clear}/exit{Enter}').catch(() => {})
   await sleep(2)
   stop(pid)
+  live = null
   if (win) ps(`[Wins]::Close(${w.id})`)
 }
 for (const file of leftovers) rmSync(file, { force: true })
