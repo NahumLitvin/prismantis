@@ -15,7 +15,7 @@ From the repo or a worktree, on macOS or Windows:
 node .claude/skills/terminal-check/check.mjs
 ```
 
-Narrow it with flags. On Windows the run waits until `claude` has drawn its screen, at most `--boot-limit <seconds>` (default 60). The screen counts as drawn once it holds the `--ready <text>` (default `Claude Code`) and has stopped changing. On macOS `--boot <seconds>` (default 12) is a fixed wait after each config change:
+Narrow it with flags. The run waits until `claude` has drawn its screen, at most `--boot-limit <seconds>` (default 60). The screen counts as drawn once it holds the `--ready <text>` (default `Claude Code`) and has stopped changing:
 
 ```bash
 node .claude/skills/terminal-check/check.mjs --only warp,windows-terminal --configs default,rtl-logical --scenarios demo-rtl
@@ -46,7 +46,7 @@ Every scenario also ends with a shot named `end`. The run clears the prompt (Ctr
 
 ## Permissions and safety
 
-- **macOS:** the run never takes focus, so you can keep using the Mac. `claude` runs under `keys.py`, a small pty proxy that reads keys and mouse reports from a FIFO, and `screencapture -l` captures the window even behind other windows. After a terminal opens its window, the app that was in front gets focus back. The terminal you run the script from needs Screen Recording. It needs `python3` on the PATH.
+- **macOS:** the run never takes focus, so you can keep using the Mac. `claude` runs under `keys.py`, a small pty proxy that reads keys and mouse reports from a FIFO and copies what the session writes to `output.log`, and `screencapture -l` captures the window even behind other windows. After a terminal opens its window, the app that was in front gets focus back. The terminal you run the script from needs Screen Recording. It needs `python3` on the PATH.
 - **Windows:** no setup is needed and the run does not hold focus, so you can keep using the PC. Windows open without activation, and a guard hands focus back to the window you were in if a terminal takes it anyway; that takes a few hundredths of a second, or up to a second when Warp opens while you work in Warp, because both windows share one busy thread. Keys and mouse reports are written into the window's console input (`AttachConsole` + `WriteConsoleInput`), and `PrintWindow` captures the window behind other windows. Typed text must show up on the screen and `claude` must be ready, or the scenario reports the failure in place of `ok`, with the first line of the screen.
 - Run it from Claude Code with the sandbox off for that one command. The sandbox blocks `open`, `osascript` and opening windows.
 
@@ -56,8 +56,8 @@ Every scenario also ends with a shot named `end`. The run clears the prompt (Ctr
 - On macOS, Terminal and iTerm2 keep the closed window open ("process completed"). Close those windows by hand.
 - Keys and clicks go to the session, not through the terminal, so a bug in how a terminal encodes a key or a click does not show.
 - Capture of a window moved to another desktop is untested.
-- Nothing is diffed against a past run, because the cursor and clock change every capture. Compare the pages by eye, or diff the `.txt` files on Windows.
-- The `.txt` files hold what the session wrote, not what the terminal drew, so reversed Hebrew only shows in the PNG.
-- macOS still waits a fixed time for `claude` and does not check that typed text arrived.
+- Nothing is diffed against a past run, because the cursor and clock change every capture. Compare the pages by eye, or diff the `.txt` files.
+- The `.txt` files hold what the session wrote, not what the terminal drew, so reversed Hebrew only shows in the PNG. On Windows it is the text of the screen. On macOS it is everything written since `claude` started, with the escape codes removed.
+- The macOS wait and typed-text check have run on Linux with stand-ins for `osascript` and `screencapture`, not on a Mac yet.
 
 Write each bug as terminal, OS, config, scenario, expected and got, with the PNG attached.
