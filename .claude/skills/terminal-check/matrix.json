@@ -1,0 +1,14 @@
+{
+  "configs": {
+    "default": {},
+    "nord-grid": { "theme": "nord", "tableStyle": "grid", "headingStyle": "underline", "promptStyle": "framed" },
+    "light-ascii": { "theme": "github-light", "mermaidAscii": true, "taskStyle": "progress" },
+    "rtl-logical": { "rtl": "windows-terminal" },
+    "fullscreen": { "settings": { "tui": "fullscreen" } }
+  },
+  "scenarios": {
+    "demo-rtl": [[1, "/prismantis demo-rtl"], [1, "{Enter}"], [8, { "shot": "drawn" }]],
+    "demo": [[1, "/prismantis demo"], [1, "{Enter}"], [10, { "shot": "drawn" }]],
+    "setup": [[1, "/prismantis setup"], [1, "{Enter}"], [4, { "shot": "open" }], [1, "{Down}"], [1, "{Down}"], [1, { "shot": "moved" }], [1, "{Esc}"], [2, { "shot": "closed" }]]
+  }
+}
