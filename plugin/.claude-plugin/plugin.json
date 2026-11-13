@@ -1,6 +1,6 @@
 {
   "name": "prismantis",
-  "version": "0.45.4",
+  "version": "0.46.0",
   "description": "Colorful, themeable rendering for Claude Code replies: tables, headings, code, numbers, paths and links.",
   "author": {
     "name": "Nahum Litvin",
