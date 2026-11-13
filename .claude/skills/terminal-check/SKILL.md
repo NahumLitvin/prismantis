@@ -15,19 +15,20 @@ From the repo or a worktree, on macOS or Windows:
 node .claude/skills/terminal-check/check.mjs
 ```
 
-Narrow it with flags. `--boot <seconds>` (default 12) is the wait for `claude` to start after each config change:
+Narrow it with flags. On Windows the run waits until `claude` has drawn its screen, at most `--boot-limit <seconds>` (default 60). On macOS `--boot <seconds>` (default 12) is a fixed wait after each config change:
 
 ```bash
 node .claude/skills/terminal-check/check.mjs --only warp,windows-terminal --configs default,rtl-logical --scenarios demo-rtl
 ```
 
-The script ends by printing the path of `index.html`. That page is a grid: one row per terminal, one column per config and scenario, with every screenshot in it. Read the PNGs themselves and check each Hebrew line right to left. `results.json` has the same data.
+The script ends by printing the path of `index.html`. That page is a grid: one row per terminal, one column per config and scenario, with every screenshot in it. Read the PNGs themselves and check each Hebrew line right to left. `results.json` has the same data. On Windows every screenshot has a `.txt` beside it with the text of the screen, in the order the session wrote it, so two runs can be diffed.
 
 ## What it sets up
 
 - A throwaway `CLAUDE_CONFIG_DIR` under the output folder. The working copy is installed there from a local marketplace (the same trick as `drive-check`), so options apply and your own config is left alone. On Windows it copies `~/.claude/.credentials.json` there, so the session is logged in. On macOS the session shows "Not logged in". Slash commands such as `/prismantis demo` still run, so the scenarios stick to those.
 - `CLAUDE_CODE_PLUGIN_DIRS` is unset, so a checkout your shell points at cannot load over the install.
 - Before each launch, `settings.json` gets the config's options under `pluginConfigs`.
+- The session has no claude.ai connectors (`ENABLE_CLAUDEAI_MCP_SERVERS=false`) and skips the Claude in Chrome prompt, so a scenario that reaches the model by mistake has no mail or browser tools. The copied credentials are deleted when the script exits, also after a crash.
 - `NO_COLOR`, `TERM_PROGRAM`, `WARP_*` and the `CLAUDE_CODE_*` markers of the calling session are dropped, so a run started from Claude Code still draws in color and each terminal reports itself.
 
 ## Matrix
@@ -45,7 +46,7 @@ Every scenario also ends with a shot named `end`.
 ## Permissions and safety
 
 - **macOS:** the run never takes focus, so you can keep using the Mac. `claude` runs under `keys.py`, a small pty proxy that reads keys and mouse reports from a FIFO, and `screencapture -l` captures the window even behind other windows. After a terminal opens its window, the app that was in front gets focus back. The terminal you run the script from needs Screen Recording. It needs `python3` on the PATH.
-- **Windows:** no setup is needed and the run never takes focus, so you can keep using the PC. Windows open without activation, and a guard hands focus back if a terminal takes it anyway. Keys and mouse reports are written into the window's console input (`AttachConsole` + `WriteConsoleInput`), and `PrintWindow` captures the window behind other windows. Warp opens through its `warp://` link and may come to the front once when its window opens.
+- **Windows:** no setup is needed and the run does not hold focus, so you can keep using the PC. Windows open without activation, and a guard hands focus back if a terminal takes it anyway; Warp shows in front for about half a second. Keys and mouse reports are written into the window's console input (`AttachConsole` + `WriteConsoleInput`), and `PrintWindow` captures the window behind other windows. Typed text must show up on the screen and `claude` must be ready, or the scenario reports the failure in place of `ok`, with the first line of the screen.
 - Run it from Claude Code with the sandbox off for that one command. The sandbox blocks `open`, `osascript` and opening windows.
 
 ## Known gaps
@@ -54,6 +55,8 @@ Every scenario also ends with a shot named `end`.
 - On macOS, Terminal and iTerm2 keep the closed window open ("process completed"). Close those windows by hand.
 - Keys and clicks go to the session, not through the terminal, so a bug in how a terminal encodes a key or a click does not show.
 - Capture of a window moved to another desktop is untested.
-- Nothing is diffed against a past run, because the cursor and clock change every capture. Compare the pages by eye.
+- Nothing is diffed against a past run, because the cursor and clock change every capture. Compare the pages by eye, or diff the `.txt` files on Windows.
+- The `.txt` files hold what the session wrote, not what the terminal drew, so reversed Hebrew only shows in the PNG.
+- macOS still waits a fixed time for `claude` and does not check that typed text arrived.
 
 Write each bug as terminal, OS, config, scenario, expected and got, with the PNG attached.

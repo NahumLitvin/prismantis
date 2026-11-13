@@ -19,6 +19,7 @@ const scenarios = pick(matrix.scenarios, list('scenarios'))
 const only = list('only')
 const out = resolve(flag('out', join(homedir(), '.prismantis-terminal-check', new Date().toISOString().replace(/[:.]/g, '-'))))
 const boot = Number(flag('boot', 12))
+const bootLimit = Number(flag('boot-limit', 60))
 const os = platform()
 const win = os === 'win32'
 const sleep = s => new Promise(r => setTimeout(r, s * 1000))
@@ -34,6 +35,7 @@ const tryRun = (cmd, argv) => {
 const onPath = name => !!tryRun(win ? 'where' : 'which', [name])
 const app = name => existsSync(`/Applications/${name}.app`)
 const started = []
+const leftovers = []
 const detached = (cmd, argv) => {
   const child = spawn(cmd, argv, { detached: true, stdio: 'ignore', cwd: repo, windowsHide: true })
   child.unref()
@@ -54,8 +56,9 @@ const warpLaunch = launcher => {
   mkdirSync(warpConfigDir, { recursive: true })
   const name = 'prismantis-terminal-check'
   writeFileSync(join(warpConfigDir, `${name}.yaml`), `---\nname: ${name}\nwindows:\n  - tabs:\n      - layout:\n          cwd: ${JSON.stringify(repo)}\n          commands:\n            - exec: ${JSON.stringify(launcher)}\n`)
-  if (win) detached('cmd', ['/c', 'start', '', `warp://launch/${name}`])
+  if (win) background('rundll32.exe', ['url.dll,FileProtocolHandler', `warp://launch/${name}`])
   else detached('open', [`warp://launch/${name}`])
+  leftovers.push(join(warpConfigDir, `${name}.yaml`))
 }
 
 const shell = file => (win ? `powershell -NoProfile -ExecutionPolicy Bypass -File "${file}"` : `sh '${file}'`)
@@ -99,6 +102,19 @@ public static class Wins {
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool on);
   [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] static extern bool PostMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  [DllImport("kernel32.dll", SetLastError = true)] static extern bool GetConsoleScreenBufferInfo(IntPtr h, out SCREEN info);
+  [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool ReadConsoleOutputCharacterW(IntPtr h, [Out] char[] text, uint n, COORD at, out uint read);
+  public struct COORD { public short X, Y; }
+  public struct SCREEN { public COORD Size, Cursor; public ushort Attr; public short Left, Top, Right, Bottom; public COORD Max; }
+  public static void Text(uint pid, string file) {
+    FreeConsole(); if (!AttachConsole(pid)) throw new Exception("could not attach to the console of pid " + pid + ": " + Marshal.GetLastWin32Error());
+    var h = CreateFileW("CONOUT$", 0xC0000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero); SCREEN info; var rows = new List<string>();
+    if (GetConsoleScreenBufferInfo(h, out info)) for (short y = info.Top; y <= info.Bottom; y++) {
+      var row = new char[info.Size.X]; uint n; ReadConsoleOutputCharacterW(h, row, (uint)row.Length, new COORD { X = 0, Y = y }, out n); rows.Add(new string(row, 0, (int)n).TrimEnd()); }
+    CloseHandle(h); FreeConsole(); System.IO.File.WriteAllText(file, string.Join(((char)10).ToString(), rows), new UTF8Encoding(false));
+  }
+  public static void Close(long id) { PostMessageW(new IntPtr(id), 0x10, IntPtr.Zero, IntPtr.Zero); }
   [DllImport("kernel32.dll")] static extern bool FreeConsole();
   [DllImport("kernel32.dll", SetLastError = true)] static extern bool AttachConsole(uint pid);
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr CreateFileW(string n, uint acc, uint share, IntPtr sa, uint disp, uint flags, IntPtr t);
@@ -172,7 +188,33 @@ const shoot = (id, file) => {
 
 const WIN_KEYS = { Enter: '13:13:0', Down: '40:0:256', Up: '38:0:256', Left: '37:0:256', Right: '39:0:256', Tab: '9:9:0', Esc: '27:27:0', Backspace: '8:8:0', Space: '32:32:0' }
 const winText = text => text.split('').map(c => `0:${c.charCodeAt(0)}:0`)
-const winType = (w, records) => ps(`[Wins]::Type(${Number(readFileSync(w.pid, 'utf8'))}, $env:TC_KEYS)`, { TC_KEYS: records.join(',') })
+const shellPid = w => Number(readFileSync(w.pid, 'utf8'))
+const winType = (w, records) => ps(`[Wins]::Type(${shellPid(w)}, $env:TC_KEYS)`, { TC_KEYS: records.join(',') })
+const screenText = (w, file) => {
+  ps(`[Wins]::Text(${shellPid(w)}, $env:TC_FILE)`, { TC_FILE: file })
+  return readFileSync(file, 'utf8')
+}
+const squash = text => text.replace(/\s/g, '')
+const shown = async (w, text) => {
+  for (let tries = 0; tries < 4; tries++) {
+    if (squash(screenText(w, w.screen)).includes(squash(text))) return
+    await sleep(0.5)
+  }
+  throw new Error(`typed text did not show up on the screen: ${text}`)
+}
+const runs = w => (existsSync(w.runs) ? readFileSync(w.runs, 'utf8').length : 0)
+const booted = async (w, since) => {
+  let last
+  for (let waited = 0; waited < bootLimit; waited += 1.5) {
+    await sleep(1.5)
+    if (runs(w) <= since) continue
+    const now = screenText(w, w.screen)
+    if (now.includes('Claude Code') && now === last) return
+    last = now
+  }
+  const top = (last ?? '').split('\n').map(line => line.trim()).find(line => /\w/.test(line))
+  throw new Error(`claude was not ready within ${bootLimit}s, the screen shows: ${top ?? 'nothing'}`)
+}
 const MAC_KEYS = { Enter: '\r', Down: '\x1b[B', Up: '\x1b[A', Left: '\x1b[D', Right: '\x1b[C', Tab: '\t', Esc: '\x1b', Backspace: '\x7f', Space: ' ' }
 const inject = (fifo, bytes) => {
   const fd = openSync(fifo, constants.O_WRONLY | constants.O_NONBLOCK)
@@ -184,7 +226,11 @@ const inject = (fifo, bytes) => {
 }
 const send = async (w, keys) => {
   const parts = keys.split(/\{(\w+)\}/)
-  if (win) return winType(w, parts.flatMap((p, i) => (i % 2 ? [WIN_KEYS[p]] : winText(p))))
+  if (win) {
+    winType(w, parts.flatMap((p, i) => (i % 2 ? [WIN_KEYS[p]] : winText(p))))
+    if (parts.length === 1 && keys.trim().length > 2) await shown(w, keys)
+    return
+  }
   for (const [i, p] of parts.entries()) {
     if (!p) continue
     inject(w.fifo, i % 2 ? MAC_KEYS[p] : p)
@@ -203,9 +249,10 @@ const install = () => {
   writeFileSync(join(mkt, '.claude-plugin', 'marketplace.json'), JSON.stringify({ name: MARKET, owner: { name: MARKET }, plugins: [{ name: 'prismantis', source: './prismantis' }] }))
   const home = existsSync(join(homedir(), '.claude.json')) ? JSON.parse(readFileSync(join(homedir(), '.claude.json'), 'utf8')) : {}
   const trusted = { hasTrustDialogAccepted: true, hasCompletedProjectOnboarding: true }
-  writeFileSync(join(cfg, '.claude.json'), JSON.stringify({ hasCompletedOnboarding: home.hasCompletedOnboarding ?? true, theme: home.theme, projects: { [repo]: trusted, [repo.replace(/\\/g, '/')]: trusted } }))
+  writeFileSync(join(cfg, '.claude.json'), JSON.stringify({ hasCompletedOnboarding: home.hasCompletedOnboarding ?? true, theme: home.theme, claudeInChromeDefaultEnabled: false, projects: { [repo]: trusted, [repo.replace(/\\/g, '/')]: trusted } }))
   const creds = join(homedir(), '.claude', '.credentials.json')
   if (existsSync(creds)) cpSync(creds, join(cfg, '.credentials.json'))
+  process.on('exit', () => rmSync(join(cfg, '.credentials.json'), { force: true }))
   writeFileSync(join(cfg, 'settings.json'), '{}')
   run('claude', ['plugin', 'marketplace', 'add', mkt], { CLAUDE_CONFIG_DIR: cfg })
   run('claude', ['plugin', 'install', `prismantis@${MARKET}`], { CLAUDE_CONFIG_DIR: cfg })
@@ -215,16 +262,17 @@ const install = () => {
 const launcher = dir => {
   const pid = join(dir, 'shell.pid')
   const halt = join(dir, 'stop')
-  for (const stale of [pid, halt]) rmSync(stale, { force: true })
+  const runs = join(dir, 'runs')
+  for (const stale of [pid, halt, runs]) rmSync(stale, { force: true })
   if (win) {
     const file = join(dir, 'launch.ps1')
-    writeFileSync(file, `Set-Location '${repo}'\nRemove-Item Env:CLAUDE_CODE_PLUGIN_DIRS -ErrorAction SilentlyContinue\n$env:CLAUDE_CONFIG_DIR = '${cfg}'\nSet-Content -Path '${pid}' -Value $PID\nwhile (-not (Test-Path '${halt}')) { Clear-Host; claude }\n`)
-    return { file, pid, halt }
+    writeFileSync(file, `Set-Location '${repo}'\nRemove-Item Env:CLAUDE_CODE_PLUGIN_DIRS -ErrorAction SilentlyContinue\n$env:CLAUDE_CONFIG_DIR = '${cfg}'\n$env:ENABLE_CLAUDEAI_MCP_SERVERS = 'false'\nSet-Content -Path '${pid}' -Value $PID\nwhile (-not (Test-Path '${halt}')) { Clear-Host; Add-Content -Path '${runs}' -Value 1; claude }\n`)
+    return { file, pid, halt, runs }
   }
   const fifo = join(dir, 'keys.fifo')
   run('mkfifo', [fifo])
   const file = join(dir, 'launch.sh')
-  writeFileSync(file, `cd '${repo}'\nunset CLAUDE_CODE_PLUGIN_DIRS\nexport CLAUDE_CONFIG_DIR='${cfg}'\necho $$ > '${pid}'\nwhile [ ! -e '${halt}' ]; do clear; python3 '${join(here, 'keys.py')}' '${fifo}' claude; done\n`)
+  writeFileSync(file, `cd '${repo}'\nunset CLAUDE_CODE_PLUGIN_DIRS\nexport CLAUDE_CONFIG_DIR='${cfg}' ENABLE_CLAUDEAI_MCP_SERVERS=false\necho $$ > '${pid}'\nwhile [ ! -e '${halt}' ]; do clear; python3 '${join(here, 'keys.py')}' '${fifo}' claude; done\n`)
   return { file, pid, halt, fifo }
 }
 
@@ -241,6 +289,7 @@ const play = async (w, steps, dir, name) => {
   const snap = label => {
     const file = join(dir, `${name}.${label}.png`)
     shoot(w.id, file)
+    if (win) screenText(w, file.replace(/png$/, 'txt'))
     shots.push(file)
   }
   for (const [secs, action] of [...steps, [1, { shot: 'end' }]]) {
@@ -278,7 +327,7 @@ for (const t of terminals) {
   }
   const dir = join(out, t.id)
   mkdirSync(dir, { recursive: true })
-  const { file, pid, halt, fifo } = launcher(dir)
+  const { file, pid, halt, fifo, runs: runsFile } = launcher(dir)
   apply(configs[0][1])
   const front = win ? null : tryRun('osascript', ['-l', 'JavaScript', '-e', MAC, 'front'])?.trim()
   const before = new Set(windows(t.owner).map(w => w.id))
@@ -296,14 +345,19 @@ for (const t of terminals) {
     stop(pid)
     continue
   }
-  w.fifo = fifo
-  w.pid = pid
+  Object.assign(w, { fifo, pid, runs: runsFile, screen: join(dir, 'screen.txt') })
   for (const [ci, [config, values]] of configs.entries()) {
+    const since = ci ? runs(w) : 0
     if (ci) {
       apply(values)
       await send(w, '/exit{Enter}')
     }
-    await sleep(boot)
+    const late = win ? await booted(w, since).catch(e => e.message) : await sleep(boot)
+    if (late) {
+      for (const [scenario] of scenarios) results.push({ terminal: t.id, config, scenario, status: late })
+      console.log(`${t.id} ${config}: ${late}`)
+      break
+    }
     for (const [si, [scenario, steps]] of scenarios.entries()) {
       const name = `${config}.${scenario}`
       const row = { terminal: t.id, config, scenario }
@@ -322,9 +376,10 @@ for (const t of terminals) {
   await send(w, '/exit{Enter}').catch(() => {})
   await sleep(2)
   stop(pid)
+  if (win) ps(`[Wins]::Close(${w.id})`)
 }
+for (const file of leftovers) rmSync(file, { force: true })
 
-rmSync(join(cfg, '.credentials.json'), { force: true })
 const cols = configs.flatMap(([c]) => scenarios.map(([s]) => [c, s]))
 const rel = p => p.slice(out.length + 1).replace(/\\/g, '/')
 const cell = r => (r?.shots ? r.shots.map(p => `<figure><img src="${rel(p)}"><figcaption>${rel(p)}</figcaption></figure>`).join('') : `<p>${r?.status ?? 'skipped'}</p>`)
