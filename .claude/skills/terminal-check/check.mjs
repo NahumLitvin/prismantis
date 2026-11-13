@@ -132,10 +132,13 @@ public static class Wins {
   public struct PROCESS_INFORMATION { public IntPtr hp, ht; public uint pid, tid; }
   static bool Owned(IntPtr h, string owner) { uint pid; GetWindowThreadProcessId(h, out pid); try { return Process.GetProcessById((int)pid).ProcessName.Equals(owner, StringComparison.OrdinalIgnoreCase); } catch { return false; } }
   static void GiveBack(IntPtr thief, IntPtr front) {
-    uint pid; var other = GetWindowThreadProcessId(thief, out pid); var me = GetCurrentThreadId();
-    AttachThreadInput(me, other, true); SetForegroundWindow(front); AttachThreadInput(me, other, false);
-    if (GetForegroundWindow() != thief) return;
-    keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero); SetForegroundWindow(front);
+    uint theirs, ours; var other = GetWindowThreadProcessId(thief, out theirs); GetWindowThreadProcessId(front, out ours);
+    if (theirs != ours) {
+      keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero); SetForegroundWindow(front);
+      for (int i = 0; i < 10 && GetForegroundWindow() == thief; i++) Thread.Sleep(2);
+      if (GetForegroundWindow() != thief) return;
+    }
+    var me = GetCurrentThreadId(); AttachThreadInput(me, other, true); SetForegroundWindow(front); AttachThreadInput(me, other, false);
     if (GetForegroundWindow() != thief) return;
     ShowWindow(thief, 6); ShowWindow(thief, 4);
   }
