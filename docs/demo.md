@@ -32,6 +32,27 @@ When a table has a status column — the one whose cells are things like ✓, pa
 | Smoke | 24 | pending |
 | Regression | 130 | ✓ |
 
+## Test report
+
+When a table draws a run — a status column of things like ✓ or failed next to durations like 120 ms — `testMatrix` `report` adds a line under the table with how much of the run passed, a count of every other kind of result and the time all of it took. The line reuses the status colors and replaces the `statusMatrix` count line when both draw. The default `off` keeps tables as written:
+
+| Check | Time | Result |
+|:------|-----:|:-------|
+| parse | 120 ms | ✓ |
+| draw | 4 s | ✓ |
+| scan | 130 ms | failed |
+| typeset | 2.6 s | pending |
+
+## Benchmarks
+
+When a table compares benchmarks — a column of changes like -10% or +3% beside two columns of runs — `benchTable` draws each change in theme colors, green for an improvement and red for a regression; timings read as lower is better unless a header speaks of req/s, throughput or a score. `trend` also draws a sparkline of the runs under the table, each step colored by whether it improved. The default `off` keeps tables as written:
+
+| Benchmark | Before | After | Change |
+|:----------|-------:|------:|:-------|
+| parse | 12.4 ms | 11.1 ms | -10% |
+| layout | 19.6 ms | 22.4 ms | +14% |
+| paint | 2.1 ms | 0.8 ms | -62% |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings

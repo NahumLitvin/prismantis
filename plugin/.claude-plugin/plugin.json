@@ -95,6 +95,20 @@
       "default": "off",
       "options": ["color", "summary", "group", "off"]
     },
+    "testMatrix": {
+      "type": "string",
+      "title": "Test report",
+      "description": "A report line under a table that reads like test results: a status column of things like ✓ or failed next to durations like 120 ms. report draws the share of the run that passed, a count of every other kind of result and the time all of it took, in the theme's status colors; it replaces the statusMatrix count line when both draw. off (the default) keeps tables as written.",
+      "default": "off",
+      "options": ["report", "off"]
+    },
+    "benchTable": {
+      "type": "string",
+      "title": "Benchmarks",
+      "description": "How a table that compares benchmarks draws: a column of changes like -10% or +3%. off (the default) keeps tables as written. color draws each change in the theme's colors, green for an improvement and red for a regression; timings read as lower is better, unless a header speaks of req/s, throughput or a score. trend also draws a sparkline of the runs under the table, each step colored by whether it improved.",
+      "default": "off",
+      "options": ["trend", "color", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",
