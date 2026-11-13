@@ -80,9 +80,7 @@ function run(argv) {
   if (mode === 'click') {
     const p = $.CGPointMake(Number(a), Number(b))
     for (const t of [$.kCGEventMouseMoved, $.kCGEventLeftMouseDown, $.kCGEventLeftMouseUp]) {
-      const e = $.CGEventCreateMouseEvent(null, t, p, $.kCGMouseButtonLeft)
-      $.CGEventSetIntegerValueField(e, $.kCGMouseEventClickState, 1)
-      $.CGEventPost($.kCGHIDEventTap, e)
+      $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, t, p, $.kCGMouseButtonLeft))
       delay(0.1)
     }
   }
