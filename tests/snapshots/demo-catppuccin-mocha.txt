@@ -276,6 +276,150 @@
   <Text color=#585b70>
     "└─────────────────────────────────────────────────┴────────────────────────────────────────────────┘"
 <Box>
+  <Text color=#f9e2af bold>
+    <Text>
+      "Status matrix"
+  <Text color=#f9e2af>
+    "━━━━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table has a status column — the one whose cells are things like ✓, passed, failed or pending — "
+  <Text color=#89dceb>
+    "statusMatrix"
+  <Text>
+    " "
+  <Text color=#89dceb>
+    "color"
+  <Text>
+    " draws those cells in theme colors: green for a pass, red for a failure, amber for a warning, gray for a wait. "
+  <Text color=#89dceb>
+    "summary"
+  <Text>
+    " adds a count line under the table and "
+  <Text color=#89dceb>
+    "group"
+  <Text>
+    " reorders rows by status with a heavy rule where the status changes. The default "
+  <Text color=#89dceb>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#585b70>
+    "┌─────────────┬───────┬─────────┐"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Suite"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Cases"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Result"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞═════════════╪═══════╪═════════╡"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Unit"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "412"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "✓"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────────┼───────┼─────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Propagation"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "88"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "failed"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────────┼───────┼─────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Smoke"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "24"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "pending"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────────┼───────┼─────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Regression"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "130"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "✓"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└─────────────┴───────┴─────────┘"
+<Box>
   <Box row>
     <Text color=#cba6f7>
       "1. "

@@ -13,6 +13,7 @@ The visual test. Unit tests prove the tree; this proves the look.
    - `prismantis` in a heavy box on the first line, and `Roster` with a heavy rule under it
    - the table: yellow header, rules between rows, the right-aligned `Size` column, colored numbers
    - the Attachments table: with the default `tableLayout` `classic` its columns sit at their longest words, so the scroll path and checksum keep whole and their cells wrap beside them; with `tableLayout` `auto` or `stacked` set in `/config` it draws as one card per row, each line a bold `Scroll` or `Checksum` label against its value, with labels padded to one width
+   - the Status matrix table: with the default `statusMatrix` `off` it draws as written; set `color` in `/config` and its Result column draws in theme colors — the `✓` rows green, `failed` in the reddest accent, `pending` dim gray, those three different from each other; with `summary` a count line under the table, with `group` the rows reordered and a heavy rule where the status changes
    - the four diagrams and the table on one row on a wide terminal, wrapping on a narrow one
    - every flowchart box and sequence participant in its own color, with matching colors at both ends of the sequence
    - a value above each bar, the tallest bar highlighted and the rest muted, labels without quotes, dim gridlines, colored axis numbers
