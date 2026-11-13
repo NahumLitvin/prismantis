@@ -102,6 +102,8 @@ public static class Wins {
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool on);
   [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int how);
   [DllImport("user32.dll")] static extern bool PostMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
   [DllImport("kernel32.dll", SetLastError = true)] static extern bool GetConsoleScreenBufferInfo(IntPtr h, out SCREEN info);
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool ReadConsoleOutputCharacterW(IntPtr h, [Out] char[] text, uint n, COORD at, out uint read);
@@ -128,6 +130,14 @@ public static class Wins {
   [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] public struct STARTUPINFO { public int cb; public string r, desktop, title; public int x, y, xs, ys, xc, yc, fill, flags; public short show, r2; public IntPtr r3, i, o, e; }
   public struct PROCESS_INFORMATION { public IntPtr hp, ht; public uint pid, tid; }
   static bool Owned(IntPtr h, string owner) { uint pid; GetWindowThreadProcessId(h, out pid); try { return Process.GetProcessById((int)pid).ProcessName.Equals(owner, StringComparison.OrdinalIgnoreCase); } catch { return false; } }
+  static void GiveBack(IntPtr thief, IntPtr front) {
+    uint pid; var other = GetWindowThreadProcessId(thief, out pid); var me = GetCurrentThreadId();
+    AttachThreadInput(me, other, true); SetForegroundWindow(front); AttachThreadInput(me, other, false);
+    if (GetForegroundWindow() != thief) return;
+    keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero); SetForegroundWindow(front);
+    if (GetForegroundWindow() != thief) return;
+    ShowWindow(thief, 6); ShowWindow(thief, 4);
+  }
   public static string Launch(string cmd, string cwd, string owner, string before) {
     var old = new HashSet<string>(before.Split(',')); var front = GetForegroundWindow();
     var si = new STARTUPINFO(); si.cb = Marshal.SizeOf(typeof(STARTUPINFO)); si.flags = 1; si.show = 4; PROCESS_INFORMATION pi;
@@ -139,8 +149,7 @@ public static class Wins {
       var now = GetForegroundWindow();
       if (now != IntPtr.Zero && now != front) {
         if (old.Contains(now.ToInt64().ToString()) || !Owned(now, owner)) front = now;
-        else if (front != IntPtr.Zero) { uint pid; var thief = GetWindowThreadProcessId(now, out pid); var me = GetCurrentThreadId();
-          AttachThreadInput(me, thief, true); SetForegroundWindow(front); AttachThreadInput(me, thief, false); } }
+        else if (front != IntPtr.Zero) GiveBack(now, front); }
       Thread.Sleep(15);
     }
     return found;
