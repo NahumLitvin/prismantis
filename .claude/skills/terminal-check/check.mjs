@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { closeSync, constants, cpSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs'
 import { homedir, platform } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,6 +18,7 @@ const configs = pick(matrix.configs, list('configs'))
 const scenarios = pick(matrix.scenarios, list('scenarios'))
 const only = list('only')
 const out = resolve(flag('out', join(homedir(), '.prismantis-terminal-check', new Date().toISOString().replace(/[:.]/g, '-'))))
+const boot = Number(flag('boot', 12))
 const os = platform()
 const win = os === 'win32'
 const sleep = s => new Promise(r => setTimeout(r, s * 1000))
@@ -53,9 +54,9 @@ const shell = file => (win ? `powershell -NoProfile -ExecutionPolicy Bypass -Fil
 const psFile = f => ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', f]
 
 const TERMINALS = [
-  { id: 'apple-terminal', os: 'darwin', owner: 'Terminal', found: () => existsSync('/System/Applications/Utilities/Terminal.app'), launch: f => detached('osascript', ['-e', `tell application "Terminal" to do script "${shell(f)}"`, '-e', 'tell application "Terminal" to activate']) },
+  { id: 'apple-terminal', os: 'darwin', owner: 'Terminal', found: () => existsSync('/System/Applications/Utilities/Terminal.app'), launch: f => detached('osascript', ['-e', `tell application "Terminal" to do script "${shell(f)}"`]) },
   { id: 'iterm', os: 'darwin', owner: 'iTerm2', found: () => app('iTerm'), launch: f => detached('osascript', ['-e', `tell application "iTerm" to create window with default profile command "${shell(f)}"`]) },
-  { id: 'ghostty', os: 'darwin', owner: 'Ghostty', found: () => app('Ghostty'), launch: f => detached('open', ['-na', 'Ghostty', '--args', `--command=${shell(f)}`]) },
+  { id: 'ghostty', os: 'darwin', owner: 'Ghostty', found: () => app('Ghostty'), launch: f => detached('open', ['-na', 'Ghostty', '--args', '--quit-after-last-window-closed=true', `--command=${shell(f)}`]) },
   { id: 'kitty', os: 'darwin', owner: 'kitty', found: () => app('kitty'), launch: f => detached('/Applications/kitty.app/Contents/MacOS/kitty', ['sh', f]) },
   { id: 'wezterm', os: 'darwin', owner: 'wezterm-gui', found: () => app('WezTerm'), launch: f => detached('/Applications/WezTerm.app/Contents/MacOS/wezterm', ['start', '--always-new-process', '--', 'sh', f]) },
   { id: 'alacritty', os: 'darwin', owner: 'alacritty', found: () => app('Alacritty'), launch: f => detached('/Applications/Alacritty.app/Contents/MacOS/alacritty', ['-e', 'sh', f]) },
@@ -68,23 +69,12 @@ const TERMINALS = [
 ]
 
 const MAC = `ObjC.import('CoreGraphics')
-function wins() {
-  return ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))).filter(w => w.kCGWindowLayer === 0)
-}
+ObjC.import('AppKit')
 function run(argv) {
-  const [mode, a, b] = argv
-  if (mode === 'list') return JSON.stringify(wins().filter(w => w.kCGWindowOwnerName === a).map(w => ({ id: String(w.kCGWindowNumber), x: w.kCGWindowBounds.X, y: w.kCGWindowBounds.Y, w: w.kCGWindowBounds.Width })))
-  if (mode === 'front') return String(wins()[0].kCGWindowNumber)
-  if (mode === 'text') Application('System Events').keystroke(a)
-  if (mode === 'key') Application('System Events').keyCode(Number(a))
-  if (mode === 'click') {
-    const p = $.CGPointMake(Number(a), Number(b))
-    for (const t of [$.kCGEventMouseMoved, $.kCGEventLeftMouseDown, $.kCGEventLeftMouseUp]) {
-      $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, t, p, $.kCGMouseButtonLeft))
-      delay(0.1)
-    }
-  }
-  return ''
+  const [mode, a] = argv
+  if (mode === 'front') return $.NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier.js
+  const all = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0)))
+  return JSON.stringify(all.filter(w => w.kCGWindowLayer === 0 && w.kCGWindowOwnerName === a && w.kCGWindowBounds.Width > 200).map(w => ({ id: String(w.kCGWindowNumber) })))
 }`
 
 const WIN_API = `Add-Type -AssemblyName System.Windows.Forms
@@ -147,26 +137,30 @@ const shoot = (id, file) => {
   else run('screencapture', ['-x', '-o', '-l', id, file])
 }
 
-const click = (x, y) => (win ? ps(`[Wins]::Click(${Math.round(x)}, ${Math.round(y)})`) : mac('click', x, y))
+const focus = w => ps(`[Wins]::Focus(${w.id})`) === 'True'
 
-const focus = w => {
-  if (win) return ps(`[Wins]::Focus(${w.id})`) === 'True'
-  click(w.x + w.w / 2, w.y + 8)
-  return mac('front') === w.id
-}
-
-const MAC_KEYS = { Enter: 36, Down: 125, Up: 126, Left: 123, Right: 124, Tab: 48, Esc: 53, Backspace: 51, Space: 49 }
 const WIN_KEYS = { Enter: '{ENTER}', Down: '{DOWN}', Up: '{UP}', Left: '{LEFT}', Right: '{RIGHT}', Tab: '{TAB}', Esc: '{ESC}', Backspace: '{BACKSPACE}', Space: ' ' }
-const type = keys => {
+const MAC_KEYS = { Enter: '\r', Down: '\x1b[B', Up: '\x1b[A', Left: '\x1b[D', Right: '\x1b[C', Tab: '\t', Esc: '\x1b', Backspace: '\x7f', Space: ' ' }
+const inject = (fifo, bytes) => {
+  const fd = openSync(fifo, constants.O_WRONLY | constants.O_NONBLOCK)
+  try {
+    writeSync(fd, bytes)
+  } finally {
+    closeSync(fd)
+  }
+}
+const send = async (w, keys) => {
   const parts = keys.split(/\{(\w+)\}/)
   if (win) {
+    if (!focus(w)) throw new Error('could not focus the window, so no keys were sent')
     const sendkeys = parts.map((p, i) => (i % 2 ? WIN_KEYS[p] : p.replace(/[+^%~(){}[\]]/g, '{$&}'))).join('')
     return ps('[System.Windows.Forms.SendKeys]::SendWait($env:TC_KEYS)', { TC_KEYS: sendkeys })
   }
-  parts.forEach((p, i) => {
-    if (i % 2) mac('key', MAC_KEYS[p])
-    else if (p) mac('text', p)
-  })
+  for (const [i, p] of parts.entries()) {
+    if (!p) continue
+    inject(w.fifo, i % 2 ? MAC_KEYS[p] : p)
+    await sleep(0.5)
+  }
 }
 
 const pngWidth = file => readFileSync(file).readUInt32BE(16)
@@ -191,16 +185,19 @@ const install = () => {
   return JSON.parse(readFileSync(join(cfg, 'settings.json'), 'utf8'))
 }
 
-const launcher = (dir, name) => {
-  const pid = join(dir, `${name}.pid`)
+const launcher = dir => {
+  const pid = join(dir, 'shell.pid')
+  const halt = join(dir, 'stop')
   if (win) {
-    const file = join(dir, `${name}.ps1`)
-    writeFileSync(file, `Set-Location '${repo}'\nRemove-Item Env:CLAUDE_CODE_PLUGIN_DIRS -ErrorAction SilentlyContinue\n$env:CLAUDE_CONFIG_DIR = '${cfg}'\nSet-Content -Path '${pid}' -Value $PID\nclaude\n`)
-    return { file, pid }
+    const file = join(dir, 'launch.ps1')
+    writeFileSync(file, `Set-Location '${repo}'\nRemove-Item Env:CLAUDE_CODE_PLUGIN_DIRS -ErrorAction SilentlyContinue\n$env:CLAUDE_CONFIG_DIR = '${cfg}'\nSet-Content -Path '${pid}' -Value $PID\nwhile (-not (Test-Path '${halt}')) { Clear-Host; claude }\n`)
+    return { file, pid, halt }
   }
-  const file = join(dir, `${name}.sh`)
-  writeFileSync(file, `cd '${repo}'\nunset CLAUDE_CODE_PLUGIN_DIRS\nexport CLAUDE_CONFIG_DIR='${cfg}'\necho $$ > '${pid}'\nexec claude\n`)
-  return { file, pid }
+  const fifo = join(dir, 'keys.fifo')
+  run('mkfifo', [fifo])
+  const file = join(dir, 'launch.sh')
+  writeFileSync(file, `cd '${repo}'\nunset CLAUDE_CODE_PLUGIN_DIRS\nexport CLAUDE_CONFIG_DIR='${cfg}'\necho $$ > '${pid}'\nwhile [ ! -e '${halt}' ]; do clear; python3 '${join(here, 'keys.py')}' '${fifo}' claude; done\n`)
+  return { file, pid, halt, fifo }
 }
 
 const stop = pidFile => {
@@ -225,12 +222,19 @@ const play = async (w, steps, dir, name) => {
       snap(action.shot)
       continue
     }
-    if (!focus(w)) throw new Error('could not focus the window, so no keys were sent')
-    if (action?.click) {
-      if (!last) snap('before-click')
-      const scale = w.w / pngWidth(last)
-      click(w.x + action.click[0] * scale, w.y + action.click[1] * scale)
-    } else type(action)
+    if (!action?.click) {
+      await send(w, action)
+      continue
+    }
+    const [x, y] = action.click
+    if (!win) {
+      inject(w.fifo, `\x1b[<0;${x};${y}M\x1b[<0;${x};${y}m`)
+      continue
+    }
+    if (!focus(w)) throw new Error('could not focus the window, so no click was sent')
+    if (!last) snap('before-click')
+    const scale = w.w / pngWidth(last)
+    ps(`[Wins]::Click(${Math.round(w.x + x * scale)}, ${Math.round(w.y + y * scale)})`)
   }
   return shots
 }
@@ -243,29 +247,44 @@ mkdirSync(out, { recursive: true })
 const baseline = install()
 const terminals = TERMINALS.filter(t => t.os === os && (!only || only.includes(t.id)))
 const results = []
+const apply = ({ settings, ...options }) => writeFileSync(join(cfg, 'settings.json'), JSON.stringify({ ...baseline, ...settings, pluginConfigs: { [`prismantis@${MARKET}`]: { options } } }, null, 2))
 for (const t of terminals) {
   if (!t.found()) {
     results.push({ terminal: t.id, status: 'not installed' })
     console.log(`${t.id}: not installed`)
     continue
   }
-  for (const [config, { settings, ...options }] of configs) {
-    writeFileSync(join(cfg, 'settings.json'), JSON.stringify({ ...baseline, ...settings, pluginConfigs: { [`prismantis@${MARKET}`]: { options } } }, null, 2))
-    for (const [scenario, steps] of scenarios) {
+  const dir = join(out, t.id)
+  mkdirSync(dir, { recursive: true })
+  const { file, pid, halt, fifo } = launcher(dir)
+  apply(configs[0][1])
+  const front = win ? null : tryRun('osascript', ['-l', 'JavaScript', '-e', MAC, 'front'])?.trim()
+  const before = new Set(windows(t.owner).map(w => w.id))
+  t.launch(file)
+  let w
+  for (let s = 0; s < 20 && !w; s++) {
+    await sleep(1)
+    w = windows(t.owner).find(x => !before.has(x.id))
+  }
+  if (front) tryRun('open', ['-g', '-b', front])
+  if (!w) {
+    results.push({ terminal: t.id, status: 'no new window within 20s' })
+    console.log(`${t.id}: no new window within 20s`)
+    stop(pid)
+    continue
+  }
+  w.fifo = fifo
+  for (const [ci, [config, values]] of configs.entries()) {
+    if (ci) {
+      apply(values)
+      await send(w, '/exit{Enter}')
+    }
+    await sleep(boot)
+    for (const [si, [scenario, steps]] of scenarios.entries()) {
       const name = `${config}.${scenario}`
-      const dir = join(out, t.id)
-      mkdirSync(dir, { recursive: true })
-      const { file, pid } = launcher(dir, name)
-      const before = new Set(windows(t.owner).map(w => w.id))
-      t.launch(file)
-      let w
-      for (let s = 0; s < 20 && !w; s++) {
-        await sleep(1)
-        w = windows(t.owner).find(x => !before.has(x.id))
-      }
       const row = { terminal: t.id, config, scenario }
       try {
-        if (!w) throw new Error('no new window within 20s')
+        if (si) await send(w, '/clear{Enter}')
         row.shots = await play(w, steps, dir, name)
         row.status = 'ok'
       } catch (e) {
@@ -273,10 +292,12 @@ for (const t of terminals) {
       }
       results.push(row)
       console.log(`${t.id} ${name}: ${row.status}`)
-      stop(pid)
-      await sleep(2)
     }
   }
+  writeFileSync(halt, '')
+  await send(w, '/exit{Enter}').catch(() => {})
+  await sleep(2)
+  stop(pid)
 }
 
 const cols = configs.flatMap(([c]) => scenarios.map(([s]) => [c, s]))
