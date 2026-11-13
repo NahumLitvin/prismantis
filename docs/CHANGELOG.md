@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.46.0] - 2026-11-13
+
+Tables learn to read their own content, and setup gets shorter.
+
+### Added
+
+- `tableLayout`: `classic` keeps today's look, `auto` turns rows into label and value cards when columns cannot fit their longest words, `compact` sits every column at its longest word, `stacked` always draws cards. Thanks @buer5 ([#362](https://github.com/NahumLitvin/prismantis/pull/362)).
+- `statusMatrix`: status cells like ✓, failed or pending in green, red, amber and gray, with `summary` adding a count line like `✓ 2 · ✗ 1 · ● 1` and `group` reordering rows by status. Off by default. Thanks @buer5 ([#364](https://github.com/NahumLitvin/prismantis/pull/364)).
+- `testMatrix`: `report` draws a line under a table of test results with the share that passed, the other results and the total time, like `✓ 2 of 4 (50%) · ✗ 1 · ● 1 · 6.9s total`. Off by default. Thanks @buer5 ([#474](https://github.com/NahumLitvin/prismantis/pull/474), landed in [#482](https://github.com/NahumLitvin/prismantis/pull/482)).
+- `benchTable`: change cells like -10% in green for an improvement and red for a regression, and `trend` adds a sparkline of the runs. Off by default. Thanks @buer5 ([#482](https://github.com/NahumLitvin/prismantis/pull/482)).
+- `schemaTable`: a schema table's type cells colored by family and its PK, FK and UNIQUE cells marked. Off by default. Thanks @buer5 ([#491](https://github.com/NahumLitvin/prismantis/pull/491)).
+
+### Changed
+
+- `/prismantis setup` asks 6 steps (theme, prompts, replies, tables, code blocks, tool output) instead of 20, and `/prismantis setup more` walks the other 14 ([#498](https://github.com/NahumLitvin/prismantis/pull/498)).
+
+### Fixed
+
+- A test report total under a millisecond reads `250µs` instead of `0µs` ([#498](https://github.com/NahumLitvin/prismantis/pull/498)).
+
 ## [0.45.4] - 2026-11-11
 
 ### Fixed
