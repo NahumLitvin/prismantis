@@ -90,4 +90,5 @@ Dependencies and licenses:
 | `.claude/skills/demo` | printing the demo reply to eyeball every feature |
 | `.claude/skills/live-check` | seeing a change render in a real session |
 | `.claude/skills/drive-check` | pressing keys in a pane or button before merging, in a throwaway config |
+| `.claude/skills/terminal-check` | typing, clicking and screenshotting in every real terminal installed, across option sets, on macOS or Windows |
 | `.claude/skills/release` | cutting a version |
