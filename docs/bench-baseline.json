@@ -10,13 +10,13 @@
   "code block, 1500 lines, highlighted": 0.16736,
   "code block, 10000 lines, folded (cold)": 10.5021,
   "stream replay, 100 redraws of a folded code block (per redraw)": 0.0459,
-  "stream replay, 164 redraws of a 16428-char reply (per redraw)": 0.09457,
+  "stream replay, 197 redraws of a 19728-char reply (per redraw)": 0.58055,
   "nodes: 500 highlighted ts lines": 19505,
   "nodes: 300 table rows": 10533,
   "nodes: 300 paragraphs": 6600,
   "nodes: 300 paragraphs, paths linked": 6600,
   "nodes: 300 table rows of paths, linked": 5118,
   "nodes: 300 Hebrew paragraphs": 6300,
-  "nodes: demo reply": 1420,
+  "nodes: demo reply": 1519,
   "nodes: opened 400-line diff card": 7810
 }

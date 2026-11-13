@@ -3,7 +3,7 @@ import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'cl
 import type { Ink } from './clipboard'
 import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
-import type { Block, Inline, TableAlign } from './markdown'
+import type { Block, Inline, TableAlign, TableCell, TableBlock } from './markdown'
 import { mathOf } from './latex'
 import { CONTROL, displayText, inlineText, isWebLink, nestedBlocks, parseInline, texParses, texText } from './markdown'
 import type { Flow } from './rtl'
@@ -395,9 +395,9 @@ const drawable = (block: Block, reach: Reach): Block => {
   return (cached[key] ??= hyperlinkBlock(block, reach))
 }
 
-const heightOf = (blocks: Block[], w: number): number => blocks.reduce((sum, block, b) => sum + (b ? 1 : 0) + blockHeight(block, w), 0)
+const heightOf = (blocks: Block[], w: number, style: Style): number => blocks.reduce((sum, block, b) => sum + (b ? 1 : 0) + blockHeight(block, w, style), 0)
 
-const blockHeight = (block: Block, w: number): number => {
+const blockHeight = (block: Block, w: number, style: Style): number => {
   switch (block.kind) {
     case 'heading':
       return 2 * textRows(displayText(block.inline), w - 4) + 2
@@ -406,20 +406,22 @@ const blockHeight = (block: Block, w: number): number => {
     case 'list':
       return block.items.reduce((sum, item) => {
         const pad = item.depth * 2 + item.marker.length + 4
-        return sum + textRows(displayText(item.inline), w - pad) + (item.blocks ? heightOf(item.blocks, w - pad) + 1 : 0)
+        return sum + textRows(displayText(item.inline), w - pad) + (item.blocks ? heightOf(item.blocks, w - pad, style) + 1 : 0)
       }, textRows(`${'━'.repeat(20)} ${block.items.length}/${block.items.length} done`, w))
     case 'code':
       return block.lines.reduce((sum, line) => sum + textRows(line, w - 8), 3)
     case 'table': {
-      const { natural, words } = tableSize(block)
-      const widths = columnWidths(natural, w - 4, 3, words)
-      const tallest = (cells: Inline[][]) => Math.max(1, ...widths.map((cw, c) => textRows(displayText(cells[c]!), cw)))
+      const plan = tablePlan(block, style, w, textsOf(style, block))
+      if (plan.stack) return stackedHeight(block, w)
+      const classic = style.tableLayout === 'classic' && tableSize(block)
+      const widths = classic ? columnWidths(classic.natural, w - 4, 3, classic.words) : plan.widths
+      const tallest = (cells: TableCell[]) => Math.max(1, ...widths.map((cw, c) => textRows(displayText(cells[c]!), cw)))
       return block.rows.reduce((sum, row) => sum + 1 + tallest(row), 4 + tallest(block.header))
     }
     case 'quote':
-      return Math.max(1, heightOf(block.blocks, w - 2))
+      return Math.max(1, heightOf(block.blocks, w - 2, style))
     case 'alert':
-      return 3 + heightOf(block.blocks, w - 4)
+      return 3 + heightOf(block.blocks, w - 4, style)
     case 'rule':
       return 1
     case 'notes':
@@ -883,6 +885,78 @@ const tableArts = (block: Extract<Block, { kind: 'table' }>, t: Theme, rtl: bool
 const artsOf = (drawn: { art?: string; hues?: () => Hues } | undefined, block: Block, t: Theme, rtl: boolean): { art?: string | (() => string); grid?: string | (() => string); hues?: () => Hues } =>
   drawn?.art !== undefined ? { art: drawn.art, grid: drawn.art, hues: drawn.hues } : block.kind === 'table' ? tableArts(block, t, rtl) : {}
 
+const columnRoom = (box: boolean, columns: number): number => (box ? columns - 4 : columns)
+
+const tableMinimums = (natural: number[], words: number[]): number[] => natural.map((w, c) => Math.min(w, Math.max(1, words[c] ?? 1)))
+
+const textsOf = (style: Style, block: TableBlock): boolean =>
+  style.reorder && style.shape === 'inverse' && !style.gridFace && isRtlTable(style, block)
+
+const tablePlan = (block: TableBlock, style: Style, columns: number, texts: boolean) => {
+  const box = style.tableStyle === 'box'
+  const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
+  const sizingGap = box || style.tableStyle === 'grid' ? 3 : 2
+  const { natural, words } = tableSize(block, cellText(style))
+  const room = columnRoom(box, columns)
+  const minimum = tableMinimums(natural, words)
+  const spread = minimum.reduce((a, b) => a + b, sizingGap * Math.max(0, minimum.length - 1))
+  if (natural.length > 0 && !texts && !style.gridFace && (style.tableLayout === 'stacked' || (style.tableLayout === 'auto' && spread > room))) {
+    return { stack: true, box, gap, natural, words, widths: [] as number[] }
+  }
+  const widths = style.tableLayout === 'compact' && !style.gridFace
+    ? columnWidths(natural, Math.min(room, spread), sizingGap, words)
+    : columnWidths(natural, room, sizingGap, words)
+  return { stack: false, box, gap, natural, words, widths }
+}
+
+const stackedPlan = (header: TableCell[], columns: number) => {
+  const widest = header.reduce((a, cell) => Math.max(a, width(displayText(cell))), 0)
+  const labelW = Math.min(Math.max(widest, 1), Math.max(1, Math.floor(columns / 3)))
+  return { labelW, room: Math.max(1, columns - labelW - 1) }
+}
+
+const stackedHeight = (block: TableBlock, columns: number): number => {
+  const { labelW, room } = stackedPlan(block.header, columns)
+  const pair = (cells: TableCell[]) =>
+    Math.max(1, ...block.header.map((h, c) => Math.max(textRows(displayText(h), labelW), textRows(displayText(cells[c]!), room))))
+  return Math.max(1, block.rows.reduce((sum, r) => sum + pair(r), Math.max(0, block.rows.length - 1)))
+}
+
+const padTo = (runs: Inline[], w: number): Inline[] => [...runs, { kind: 'text' as const, text: ' '.repeat(Math.max(0, w - width(inlineText(runs)))) }]
+
+const stackedTable = (el: ElementTable, style: Style, block: TableBlock, columns: number, key: string, tip?: Tip): RenderElement => {
+  const { Box, Text } = el
+  const t = style.theme
+  const { labelW, room } = stackedPlan(block.header, columns)
+  const separators = style.tableStyle !== 'minimal' && block.rows.length > 0
+  const pairLine = (labels: Inline[][], values: Inline[][], c: number, i: number, k: string): RenderElement => (
+    <Box key={`${k}.${c}.${i}`} flexDirection="row">
+      <Text bold color={t.tableHeader}>
+        {labels[i] ? inlineText(padTo(labels[i]!, labelW)) : ' '.repeat(labelW)}
+      </Text>
+      <Text>
+        {' '}
+        {values[i] ? pressInline(el, style, values[i]!, room, `${k}.${c}.v${i}`, tip) ?? renderInline(el, style, values[i]!, `${k}.${c}.v${i}`) : ''}
+      </Text>
+    </Box>
+  )
+  const record = (cells: TableCell[], i: number): RenderElement[] => {
+    const k = `${key}.r${i}`
+    return block.header.flatMap((h, c) => {
+      const labels = wrapInline(headerRuns(h), labelW)
+      const values = wrapInline(cells[c]!, room)
+      return Array.from({ length: Math.max(1, Math.max(labels.length, values.length)) }, (_, l) => pairLine(labels, values, c, l, k))
+    })
+  }
+  const lines: RenderElement[] = block.rows.flatMap((r, i) => [
+    ...record(r, i),
+    ...(separators && i < block.rows.length - 1
+      ? [<Text key={`${key}.s${i}`} color={t.tableRule} dimColor={!t.tableRule}>{'─'.repeat(columns)}</Text>]
+      : []),
+  ])
+  return <Box key={key} flexDirection="column">{lines}</Box>
+}
+
 const clip = ({ Box }: ElementTable, w: number, drawn: RenderElement, key?: string) => (
   <Box key={key} flexDirection="column" minWidth={w}>
     <Box height={0} flexGrow={1} overflow="hidden">
@@ -956,11 +1030,11 @@ const tableEdges = (style: Style, block: Extract<Block, { kind: 'table' }>, rtl:
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string, rtl: boolean, tip?: Tip) => {
   const { Box, Text } = el
   const t = style.theme
-  const box = style.tableStyle === 'box'
-  const gap = box ? 0 : style.tableStyle === 'grid' ? 3 : 2
+  const texts = textsOf(style, block)
+  const plan = tablePlan(block, style, columns, texts)
   const shown = cellText(style)
-  const { natural, words } = tableSize(block, shown)
-  const widths = box ? columnWidths(natural, columns - 4, 3, words) : columnWidths(natural, columns, gap, words)
+  const { natural, words, widths, box, gap } = plan
+  if (plan.stack) return stackedTable(el, style, block, columns, key, tip)
   const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
@@ -1142,7 +1216,7 @@ const renderQuote = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const { Box } = el
   const t = style.theme
   const inner = columns - 2
-  const lines = heightOf(block.blocks, inner)
+  const lines = heightOf(block.blocks, inner, style)
   const body = <Box flexDirection="column" rowGap={1}>{renderNested(el, { ...style, inside: 'quote' }, block.blocks, inner, key, copy, fold, tip)}</Box>
   if (!mirrored(style) && flowOf(style, leadInline(block.blocks), inner)?.base === 'R') {
     return (
@@ -1168,7 +1242,7 @@ const renderAlert = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const label = block.level[0]!.toUpperCase() + block.level.slice(1)
   const body = block.blocks.length ? <Box flexDirection="column" rowGap={1}>{renderNested(el, { ...style, inside: 'alert' }, block.blocks, inner, key, copy, fold, tip)}</Box> : null
   if (hebrew && mirrored(style)) {
-    const lines = 1 + (block.blocks.length ? 1 + heightOf(block.blocks, inner) : 0)
+    const lines = 1 + (block.blocks.length ? 1 + heightOf(block.blocks, inner, style) : 0)
     const edge = (k: string) => <Text key={k} color={color}>{WALL + '─'.repeat(inner + 2) + WALL}</Text>
     return (
       <Box key={key} flexDirection="column" alignSelf="flex-start">

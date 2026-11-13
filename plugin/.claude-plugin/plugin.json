@@ -81,6 +81,13 @@
         "minimal"
       ]
     },
+    "tableLayout": {
+      "type": "string",
+      "title": "Table layout",
+      "description": "classic: today's look, columns share the width and shrink to the terminal. auto: the same, and a table too wide to fit even its longest words stacks each row as label and value pairs. compact: every column sits at its longest word, so the table stays narrow and long cells wrap. stacked: every table draws as label and value pairs. In the desktop app the lines of every layout draw as thin colored boxes to a share of the width.",
+      "default": "classic",
+      "options": ["classic", "auto", "compact", "stacked"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

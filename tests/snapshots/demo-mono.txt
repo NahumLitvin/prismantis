@@ -171,6 +171,111 @@
   <Text>
     "└───────────────┴─────────────────────────┴───────────────────────┴───────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Attachments"
+  <Text>
+    "━━━━━━━━━━━"
+<Text>
+  <Text>
+    "Long paths and checksums never split mid-word, so a column cannot shrink below them. When those minimum widths no longer fit the reply, "
+  <Text>
+    "tableLayout"
+  <Text>
+    " "
+  <Text>
+    "auto"
+  <Text>
+    " and "
+  <Text>
+    "stacked"
+  <Text>
+    " draw the table as one card per row, and "
+  <Text>
+    "compact"
+  <Text>
+    " keeps the columns at their longest word:"
+<Box>
+  <Text>
+    "┌─────────────────────────────────────────────────┬────────────────────────────────────────────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Scroll"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Checksum"
+    <Text>
+      " │"
+  <Text>
+    "╞═════════════════════════════════════════════════╪════════════════════════════════════════════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "~/jade-palace/noodle-scrolls/scrolls/scroll-07-"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b82"
+    <Text>
+      " │"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "training-notes.md"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "2cd15d6c15b0f00a08"
+    <Text>
+      " │"
+  <Text>
+    "├─────────────────────────────────────────────────┼────────────────────────────────────────────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "/srv/dojo/moves.md"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "2c26b46b68ffc68ff99b453c1d30413413422d706483bf"
+    <Text>
+      " │"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "a0f98a5e886266e7ae"
+    <Text>
+      " │"
+  <Text>
+    "└─────────────────────────────────────────────────┴────────────────────────────────────────────────┘"
+<Box>
   <Box row>
     <Text>
       "1. "
