@@ -31,7 +31,7 @@ const millisOf = (cell: string, bareMs: boolean): number | undefined => {
 const share = (value: number): string => (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1))
 
 const fmt = (ms: number): string => {
-  if (ms < 1) return `${Math.round(ms)}µs`
+  if (ms < 1) return `${Math.round(ms * 1000)}µs`
   if (ms < 1000) return `${Math.round(ms)}ms`
   if (ms < 60000) {
     const s = Math.round(ms / 100) / 10

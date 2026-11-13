@@ -774,6 +774,12 @@ for (const surface of ['terminal', 'desktop'] as const) test(`testMatrix ${surfa
   await ui.unmount()
 })
 
+test('testMatrix totals a run under a millisecond in microseconds', { options: { testMatrix: 'report' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Check | Time | Result |\n|:------|-----:|:-------|\n| parse | 250 µs | ✓ |\n| draw | 550 µs | failed |'), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^800µs total$/ })).toBeTruthy()
+  await ui.unmount()
+})
+
 test('testMatrix off keeps tables as written', { options: { testMatrix: 'off' } }, async $ => {
   const ui = await $.ui.mount({ ...draw(REPORT), surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /^ of 4 / })).toBeUndefined()

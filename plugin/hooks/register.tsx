@@ -13,7 +13,7 @@ import { drawDiagrams } from './mermaid'
 import type { CopyButton, DrawPaste, Fold, Hues, TerminalEnv } from './render'
 import { MARK, bashEdits, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedShell, renderFailure, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
-import { HINT, ISSUE_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
+import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import { textRows } from './layout'
 import type { Style } from './theme'
@@ -577,8 +577,8 @@ const SETUP_HEAD_ROWS = 5
 
 const openPane = ($: EngineInterface) => $.ui.open({ id: SETUP_PANE, title: 'prismantis setup', focus: true, closeOnEscape: true, rows: 40, columns: 90 })
 
-const openSetupPane = async ($: EngineInterface): Promise<string | undefined> => {
-  await update($, setupAt, () => 0)
+const openSetupPane = async ($: EngineInterface, at: number): Promise<string | undefined> => {
+  await update($, setupAt, () => at)
   await update($, setupFocus, () => '')
   await update($, setupLand, () => '')
   const opened = await openPane($)
@@ -598,11 +598,11 @@ const showSetupStep = async ($: EngineInterface, at: number, step: SetupStep, va
 const pickInPane = async ($: EngineInterface, picked: Picked, at: number, value: string, currentOf: (step: SetupStep) => string): Promise<void> => {
   const steps = setupSteps(PRESET_NAMES)
   const step = steps[at]!
-  const nextStep = steps[at + 1]
+  const nextStep = at + 1 === ESSENTIAL_STEPS ? undefined : steps[at + 1]
   const done = `${step.title} set to ${value}.`
   if (nextStep) await showSetupStep($, at + 1, nextStep, currentOf(nextStep))
   else await $.ui.close({ id: SETUP_PANE })
-  $.ui.toast(nextStep ? done : `${done} Setup done.`)
+  $.ui.toast(nextStep ? done : `${done} ${at + 1 === ESSENTIAL_STEPS ? SETUP_ESSENTIALS_DONE : 'Setup done.'}`)
   const saved = await saveSetupPick($, picked, step, value)
   if (saved === done) return
   $.ui.toast(saved)
@@ -618,12 +618,19 @@ const landSetupFocus = ($: EngineInterface, key: string): void => {
   })
 }
 
+const setupStart = (steps: SetupStep[], stepName?: string): number => (stepName === SETUP_MORE ? ESSENTIAL_STEPS : stepName ? steps.findIndex(s => s.name === stepName) : 0)
+
+const afterSetupPick = (steps: SetupStep[], at: number): string => {
+  if (at + 1 === ESSENTIAL_STEPS) return SETUP_ESSENTIALS_DONE
+  return at + 1 < steps.length ? setupText(setupParts(PRESET_NAMES, at + 1)) : SETUP_DONE
+}
+
 const setup = async ($: EngineInterface, picked: Picked, origin: PromptOrigin, stepName?: string, pick?: string): Promise<string> => {
-  const inTerminal = !stepName && origin.kind === 'composer' && (await $.session.surfaces()).includes('terminal')
-  const opened = inTerminal ? await openSetupPane($) : undefined
-  if (opened) return opened
   const steps = setupSteps(PRESET_NAMES)
-  const at = stepName ? steps.findIndex(s => s.name === stepName) : 0
+  const at = setupStart(steps, stepName)
+  const paneable = (!stepName || stepName === SETUP_MORE) && !pick && origin.kind === 'composer'
+  const opened = paneable && (await $.session.surfaces()).includes('terminal') ? await openSetupPane($, at) : undefined
+  if (opened) return opened
   const step = steps[at]
   if (!step) return `Unknown setup step "${stepName}". Steps: ${steps.map(s => s.name).join(', ')}`
   if (!pick) return setupText(setupParts(PRESET_NAMES, at))
@@ -632,7 +639,7 @@ const setup = async ($: EngineInterface, picked: Picked, origin: PromptOrigin, s
   if (!value || !choices.includes(value)) return `Unknown ${step.name} pick "${pick}". Pick 1-${step.options.length} or one of: ${choices.join(', ')}`
   const saved = await saveSetupPick($, picked, step, value)
   if (saved.startsWith('Could not')) return saved
-  return `${saved}\n\n${at + 1 < steps.length ? setupText(setupParts(PRESET_NAMES, at + 1)) : SETUP_DONE}`
+  return `${saved}\n\n${afterSetupPick(steps, at)}`
 }
 
 const SETUP_GIT_STATUS = [
