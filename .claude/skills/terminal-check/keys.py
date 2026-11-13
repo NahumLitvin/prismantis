@@ -1,6 +1,6 @@
 import fcntl, os, pty, select, signal, sys, termios, tty
 
-fifo, argv = sys.argv[1], sys.argv[2:]
+fifo, log, argv = sys.argv[1], sys.argv[2], sys.argv[3:]
 pid, fd = pty.fork()
 if pid == 0:
     os.execvp(argv[0], argv)
@@ -15,6 +15,7 @@ signal.signal(signal.SIGWINCH, resize)
 saved = termios.tcgetattr(0)
 tty.setraw(0)
 inject = os.open(fifo, os.O_RDWR | os.O_NONBLOCK)
+wrote = open(log, "wb", buffering=0)
 try:
     while True:
         ready = select.select([0, fd, inject], [], [])[0]
@@ -26,6 +27,7 @@ try:
             if not data:
                 break
             os.write(1, data)
+            wrote.write(data)
         for src in (0, inject):
             if src in ready:
                 os.write(fd, os.read(src, 65536))

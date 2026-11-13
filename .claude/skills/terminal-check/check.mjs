@@ -18,7 +18,6 @@ const configs = pick(matrix.configs, list('configs'))
 const scenarios = pick(matrix.scenarios, list('scenarios'))
 const only = list('only')
 const out = resolve(flag('out', join(homedir(), '.prismantis-terminal-check', new Date().toISOString().replace(/[:.]/g, '-'))))
-const boot = Number(flag('boot', 12))
 const bootLimit = Number(flag('boot-limit', 60))
 const readyText = flag('ready', 'Claude Code')
 const os = platform()
@@ -207,7 +206,10 @@ const WIN_KEYS = { Enter: '13:13:0', Down: '40:0:256', Up: '38:0:256', Left: '37
 const winText = text => text.split('').map(c => `0:${c.charCodeAt(0)}:0`)
 const shellPid = w => Number(readFileSync(w.pid, 'utf8'))
 const winType = (w, records) => ps(`[Wins]::Type(${shellPid(w)}, $env:TC_KEYS)`, { TC_KEYS: records.join(',') })
+const ANSI = /\x1b(?:\[[0-?]*[ -\/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[ -\/]*[0-~])/g
+const plain = raw => raw.replace(ANSI, '').replace(/\r/g, '\n')
 const screenText = (w, file) => {
+  if (!win) return existsSync(w.log) ? plain(readFileSync(w.log, 'utf8')) : ''
   ps(`[Wins]::Text(${shellPid(w)}, $env:TC_FILE)`, { TC_FILE: file })
   return readFileSync(file, 'utf8')
 }
@@ -244,18 +246,16 @@ const inject = (fifo, bytes) => {
 }
 const send = async (w, keys, echo = true) => {
   const parts = keys.split(/\{(\w+)\}/)
-  if (win) {
-    const check = echo && parts.length === 1 && keys.trim().length > 2
-    const before = check ? seen(w, keys) : 0
-    winType(w, parts.flatMap((p, i) => (i % 2 ? [WIN_KEYS[p]] : winText(p))))
-    if (check) await shown(w, keys, before)
-    return
-  }
-  for (const [i, p] of parts.entries()) {
-    if (!p) continue
-    inject(w.fifo, i % 2 ? MAC_KEYS[p] : p)
-    await sleep(0.5)
-  }
+  const check = echo && parts.length === 1 && keys.trim().length > 2
+  const before = check ? seen(w, keys) : 0
+  if (win) winType(w, parts.flatMap((p, i) => (i % 2 ? [WIN_KEYS[p]] : winText(p))))
+  else
+    for (const [i, p] of parts.entries()) {
+      if (!p) continue
+      inject(w.fifo, i % 2 ? MAC_KEYS[p] : p)
+      await sleep(0.5)
+    }
+  if (check) await shown(w, keys, before)
 }
 
 const cfg = join(out, 'cfg')
@@ -296,10 +296,11 @@ const launcher = dir => {
     return { file, pid, halt, starts }
   }
   const fifo = join(dir, 'keys.fifo')
+  const log = join(dir, 'output.log')
   run('mkfifo', [fifo])
   const file = join(dir, 'launch.sh')
-  writeFileSync(file, `cd '${repo}'\nunset CLAUDE_CODE_PLUGIN_DIRS\nexport CLAUDE_CONFIG_DIR='${cfg}' ENABLE_CLAUDEAI_MCP_SERVERS=false\necho $$ > '${pid}'\nwhile [ ! -e '${halt}' ]; do clear; python3 '${join(here, 'keys.py')}' '${fifo}' claude; done\n`)
-  return { file, pid, halt, fifo }
+  writeFileSync(file, `cd '${repo}'\nunset CLAUDE_CODE_PLUGIN_DIRS\nexport CLAUDE_CONFIG_DIR='${cfg}' ENABLE_CLAUDEAI_MCP_SERVERS=false\necho $$ > '${pid}'\nwhile [ ! -e '${halt}' ]; do clear; printf 1 >> '${starts}'; python3 '${join(here, 'keys.py')}' '${fifo}' '${log}' claude; done\n`)
+  return { file, pid, halt, fifo, starts, log }
 }
 
 const stop = pidFile => {
@@ -316,6 +317,7 @@ const play = async (w, steps, dir, name) => {
     const file = join(dir, `${name}.${label}.png`)
     shoot(w.id, file)
     if (win) screenText(w, file.replace(/png$/, 'txt'))
+    else writeFileSync(file.replace(/png$/, 'txt'), screenText(w))
     shots.push(file)
   }
   for (const [secs, action] of [...steps, [1, { shot: 'end' }]]) {
@@ -353,7 +355,7 @@ for (const t of terminals) {
   }
   const dir = join(out, t.id)
   mkdirSync(dir, { recursive: true })
-  const { file, pid, halt, fifo, starts: startsFile } = launcher(dir)
+  const { file, pid, halt, fifo, log, starts: startsFile } = launcher(dir)
   live = { pid, halt }
   apply(configs[0][1])
   const front = win ? null : tryRun('osascript', ['-l', 'JavaScript', '-e', MAC, 'front'])?.trim()
@@ -372,14 +374,14 @@ for (const t of terminals) {
     stop(pid)
     continue
   }
-  Object.assign(w, { fifo, pid, starts: startsFile, screen: join(dir, 'screen.txt') })
+  Object.assign(w, { fifo, log, pid, starts: startsFile, screen: join(dir, 'screen.txt') })
   for (const [ci, [config, values]] of configs.entries()) {
     const since = ci ? starts(w) : 0
     if (ci) {
       apply(values)
       await send(w, '{Clear}/exit{Enter}')
     }
-    const late = win ? await booted(w, since).catch(e => e.message) : await sleep(boot)
+    const late = await booted(w, since).catch(e => e.message)
     if (late) {
       for (const [scenario] of scenarios) results.push({ terminal: t.id, config, scenario, status: late })
       console.log(`${t.id} ${config}: ${late}`)
