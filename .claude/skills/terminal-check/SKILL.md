@@ -28,6 +28,7 @@ The script ends by printing the path of `index.html`. That page is a grid: one r
 - A throwaway `CLAUDE_CONFIG_DIR` under the output folder. The working copy is installed there from a local marketplace (the same trick as `drive-check`), so options apply and your own config is left alone. On Windows it copies `~/.claude/.credentials.json` there, so the session is logged in. On macOS the session shows "Not logged in". Slash commands such as `/prismantis demo` still run, so the scenarios stick to those.
 - `CLAUDE_CODE_PLUGIN_DIRS` is unset, so a checkout your shell points at cannot load over the install.
 - Before each launch, `settings.json` gets the config's options under `pluginConfigs`.
+- `NO_COLOR`, `TERM_PROGRAM`, `WARP_*` and the `CLAUDE_CODE_*` markers of the calling session are dropped, so a run started from Claude Code still draws in color and each terminal reports itself.
 
 ## Matrix
 
@@ -36,7 +37,7 @@ The script ends by printing the path of `index.html`. That page is a grid: one r
 - `configs`: name → prismantis options, using the same keys as `/config`. Claude Code's own settings go in a nested `settings` key, such as `{ "settings": { "tui": "fullscreen" } }`.
 - `scenarios`: name → steps `[seconds to wait, action]`. An action is one of:
   - keys, such as `"/prismantis demo"`. The named keys are `{Enter}` `{Down}` `{Up}` `{Left}` `{Right}` `{Tab}` `{Esc}` `{Backspace}` `{Space}`.
-  - `{ "click": [x, y] }`. On macOS, `x` and `y` are the 1-based column and row, sent as a mouse report into the session. On Windows, they are pixels of the scenario's last screenshot. Buttons get clicks only in a config with `"tui": "fullscreen"`. Coordinates hold for one terminal and window size, so keep click scenarios in your own `--matrix` file.
+  - `{ "click": [x, y] }`. `x` and `y` are the 1-based column and row, sent as a mouse report into the session. Buttons get clicks only in a config with `"tui": "fullscreen"`. Coordinates hold for one window size, so keep click scenarios in your own `--matrix` file.
   - `{ "shot": "label" }`
 
 Every scenario also ends with a shot named `end`.
@@ -44,14 +45,14 @@ Every scenario also ends with a shot named `end`.
 ## Permissions and safety
 
 - **macOS:** the run never takes focus, so you can keep using the Mac. `claude` runs under `keys.py`, a small pty proxy that reads keys and mouse reports from a FIFO, and `screencapture -l` captures the window even behind other windows. After a terminal opens its window, the app that was in front gets focus back. The terminal you run the script from needs Screen Recording. It needs `python3` on the PATH.
-- **Windows:** no setup is needed. Before every key press or click, the script raises the test window and checks that it is the front window. If it is not, the scenario stops with `could not focus the window`, so keys never land in your own windows. Don't use the mouse or keyboard while it runs.
+- **Windows:** no setup is needed and the run never takes focus, so you can keep using the PC. Windows open without activation, and a guard hands focus back if a terminal takes it anyway. Keys and mouse reports are written into the window's console input (`AttachConsole` + `WriteConsoleInput`), and `PrintWindow` captures the window behind other windows. Warp opens through its `warp://` link and may come to the front once when its window opens.
 - Run it from Claude Code with the sandbox off for that one command. The sandbox blocks `open`, `osascript` and opening windows.
 
 ## Known gaps
 
 - Linux has no launchers yet.
 - On macOS, Terminal and iTerm2 keep the closed window open ("process completed"). Close those windows by hand.
-- On macOS, keys and clicks go to the session, not through the terminal, so a bug in how a terminal encodes a key or a click does not show.
+- Keys and clicks go to the session, not through the terminal, so a bug in how a terminal encodes a key or a click does not show.
 - Capture of a window moved to another desktop is untested.
 - Nothing is diffed against a past run, because the cursor and clock change every capture. Compare the pages by eye.
 
