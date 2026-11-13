@@ -53,9 +53,8 @@ const detectTerminal = async ($: EngineInterface): Promise<Terminal | null> => {
 
 const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | null> => {
   if (style.rtl === 'off') return null
-  if (style.rtl !== 'auto') return style.rtl
-  const terminal = await detectTerminal($)
-  style.reorder = terminal !== null
+  const terminal = style.rtl === 'auto' ? await detectTerminal($) : style.rtl
+  if (style.rtl === 'auto') style.reorder = terminal !== null
   if (terminal) style.shape = TERMINALS[terminal === 'warp' && (await $.env.get('OS')) === 'Windows_NT' ? 'windows-terminal' : terminal]
   return terminal
 }
