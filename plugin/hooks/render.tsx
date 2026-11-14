@@ -12,6 +12,7 @@ import type { Style, Theme } from './theme'
 import { statusEdge, statusFooter, statusHeavy, statusLook, statusOf, statusRows } from './status'
 import { benchLook, benchOf, benchSpark } from './bench-table'
 import { schemaLook, schemaOf } from './schema-table'
+import { apiLook, apiOf } from './api-table'
 import { testReport } from './test-report'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -1046,7 +1047,8 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const bench = benchOf(block, style.benchTable)
   const spark = benchSpark(el, t, block, bench, style.benchTable, `${key}.s`)
   const schema = schemaOf(block, style.schemaTable)
-  const look = (c: number, cell: TableCell, plain: { color?: string } = {}) => statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, plain)))
+  const api = apiOf(block, style.apiTable)
+  const look = (c: number, cell: TableCell, plain: { color?: string } = {}) => statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, apiLook(t, api, c, cell, plain))))
   const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)

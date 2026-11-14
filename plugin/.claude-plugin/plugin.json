@@ -116,6 +116,13 @@
       "default": "off",
       "options": ["full", "types", "keys", "off"]
     },
+    "apiTable": {
+      "type": "string",
+      "title": "API reference",
+      "description": "How an API reference table draws: a method column whose cells read like HTTP verbs. off (the default) keeps tables as written. verbs draws each method cell by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. auth draws the scheme cells of an auth column: Bearer, OAuth, API key and JWT in the accent color. full does both.",
+      "default": "off",
+      "options": ["full", "verbs", "auth", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

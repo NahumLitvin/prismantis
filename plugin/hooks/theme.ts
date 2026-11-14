@@ -5,6 +5,7 @@ import type { ClipboardBackend } from './clipboard'
 import type { PresetName } from './presets'
 import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from './presets'
 import type { SchemaTable } from './schema-table'
+import type { ApiTable } from './api-table'
 import type { StatusMatrix } from './status'
 import type { Shape, Terminal } from './rtl'
 import { TERMINALS } from './rtl'
@@ -29,6 +30,7 @@ export type Style = {
   testMatrix: TestMatrix
   benchTable: BenchTable
   schemaTable: SchemaTable
+  apiTable: ApiTable
   taskStyle: 'checks' | 'ticks' | 'box' | 'progress'
   listMarker: 'dots' | 'dash'
   promptStyle: 'bubble' | 'framed' | 'wide' | 'bar' | 'chevron' | 'off'
@@ -122,6 +124,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     testMatrix: pick(options.testMatrix, ['off', 'report'] as const, 'off'),
     benchTable: pick(options.benchTable, ['trend', 'color', 'off'] as const, 'off'),
     schemaTable: pick(options.schemaTable, ['full', 'types', 'keys', 'off'] as const, 'off'),
+    apiTable: pick(options.apiTable, ['full', 'verbs', 'auth', 'off'] as const, 'off'),
     taskStyle: pick(options.taskStyle, ['checks', 'ticks', 'box', 'progress'] as const, 'checks'),
     listMarker: pick(options.listMarker, ['dots', 'dash'] as const, 'dots'),
     promptStyle: pick(options.promptStyle, ['bubble', 'framed', 'wide', 'bar', 'chevron', 'off'] as const, 'bubble'),

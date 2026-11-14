@@ -895,6 +895,177 @@
   <Text color=#6e7781>
     "└────────────┴──────────────┴──────────────┴─────────┘"
 <Box>
+  <Text color=#0550ae bold>
+    <Text>
+      "API reference"
+  <Text color=#0550ae>
+    "━━━━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table documents an API — a method column whose cells read like HTTP verbs — "
+  <Text color=#0550ae>
+    "apiTable"
+  <Text>
+    " draws the method cells by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. "
+  <Text color=#0550ae>
+    "auth"
+  <Text>
+    " draws the scheme cells of an auth column — Bearer, OAuth, API key, JWT — in the accent color, and "
+  <Text color=#0550ae>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text color=#0550ae>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#6e7781>
+    "┌────────┬─────────────────┬─────────┬──────────────────┐"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text color=#953800 bold>
+        "Method"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Endpoint"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Auth"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Description"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "╞════════╪═════════════════╪═════════╪══════════════════╡"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "GET"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#116329>
+          "/v1/scrolls"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Bearer"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "List the scrolls"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├────────┼─────────────────┼─────────┼──────────────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "POST"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#116329>
+          "/v1/scrolls"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Bearer"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Add a scroll"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├────────┼─────────────────┼─────────┼──────────────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "DELETE"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#116329>
+          "/v1/scrolls/"
+        <Text>
+          ":id"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "API key"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Remove a scroll"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├────────┼─────────────────┼─────────┼──────────────────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "GET"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#116329>
+          "/v1/health"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "none"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Liveness check"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "└────────┴─────────────────┴─────────┴──────────────────┘"
+<Box>
   <Box row>
     <Text color=#cf222e>
       "1. "

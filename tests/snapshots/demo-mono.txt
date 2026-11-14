@@ -895,6 +895,177 @@
   <Text>
     "└────────────┴──────────────┴──────────────┴─────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "API reference"
+  <Text>
+    "━━━━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table documents an API — a method column whose cells read like HTTP verbs — "
+  <Text>
+    "apiTable"
+  <Text>
+    " draws the method cells by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. "
+  <Text>
+    "auth"
+  <Text>
+    " draws the scheme cells of an auth column — Bearer, OAuth, API key, JWT — in the accent color, and "
+  <Text>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌────────┬─────────────────┬─────────┬──────────────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Method"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Endpoint"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Auth"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Description"
+    <Text>
+      " │"
+  <Text>
+    "╞════════╪═════════════════╪═════════╪══════════════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "GET"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "/v1/scrolls"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Bearer"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "List the scrolls"
+    <Text>
+      " │"
+  <Text>
+    "├────────┼─────────────────┼─────────┼──────────────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "POST"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "/v1/scrolls"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Bearer"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Add a scroll"
+    <Text>
+      " │"
+  <Text>
+    "├────────┼─────────────────┼─────────┼──────────────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "DELETE"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "/v1/scrolls/"
+        <Text>
+          ":id"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "API key"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Remove a scroll"
+    <Text>
+      " │"
+  <Text>
+    "├────────┼─────────────────┼─────────┼──────────────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "GET"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "/v1/health"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "none"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "Liveness check"
+    <Text>
+      " │"
+  <Text>
+    "└────────┴─────────────────┴─────────┴──────────────────┘"
+<Box>
   <Box row>
     <Text>
       "1. "

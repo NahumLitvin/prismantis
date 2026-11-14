@@ -1333,3 +1333,78 @@ test('schemaTable types tells the families apart in a theme where they differ', 
   expect(t.codeString).not.toBe(t.number)
   await ui.unmount()
 })
+
+const API = [
+  '| Method | Endpoint | Auth | Description |',
+  '|:-------|:---------|:-----|:------------|',
+  '| GET | /v1/scrolls | Bearer | List the scrolls |',
+  '| POST | /v1/scrolls | Bearer | Add a scroll |',
+  '| DELETE | /v1/scrolls/:id | API key | Remove a scroll |',
+  '| OPTIONS | /v1/health | none | Liveness check |',
+].join('\n')
+
+for (const surface of ['terminal', 'desktop'] as const) test(`apiTable ${surface} colors the method cells by what the verb does`, { options: { apiTable: 'verbs' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(API), surface })
+  expect((await ui.find({ type: 'Text', text: /^GET$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^POST$/ }))?.props.color).toBe(t.codeString)
+  expect((await ui.find({ type: 'Text', text: /^DELETE$/ }))?.props.color).toBe(t.diffRemoved)
+  expect((await ui.find({ type: 'Text', text: /^OPTIONS$/ }))?.props.color).toBe(t.codeComment)
+  expect((await ui.find({ type: 'Text', text: /^\/v1\/scrolls$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('apiTable auth marks the scheme cells of an auth column', { options: { apiTable: 'auth' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(API), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^Bearer$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^API key$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^none$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^GET$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('apiTable full colors the verbs and marks the schemes', { options: { apiTable: 'full' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(API), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^GET$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^Bearer$/ }))?.props.color).toBe(t.accent)
+  await ui.unmount()
+})
+
+test('apiTable verbs finds a verb column with no header to name it', { options: { apiTable: 'verbs' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| | Path |\n|---|---|\n| GET | /a |\n| POST | /b |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^GET$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^\/a$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('apiTable off keeps tables as written', async $ => {
+  const ui = await $.ui.mount({ ...draw(API), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^GET$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^Bearer$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a table with no verb cells draws no api colors', { options: { apiTable: 'full' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Name | Kind |\n|---|---|\n| fetch | fast |\n| send | slow |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^fast$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('apiTable stays off stacked tables', { options: { apiTable: 'full', tableLayout: 'stacked' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(API), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^GET$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('apiTable verbs tells the verbs apart in a theme where they differ', { options: { apiTable: 'verbs', theme: 'dracula' } }, async $ => {
+  const t = PRESETS['dracula']
+  const ui = await $.ui.mount({ ...draw(API), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^GET$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^POST$/ }))?.props.color).toBe(t.codeString)
+  expect(t.link).not.toBe(t.codeString)
+  expect(t.codeString).not.toBe(t.diffRemoved)
+  await ui.unmount()
+})

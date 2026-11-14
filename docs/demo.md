@@ -64,6 +64,17 @@ When a table describes a database schema — a column of fields beside a column 
 | org_id | bigint | FK → orgs.id | |
 | created_at | timestamp | | now() |
 
+## API reference
+
+When a table documents an API — a method column whose cells read like HTTP verbs — `apiTable` draws the method cells by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. `auth` draws the scheme cells of an auth column — Bearer, OAuth, API key, JWT — in the accent color, and `full` does both. The default `off` keeps tables as written:
+
+| Method | Endpoint | Auth | Description |
+|:-------|:---------|:-----|:------------|
+| GET | /v1/scrolls | Bearer | List the scrolls |
+| POST | /v1/scrolls | Bearer | Add a scroll |
+| DELETE | /v1/scrolls/:id | API key | Remove a scroll |
+| GET | /v1/health | none | Liveness check |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings
