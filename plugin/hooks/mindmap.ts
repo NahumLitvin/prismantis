@@ -1,10 +1,9 @@
 import type { ChartArt } from './charts'
-import { cells, width } from './layout'
-import { ARROW_HUE, fit, LINE_HUE, type Line, line, oneLine, unquote } from './textart'
+import { width } from './layout'
+import { ARROW_HUE, art, blank, type Canvas, fit, LINE_HUE, type Line, line, oneLine, paint, rows, unquote } from './textart'
 
 type Node = { label: string; kids: Node[]; row: number }
 type Glyphs = { h: string; v: string; top: string; mid: string; bottom: string; down: string; cross: string; side: string }
-type Canvas = { grid: string[][]; hues: number[][] }
 
 const BOX: Glyphs = { h: '─', v: '│', top: '┌', mid: '├', bottom: '└', down: '┬', cross: '┼', side: '┤' }
 const PLAIN: Glyphs = { h: '-', v: '|', top: '+', mid: '+', bottom: '`', down: '+', cross: '+', side: '+' }
@@ -71,12 +70,6 @@ const widths = (n: Node, depth = 0, out: number[] = []): number[] => {
   return out
 }
 
-const put = (c: Canvas, row: number, col: number, text: string, hue: number) =>
-  cells(text).forEach((ch, k) => {
-    c.grid[row]![col + k] = ch
-    c.hues[row]![col + k] = hue
-  })
-
 const joint = (g: Glyphs, r: number, kid: boolean, [first, last, at]: number[]) => {
   if (first === last) return g.h
   if (r === first) return r === at ? g.down : g.top
@@ -87,17 +80,17 @@ const joint = (g: Glyphs, r: number, kid: boolean, [first, last, at]: number[]) 
 
 const drawNode = (c: Canvas, g: Glyphs, x: number[], n: Node, depth: number, hue: number) => {
   const left = x[depth]!
-  put(c, n.row, left, n.label, depth === 0 ? ARROW_HUE : depth === 1 ? hue : -1)
+  paint(c, n.row, left, n.label, depth === 0 ? ARROW_HUE : depth === 1 ? hue : -1)
   if (!n.kids.length) return
   const arm = depth === 0 ? LINE_HUE : hue
   const spine = x[depth + 1]! - 3
   const span = [n.kids[0]!.row, n.kids.at(-1)!.row, n.row]
-  const rows = new Set(n.kids.map(k => k.row))
-  put(c, n.row, left + width(n.label), ` ${g.h.repeat(spine - left - width(n.label) - 1)}`, arm)
-  for (let r = span[0]!; r <= span[1]!; r++) put(c, r, spine, joint(g, r, rows.has(r), span), arm)
+  const kidRows = new Set(n.kids.map(k => k.row))
+  paint(c, n.row, left + width(n.label), ` ${g.h.repeat(spine - left - width(n.label) - 1)}`, arm)
+  for (let r = span[0]!; r <= span[1]!; r++) paint(c, r, spine, joint(g, r, kidRows.has(r), span), arm)
   n.kids.forEach((k, i) => {
     const own = depth === 0 ? i : hue
-    put(c, k.row, spine + 1, `${g.h} `, own)
+    paint(c, k.row, spine + 1, `${g.h} `, own)
     drawNode(c, g, x, k, depth + 1, own)
   })
 }
@@ -110,10 +103,9 @@ const across = (root: Node, g: Glyphs, cols: number): Line[] | null => {
   if (span > cols) return null
   const next = { row: 0 }
   placeRows(root, next)
-  const blank = <T>(fill: T) => Array.from({ length: next.row }, () => Array<T>(span).fill(fill))
-  const c: Canvas = { grid: blank(' '), hues: blank(-1) }
+  const c = blank(next.row, span)
   drawNode(c, g, x, root, 0, 0)
-  return c.grid.map((row, r) => ({ text: row.join(''), hue: c.hues[r]! }))
+  return rows(c)
 }
 
 const outline = (root: Node, g: Glyphs, cols: number): Line[] => {
@@ -136,6 +128,5 @@ export const mindmapText = (source: string, ascii: boolean, columns: number): Ch
   if (!root) return null
   const g = ascii ? PLAIN : BOX
   const cols = Math.max(20, columns - 4)
-  const out = across(root, g, cols) ?? outline(root, g, cols)
-  return { text: out.map(l => l.text.trimEnd()).join('\n'), slices: out.map(l => l.hue) }
+  return art(across(root, g, cols) ?? outline(root, g, cols))
 }

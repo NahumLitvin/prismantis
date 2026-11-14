@@ -1646,6 +1646,79 @@
   <Box>
     <Box>
       <Text>
+        <Text color=#cdd6f4>
+          "Morning run"
+      <Text>
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#89b4fa>
+          "Start ───────────────────────── "
+        <Text color=#a6e3a1>
+          "Run ───────────────────────────"
+      <Text>
+        <Text color=#89b4fa>
+          "5"
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "╭───────"
+        <Text color=#a6e3a1>
+          "●"
+        <Text color=#89b4fa>
+          "───────╮"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                 "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "               "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                 "
+        <Text color=#89b4fa>
+          "╭───────"
+        <Text color=#cdd6f4>
+          "●"
+        <Text color=#89b4fa>
+          "───────╯"
+        <Text color=#cdd6f4>
+          "               "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                 "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "                               "
+        <Text color=#89b4fa>
+          "╰───────"
+        <Text color=#f38ba8>
+          "●"
+      <Text>
+        <Text color=#89b4fa>
+          "1"
+        <Text color=#cdd6f4>
+          "        "
+        <Text color=#f38ba8>
+          "●"
+        <Text color=#89b4fa>
+          "───────╯"
+      <Text>
+        <Text color=#cdd6f4>
+          "       Alarm          Stretch        Park loop         Hill"
+      <Text>
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#89b4fa>
+          "      Me              Me            Me, Dog           Me"
+  <Box>
+    <Box>
+      <Text>
         <Text color=#89b4fa>
           "┌───────┐"
         <Text color=#cdd6f4>
