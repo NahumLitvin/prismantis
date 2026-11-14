@@ -13,6 +13,7 @@ import { artFace, heldLtr, mirrored, remember } from './render'
 import { asIs, hasRtl, holdEngine, holdRow, holdVisual, led } from './rtl'
 import type { Style, Theme } from './theme'
 import { journeyText } from './journey'
+import { kanbanText } from './kanban'
 import { mindmapText } from './mindmap'
 import { quadrantText } from './quadrant'
 import { ARROW_HUE, BAD_HUE, GOOD_HUE, LINE_HUE, oneLine } from './textart'
@@ -68,7 +69,7 @@ const labelBars = (art: string, source: string): string => {
 
 const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
 
-const SUPPORTED = /^(flowchart|graph|statediagram(-v2)?|xychart(-beta)?|sequencediagram|classdiagram|erdiagram|pie|gantt|quadrantchart|mindmap|journey)$/i
+const SUPPORTED = /^(flowchart|graph|statediagram(-v2)?|xychart(-beta)?|sequencediagram|classdiagram|erdiagram|pie|gantt|quadrantchart|mindmap|journey|kanban)$/i
 
 const kindOf = (source: string) => source.replace(/^(\s*%%[^\n]*\n)+/, '').trim().split(/\s/)[0] ?? ''
 
@@ -86,6 +87,7 @@ const OWN: Record<string, typeof pieText> = {
   quadrantchart: quadrantText,
   mindmap: mindmapText,
   journey: journeyText,
+  kanban: kanbanText,
 }
 
 const INLINE_TAG = /<\/?(?:b|i|u|s|em|strong|del|code|small|sub|sup|span|mark)\b[^<>\n]*>/gi

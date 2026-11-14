@@ -1,4 +1,4 @@
-import { cells, graphemes, width } from './layout'
+import { cells, graphemes, width, wrapRanges } from './layout'
 
 export type Line = { text: string; hue: number[] }
 export type Canvas = { grid: string[][]; hues: number[][] }
@@ -38,3 +38,8 @@ export const paint = (c: Canvas, row: number, col: number, text: string, hue: nu
 export const rows = (c: Canvas): Line[] => c.grid.map((row, r) => ({ text: row.join(''), hue: c.hues[r]! }))
 
 export const art = (lines: Line[]) => ({ text: lines.map(l => l.text.trimEnd()).join('\n'), slices: lines.map(l => l.hue) })
+
+export const wrap = (text: string, w: number, most: number) => {
+  const lines = wrapRanges(text, w).map(([a, b]) => text.slice(a, b).trim())
+  return lines.length > most ? [...lines.slice(0, most - 1), fit(lines.slice(most - 1).join(' '), w)] : lines
+}

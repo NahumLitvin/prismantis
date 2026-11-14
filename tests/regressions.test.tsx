@@ -405,6 +405,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('quadrantChart\n    title Feature priorities')
   expect(showcaseText(Object.keys(PRESETS))).toContain('mindmap\n    root((Release))')
   expect(showcaseText(Object.keys(PRESETS))).toContain('journey\n    title First order')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('kanban\n    todo[To do]')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`schemaTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('| org_id | bigint |')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Status matrix')
@@ -521,7 +522,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(10)
+  expect(diagrams.length).toBe(11)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -2178,6 +2179,65 @@ test('a journey reads Mermaid details: decimal scores, a task named like a secti
 
 test('journey sources the chart cannot read show a failure note, not a broken chart', async $ => {
   for (const source of ['journey\n  title Empty', 'journey\n  Task: 7: Me', 'journey\n  just words']) {
+    expect(mermaidText(source, false, 80)).toBeNull()
+    const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+const KANBAN = "kanban\n  todo[To do]\n    a[Fix checkout error message]@{ assigned: 'Amy', priority: 'High' }\n    b[Interview churned users]@{ assigned: Ken, ticket: UX-12 }\n  [In progress]\n    c[Design system]@{ assigned: \"Lia\", priority: 'Low' }\n  Done"
+
+test('a kanban board puts columns side by side with a card count, and each card in a box with its wrapped text and metadata', () => {
+  expect(mermaidText(KANBAN, false, 70)!.split('\n')).toEqual([
+    'To do · 2             In progress · 1       Done · 0',
+    '╭──────────────────╮  ╭──────────────────╮',
+    '│ Fix checkout     │  │ Design system    │',
+    '│ error message    │  │ Lia · Low        │',
+    '│ Amy · High       │  ╰──────────────────╯',
+    '╰──────────────────╯',
+    '╭──────────────────╮',
+    '│ Interview        │',
+    '│ churned users    │',
+    '│ Ken · UX-12      │',
+    '╰──────────────────╯',
+  ])
+})
+
+test('a kanban board too wide for the terminal stacks its columns, measures wide text and uses plain glyphs in ascii mode', () => {
+  const art = mermaidText(KANBAN, false, 40)!.split('\n')
+  expect(art.slice(0, 5)).toEqual(['To do · 2', '╭──────────────────────────────────╮', '│ Fix checkout error message       │', '│ Amy · High                       │', '╰──────────────────────────────────╯'])
+  expect(art.slice(-2)).toEqual(['', 'Done · 0'])
+  expect(mermaidText(KANBAN, true, 70)).not.toMatch(/[─│╭╮╰╯·]/)
+  const wide = mermaidText('kanban\n  待辦\n    [寫一份很長很長的中文說明文件給大家看]\n  完成', false, 70)!.split('\n')
+  expect(wide.slice(2, 4)).toEqual(['│ 寫一份很長很長的中文說明文件 │', '│ 給大家看                     │'])
+  for (const columns of [24, 40, 70, 120]) expect(Math.max(...mermaidText(KANBAN, false, columns)!.split('\n').map(width)) <= Math.max(16, columns - 4)).toBe(true)
+})
+
+test('a kanban board draws each column and its cards in one palette color and a high priority in red', { options: { replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\n' + KANBAN + '\n```', 70))
+  const texts = await ui.findAll({ type: 'Text' })
+  const theme = PRESETS['catppuccin-mocha']
+  const hue = (text: string) => texts.find(n => n.props.color && n.text?.includes(text))?.props.color
+  expect(hue('To do · 2')).toBe(texts.find(n => n.props.color && /^╭─+╮$/.test(n.text ?? ''))?.props.color)
+  expect(hue('To do · 2')).not.toBe(hue('In progress · 1'))
+  expect(hue(' · High')).toBe(theme.diffRemoved)
+  expect(hue(' · Low')).toBe(theme.diagram)
+  expect(hue('Fix checkout')).toBe(theme.diagramText)
+  await ui.unmount()
+})
+
+test('a kanban board keeps metadata inside its card, reads metadata over several lines and columns indented less than the first', () => {
+  const narrow = mermaidText("kanban\n  A\n    [x]@{ assigned: 'Bo', priority: 'Very High' }\n  B\n  C", false, 60)!.split('\n')
+  expect(new Set(narrow.slice(1, 4).map(width)).size).toBe(1)
+  expect(mermaidText('kanban\n\ttodo\n\t\t[A]\n  doing\n    [B]', false, 80)!.split('\n')[0]).toMatch(/^todo · 1 +doing · 1$/)
+  expect(narrow.slice(2, 4)).toEqual(['│ x             │', '│ Bo            │'])
+  expect(mermaidText("kanban\n  A\n    x[Tent]@{\n      assigned: 'Bo'\n    }", false, 80)).toContain('│ Bo ')
+  expect(mermaidText('kanban\n  A\n    a[Document the @{ assigned } syntax]', false, 80)).toContain('│ Document the @{ assigned }   │\n│ syntax ')
+})
+
+test('kanban sources the chart cannot read show a failure note, not a broken chart', async $ => {
+  for (const source of ['kanban', 'kanban\n  [ ]']) {
     expect(mermaidText(source, false, 80)).toBeNull()
     const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()

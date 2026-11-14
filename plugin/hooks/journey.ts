@@ -1,6 +1,6 @@
 import type { ChartArt } from './charts'
-import { width, wrapRanges } from './layout'
-import { art, BAD_HUE, blank, type Canvas, fit, GOOD_HUE, LINE_HUE, type Line, line, oneLine, paint, rows, unquote } from './textart'
+import { width } from './layout'
+import { art, BAD_HUE, blank, type Canvas, fit, GOOD_HUE, LINE_HUE, type Line, line, oneLine, paint, rows, unquote, wrap } from './textart'
 
 type Task = { name: string; score: number; actors: string[]; section: number }
 type Journey = { title?: string; sections: string[]; tasks: Task[] }
@@ -52,11 +52,6 @@ const parse = (source: string): Journey | null => {
 const level = (score: number) => 5 - Math.round(score)
 
 const mood = (score: number) => (score >= 4 ? GOOD_HUE : score <= 2 ? BAD_HUE : -1)
-
-const wrap = (text: string, w: number, most: number) => {
-  const lines = wrapRanges(text, w).map(([a, b]) => text.slice(a, b).trim())
-  return lines.length > most ? [...lines.slice(0, most - 1), fit(lines.slice(most - 1).join(' '), w)] : lines
-}
 
 const link = (c: Canvas, g: Glyphs, [r1, c1]: Cell, [r2, c2]: Cell) => {
   if (r1 === r2) return paint(c, r1, c1 + 1, g.h.repeat(c2 - c1 - 1), LINE_HUE)

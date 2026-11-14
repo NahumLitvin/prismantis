@@ -1718,6 +1718,79 @@
     <Box>
       <Text>
         <Text color=#0969da>
+          "To pack · 2"
+        <Text color=#1f2328>
+          "                     "
+        <Text color=#0550ae>
+          "Packing · 1"
+        <Text color=#1f2328>
+          "                     "
+        <Text color=#8250df>
+          "Packed · 0"
+      <Text>
+        <Text color=#0969da>
+          "╭────────────────────────────╮"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "╭────────────────────────────╮"
+      <Text>
+        <Text color=#0969da>
+          "│ "
+        <Text color=#1f2328>
+          "Tent poles"
+        <Text color=#0969da>
+          "                 │"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "│ "
+        <Text color=#1f2328>
+          "First aid kit"
+        <Text color=#0550ae>
+          "              │"
+      <Text>
+        <Text color=#0969da>
+          "│ Bo"
+        <Text color=#cf222e>
+          " · Very High"
+        <Text color=#0969da>
+          "             │"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "│ "
+        <Text color=#0969da>
+          "Mei"
+        <Text color=#0550ae>
+          "                        │"
+      <Text>
+        <Text color=#0969da>
+          "╰────────────────────────────╯"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "╰────────────────────────────╯"
+      <Text>
+        <Text color=#0969da>
+          "╭────────────────────────────╮"
+      <Text>
+        <Text color=#0969da>
+          "│ "
+        <Text color=#1f2328>
+          "Stove fuel"
+        <Text color=#0969da>
+          "                 │"
+      <Text>
+        <Text color=#0969da>
+          "│ CAMP-3                     │"
+      <Text>
+        <Text color=#0969da>
+          "╰────────────────────────────╯"
+  <Box>
+    <Box>
+      <Text>
+        <Text color=#0969da>
           "┌───────┐"
         <Text color=#1f2328>
           "   "
