@@ -895,6 +895,175 @@
   <Text color=#585b70>
     "└────────────┴──────────────┴──────────────┴─────────┘"
 <Box>
+  <Text color=#f9e2af bold>
+    <Text>
+      "Key-value"
+  <Text color=#f9e2af>
+    "━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table lists configuration — a column of options beside columns of values, sources and defaults — "
+  <Text color=#89dceb>
+    "kvTable"
+  <Text>
+    " draws the source cells by where it says the value comes from: env in the link color, config in the string color, default in gray. "
+  <Text color=#89dceb>
+    "overrides"
+  <Text>
+    " draws the value cell in the accent color when the row's value differs from its default, and "
+  <Text color=#89dceb>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text color=#89dceb>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#585b70>
+    "┌─────────┬────────┬─────────┬─────────┐"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Option"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Value"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Source"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Default"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞═════════╪════════╪═════════╪═════════╡"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "retries"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "5"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "env"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "3"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼────────┼─────────┼─────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "format"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "json"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "config"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "json"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼────────┼─────────┼─────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "timeout"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "30s"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "default"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "30s"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼────────┼─────────┼─────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "token"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "abc123"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "env"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "unset"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└─────────┴────────┴─────────┴─────────┘"
+<Box>
   <Box row>
     <Text color=#cba6f7>
       "1. "

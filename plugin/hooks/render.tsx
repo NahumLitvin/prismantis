@@ -12,6 +12,7 @@ import type { Style, Theme } from './theme'
 import { statusEdge, statusFooter, statusHeavy, statusLook, statusOf, statusRows } from './status'
 import { benchLook, benchOf, benchSpark } from './bench-table'
 import { schemaLook, schemaOf } from './schema-table'
+import { kvLook, kvOf } from './kv-table'
 import { testReport } from './test-report'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -1046,7 +1047,9 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const bench = benchOf(block, style.benchTable)
   const spark = benchSpark(el, t, block, bench, style.benchTable, `${key}.s`)
   const schema = schemaOf(block, style.schemaTable)
-  const look = (c: number, cell: TableCell, plain: { color?: string } = {}) => statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, plain)))
+  const kv = kvOf(block, style.kvTable)
+  const kvAt = kv ? new Map(block.rows.map((cells, r) => [cells, r])) : undefined
+  const look = (at: number | undefined) => (c: number, cell: TableCell, plain: { color?: string } = {}) => statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, kvLook(t, kv, at, c, cell, plain))))
   const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
@@ -1092,7 +1095,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     return <Text key={k}>{renderInline(el, style, terminalLine(parts), k)}</Text>
   }
 
-  const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar) => drawsTextRows(style, rtl) ? terminalRow(cells, k, isHeader) : (
+  const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar, at?: number) => drawsTextRows(style, rtl) ? terminalRow(cells, k, isHeader) : (
     <Box key={k} flexDirection="row" columnGap={columnGap} alignItems="stretch">
       {!box && lead(k)}
       {box && border(`${k}.l`, wall('│ '))}
@@ -1104,11 +1107,11 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
         const runs = isHeader ? headerRuns(content) : content
         const cellBox = (
           <Box key={`${k}.${c}`} {...tableColumn(style, w, shares[c]!, words[c]!)} {...laidCell(style, box)} justifyContent={side}>
-            {pressInline(el, style, runs, w, `${k}.${c}.p`, tip, isHeader ? { bold: true, color: t.tableHeader } : look(c, cells[c]!, own({ color: t.tableText })), { justifyContent: side })
+            {pressInline(el, style, runs, w, `${k}.${c}.p`, tip, isHeader ? { bold: true, color: t.tableHeader } : look(at)(c, cells[c]!, own({ color: t.tableText })), { justifyContent: side })
               ?? (isHeader
                 ? <Text bold color={t.tableHeader}>{runs.some(n => n.kind === 'footnote') ? renderInline(el, style, runs, `${k}.${c}`) : inlineText(runs)}</Text>
                 : mirror && inlineText(content).trim() === '' ? <Text>{' '.repeat(w)}</Text>
-                : <Text {...look(c, cells[c]!, { color: t.tableText })}>{renderInline(el, style, content, `${k}.${c}`)}</Text>)}
+                : <Text {...look(at)(c, cells[c]!, { color: t.tableText })}>{renderInline(el, style, content, `${k}.${c}`)}</Text>)}
           </Box>
         )
         return [i > 0 && (box ? border(`${k}.${c}s`, wall(' │ ')) : spacer(`${k}.${c}g`)), cellBox]
@@ -1117,23 +1120,23 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     </Box>
   )
 
-  const wrappedRow = (cells: Inline[][], k: string, isHeader: boolean) => {
-    if (style.gridFace) return [row(cells, k, isHeader, laidWall(el, style))]
-    if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(shown(cells[c]!), w)))))]
+  const wrappedRow = (cells: Inline[][], k: string, isHeader: boolean, at?: number) => {
+    if (style.gridFace) return [row(cells, k, isHeader, laidWall(el, style), at)]
+    if (!isHeader && cells.some(hasLink)) return [row(cells, k, isHeader, clipped(Math.max(1, ...widths.map((w, c) => mostLines(shown(cells[c]!), w)))), at)]
     const wrapped = widths.map((w, c) => {
       const content = cells[c]!
       if (natural[c]! <= w && !inlineText(content).includes('\n')) return [content]
       return wrapInline(isHeader ? headerRuns(content) : content, w)
     })
     return Array.from({ length: Math.max(...wrapped.map(l => l.length)) }, (_, i) =>
-      row(wrapped.map(l => l[i] ?? []), `${k}.${i}`, isHeader))
+      row(wrapped.map(l => l[i] ?? []), `${k}.${i}`, isHeader, undefined, at))
   }
 
   if (box) {
     const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), ...wrappedRow(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
     layout.rows.forEach((r, i) => {
       if (i > 0) lines.push(edge(`${key}.r${i}r`, statusEdge(style.statusMatrix, layout.buckets, i - 1, '├─┼┤', '╞═╪╡')))
-      lines.push(...wrappedRow(r, `${key}.r${i}`, false))
+      lines.push(...wrappedRow(r, `${key}.r${i}`, false, kvAt?.get(r)))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
     return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{lines}{foot}{test}{spark}</Box>
@@ -1141,7 +1144,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
   const body: RenderElement[] = [row(block.header, `${key}.h`, true), rule(`${key}.hr`, true)]
   layout.rows.forEach((r, i) => {
-    body.push(row(r, `${key}.r${i}`, false))
+    body.push(row(r, `${key}.r${i}`, false, undefined, kvAt?.get(r)))
     if (style.tableStyle !== 'minimal' && i < layout.rows.length - 1) body.push(rule(`${key}.r${i}r`, statusHeavy(style.statusMatrix, layout.buckets, i)))
   })
   return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{body}{foot}{test}{spark}</Box>

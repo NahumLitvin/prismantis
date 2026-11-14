@@ -116,6 +116,13 @@
       "default": "off",
       "options": ["full", "types", "keys", "off"]
     },
+    "kvTable": {
+      "type": "string",
+      "title": "Key-value inspector",
+      "description": "How a table that lists configuration draws: a column of options beside columns of values, sources or defaults. off (the default) keeps tables as written. sources draws each source cell in the theme's colors by where it says the value comes from: env in the link color, config in the string color, default in gray. overrides draws the value cell in the accent color when the row's value differs from its default. full does both.",
+      "default": "off",
+      "options": ["full", "sources", "overrides", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

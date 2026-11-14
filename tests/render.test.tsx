@@ -1333,3 +1333,89 @@ test('schemaTable types tells the families apart in a theme where they differ', 
   expect(t.codeString).not.toBe(t.number)
   await ui.unmount()
 })
+
+const KV = [
+  '| Option | Value | Source | Default |',
+  '|:-------|:------|:-------|:--------|',
+  '| retries | 5 | env | 3 |',
+  '| format | json | config | json |',
+  '| timeout | 30s | default | 30s |',
+  '| token | abc123 | env | unset |',
+].join('\n')
+
+for (const surface of ['terminal', 'desktop'] as const) test(`kvTable ${surface} colors source cells by where the value comes from`, { options: { kvTable: 'sources' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(KV), surface })
+  expect((await ui.find({ type: 'Text', text: /^env$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^config$/ }))?.props.color).toBe(t.codeString)
+  expect((await ui.find({ type: 'Text', text: /^default$/ }))?.props.color).toBe(t.codeComment)
+  await ui.unmount()
+})
+
+test('kvTable sources leaves the value cells as written', { options: { kvTable: 'sources' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(KV), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^5$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^abc123$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('kvTable overrides marks the value cells that moved off their default', { options: { kvTable: 'overrides' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(KV), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^5$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^abc123$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^json$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^30s$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('kvTable overrides leaves the source cells as written', { options: { kvTable: 'overrides' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(KV), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^env$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^config$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('kvTable full colors the sources and marks the overrides', { options: { kvTable: 'full' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(KV), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^env$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^5$/ }))?.props.color).toBe(t.accent)
+  await ui.unmount()
+})
+
+test('kvTable overrides marks rows in a table with no source column', { options: { kvTable: 'full' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Option | Value | Default |\n|:-------|:------|:--------|\n| retries | 5 | 3 |\n| format | json | json |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^5$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^json$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('kvTable off keeps tables as written', async $ => {
+  const ui = await $.ui.mount({ ...draw(KV), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^env$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^5$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a table with no option header draws no key-value colors', { options: { kvTable: 'full' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Name | Value | Default |\n|:-----|:------|:--------|\n| retries | 5 | 3 |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^5$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('kvTable stays off stacked tables', { options: { kvTable: 'full', tableLayout: 'stacked' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(KV), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^env$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('kvTable tells the source tokens apart in a theme where they differ', { options: { kvTable: 'sources', theme: 'dracula' } }, async $ => {
+  const t = PRESETS['dracula']
+  const ui = await $.ui.mount({ ...draw(KV), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^env$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^config$/ }))?.props.color).toBe(t.codeString)
+  expect(t.link).not.toBe(t.codeString)
+  await ui.unmount()
+})

@@ -895,6 +895,175 @@
   <Text>
     "└────────────┴──────────────┴──────────────┴─────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Key-value"
+  <Text>
+    "━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table lists configuration — a column of options beside columns of values, sources and defaults — "
+  <Text>
+    "kvTable"
+  <Text>
+    " draws the source cells by where it says the value comes from: env in the link color, config in the string color, default in gray. "
+  <Text>
+    "overrides"
+  <Text>
+    " draws the value cell in the accent color when the row's value differs from its default, and "
+  <Text>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌─────────┬────────┬─────────┬─────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Option"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Value"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Source"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Default"
+    <Text>
+      " │"
+  <Text>
+    "╞═════════╪════════╪═════════╪═════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "retries"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "5"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "env"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "3"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼────────┼─────────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "format"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "json"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "config"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "json"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼────────┼─────────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "timeout"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "30s"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "default"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "30s"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼────────┼─────────┼─────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "token"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "abc123"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "env"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "unset"
+    <Text>
+      " │"
+  <Text>
+    "└─────────┴────────┴─────────┴─────────┘"
+<Box>
   <Box row>
     <Text>
       "1. "

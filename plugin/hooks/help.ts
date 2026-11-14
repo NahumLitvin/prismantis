@@ -116,6 +116,17 @@ When a table describes a database schema — a column of fields beside a column 
 | org_id | bigint | FK → orgs.id | |
 | created_at | timestamp | | now() |
 
+### Key-value
+
+When a table lists configuration — a column of options beside columns of values, sources and defaults — \`kvTable\` draws the source cells by where it says the value comes from: env in the link color, config in the string color, default in gray. \`overrides\` draws the value cell in the accent color when the row's value differs from its default, and \`full\` does both. The default \`off\` keeps tables as written:
+
+| Option | Value | Source | Default |
+|:-------|:------|:-------|:--------|
+| retries | 5 | env | 3 |
+| format | json | config | json |
+| timeout | 30s | default | 30s |
+| token | abc123 | env | unset |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -445,7 +456,7 @@ flowchart LR
 
 export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
-export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'codeStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'kvTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'codeStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
@@ -455,6 +466,7 @@ export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'test-report', key: 'testMatrix', title: 'Test report', note: 'What a table of test results reports: a status column of things like ✓ or failed next to durations like 120 ms. `off` keeps tables as written. `report` draws a line under the table with the share of the run that passed, a count of every other kind of result and the time all of it took.', options: ['report', 'off'], sample: '| Check | Time | Result |\n|:------|-----:|:-------|\n| parse | 120 ms | ✓ |\n| draw | 4 s | ✓ |\n| scan | 130 ms | failed |\n| typeset | 2.6 s | pending |' },
   { name: 'bench-table', key: 'benchTable', title: 'Benchmarks', note: 'How a table that compares benchmarks draws: a column of changes like -10% or +3%. `off` keeps tables as written. `color` draws each change in theme colors, green for an improvement and red for a regression, and `trend` also draws a sparkline of the runs under the table.', options: ['trend', 'color', 'off'], sample: '| Benchmark | Before | After | Change |\n|:----------|-------:|------:|:-------|\n| parse | 12.4 ms | 11.1 ms | -10% |\n| layout | 19.6 ms | 22.4 ms | +14% |\n| paint | 2.1 ms | 0.8 ms | -62% |' },
   { name: 'schema-table', key: 'schemaTable', title: 'Schema', note: 'How a table that describes a database schema draws: a column of fields beside a column of types. `off` keeps tables as written. `types` draws each type cell in theme colors by its family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. `keys` draws the constraint cells: PK in the accent color, FK in the link color, unique and index cells in gray. `full` does both.', options: ['full', 'types', 'keys', 'off'], sample: '| Column | Type | Key | Default |\n|:-------|:-----|:----|:--------|\n| id | uuid | PK | |\n| email | varchar(255) | UNIQUE | |\n| org_id | bigint | FK → orgs.id | |\n| created_at | timestamp | | now() |' },
+  { name: 'kv-table', key: 'kvTable', title: 'Key-value', note: 'How a table that lists configuration draws: a column of options beside columns of values, sources or defaults. `off` keeps tables as written. `sources` draws each source cell in theme colors by where it says the value comes from: env in the link color, config in the string color, default in gray. `overrides` draws the value cell in the accent color when the row\'s value differs from its default. `full` does both.', options: ['full', 'sources', 'overrides', 'off'], sample: '| Option | Value | Source | Default |\n|:-------|:------|:-------|:--------|\n| retries | 5 | env | 3 |\n| format | json | config | json |\n| timeout | 30s | default | 30s |\n| token | abc123 | env | unset |' },
   { name: 'tasks', key: 'taskStyle', title: 'Tasks', note: 'How `- [ ]` and `- [x]` items draw.', options: ['checks', 'ticks', 'box', 'progress'], sample: '- [x] Parse the reply\n- [x] Draw it\n- [ ] Ship it' },
   { name: 'lists', key: 'listMarker', title: 'List bullets', note: 'How bullet list items draw. `dash` draws `-` at every level, so a list you select with the mouse pastes as a markdown list into Slack, GitHub or a doc.', options: ['dots', 'dash'], sample: '- Parse the reply\n  - Find the lists\n- Draw it' },
   { name: 'headings', key: 'headingStyle', title: 'Headings', note: 'How `#` and `##` headings draw. Terminals have one font size, so headings stand out through style and color.', options: ['banner', 'bold', 'underline', 'uppercase'], sample: '# Release notes\n\n## Fixes\n\nTables keep their width.' },
