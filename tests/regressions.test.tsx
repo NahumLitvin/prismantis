@@ -403,6 +403,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('`benchTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Schema')
   expect(showcaseText(Object.keys(PRESETS))).toContain('quadrantChart\n    title Feature priorities')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('mindmap\n    root((Release))')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`schemaTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('| org_id | bigint |')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Status matrix')
@@ -519,7 +520,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(8)
+  expect(diagrams.length).toBe(9)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -1850,7 +1851,7 @@ test('a diagram the renderer cannot draw shows its source under a failure note',
 })
 
 test('a diagram type the renderer has no drawing for says so instead of failing', async $ => {
-  for (const kind of ['mindmap', 'timeline', 'journey', 'gitGraph']) {
+  for (const kind of ['timeline', 'journey', 'gitGraph']) {
     const ui = await $.ui.mount(mount('```mermaid\n' + kind + '\n  title T\n```'))
     expect(await ui.find({ type: 'Text', text: `${kind} diagrams draw as source for now` })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
@@ -1859,11 +1860,11 @@ test('a diagram type the renderer has no drawing for says so instead of failing'
 })
 
 test('a half-streamed diagram shows no note until its fence closes', async $ => {
-  const open = await $.ui.mount(mount('```mermaid\nmindmap\n  root'))
+  const open = await $.ui.mount(mount('```mermaid\ntimeline\n  title T'))
   expect(await open.find({ type: 'Text', text: /diagram|draw as source/ })).toBeUndefined()
   await open.unmount()
-  const closed = await $.ui.mount(mount('```mermaid\nmindmap\n  root\n```'))
-  expect(await closed.find({ type: 'Text', text: /^mindmap diagrams draw as source for now$/ })).toBeDefined()
+  const closed = await $.ui.mount(mount('```mermaid\ntimeline\n  title T\n```'))
+  expect(await closed.find({ type: 'Text', text: /^timeline diagrams draw as source for now$/ })).toBeDefined()
   await closed.unmount()
 })
 
@@ -2063,6 +2064,54 @@ test('a quadrant chart colors each marker and its legend number alike, and the a
 
 test('quadrant sources the chart cannot read show a failure note, not a broken chart', async $ => {
   for (const source of ['quadrantChart', 'quadrantChart\n  A: [1.5, 0.2]', 'quadrantChart\n  A: [0.1, 0.2]\n  nonsense here']) {
+    expect(mermaidText(source, false, 80)).toBeNull()
+    const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+const MINDMAP = 'mindmap\n  root((Raise retention))\n    Onboarding\n      Shorter sign-up\n      First-day tasks\n    Reasons[Reasons to return]\n      Weekly digest\n      ::icon(fa fa-book)\n      Personalised push\n      Member tiers\n    Churn warning:::urgent\n      Churn model'
+
+test('a mind map grows from its root to the right, joins each parent to its children and drops shapes, icons and classes', () => {
+  expect(mermaidText(MINDMAP, false, 80)!.split('\n')).toEqual([
+    '                 ┌─ Onboarding ────────┬─ Shorter sign-up',
+    '                 │                     └─ First-day tasks',
+    'Raise retention ─┤                     ┌─ Weekly digest',
+    '                 ├─ Reasons to return ─┼─ Personalised push',
+    '                 │                     └─ Member tiers',
+    '                 └─ Churn warning ─────── Churn model',
+  ])
+  expect(mermaidText('mindmap\n  a))Bang((\n    b)Cloud(\n    c{{Hex}}\n    "`**Bold** words`"', false, 80)).toBe('      ┌─ Cloud\nBang ─┼─ Hex\n      └─ Bold words')
+  expect(mermaidText('mindmap\n  Rate * 2 * n\n    "`__Big__ _idea_`"', false, 80)).toBe('Rate * 2 * n ─── Big idea')
+})
+
+test('a mind map wider than the terminal becomes an outline that fits, measures wide labels and uses plain glyphs in ascii mode', () => {
+  const art = mermaidText(MINDMAP, false, 50)!.split('\n')
+  expect(art.slice(0, 4)).toEqual(['Raise retention', '├─ Onboarding', '│  ├─ Shorter sign-up', '│  └─ First-day tasks'])
+  expect(art.at(-1)).toBe('   └─ Churn model')
+  const wide = mermaidText('mindmap\n  一個根\n    分支甲\n      葉子一\n    分支乙', false, 80)!
+  expect(wide).toBe('一個根 ─┬─ 分支甲 ─── 葉子一\n        └─ 分支乙')
+  for (const columns of [24, 40, 60]) expect(Math.max(...mermaidText(MINDMAP.replace('Weekly digest', 'A weekly digest of everything that happened'), false, columns)!.split('\n').map(width)) <= columns - 4).toBe(true)
+  expect(mermaidText(MINDMAP, true, 80)).not.toMatch(/[─│┌├└┬┼┤]/)
+  expect(mermaidText(MINDMAP, true, 50)).toContain('|  `- First-day tasks')
+})
+
+test('a mind map draws the root in the accent color, each branch in its own color and the root joints in the diagram color', { options: { replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\n' + MINDMAP + '\n```', 80))
+  const texts = await ui.findAll({ type: 'Text' })
+  const hue = (text: string) => texts.find(n => n.props.color && n.text?.includes(text))?.props.color
+  const theme = PRESETS['catppuccin-mocha']
+  expect(hue('Raise retention')).toBe(theme.accent)
+  expect(new Set([hue('Onboarding'), hue('Reasons to return'), hue('Churn warning')]).size).toBe(3)
+  expect(hue('Onboarding')).not.toBe(theme.diagramText)
+  expect(hue('Shorter sign-up')).toBe(theme.diagramText)
+  expect(texts.filter(n => /^ ─┤$/.test(n.text ?? '')).map(n => n.props.color)).toEqual([theme.diagram])
+  await ui.unmount()
+})
+
+test('mind map sources the chart cannot read show a failure note, not a broken chart', async $ => {
+  for (const source of ['mindmap', 'mindmap\n  a\n  b', 'mindmap\n  a\n    "  "']) {
     expect(mermaidText(source, false, 80)).toBeNull()
     const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()

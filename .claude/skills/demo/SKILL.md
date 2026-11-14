@@ -18,6 +18,7 @@ The visual test. Unit tests prove the tree; this proves the look.
    - every flowchart box and sequence participant in its own color, with matching colors at both ends of the sequence
    - a value above each bar, the tallest bar highlighted and the rest muted, labels without quotes, dim gridlines, colored axis numbers
    - the quadrant chart: `│` and `─` axes crossing in the diagram color, `▲ Fun` above and `▼ Dull` below, the four quadrant names in their corners, markers `1` `2` `3` in three palette colors with the same colors on their numbers in the legend line under `◄ Easy` and `Hard ►`
+   - the mind map: `Trip` on the left in the accent color, `Clothes`, `Food` and `Night gear` each in its own palette color with their connectors and leaves' arms in that color, joined to the root by `┌` `┼` `└` in the diagram color
    - shell colors: command, flags, the quoted string, `&&`
    - code blocks with a language header and no frame, and Prism colors in the TypeScript block
    - path, link and inline-code colors, the paths opening their files on click in a terminal that draws hyperlinks while `/kick` stays unlinked text, the quote bar running down its paragraph and both list rows, and the green `Tip` alert box

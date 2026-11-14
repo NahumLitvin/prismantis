@@ -1590,6 +1590,62 @@
   <Box>
     <Box>
       <Text>
+        <Text color=#cdd6f4>
+          "      "
+        <Text color=#89b4fa>
+          "┌─ Clothes ────┬─ "
+        <Text color=#cdd6f4>
+          "Jacket"
+      <Text>
+        <Text color=#cdd6f4>
+          "      "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "              "
+        <Text color=#89b4fa>
+          "└─ "
+        <Text color=#cdd6f4>
+          "Boots"
+      <Text>
+        <Text color=#cba6f7>
+          "Trip"
+        <Text color=#89b4fa>
+          " ─┼"
+        <Text color=#a6e3a1>
+          "─ Food ───────┬─ "
+        <Text color=#cdd6f4>
+          "Snacks"
+      <Text>
+        <Text color=#cdd6f4>
+          "      "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "              "
+        <Text color=#a6e3a1>
+          "└─ "
+        <Text color=#cdd6f4>
+          "Water"
+      <Text>
+        <Text color=#cdd6f4>
+          "      "
+        <Text color=#89b4fa>
+          "└"
+        <Text color=#f9e2af>
+          "─ Night gear ─┬─ "
+        <Text color=#cdd6f4>
+          "Map"
+      <Text>
+        <Text color=#cdd6f4>
+          "                     "
+        <Text color=#f9e2af>
+          "└─ "
+        <Text color=#cdd6f4>
+          "Torch"
+  <Box>
+    <Box>
+      <Text>
         <Text color=#89b4fa>
           "┌───────┐"
         <Text color=#cdd6f4>
