@@ -1791,6 +1791,103 @@
     <Box>
       <Text>
         <Text color=#0969da>
+          "●"
+        <Text color=#1f2328>
+          "        draft"
+        <Text color=#8250df>
+          " [v0.1]"
+      <Text>
+        <Text color=#0550ae>
+          "├──╮"
+        <Text color=#1f2328>
+          "     "
+        <Text color=#0550ae>
+          "edits"
+      <Text>
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "●"
+        <Text color=#1f2328>
+          "     trim"
+      <Text>
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#8250df>
+          "├──╮"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#8250df>
+          "art"
+      <Text>
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "│"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#8250df>
+          "●"
+        <Text color=#1f2328>
+          "  cover"
+      <Text>
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "■"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#8250df>
+          "│"
+        <Text color=#1f2328>
+          "  typos"
+      <Text>
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0550ae>
+          "●"
+        <Text color=#8250df>
+          "──╯"
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0969da>
+          "merge art"
+      <Text>
+        <Text color=#0969da>
+          "●"
+        <Text color=#0550ae>
+          "──╯"
+        <Text color=#1f2328>
+          "     print"
+        <Text color=#8250df>
+          " [v1.0]"
+      <Text>
+        " "
+      <Text>
+        <Text color=#0969da>
+          "main"
+        <Text color=#1f2328>
+          "   "
+        <Text color=#0550ae>
+          "edits"
+        <Text color=#1f2328>
+          "   "
+        <Text color=#8250df>
+          "art"
+  <Box>
+    <Box>
+      <Text>
+        <Text color=#0969da>
           "┌───────┐"
         <Text color=#1f2328>
           "   "

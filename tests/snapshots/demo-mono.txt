@@ -1209,6 +1209,37 @@
     <Box>
       <Text>
         <Text>
+          "●        draft [v0.1]"
+      <Text>
+        <Text>
+          "├──╮     edits"
+      <Text>
+        <Text>
+          "│  ●     trim"
+      <Text>
+        <Text>
+          "│  ├──╮  art"
+      <Text>
+        <Text>
+          "│  │  ●  cover"
+      <Text>
+        <Text>
+          "│  ■  │  typos"
+      <Text>
+        <Text>
+          "│  ●──╯  merge art"
+      <Text>
+        <Text>
+          "●──╯     print [v1.0]"
+      <Text>
+        " "
+      <Text>
+        <Text>
+          "main   edits   art"
+  <Box>
+    <Box>
+      <Text>
+        <Text>
           "┌───────┐   ┌──────┐"
       <Text>
         <Text>

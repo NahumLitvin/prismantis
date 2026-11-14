@@ -406,6 +406,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('mindmap\n    root((Release))')
   expect(showcaseText(Object.keys(PRESETS))).toContain('journey\n    title First order')
   expect(showcaseText(Object.keys(PRESETS))).toContain('kanban\n    todo[To do]')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('gitGraph\n    commit id: "init"')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`schemaTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('| org_id | bigint |')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Status matrix')
@@ -522,7 +523,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(11)
+  expect(diagrams.length).toBe(12)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -1853,7 +1854,7 @@ test('a diagram the renderer cannot draw shows its source under a failure note',
 })
 
 test('a diagram type the renderer has no drawing for says so instead of failing', async $ => {
-  for (const kind of ['timeline', 'gitGraph']) {
+  for (const kind of ['timeline', 'sankey-beta']) {
     const ui = await $.ui.mount(mount('```mermaid\n' + kind + '\n  title T\n```'))
     expect(await ui.find({ type: 'Text', text: `${kind} diagrams draw as source for now` })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
@@ -2238,6 +2239,65 @@ test('a kanban board keeps metadata inside its card, reads metadata over several
 
 test('kanban sources the chart cannot read show a failure note, not a broken chart', async $ => {
   for (const source of ['kanban', 'kanban\n  [ ]']) {
+    expect(mermaidText(source, false, 80)).toBeNull()
+    const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+const GITGRAPH = 'gitGraph\n  commit id: "init" tag: "v1.0"\n  branch develop\n  commit id: "setup"\n  branch feature/login\n  commit id: "form"\n  checkout develop\n  commit id: "fix" type: HIGHLIGHT\n  checkout feature/login\n  commit id: "oauth"\n  checkout develop\n  merge feature/login\n  checkout main\n  merge develop id: "release" tag: "v2.0"\n  cherry-pick id: "fix"'
+
+test('a git graph runs top to bottom with a lane per branch, forks and merges joined, ids, tags, marks and a legend', () => {
+  expect(mermaidText(GITGRAPH, false, 70)!.split('\n')).toEqual([
+    '●        init [v1.0]',
+    '├──╮     develop',
+    '│  ●     setup',
+    '│  ├──╮  feature/login',
+    '│  │  ●  form',
+    '│  ■  │  fix',
+    '│  │  ●  oauth',
+    '│  ●──╯  merge feature/login',
+    '●──╯     release [v2.0]',
+    '●        pick fix',
+    '',
+    'main   develop   feature/login',
+  ])
+})
+
+test('a git graph crosses lanes it passes, keeps a lane that goes on, measures wide names and uses plain glyphs in ascii mode', () => {
+  const art = mermaidText('gitGraph\n  commit\n  branch a\n  commit\n  checkout main\n  branch b\n  commit\n  checkout a\n  merge b\n  commit id: "more"', false, 70)!.split('\n')
+  expect(art.slice(0, 6)).toEqual(['●', '├──╮     a', '│  ●', '╰──┼──╮  b', '   │  ●', '   ●──╯  merge b'])
+  expect(art[6]).toBe('   ●     more')
+  expect(mermaidText('gitGraph\n  commit\n  branch a\n  commit\n  checkout main\n  merge a\n  checkout a\n  commit', false, 70)!.split('\n')[3]).toBe('●──┤  merge a')
+  expect(mermaidText('gitGraph\n  commit\n  branch 功能\n  commit id: "加入登入"', false, 60)).toContain('╰──╮  功能\n   ●  加入登入')
+  expect(mermaidText(GITGRAPH, true, 70)).not.toMatch(/[─│├┤┼╮╯╰●■✗]/)
+  expect(mermaidText('gitGraph TB:\n  commit id: "x" type: REVERSE', false, 60)!.split('\n')[0]).toBe('✗  x')
+})
+
+test('a git graph colors each lane and its legend name alike, tags in the accent color and merge notes in the diagram color', { options: { replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\n' + GITGRAPH + '\n```', 70))
+  const texts = await ui.findAll({ type: 'Text' })
+  const theme = PRESETS['catppuccin-mocha']
+  const hue = (text: string) => texts.find(n => n.props.color && n.text === text)?.props.color
+  expect(hue('feature/login')).toBe(hue('──╯'))
+  expect(hue('feature/login')).not.toBe(hue('develop'))
+  expect(hue(' [v2.0]')).toBe(theme.accent)
+  expect(hue('merge feature/login')).toBe(theme.diagram)
+  await ui.unmount()
+})
+
+test('a git graph skips ended lanes, fits long tags, reads quoted branches, the colon header and accDescr blocks, and draws BT upward', () => {
+  const two = mermaidText('gitGraph\n  commit\n  branch a\n  commit\n  checkout main\n  merge a\n  branch b\n  commit\n  checkout main\n  merge b', false, 60)!.split('\n')
+  expect(two.slice(4, 7)).toEqual(['├─────╮  b', '│     ●', '●─────╯  merge b'])
+  expect(Math.max(...mermaidText('gitGraph\n  commit id: "x" tag: "a-very-long-release-tag-name-for-testing-overflow-here"', false, 40)!.split('\n').map(width)) <= 36).toBe(true)
+  expect(mermaidText('gitGraph\n  commit\n  branch "my feature"\n  commit\n  checkout main\n  merge "my feature"', false, 60)).toContain('●──╯  merge my feature')
+  expect(mermaidText('gitGraph:\n  accDescr {\n    long text\n  }\n  commit id: "x"', false, 60)!.split('\n')[0]).toBe('●  x')
+  expect(mermaidText('gitGraph BT\n  commit id: "first"\n  branch a\n  commit id: "second"\n  checkout main\n  merge a', false, 60)!.split('\n').slice(0, 4)).toEqual(['●──╮  merge a', '│  ●  second', '├──╯  a', '●     first'])
+})
+
+test('gitGraph sources the chart cannot read show a failure note, not a broken chart', async $ => {
+  for (const source of ['gitGraph', 'gitGraph\n  commit\n  checkout nowhere', 'gitGraph\n  commit\n  merge main', 'gitGraph\n  commit\n  branch main', 'gitGraph\n  cherry-pick id: "x"', 'gitGraph\n  commit type: BOLD', 'gitGraph\n  commit\n  __proto__', 'gitGraph\n  commit\n  constructor', 'gitGraph\n  commit id: "x"\n  cherry-pick id: "x"', 'gitGraph\n  commit id: "a"\n  commit id: "a"']) {
     expect(mermaidText(source, false, 80)).toBeNull()
     const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
