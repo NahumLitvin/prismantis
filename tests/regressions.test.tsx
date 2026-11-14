@@ -402,6 +402,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Benchmarks')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`benchTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Schema')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('quadrantChart\n    title Feature priorities')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`schemaTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('| org_id | bigint |')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Status matrix')
@@ -518,7 +519,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(7)
+  expect(diagrams.length).toBe(8)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -1982,6 +1983,91 @@ test('pie and gantt charts shrink to a narrow terminal and use plain glyphs in a
     expect(mermaidText(source, true, 80)).not.toMatch(/[█▏─◆]/)
   }
   expect(mermaidText(gantt, false, 80)).toContain('10:00')
+})
+
+const QUADRANT = 'quadrantChart\n  title Priorities\n  x-axis Low effort --> High effort\n  y-axis Low impact --> High impact\n  quadrant-1 Big bets\n  quadrant-2 Do now\n  quadrant-3 Fill-ins\n  quadrant-4 Skip\n  Reorder: [0.2, 0.85]\n  Search:::hot: [0.8, 0.9]\n  Dark mode: [0.3, 0.25] radius: 8'
+
+test('a quadrant chart puts each point in its quadrant, the quadrant names in their corners and a numbered legend under it', () => {
+  const art = mermaidText(QUADRANT, false, 80)!.split('\n')
+  const cross = art.findIndex(l => l.includes('┼'))
+  const axis = art[cross]!.indexOf('┼')
+  const plot = art.slice(2, cross + 8)
+  const at = (mark: string) => {
+    const row = plot.findIndex(l => l.includes(mark))
+    return [row + 2, plot[row]!.indexOf(mark)]
+  }
+  expect(art[0]).toBe('Priorities')
+  expect(art[1]!.trim()).toBe('▲ High impact')
+  expect(art[2]!.trim()).toMatch(/^Do now\s+│\s+Big bets$/)
+  expect(art[cross + 7]!.trim()).toMatch(/^Fill-ins\s+│\s+Skip$/)
+  const [r1, c1] = at('1')
+  const [r2, c2] = at('2')
+  const [r3, c3] = at('3')
+  expect(r1! < cross && c1! < axis).toBe(true)
+  expect(r2! < cross && c2! > axis).toBe(true)
+  expect(r3! > cross && c3! < axis).toBe(true)
+  expect(art.at(-2)!.trim()).toMatch(/^◄ Low effort\s+High effort ►$/)
+  expect(art.at(-1)).toBe('1 Reorder   2 Search   3 Dark mode')
+})
+
+test('quadrant points that land on one cell are drawn apart, with a free cell between markers', () => {
+  const art = mermaidText('quadrantChart\n  A: [0.5, 0.5]\n  B: [0.5, 0.5]\n  C: [0.5, 0.5]', false, 80)!
+  expect(art.split('\n').filter(l => /^\d /.test(l))).toEqual(['1 A   2 B   3 C'])
+  const plot = art.split('\n').slice(0, -1).join('\n')
+  for (const mark of ['1', '2', '3']) expect(plot).toContain(mark)
+  expect(plot).not.toMatch(/\d\d/)
+})
+
+test('crowded quadrant points stay in their own quadrant, off the axes, a cell away from names, and the axes keep their cross', () => {
+  const crowd = 'quadrantChart\n  quadrant-2 Do now\n' + Array.from({ length: 10 }, (_, i) => `  P${i}: [0.3, 0.55]`).join('\n') + '\n  Edge: [0.02, 1]\n  Centre: [0.52, 0.5]'
+  const art = mermaidText(crowd, false, 80)!.split('\n')
+  const cross = art.findIndex(l => l.includes('┼'))
+  const axis = art[cross]!.indexOf('┼')
+  expect(art[cross]).toMatch(/^─+┼─+$/)
+  const plot = art.slice(0, cross + 8)
+  for (const mark of '123456789a') {
+    const row = plot.findIndex(l => l.includes(mark))
+    expect(row < cross && plot[row]!.indexOf(mark) < axis).toBe(true)
+  }
+  expect(art[0]).toMatch(/^ Do now\s+│$/)
+  const centre = plot.findIndex(l => l.includes('c'))
+  expect(centre !== cross && plot[centre]!.indexOf('c') > axis).toBe(true)
+})
+
+test('quoted quadrant labels draw without their quotes, and a terminal too narrow for the grid gets the width note', async $ => {
+  const art = mermaidText('quadrantChart\n  title "Plan"\n  x-axis "Low" --> "High"\n  quadrant-1 "Big"\n  "Campaign A": [0.1, 0.2]', false, 60)!
+  expect(art).not.toContain('"')
+  expect(art.split('\n').at(-1)).toBe('1 Campaign A')
+  const ui = await $.ui.mount(mount('```mermaid\nquadrantChart\n  A: [0.1, 0.2]\n```', 24))
+  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a quadrant chart fits a narrow terminal, measures wide labels and uses plain glyphs in ascii mode', () => {
+  const wide = QUADRANT.replace('Reorder', '重新排序').replace('Do now', '馬上做')
+  for (const columns of [40, 60, 100]) expect(Math.max(...mermaidText(wide, false, columns)!.split('\n').map(width)) <= columns - 2).toBe(true)
+  expect(mermaidText(wide, false, 60)).toContain('1 重新排序')
+  expect(mermaidText(QUADRANT, true, 80)).not.toMatch(/[│─┼▲▼◄►]/)
+})
+
+test('a quadrant chart colors each marker and its legend number alike, and the axes in the diagram color', { options: { replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\n' + QUADRANT + '\n```', 80))
+  const texts = await ui.findAll({ type: 'Text' })
+  const hue = (text: string) => texts.filter(n => n.text === text).map(n => n.props.color)
+  expect(new Set(hue('2')).size).toBe(1)
+  expect(hue('2')[0]).not.toBe(hue('1')[0])
+  expect(hue('2').length).toBe(2)
+  expect((await ui.findAll({ type: 'Text', text: /^─+┼─+$/ })).map(n => n.props.color)).toContain(PRESETS['catppuccin-mocha'].diagram)
+  await ui.unmount()
+})
+
+test('quadrant sources the chart cannot read show a failure note, not a broken chart', async $ => {
+  for (const source of ['quadrantChart', 'quadrantChart\n  A: [1.5, 0.2]', 'quadrantChart\n  A: [0.1, 0.2]\n  nonsense here']) {
+    expect(mermaidText(source, false, 80)).toBeNull()
+    const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+    await ui.unmount()
+  }
 })
 
 test('a diagram that fits draws without a note', async $ => {

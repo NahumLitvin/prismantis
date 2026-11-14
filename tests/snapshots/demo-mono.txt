@@ -1069,6 +1069,68 @@
     <Box>
       <Text>
         <Text>
+          "Training plan"
+      <Text>
+        <Text>
+          "                                ▲ Fun"
+      <Text>
+        <Text>
+          " Warm-ups                       │                   Boss fights"
+      <Text>
+        <Text>
+          "         1                      │"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "                                │           2"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "────────────────────────────────┼───────────────────────────────"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "                                │                 3"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          "                                │"
+      <Text>
+        <Text>
+          " Chores                         │                         Grind"
+      <Text>
+        <Text>
+          "                                ▼ Dull"
+      <Text>
+        <Text>
+          "◄ Easy                                                    Hard ►"
+      <Text>
+        <Text>
+          "1 Dumplings   2 Kicks   3 Stairs"
+  <Box>
+    <Box>
+      <Text>
+        <Text>
           "┌───────┐   ┌──────┐"
       <Text>
         <Text>

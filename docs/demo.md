@@ -98,6 +98,20 @@ xychart-beta
 ```
 
 ```mermaid
+quadrantChart
+  title Training plan
+  x-axis Easy --> Hard
+  y-axis Dull --> Fun
+  quadrant-1 Boss fights
+  quadrant-2 Warm-ups
+  quadrant-3 Chores
+  quadrant-4 Grind
+  Dumplings: [0.15, 0.9]
+  Kicks: [0.7, 0.75]
+  Stairs: [0.8, 0.2]
+```
+
+```mermaid
 graph LR
   A[<i>Reply</i>] --> B[<b>Draw</b>]
 ```
