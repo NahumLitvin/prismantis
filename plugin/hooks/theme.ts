@@ -57,6 +57,7 @@ export type Style = {
   folds: 'closed' | 'open'
   copyButtonStyle: 'dim' | 'inline' | 'hover'
   textCopyButtons: boolean
+  sectionCopyButtons: boolean
   htmlCopy: ClipboardBackend | null
   images: boolean
   nativeCode?: boolean
@@ -144,6 +145,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     folds: pick(options.folds, ['closed', 'open'] as const, 'closed'),
     copyButtonStyle: pick(options.copyButtonStyle, ['dim', 'inline', 'hover'] as const, 'dim'),
     textCopyButtons: options.textCopyButtons !== false,
+    sectionCopyButtons: options.sectionCopyButtons === true,
     htmlCopy: null,
     images: false,
     httpLinks: false,

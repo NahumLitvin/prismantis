@@ -1426,6 +1426,22 @@ const copySource = (style: Style, block: Block): string | undefined =>
   : block.kind === 'quote' || block.kind === 'alert' ? unquoted(block).join('\n')
   : undefined
 
+const sectionOf = (blocks: Block[], b: number): Block[] => {
+  const head = blocks[b]
+  if (head?.kind !== 'heading') return []
+  const end = blocks.findIndex((block, i) => i > b && block.kind === 'heading' && block.level <= head.level)
+  return blocks.slice(b + 1, end < 0 ? undefined : end).filter(block => block.kind !== 'notes')
+}
+
+const sectionSource = (style: Style, blocks: Block[], b: number): string | undefined => {
+  if (!style.sectionCopyButtons || style.inside) return undefined
+  const section = sectionOf(blocks, b)
+  if (!section.length || (section.length === 1 && copySource(style, section[0]!) !== undefined)) return undefined
+  return section.map(block => block.raw).join('\n\n')
+}
+
+const blockSource = (style: Style, blocks: Block[], b: number): string | undefined => copySource(style, blocks[b]!) ?? sectionSource(style, blocks, b)
+
 export const drawMath = (el: ElementTable, style: Style, blocks: Block[], drawn: Drawn = new Map()): Drawn => {
   for (const [i, block] of blocks.entries()) {
     const tex = drawn.has(i) ? null : mathOf(block)
@@ -1494,7 +1510,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const shown = blocks.map(block => drawable(block, style))
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const buttons = blocks.map((block, b) => {
-    const text = hover && holdsOnlyEmptyCode(block) ? undefined : copySource(style, block)
+    const text = hover && holdsOnlyEmptyCode(block) ? undefined : blockSource(style, blocks, b)
     const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
     const { art, grid, hues } = artsOf(drawn.get(b), block, style.theme, rtlTables[b]!)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
@@ -1583,7 +1599,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         {png}
       </el.Box>
     ) : first
-    return (block.kind === 'quote' || block.kind === 'alert') && !mirrored(style) ? (
+    return (block.kind === 'quote' || block.kind === 'alert' || block.kind === 'heading') && !mirrored(style) ? (
       <Box key={`c${b}`} flexDirection="row" columnGap={2} {...(rtl ? { justifyContent: 'flex-end' as const } : {})}>
         {element}
         {opensWithCopy(block) ? <Box alignSelf="flex-end">{button}</Box> : button}
