@@ -492,6 +492,50 @@ for (const copyButtonStyle of ['dim', 'inline', 'hover'] as const) test(`textCop
   }
 })
 
+const SECTIONS = '## Message\n\nHello team.\n\n- one\n- two\n\n### Detail\n\nMore.\n\n## Notes\n\nNot copied.'
+
+test('headings draw no copy button by default', async $ => {
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...draw(SECTIONS), surface })
+    const labels = (await ui.findAll({ type: 'Button' })).map(b => String(b.props.label))
+    expect(labels.filter(l => l === '⧉ copy')).toHaveLength(1)
+    await ui.unmount()
+  }
+})
+
+for (const copyButtonStyle of ['dim', 'inline', 'hover'] as const) test(`sectionCopyButtons puts a ${copyButtonStyle} button on each heading that copies its section up to the next heading of its level`, { options: { sectionCopyButtons: true, copyButtonStyle } }, async ($, on) => {
+  const copied: string[] = []
+  on('ui.copy', (_, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true as const } }
+  })
+  for (const surface of SURFACES) {
+    copied.length = 0
+    const ui = await $.ui.mount({ ...draw(SECTIONS), surface })
+    const buttons = (await ui.findAll({ type: 'Button' })).filter(b => b.props.label === '⧉ copy')
+    expect(buttons).toHaveLength(4)
+    await ui.press({ key: buttons[0]!.key! })
+    expect(copied).toEqual(['Hello team.\n\n- one\n- two\n\n### Detail\n\nMore.'])
+    await ui.unmount()
+  }
+})
+
+test('sectionCopyButtons skips a heading whose section is one block with its own button, or nothing', { options: { sectionCopyButtons: true } }, async $ => {
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...draw('## Steps\n\n- one\n- two\n\n## Empty\n\n## Code\n\n```bash\nls\n```'), surface })
+    const labels = (await ui.findAll({ type: 'Button' })).map(b => String(b.props.label))
+    expect(labels.filter(l => l === '⧉ copy')).toHaveLength(2)
+    await ui.unmount()
+  }
+})
+
+test('sectionCopyButtons draws no button on a heading inside a quote', { options: { sectionCopyButtons: true, textCopyButtons: false } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('> ## Inside\n>\n> Quoted text.\n\nAfter.'), surface: 'terminal' })
+  const labels = (await ui.findAll({ type: 'Button' })).map(b => String(b.props.label))
+  expect(labels.filter(l => l === '⧉ copy')).toHaveLength(0)
+  await ui.unmount()
+})
+
 test('lists copy as markdown', async ($, on) => {
   const copied: string[] = []
   on('ui.copy', (_, e) => {
