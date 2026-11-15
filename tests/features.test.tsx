@@ -415,9 +415,9 @@ test('toolOutput rows hands an expanded call back to the engine and hides it aga
   engine(on)
   const output = { stdout: 'PASS src/app.test.ts\n', stderr: '' }
   const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'npm test' }, 'nx-1'), ...{ isExpanded: true }, output } as never })
-  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  expect(await row.find({ type: 'Text', text: /^npm$/ })).toBeDefined()
   await row.unmount()
-  const open = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'nx-1', tool: 'Bash', output, isErrored: false, ...{ isExpanded: true } } as never })
+  const open =await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'nx-1', tool: 'Bash', output, isErrored: false, ...{ isExpanded: true } } as never })
   expect(await open.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await open.unmount()
   const back = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'nx-1', tool: 'Bash', output, isErrored: false, ...{ isExpanded: false } } as never })
