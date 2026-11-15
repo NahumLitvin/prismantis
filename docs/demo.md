@@ -126,6 +126,17 @@ mindmap
 ```
 
 ```mermaid
+journey
+  title Morning run
+  section Start
+    Alarm: 1: Me
+    Stretch: 3: Me
+  section Run
+    Park loop: 5: Me, Dog
+    Hill: 2: Me
+```
+
+```mermaid
 graph LR
   A[<i>Reply</i>] --> B[<b>Draw</b>]
 ```

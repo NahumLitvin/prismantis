@@ -1644,6 +1644,79 @@
   <Box>
     <Box>
       <Text>
+        <Text color=#1f2328>
+          "Morning run"
+      <Text>
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0969da>
+          "Start ───────────────────────── "
+        <Text color=#0550ae>
+          "Run ───────────────────────────"
+      <Text>
+        <Text color=#0969da>
+          "5"
+        <Text color=#1f2328>
+          "                                "
+        <Text color=#0969da>
+          "╭───────"
+        <Text color=#1a7f37>
+          "●"
+        <Text color=#0969da>
+          "───────╮"
+      <Text>
+        <Text color=#1f2328>
+          "                                 "
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "               "
+        <Text color=#0969da>
+          "│"
+      <Text>
+        <Text color=#1f2328>
+          "                 "
+        <Text color=#0969da>
+          "╭───────"
+        <Text color=#1f2328>
+          "●"
+        <Text color=#0969da>
+          "───────╯"
+        <Text color=#1f2328>
+          "               "
+        <Text color=#0969da>
+          "│"
+      <Text>
+        <Text color=#1f2328>
+          "                 "
+        <Text color=#0969da>
+          "│"
+        <Text color=#1f2328>
+          "                               "
+        <Text color=#0969da>
+          "╰───────"
+        <Text color=#cf222e>
+          "●"
+      <Text>
+        <Text color=#0969da>
+          "1"
+        <Text color=#1f2328>
+          "        "
+        <Text color=#cf222e>
+          "●"
+        <Text color=#0969da>
+          "───────╯"
+      <Text>
+        <Text color=#1f2328>
+          "       Alarm          Stretch        Park loop         Hill"
+      <Text>
+        <Text color=#1f2328>
+          "  "
+        <Text color=#0969da>
+          "      Me              Me            Me, Dog           Me"
+  <Box>
+    <Box>
+      <Text>
         <Text color=#0969da>
           "┌───────┐"
         <Text color=#1f2328>

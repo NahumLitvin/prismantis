@@ -1,6 +1,6 @@
 import type { ChartArt } from './charts'
 import { cells, width } from './layout'
-import { ARROW_HUE, fit, LINE_HUE, type Line, line, unquote } from './textart'
+import { ARROW_HUE, art, fit, LINE_HUE, type Line, line, rows as plotRows, unquote } from './textart'
 
 type Point = { name: string; x: number; y: number }
 type Axis = [string, string | undefined]
@@ -149,7 +149,7 @@ export const quadrantText = (source: string, ascii: boolean, columns: number): C
   drawNames(c, q.names, mid)
   if (!q.points.every((p, i) => place(c, p, i, middle, mid))) return null
   const [top, bottom] = yLines(q.y, mid, cols, ascii)
-  const plot = c.grid.map((row, r) => ({ text: row.join(''), hue: c.hues[r]! }))
+  const plot = plotRows(c)
   const out = [q.title ? line([fit(q.title, cols), -1]) : undefined, top, ...plot, bottom, xLine(q.x, cols, ascii), ...legend(q.points, cols)].filter((l): l is Line => !!l)
-  return { text: out.map(l => l.text.trimEnd()).join('\n'), slices: out.map(l => l.hue) }
+  return art(out)
 }

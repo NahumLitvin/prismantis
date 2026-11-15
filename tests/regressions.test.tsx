@@ -404,6 +404,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Schema')
   expect(showcaseText(Object.keys(PRESETS))).toContain('quadrantChart\n    title Feature priorities')
   expect(showcaseText(Object.keys(PRESETS))).toContain('mindmap\n    root((Release))')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('journey\n    title First order')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`schemaTable`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('| org_id | bigint |')
   expect(showcaseText(Object.keys(PRESETS))).toContain('### Status matrix')
@@ -520,7 +521,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 
 test('every diagram on the help screen draws as art', async () => {
   const diagrams = parse(showcaseText(Object.keys(PRESETS)), hl).flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
-  expect(diagrams.length).toBe(9)
+  expect(diagrams.length).toBe(10)
   for (const source of diagrams) expect(mermaidText(source, false, 100)).not.toBeNull()
 })
 
@@ -1851,7 +1852,7 @@ test('a diagram the renderer cannot draw shows its source under a failure note',
 })
 
 test('a diagram type the renderer has no drawing for says so instead of failing', async $ => {
-  for (const kind of ['timeline', 'journey', 'gitGraph']) {
+  for (const kind of ['timeline', 'gitGraph']) {
     const ui = await $.ui.mount(mount('```mermaid\n' + kind + '\n  title T\n```'))
     expect(await ui.find({ type: 'Text', text: `${kind} diagrams draw as source for now` })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
@@ -2112,6 +2113,71 @@ test('a mind map draws the root in the accent color, each branch in its own colo
 
 test('mind map sources the chart cannot read show a failure note, not a broken chart', async $ => {
   for (const source of ['mindmap', 'mindmap\n  a\n  b', 'mindmap\n  a\n    "  "']) {
+    expect(mermaidText(source, false, 80)).toBeNull()
+    const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+const JOURNEY = 'journey\n  title My working day\n  section Go to work\n    Make tea: 5: Me\n    Go upstairs: 3: Me\n    Do work: 1: Me, Cat\n  section Go home\n    Go downstairs: 5: Me\n    Sit down: 4: Me'
+
+test('a journey draws its sections over their tasks, a mood line from score 5 down to 1, and names and actors under each dot', () => {
+  expect(mermaidText(JOURNEY, false, 70)!.split('\n')).toEqual([
+    'My working day',
+    '  Go to work ──────────────────────── Go home ───────────────',
+    '5      ●─────╮                       ╭─────●─────╮',
+    '             │                       │           ╰─────●',
+    '             ╰─────●─────╮           │',
+    '                         │           │',
+    '1                        ╰─────●─────╯',
+    '   Make tea   Go upstairs   Do work       Go       Sit down',
+    '                                      downstairs',
+    '      Me          Me        Me, Cat       Me          Me',
+  ])
+})
+
+test('a journey with too many tasks for the width lists one task per row with its score as a bar, and ascii mode uses plain glyphs', () => {
+  expect(mermaidText(JOURNEY, false, 40)!.split('\n')).toEqual([
+    'My working day',
+    'Go to work',
+    '  Make tea      ────────● 5  Me',
+    '  Go upstairs   ────●     3  Me',
+    '  Do work       ●         1  Me, Cat',
+    'Go home',
+    '  Go downstairs ────────● 5  Me',
+    '  Sit down      ──────●   4  Me',
+  ])
+  expect(mermaidText(JOURNEY, true, 70)).not.toMatch(/[─│╭╮╰╯●]/)
+  expect(mermaidText(JOURNEY, true, 40)).toContain('  Make tea      --------o 5  Me')
+  const wide = mermaidText('journey\n  section 上班\n    泡一杯茶: 5: 我\n    爬樓梯到辦公室: 2: 我, 貓', false, 70)!
+  expect(wide.split('\n').at(-2)).toBe('     泡一杯茶     爬樓梯到辦公室')
+  for (const columns of [24, 40, 70]) expect(Math.max(...mermaidText(JOURNEY.replace('Make tea', 'Make a very large pot of tea for everyone'), false, columns)!.split('\n').map(width)) <= Math.max(24, columns - 4)).toBe(true)
+})
+
+test('a journey colors good steps green, painful ones red and each section in its own color', { options: { replyStyle: 'off' } }, async $ => {
+  const ui = await $.ui.mount(mount('```mermaid\n' + JOURNEY + '\n```', 70))
+  const texts = await ui.findAll({ type: 'Text' })
+  const theme = PRESETS['catppuccin-mocha']
+  const dots = texts.filter(n => n.text === '●').map(n => n.props.color)
+  expect(dots.filter(c => c === theme.diffAdded).length).toBe(3)
+  expect(dots.filter(c => c === theme.diffRemoved).length).toBe(1)
+  expect(dots.filter(c => c === theme.diagramText).length).toBe(1)
+  const hue = (text: string) => texts.find(n => n.props.color && n.text?.includes(text))?.props.color
+  expect(hue('Go to work')).not.toBe(hue('Go home'))
+  expect(hue('╰─────●')).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a journey reads Mermaid details: decimal scores, a task named like a section, accDescr blocks, # comments and <br> in names', () => {
+  const art = mermaidText('journey\n  accDescr {\n    long text\n  }\n  Section review: 3.5: Me # note\n  Wake<br>up: 2: Me', false, 40)!
+  expect(art.split('\n')).toEqual(['5', '         ●───────╮', '                 │', '                 ╰───────●', '1', '  Section review      Wake up', '        Me              Me'])
+  const list = mermaidText('journey\n' + ['A: 3.5: Me', 'B: 2: Me', 'C: 1', 'D: 5', 'E: 4'].map(t => `  ${t}`).join('\n'), false, 40)!
+  expect(list.split('\n').slice(0, 2)).toEqual(['A      ──────●   3.5  Me', 'B      ──●       2    Me'])
+})
+
+test('journey sources the chart cannot read show a failure note, not a broken chart', async $ => {
+  for (const source of ['journey\n  title Empty', 'journey\n  Task: 7: Me', 'journey\n  just words']) {
     expect(mermaidText(source, false, 80)).toBeNull()
     const ui = await $.ui.mount(mount('```mermaid\n' + source + '\n```'))
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()

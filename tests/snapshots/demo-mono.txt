@@ -1151,6 +1151,35 @@
     <Box>
       <Text>
         <Text>
+          "Morning run"
+      <Text>
+        <Text>
+          "  Start ───────────────────────── Run ───────────────────────────"
+      <Text>
+        <Text>
+          "5                                ╭───────●───────╮"
+      <Text>
+        <Text>
+          "                                 │               │"
+      <Text>
+        <Text>
+          "                 ╭───────●───────╯               │"
+      <Text>
+        <Text>
+          "                 │                               ╰───────●"
+      <Text>
+        <Text>
+          "1        ●───────╯"
+      <Text>
+        <Text>
+          "       Alarm          Stretch        Park loop         Hill"
+      <Text>
+        <Text>
+          "        Me              Me            Me, Dog           Me"
+  <Box>
+    <Box>
+      <Text>
+        <Text>
           "┌───────┐   ┌──────┐"
       <Text>
         <Text>
