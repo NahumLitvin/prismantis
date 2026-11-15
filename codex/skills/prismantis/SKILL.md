@@ -29,7 +29,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
-| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts and the table extras |
+| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
 | `/config` | Edit any option |
 
 > [!NOTE]
@@ -47,6 +47,8 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 2. Light: catppuccin-latte, gruvbox-light, rose-pine-dawn, github-light, solarized-light
 3. Plain
    - mono
+
+In the desktop app, set `desktopColors` to `match` and the whole Code tab takes the theme too, in light mode for a light one (Claude Code 2.1.324+).
 
 > [!TIP]
 > Any color slot beats the theme. Set `headingColor` or `numberColor` to a hex value in `/config`.

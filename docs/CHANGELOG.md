@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.47.0] - 2026-11-15
+
+Full app themes for Claude Code desktop, and desktop tables and pies that fit.
+
+### Added
+
+- `desktopColors`: `match` paints the whole Claude Code desktop app (Code tab) in the theme, not only the replies, and switches it to light mode for a light theme. Needs Claude Code 2.1.324 or later; off by default, and turning it back off restores the app's own look. Also a step in `/prismantis setup more` ([#520](https://github.com/NahumLitvin/prismantis/pull/520)).
+
+### Fixed
+
+- In the desktop app, a table with Chinese, Japanese or Korean cells fits the reply instead of cutting off its last column and the text under it ([#521](https://github.com/NahumLitvin/prismantis/pull/521)).
+- In the desktop app, a round pie is round instead of an upright egg. Thanks @berkay8987 for the measurements ([#494](https://github.com/NahumLitvin/prismantis/pull/494)).
+
 ## [0.46.0] - 2026-11-13
 
 Tables learn to read their own content, and setup gets shorter.
