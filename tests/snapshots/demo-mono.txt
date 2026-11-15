@@ -1131,6 +1131,26 @@
     <Box>
       <Text>
         <Text>
+          "      ┌─ Clothes ────┬─ Jacket"
+      <Text>
+        <Text>
+          "      │              └─ Boots"
+      <Text>
+        <Text>
+          "Trip ─┼─ Food ───────┬─ Snacks"
+      <Text>
+        <Text>
+          "      │              └─ Water"
+      <Text>
+        <Text>
+          "      └─ Night gear ─┬─ Map"
+      <Text>
+        <Text>
+          "                     └─ Torch"
+  <Box>
+    <Box>
+      <Text>
+        <Text>
           "┌───────┐   ┌──────┐"
       <Text>
         <Text>

@@ -1,30 +1,15 @@
 import type { ChartArt } from './charts'
-import { cells, graphemes, width } from './layout'
+import { cells, width } from './layout'
+import { ARROW_HUE, fit, LINE_HUE, type Line, line, unquote } from './textart'
 
 type Point = { name: string; x: number; y: number }
 type Axis = [string, string | undefined]
 type Quadrant = { title?: string; x?: Axis; y?: Axis; names: string[]; points: Point[] }
 type Canvas = { grid: string[][]; hues: number[][]; taken: boolean[][] }
-type Line = { text: string; hue: number[] }
-
-export const LINE_HUE = -2
-export const ARROW_HUE = -3
 
 const MARKS = '123456789abcdefghijklmnopqrstuvwxyz'
 const IGNORED = /^(classDef|accTitle|accDescr)\b/i
 const POINT = /^(.+?)(?::::[\w-]+)?\s*:\s*\[\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]/
-
-const fit = (label: string, max: number) => {
-  if (width(label) <= max) return label
-  let out = ''
-  for (const g of graphemes(label)) {
-    if (width(out + g) > max - 1) break
-    out += g
-  }
-  return `${out.trimEnd()}…`
-}
-
-const unquote = (text: string) => text.trim().replace(/^"(.*)"$/, '$1')
 
 const axisOf = (text: string): Axis => {
   const [from = '', to] = text.split('-->').map(unquote)
@@ -118,8 +103,6 @@ const place = (c: Canvas, p: Point, i: number, middle: number, mid: number) => {
   if (spot) put(c, spot[0], spot[1], MARKS[i]!, i)
   return !!spot
 }
-
-const line = (...parts: [string, number][]): Line => ({ text: parts.map(([t]) => t).join(''), hue: parts.flatMap(([t, h]) => cells(t).map(() => h)) })
 
 const centred = (text: string, at: number, cols: number) => Math.max(0, Math.min(at, cols - width(text)))
 

@@ -112,6 +112,20 @@ quadrantChart
 ```
 
 ```mermaid
+mindmap
+  root((Trip))
+    Clothes
+      Jacket
+      Boots
+    Food
+      Snacks
+      Water
+    Gear[Night gear]
+      Map
+      Torch
+```
+
+```mermaid
 graph LR
   A[<i>Reply</i>] --> B[<b>Draw</b>]
 ```

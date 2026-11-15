@@ -153,6 +153,7 @@ Code blocks tagged `mermaid` draw as colored text art:
 - bar and line charts with `xychart-beta`, sized to the terminal width
 - `pie` charts as a circle with a colored legend, largest slice first, drawn as a smooth picture in kitty and Ghostty, and `gantt` schedules as bars on a shared date or time axis, starting on a half cell and ending on an eighth so close durations draw apart
 - `quadrantChart` grids with the quadrant names in their corners and numbered points listed under the grid; points that land on one cell are moved apart within their own quadrant
+- `mindmap` trees drawn from the root to the right, each branch in its own color, switching to an indented outline when the map is wider than the terminal
 - each box and participant gets its own theme color, the same at both ends of a sequence diagram
 - bars in a multi-series chart get their own colors; a single-series chart prints each value above its bar and colors the tallest one
 - gridlines stay dim, axis numbers use the number color
