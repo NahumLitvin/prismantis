@@ -1235,21 +1235,23 @@ test('each path is stat-ed once a session however many times a streaming reply r
   for (const path of ON_DISK.filter(path => !/\.(bat|py)$/.test(path))) expect(counts.get(path)).toBe(1)
 })
 
+const ranTool = async ($: Engine, tool: string, input: Record<string, unknown>, id: string) => {
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { tool_use_id: id, tool, input, isRunning: false, isErrored: false, isInterrupted: false } })
+  await row.unmount()
+}
+
 test('a path named before a tool creates it links once the tool ran', async ($, on) => {
   filesAt(on, '2.1.289')
   const clock = mock.clock(on)
   let made = false
   on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/work\/app\/)/, '') !== '/work/app/src/new.ts' ? next(e) : made ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: 'no such file' }))
-  on('tool.call', () => {
-    made = true
-    return { result: 'ok', text: 'ok' }
-  })
   if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
   const plan = await $.ui.mount(mount("I'll create src/new.ts."))
   await clock.settle()
   expect(await plan.findAll({ type: 'Link' })).toEqual([])
   await plan.unmount()
-  await $.tool.call({ tool: 'Write', file_path: '/work/app/src/new.ts', content: 'x' })
+  made = true
+  await ranTool($, 'Write', { file_path: '/work/app/src/new.ts', content: 'x' }, 'w-new')
   const done = await $.ui.mount(mount('Created src/new.ts.'))
   await clock.settle()
   expect((await done.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['file:///work/app/src/new.ts'])
@@ -1265,7 +1267,6 @@ test('a missing path is stat-ed again only after a tool call that could have mad
     stats.push(e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/work\/app\/)/, ''))
     return { deny: 'no such file' }
   })
-  on('tool.call', () => ({ result: 'ok', text: 'ok' }))
   if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
   const draw = async () => {
     const ui = await $.ui.mount(mount('See src/gone.ts and docs/old.md.'))
@@ -1273,18 +1274,57 @@ test('a missing path is stat-ed again only after a tool call that could have mad
     await ui.unmount()
   }
   await draw()
-  await $.tool.call({ tool: 'Read', file_path: '/work/app/README.md' })
-  await $.tool.call({ tool: 'Write', file_path: '/work/app/other.ts', content: 'x' })
+  await ranTool($, 'Read', { file_path: '/work/app/README.md' }, 'm-read')
+  await ranTool($, 'Write', { file_path: '/work/app/other.ts', content: 'x' }, 'm-other')
   await draw()
   expect(stats.filter(path => path === '/work/app/src/gone.ts')).toHaveLength(1)
-  await $.tool.call({ tool: 'Write', file_path: '/work/app/src/gone.ts', content: 'x' })
+  await ranTool($, 'Write', { file_path: '/work/app/src/gone.ts', content: 'x' }, 'm-gone')
   await draw()
   expect(stats.filter(path => path === '/work/app/src/gone.ts')).toHaveLength(2)
   expect(stats.filter(path => path === '/work/app/docs/old.md')).toHaveLength(1)
-  await $.tool.call({ tool: 'Bash', command: 'make docs' })
+  await ranTool($, 'Bash', { command: 'make docs' }, 'm-docs')
   await draw()
   expect(stats.filter(path => path === '/work/app/docs/old.md')).toHaveLength(2)
 })
+
+for (const toolRows of [true, false]) {
+  test(`a finished call drops path misses once, from its row draws alone, with toolRows ${toolRows}`, { options: { toolRows } }, async ($, on) => {
+    filesAt(on, '2.1.289')
+    const clock = mock.clock(on)
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    let stats = 0
+    on('fs.stat', (_, e, next) => (e.path.replace(/\\/g, '/').endsWith('/work/app/src/gone.ts') ? (stats++, { deny: 'no such file' }) : next(e)))
+    if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const draw = async () => {
+      const ui = await $.ui.mount(mount('See src/gone.ts.'))
+      await clock.settle()
+      await ui.unmount()
+    }
+    const row = async (id: string, isRunning: boolean, component: 'ToolUse' | 'ToolGroup' = 'ToolUse') => {
+      const props = { tool_use_id: id, tool: 'Bash', input: { command: 'make docs' }, isRunning, isErrored: false, isInterrupted: false }
+      const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', ...(component === 'ToolUse' ? { component, props } : { component, props: { calls: [props], isActive: isRunning, isExpanded: false } }) } as never)
+      await ui.unmount()
+    }
+    await draw()
+    expect(stats).toBe(1)
+    await row('f-1', false)
+    await draw()
+    expect(stats).toBe(2)
+    await row('f-1', false)
+    await row('f-1', false, 'ToolGroup')
+    await draw()
+    expect(stats).toBe(2)
+    await row('f-2', true)
+    await draw()
+    expect(stats).toBe(2)
+    await row('f-2', false, 'ToolGroup')
+    await draw()
+    expect(stats).toBe(3)
+  })
+}
 
 test('one stat batch asks at most 200 paths', async ($, on) => {
   filesAt(on, '2.1.289')
