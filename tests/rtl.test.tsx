@@ -286,6 +286,27 @@ test('auto reorders Hebrew in Warp', async ($, on) => {
   await ui.unmount()
 })
 
+test('auto in Warp on Windows leaves the letters in reading order, as in Windows Terminal', async ($, on) => {
+  mock.env(on, { TERM_PROGRAM: 'WarpTerminal', OS: 'Windows_NT' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /םלוע םולש/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /שלום.*עולם/ })).toBeDefined()
+  expect((await ui.findAll({ type: 'Box' })).some(b => b.props.alignItems === 'flex-end')).toBe(true)
+  await ui.unmount()
+})
+
+test('rtl warp on Windows leaves the letters in reading order too', { options: { rtl: 'warp' } }, async ($, on) => {
+  mock.env(on, { OS: 'Windows_NT' })
+  on('session.start', () => ({ cwd: '/tmp' }))
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount(mount('שלום עולם'))
+  expect(await ui.find({ type: 'Text', text: /םלוע םולש/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /שלום.*עולם/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('auto in kitty puts words in visual order and leaves each word for kitty to reverse', async ($, on) => {
   mock.env(on, { TERM: 'xterm-kitty', KITTY_WINDOW_ID: '1', TERM_PROGRAM: 'WarpTerminal' })
   on('session.start', () => ({ cwd: '/tmp' }))
