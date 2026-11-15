@@ -51,6 +51,8 @@ jobs:
         run: |
           if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "::notice::No Claude token on fork PRs, so the typecheck runs on main after the merge"; exit 0; fi
           claude --plugin-dir plugin -p /prismantis > /dev/null
+          test -d plugin/.claude-plugin/types/claude-code || claude --plugin-dir plugin --model haiku -p hi > /dev/null
+          head -1 plugin/.claude-plugin/types/claude-code/index.d.ts
           npx --yes -p typescript@5.9.3 tsc -p .
 
   vendor:
