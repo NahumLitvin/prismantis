@@ -14,7 +14,7 @@ const files = execFileSync('git', ['ls-files', 'plugin/hooks/*.ts', 'plugin/hook
 const lint = () => {
   const args = ['lint', '--only=complexity/noExcessiveCognitiveComplexity', '--reporter=json', '--max-diagnostics=1000', ...files]
   try {
-    return execFileSync(join(root, 'scripts', 'node_modules', '.bin', 'biome'), args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    return execFileSync(process.execPath, [join(root, 'scripts', 'node_modules', '@biomejs', 'biome', 'bin', 'biome'), ...args], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
   } catch (error) {
     return error.stdout
   }
@@ -22,7 +22,8 @@ const lint = () => {
 
 const found = JSON.parse(lint()).diagnostics
   .filter(d => d.category === 'lint/complexity/noExcessiveCognitiveComplexity')
-  .map(d => ({ at: `${d.location.path}:${d.location.start.line}`, file: d.location.path, score: Number(/complexity of (\d+)/.exec(JSON.stringify(d.message))[1]) }))
+  .map(d => ({ ...d, file: d.location.path.replaceAll('\\', '/') }))
+  .map(d => ({ at: `${d.file}:${d.location.start.line}`, file: d.file, score: Number(/complexity of (\d+)/.exec(JSON.stringify(d.message))[1]) }))
 
 const excess = {}
 for (const { file, score } of found) excess[file] = (excess[file] ?? 0) + score - MAX
