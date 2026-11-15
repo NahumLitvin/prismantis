@@ -229,7 +229,7 @@ const booted = async (w, since) => {
     await sleep(1.5)
     if (starts(w) <= since) continue
     const now = screenText(w, w.screen)
-    if (now.includes(readyText) && now === last) return
+    if (squash(now).includes(squash(readyText)) && now === last) return
     last = now
   }
   const top = (last ?? screenText(w, w.screen)).split('\n').map(line => line.trim()).find(line => /\w/.test(line))
