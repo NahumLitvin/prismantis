@@ -1180,6 +1180,35 @@
     <Box>
       <Text>
         <Text>
+          "To pack · 2                     Packing · 1                     Packed · 0"
+      <Text>
+        <Text>
+          "╭────────────────────────────╮  ╭────────────────────────────╮"
+      <Text>
+        <Text>
+          "│ Tent poles                 │  │ First aid kit              │"
+      <Text>
+        <Text>
+          "│ Bo · Very High             │  │ Mei                        │"
+      <Text>
+        <Text>
+          "╰────────────────────────────╯  ╰────────────────────────────╯"
+      <Text>
+        <Text>
+          "╭────────────────────────────╮"
+      <Text>
+        <Text>
+          "│ Stove fuel                 │"
+      <Text>
+        <Text>
+          "│ CAMP-3                     │"
+      <Text>
+        <Text>
+          "╰────────────────────────────╯"
+  <Box>
+    <Box>
+      <Text>
+        <Text>
           "┌───────┐   ┌──────┐"
       <Text>
         <Text>

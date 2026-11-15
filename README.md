@@ -155,6 +155,7 @@ Code blocks tagged `mermaid` draw as colored text art:
 - `quadrantChart` grids with the quadrant names in their corners and numbered points listed under the grid; points that land on one cell are moved apart within their own quadrant
 - `mindmap` trees drawn from the root to the right, each branch in its own color, switching to an indented outline when the map is wider than the terminal
 - `journey` maps with the sections over their tasks and a mood line from score 1 to 5, green dots for good steps and red for bad ones; with too many tasks for the width each task becomes a row with its score drawn as a bar
+- `kanban` boards with the columns side by side and a card count in each header, each card a rounded box in its column's color holding the wrapped task and its assigned, ticket and priority metadata (high priorities in red); columns stack when the terminal is too narrow
 - each box and participant gets its own theme color, the same at both ends of a sequence diagram
 - bars in a multi-series chart get their own colors; a single-series chart prints each value above its bar and colors the tallest one
 - gridlines stay dim, axis numbers use the number color

@@ -137,6 +137,16 @@ journey
 ```
 
 ```mermaid
+kanban
+  todo[To pack]
+    a[Tent poles]@{ assigned: 'Bo', priority: 'Very High' }
+    b[Stove fuel]@{ ticket: CAMP-3 }
+  doing[Packing]
+    c[First aid kit]@{ assigned: 'Mei' }
+  done[Packed]
+```
+
+```mermaid
 graph LR
   A[<i>Reply</i>] --> B[<b>Draw</b>]
 ```
