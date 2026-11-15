@@ -14,6 +14,7 @@ import { benchLook, benchOf, benchSpark } from './bench-table'
 import { schemaLook, schemaOf } from './schema-table'
 import { compareLook, compareOf } from './compare-table'
 import { apiLook, apiOf } from './api-table'
+import { kvLook, kvOf } from './kv-table'
 import { testReport } from './test-report'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -1053,8 +1054,9 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const schema = schemaOf(block, style.schemaTable)
   const api = apiOf(block, style.apiTable)
   const compare = compareOf(block, style.compareTable)
-  const compareAt = compare ? new Map(block.rows.map((cells, r) => [cells, r])) : undefined
-  const look = (at: number | undefined) => (c: number, cell: TableCell, plain: { color?: string } = {}) => statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, compareLook(t, compare, at, c, cell, apiLook(t, api, c, cell, plain)))))
+  const kv = kvOf(block, style.kvTable)
+  const rowAt = compare || kv ? new Map(block.rows.map((cells, r) => [cells, r])) : undefined
+  const look = (at: number | undefined) => (c: number, cell: TableCell, plain: { color?: string } = {}) => statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, compareLook(t, compare, at, c, cell, apiLook(t, api, c, cell, kvLook(t, kv, at, c, cell, plain))))))
   const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
@@ -1143,7 +1145,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), ...wrappedRow(block.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
     layout.rows.forEach((r, i) => {
       if (i > 0) lines.push(edge(`${key}.r${i}r`, statusEdge(style.statusMatrix, layout.buckets, i - 1, '├─┼┤', '╞═╪╡')))
-      lines.push(...wrappedRow(r, `${key}.r${i}`, false, compareAt?.get(r)))
+      lines.push(...wrappedRow(r, `${key}.r${i}`, false, rowAt?.get(r)))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
     return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{lines}{foot}{test}{spark}</Box>
@@ -1151,7 +1153,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
 
   const body: RenderElement[] = [row(block.header, `${key}.h`, true), rule(`${key}.hr`, true)]
   layout.rows.forEach((r, i) => {
-    body.push(row(r, `${key}.r${i}`, false, undefined, compareAt?.get(r)))
+    body.push(row(r, `${key}.r${i}`, false, undefined, rowAt?.get(r)))
     if (style.tableStyle !== 'minimal' && i < layout.rows.length - 1) body.push(rule(`${key}.r${i}r`, statusHeavy(style.statusMatrix, layout.buckets, i)))
   })
   return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{body}{foot}{test}{spark}</Box>

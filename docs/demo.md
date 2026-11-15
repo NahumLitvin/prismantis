@@ -86,6 +86,17 @@ When a table documents an API — a method column whose cells read like HTTP ver
 | DELETE | /v1/scrolls/:id | API key | Remove a scroll |
 | GET | /v1/health | none | Liveness check |
 
+## Key-value
+
+When a table lists configuration — a column of options beside columns of values, sources and defaults — `kvTable` draws the source cells by where it says the value comes from: env in the link color, config in the string color, default in gray. `overrides` draws the value cell in the accent color when the row's value differs from its default, and `full` does both. The default `off` keeps tables as written:
+
+| Option | Value | Source | Default |
+|:-------|:------|:-------|:--------|
+| retries | 5 | env | 3 |
+| format | json | config | json |
+| timeout | 30s | default | 30s |
+| token | abc123 | env | unset |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings
