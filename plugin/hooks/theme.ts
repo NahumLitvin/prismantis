@@ -2,6 +2,7 @@ import type { BenchTable } from './bench-table'
 import type { PluginOptions, RenderSurface } from 'claude-code'
 
 import type { ClipboardBackend } from './clipboard'
+import type { DesktopColors } from './desktop'
 import type { PresetName } from './presets'
 import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from './presets'
 import type { SchemaTable } from './schema-table'
@@ -28,6 +29,7 @@ export type Clock = 'off' | '24h' | '12h'
 export type Style = {
   theme: Theme
   background?: string
+  desktopColors: DesktopColors
   headingStyle: 'bold' | 'underline' | 'uppercase' | 'banner'
   tableStyle: 'box' | 'rules' | 'grid' | 'minimal'
   tableLayout: 'classic' | 'auto' | 'compact' | 'stacked'
@@ -126,6 +128,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
   return {
     theme: { ...base, ...fromFields },
     ...(PRESET_BACKGROUNDS[preset] ? { background: PRESET_BACKGROUNDS[preset] } : {}),
+    desktopColors: pick(options.desktopColors, ['off', 'match'] as const, 'off'),
     headingStyle: pick(options.headingStyle, ['bold', 'underline', 'uppercase', 'banner'] as const, 'banner'),
     tableStyle: pick(options.tableStyle, ['box', 'rules', 'grid', 'minimal'] as const, 'box'),
     tableLayout: pick(options.tableLayout, ['classic', 'auto', 'compact', 'stacked'] as const, 'classic'),

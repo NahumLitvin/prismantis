@@ -59,6 +59,16 @@
         "random"
       ]
     },
+    "desktopColors": {
+      "type": "string",
+      "title": "Desktop app colors",
+      "description": "match also paints the Claude Code desktop app (Code tab) in the theme's colors, and switches it to light mode for a light theme. Needs Claude Code 2.1.324 or later; the terminal and VS Code keep their own colors. It replaces any other mod's desktop theme, and turning it back to off restores the app's own look. off leaves the app as it is.",
+      "default": "off",
+      "options": [
+        "off",
+        "match"
+      ]
+    },
     "headingStyle": {
       "type": "string",
       "title": "Heading style",
