@@ -102,7 +102,7 @@ const drawRow = (c: Canvas, glyph: Glyphs, row: Row, r: number, alive: (lane: nu
   const hue = row.kind === 'fork' ? row.to : row.from
   across(c, glyph, r, [row.from, row.to], hue, alive)
   const side = row.from < row.to ? 0 : 1
-  paint(c, r, row.from * STEP, (alive(row.from, r + 1) ? glyph.tee : glyph.end)[side]!, hue)
+  paint(c, r, row.from * STEP, (alive(row.from, r + 1) ? glyph.tee : glyph.end)[side]!, row.from)
   if (row.kind === 'fork') paint(c, r, row.to * STEP, glyph.open, row.to)
   else paint(c, r, row.to * STEP, glyph.dots[row.mark], row.to)
 }

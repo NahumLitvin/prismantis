@@ -2282,6 +2282,8 @@ test('a git graph colors each lane and its legend name alike, tags in the accent
   const hue = (text: string) => texts.find(n => n.props.color && n.text === text)?.props.color
   expect(hue('feature/login')).toBe(hue('──╯'))
   expect(hue('feature/login')).not.toBe(hue('develop'))
+  expect(hue('├')).toBe(hue('main'))
+  expect(hue('──╮')).toBe(hue('develop'))
   expect(hue(' [v2.0]')).toBe(theme.accent)
   expect(hue('merge feature/login')).toBe(theme.diagram)
   await ui.unmount()

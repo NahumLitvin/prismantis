@@ -1797,8 +1797,10 @@
         <Text color=#8250df>
           " [v0.1]"
       <Text>
+        <Text color=#0969da>
+          "├"
         <Text color=#0550ae>
-          "├──╮"
+          "──╮"
         <Text color=#1f2328>
           "     "
         <Text color=#0550ae>
@@ -1817,8 +1819,10 @@
           "│"
         <Text color=#1f2328>
           "  "
+        <Text color=#0550ae>
+          "├"
         <Text color=#8250df>
-          "├──╮"
+          "──╮"
         <Text color=#1f2328>
           "  "
         <Text color=#8250df>
