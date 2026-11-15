@@ -46,7 +46,11 @@ jobs:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code@2.1.325
       - name: Lay the mod API types
-        run: ANTHROPIC_API_KEY=unused claude --plugin-dir plugin -p hi || test -d plugin/.claude-plugin/types/claude-code
+        run: |
+          ANTHROPIC_API_KEY=unused claude --plugin-dir plugin -p hi || true
+          test -d plugin/.claude-plugin/types/claude-code || timeout 40 script -qec "claude --plugin-dir plugin" /dev/null >/dev/null || true
+          find / -path /proc -prune -o -name index.d.ts -path '*types/claude-code*' -print 2>/dev/null | head
+          test -d plugin/.claude-plugin/types/claude-code
       - run: npx --yes -p typescript@5.9.3 tsc -p .
 
   vendor:
