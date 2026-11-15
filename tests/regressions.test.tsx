@@ -465,6 +465,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('Click a mark to see its note')
   expect(showcaseText([]).includes("toolStyle")).toBe(true)
   expect(showcaseText([]).includes("toolOutput")).toBe(true)
+  expect(showcaseText([])).toContain('toolOutput: rows')
   expect(showcaseText([])).toContain('copyButtonStyle')
   expect(showcaseText([])).toContain('textCopyButtons')
   expect(showcaseText([])).toContain('sectionCopyButtons')

@@ -656,12 +656,22 @@ const SETUP_BUILD_ERROR = [
   'Found 10 errors in the same file, starting at: src/app.ts:3',
 ]
 
+const SETUP_NPM_TEST = [
+  '> app@1.4.0 test',
+  '> vitest run',
+  ' ✓ src/app.test.ts (12 tests) 48ms',
+  ' Test Files  1 passed (1)',
+  '      Tests  12 passed (12)',
+]
+
 const toolOutputSample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, value: string, id: string, columns: number): RenderElement[] => {
-  const status = { tool: 'Bash', input: { command: 'git status' }, isRunning: false, isErrored: false, isInterrupted: false }
-  const build = { tool: 'Bash', input: { command: 'npm run build', description: 'Build the app' }, isRunning: false, isErrored: true, isInterrupted: false }
-  const statusRow = <el.Box key={`${id}s`}>{renderToolRow(el, style, status, columns)}</el.Box>
-  const buildRow = <el.Box key={`${id}r`}>{renderToolRow(el, style, build, columns)}</el.Box>
-  if (value === 'quiet') return [statusRow, buildRow, renderFailure(el, style, SETUP_BUILD_ERROR.join('\n'), `${id}e`) ?? <el.Box key={`${id}e`} />]
+  const row = (key: string, input: Record<string, string>, isErrored: boolean) => <el.Box key={`${id}${key}`}>{renderToolRow(el, style, { tool: 'Bash', input, isRunning: false, isErrored, isInterrupted: false }, columns)}</el.Box>
+  const statusRow = row('s', { command: 'git status' }, false)
+  const testRow = row('t', { command: 'npm test', description: 'Run the tests' }, false)
+  const buildRow = row('r', { command: 'npm run build', description: 'Build the app' }, true)
+  const failure = renderFailure(el, style, SETUP_BUILD_ERROR.join('\n'), `${id}e`) ?? <el.Box key={`${id}e`} />
+  if (value === 'rows') return [statusRow, testRow, buildRow, failure]
+  if (value === 'quiet') return [statusRow, testRow, <el.Box key={`${id}to`}>{renderShellResult(el, style, { stdout: SETUP_NPM_TEST.join('\n'), stderr: '' })}</el.Box>, buildRow, failure]
   const folded = (lines: readonly string[], keep: number, color?: string) => [
     ...lines.slice(0, keep).map((line, i) => <el.Text key={`l${i}`} color={color}>{`${i === 0 ? '  ⎿  ' : '     '}${line}`}</el.Text>),
     <el.Text key="more" dimColor>{`     … +${lines.length - keep} lines (ctrl+o to expand)`}</el.Text>,
@@ -672,6 +682,8 @@ const toolOutputSample = (el: ReturnType<EngineInterface['ui']['resolve']>, styl
       {folded(SETUP_GIT_STATUS, 3)}
       <el.Text key="allowed" dimColor>{'  ⎿  Allowed by auto mode classifier'}</el.Text>
     </el.Box>,
+    testRow,
+    <el.Box key={`${id}to`} flexDirection="column">{folded(SETUP_NPM_TEST, 3)}</el.Box>,
     buildRow,
     <el.Box key={`${id}e`} flexDirection="column">{folded(['Error: Exit code 2', ...SETUP_BUILD_ERROR], 10, style.theme.codeFlag)}</el.Box>,
   ]
@@ -801,8 +813,11 @@ export const register: Register = (on, options) => {
   }
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})
 
-  const quiet = style.toolOutput === 'quiet'
+  const quiet = style.toolOutput !== 'full'
+  const rows = style.toolOutput === 'rows'
   const quietRow = (expanded: boolean | undefined) => quiet && !expanded
+  const rowOnly = (id: string) => rows || readOnlyCalls.has(id)
+  const showsAbove = (props: object, output: unknown) => hasShellOutput(output) && !(rows && !expandedRow(props))
   const shellCommands = new Map<string, string>()
   const noteCommand = (id: string | undefined, tool: string, input: unknown) => {
     const command = tool === 'Bash' && input !== null && typeof input === 'object' ? (input as { command?: unknown }).command : undefined
@@ -843,7 +858,7 @@ export const register: Register = (on, options) => {
         await locate($, style)
         const el = $.ui.resolve(e)
         const output = withoutBashEdits(e.props.output)
-        const above = !hasShellOutput(output) ? null : quiet ? renderShellResult(el, style, output) : await next({ ...e, props: { ...e.props, output } })
+        const above = !showsAbove(e.props, output) ? null : quiet ? renderShellResult(el, style, output) : await next({ ...e, props: { ...e.props, output } })
         firstEdit ??= e.props.tool_use_id
         const notes = editNotes(edits, firstEdit === e.props.tool_use_id, shellCommands.get(e.props.tool_use_id))
         const drawn = renderBashEdits(el, forSurface(cards(), e, await linkReach($, probes, style)), edits, folder($, el, await read($, unfolded), (await linkReach($, probes, style)).marks, style.folds === 'open'), e.props.tool_use_id, above !== null, notes, e.viewport?.columns)
@@ -856,7 +871,7 @@ export const register: Register = (on, options) => {
       const out = (e.props.output ?? {}) as Record<string, unknown>
       if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
       if (e.props.isErrored) return renderFailure(el, style, e.props.output) ?? next(e)
-      if (readOnlyCalls.has(e.props.tool_use_id)) return <el.Box />
+      if (rowOnly(e.props.tool_use_id)) return <el.Box />
       return shell ? renderShellResult(el, style, e.props.output) : next(e)
     })
   }
