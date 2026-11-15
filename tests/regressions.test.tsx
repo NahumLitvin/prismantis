@@ -63,6 +63,16 @@ test('a four-backtick fence keeps triple-backtick examples inside one code block
   expect(code.lines).toEqual(['```bash', 'ls', '```'])
 })
 
+test('a fence after a bracketed prefix like a timestamp still opens its block', async () => {
+  const blocks = parse('[14:47:41] ```figure\n  {dim:left end}\n   2  4\n```\n\nSome prose after.', hl)
+  expect(blocks.map(b => b.kind)).toEqual(['paragraph', 'code', 'paragraph'])
+  const [, figure] = blocks
+  if (figure?.kind !== 'code') throw new Error('not code')
+  expect(figure.lang).toBe('figure')
+  expect(figure.lines).toEqual(['  {dim:left end}', '   2  4'])
+  expect(parse('[note] see ```js``` here', hl).map(b => b.kind)).toEqual(['paragraph'])
+})
+
 for (const [input, expected] of [
   ['## Using C#', [{ kind: 'text', text: 'Using C#' }]],
   ['## Title ##', [{ kind: 'text', text: 'Title' }]],
