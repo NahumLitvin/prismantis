@@ -895,6 +895,162 @@
   <Text color=#6e7781>
     "└────────────┴──────────────┴──────────────┴─────────┘"
 <Box>
+  <Text color=#0550ae bold>
+    <Text>
+      "Comparison"
+  <Text color=#0550ae>
+    "━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table compares options — a column of scores beside a column of ranks — "
+  <Text color=#0550ae>
+    "compareTable"
+  <Text>
+    " draws the rank cells as a medal: "
+  <Text color=#0550ae>
+    "1"
+  <Text>
+    " in the accent color, "
+  <Text color=#0550ae>
+    "2"
+  <Text>
+    " and "
+  <Text color=#0550ae>
+    "3"
+  <Text>
+    " in the link color, the same pairing the schema table's PK and FK use. "
+  <Text color=#0550ae>
+    "pick"
+  <Text>
+    " draws the score cell of the top score in the improvement green, the hue "
+  <Text color=#0550ae>
+    "benchTable"
+  <Text>
+    " gives an improvement, and bolds it so it stands out even in a theme where that green is also the number color, and "
+  <Text color=#0550ae>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text color=#0550ae>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#6e7781>
+    "┌─────────┬───────┬──────┐"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text color=#953800 bold>
+        "Option"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Score"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text color=#953800 bold>
+        "Rank"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "╞═════════╪═══════╪══════╡"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "mantis"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "9.2"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "1"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├─────────┼───────┼──────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "origami"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "7.8"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "2"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├─────────┼───────┼──────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "noodle"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "6.1"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "3"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "├─────────┼───────┼──────┤"
+  <Box row>
+    <Text color=#6e7781>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "tofu"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "4.4"
+    <Text color=#6e7781>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#0550ae>
+          "4"
+    <Text color=#6e7781>
+      " │"
+  <Text color=#6e7781>
+    "└─────────┴───────┴──────┘"
+<Box>
   <Box row>
     <Text color=#cf222e>
       "1. "

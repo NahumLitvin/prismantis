@@ -64,6 +64,17 @@ When a table describes a database schema — a column of fields beside a column 
 | org_id | bigint | FK → orgs.id | |
 | created_at | timestamp | | now() |
 
+## Comparison
+
+When a table compares options — a column of scores beside a column of ranks — `compareTable` draws the rank cells as a medal: 1 in the accent color, 2 and 3 in the link color, the same pairing the schema table's PK and FK use. `pick` draws the score cell of the top score in the improvement green, the hue `benchTable` gives an improvement, and bolds it so it stands out even in a theme where that green is also the number color, and `full` does both. The default `off` keeps tables as written:
+
+| Option | Score | Rank |
+|:-------|------:|-----:|
+| mantis | 9.2 | 1 |
+| origami | 7.8 | 2 |
+| noodle | 6.1 | 3 |
+| tofu | 4.4 | 4 |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings

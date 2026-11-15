@@ -116,6 +116,17 @@ When a table describes a database schema — a column of fields beside a column 
 | org_id | bigint | FK → orgs.id | |
 | created_at | timestamp | | now() |
 
+### Comparison
+
+When a table compares options — a column of scores beside a column of ranks — \`compareTable\` draws the rank cells as a medal: 1 in the accent color, 2 and 3 in the link color, the same pairing the schema table's PK and FK use. \`pick\` draws the score cell of the top score in the improvement green, the hue \`benchTable\` gives an improvement, and bolds it so it stands out even in a theme where that green is also the number color, and \`full\` does both. The default \`off\` keeps tables as written:
+
+| Option | Score | Rank |
+|:-------|------:|-----:|
+| mantis | 9.2 | 1 |
+| origami | 7.8 | 2 |
+| noodle | 6.1 | 3 |
+| tofu | 4.4 | 4 |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -515,7 +526,7 @@ flowchart LR
 
 export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
-export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'codeStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'compareTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'codeStyle' | 'pieStyle'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
@@ -538,6 +549,7 @@ export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'test-report', key: 'testMatrix', title: 'Test report', note: 'What a table of test results reports: a status column of things like ✓ or failed next to durations like 120 ms. `off` keeps tables as written. `report` draws a line under the table with the share of the run that passed, a count of every other kind of result and the time all of it took.', options: ['report', 'off'], sample: '| Check | Time | Result |\n|:------|-----:|:-------|\n| parse | 120 ms | ✓ |\n| draw | 4 s | ✓ |\n| scan | 130 ms | failed |\n| typeset | 2.6 s | pending |' },
   { name: 'bench-table', key: 'benchTable', title: 'Benchmarks', note: 'How a table that compares benchmarks draws: a column of changes like -10% or +3%. `off` keeps tables as written. `color` draws each change in theme colors, green for an improvement and red for a regression, and `trend` also draws a sparkline of the runs under the table.', options: ['trend', 'color', 'off'], sample: '| Benchmark | Before | After | Change |\n|:----------|-------:|------:|:-------|\n| parse | 12.4 ms | 11.1 ms | -10% |\n| layout | 19.6 ms | 22.4 ms | +14% |\n| paint | 2.1 ms | 0.8 ms | -62% |' },
   { name: 'schema-table', key: 'schemaTable', title: 'Schema', note: 'How a table that describes a database schema draws: a column of fields beside a column of types. `off` keeps tables as written. `types` draws each type cell in theme colors by its family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. `keys` draws the constraint cells: PK in the accent color, FK in the link color, unique and index cells in gray. `full` does both.', options: ['full', 'types', 'keys', 'off'], sample: '| Column | Type | Key | Default |\n|:-------|:-----|:----|:--------|\n| id | uuid | PK | |\n| email | varchar(255) | UNIQUE | |\n| org_id | bigint | FK → orgs.id | |\n| created_at | timestamp | | now() |' },
+  { name: 'compare-table', key: 'compareTable', title: 'Comparison', note: 'How a table that compares options draws: a column of scores beside a column of ranks. `off` keeps tables as written. `rank` draws the rank cells in theme colors: 1 in the accent color, 2 and 3 in the link color. `pick` draws the score cell of the top score in the improvement green and bold, so it stands out in a theme where that green is also the number color. `full` does both.', options: ['full', 'rank', 'pick', 'off'], sample: '| Option | Score | Rank |\n|:-------|------:|-----:|\n| mantis | 9.2 | 1 |\n| origami | 7.8 | 2 |\n| noodle | 6.1 | 3 |\n| tofu | 4.4 | 4 |' },
 ]
 
 export const ESSENTIAL_STEPS = 6

@@ -1383,3 +1383,111 @@ test('schemaTable types tells the families apart in a theme where they differ', 
   expect(t.codeString).not.toBe(t.number)
   await ui.unmount()
 })
+
+const COMPARE = [
+  '| Option | Score | Rank |',
+  '|:-------|------:|-----:|',
+  '| mantis | 9.2 | 1 |',
+  '| origami | 7.8 | 2 |',
+  '| noodle | 6.1 | 3 |',
+  '| tofu | 4.4 | 4 |',
+].join('\n')
+
+for (const surface of ['terminal', 'desktop'] as const) test(`compareTable ${surface} colors the rank cells as a medal`, { options: { compareTable: 'rank' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface })
+  expect((await ui.find({ type: 'Text', text: /^1$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^2$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^3$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^4$/ }))?.props.color).toBeUndefined()
+  const ones = await ui.findAll({ type: 'Text', text: /^1$/ })
+  expect(ones.every(n => n.props.color !== t.number)).toBe(true)
+  await ui.unmount()
+})
+
+test('compareTable rank leaves the score cells as written', { options: { compareTable: 'rank' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.bold).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^4\.4$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('compareTable pick marks the top score and bolds it, so it stands out where the improvement green is the number color', { options: { compareTable: 'pick' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.bold).toBe(true)
+  expect((await ui.find({ type: 'Text', text: /^7\.8$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^7\.8$/ }))?.props.bold).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^6\.1$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^4\.4$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('compareTable pick leaves the rank cells as written', { options: { compareTable: 'pick' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^1$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^2$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('compareTable full colors the medal and marks the top score', { options: { compareTable: 'full' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^1$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^2$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.bold).toBe(true)
+  await ui.unmount()
+})
+
+test('compareTable pick marks every row that ties the top score', { options: { compareTable: 'pick', theme: 'dracula' } }, async $ => {
+  const t = PRESETS['dracula']
+  const ui = await $.ui.mount({ ...draw('| Option | Score | Rank |\n|:-------|------:|-----:|\n| mantis | 9.2 | 1 |\n| clone | 9.2 | 1 |\n| tofu | 4.4 | 4 |'), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^9\.2$/ })).some(n => n.props.color === t.diffAdded)).toBe(true)
+  expect((await ui.findAll({ type: 'Text', text: /^4\.4$/ })).every(n => n.props.color !== t.diffAdded)).toBe(true)
+  await ui.unmount()
+})
+
+test('compareTable reads a score through its stars', { options: { compareTable: 'pick' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Option | Score | Rank |\n|:-------|------:|-----:|\n| mantis | ★ 4.5 | 1 |\n| tofu | ★ 3.1 | 2 |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^★ 4\.5$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^★ 3\.1$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('compareTable off keeps tables as written', async $ => {
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^1$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.bold).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a table with a score column and no rank header draws no comparison colors', { options: { compareTable: 'full' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Option | Score |\n|:-------|------:|\n| mantis | 9.2 |\n| tofu | 4.4 |'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('compareTable stays off stacked tables', { options: { compareTable: 'full', tableLayout: 'stacked' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^1$/ }))?.props.color).not.toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^2$/ }))?.props.color).not.toBe(t.link)
+  await ui.unmount()
+})
+
+test('compareTable tells the medal and the pick apart in a theme where they differ', { options: { compareTable: 'full', theme: 'dracula' } }, async $ => {
+  const t = PRESETS['dracula']
+  const ui = await $.ui.mount({ ...draw(COMPARE), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^1$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^2$/ }))?.props.color).toBe(t.link)
+  expect((await ui.find({ type: 'Text', text: /^9\.2$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.findAll({ type: 'Text', text: /^9\.2$/ })).every(n => n.props.color !== t.number)).toBe(true)
+  expect(t.accent).not.toBe(t.link)
+  expect(t.accent).not.toBe(t.diffAdded)
+  await ui.unmount()
+})
