@@ -45,9 +45,13 @@ jobs:
         with:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code@2.1.325
-      - name: Lay the mod API types
-        run: claude --plugin-dir plugin -p hi || test -d plugin/.claude-plugin/types/claude-code
-      - run: npx --yes -p typescript@5.9.3 tsc -p .
+      - name: Lay the mod API types and typecheck
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "::notice::No Claude token on fork PRs, so the typecheck runs on main after the merge"; exit 0; fi
+          claude --plugin-dir plugin -p /prismantis > /dev/null
+          npx --yes -p typescript@5.9.3 tsc -p .
 
   vendor:
     runs-on: ubuntu-latest
