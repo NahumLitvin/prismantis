@@ -147,6 +147,20 @@ kanban
 ```
 
 ```mermaid
+gitGraph
+  commit id: "draft" tag: "v0.1"
+  branch edits
+  commit id: "trim"
+  branch art
+  commit id: "cover"
+  checkout edits
+  commit id: "typos" type: HIGHLIGHT
+  merge art
+  checkout main
+  merge edits id: "print" tag: "v1.0"
+```
+
+```mermaid
 graph LR
   A[<i>Reply</i>] --> B[<b>Draw</b>]
 ```

@@ -1793,6 +1793,107 @@
     <Box>
       <Text>
         <Text color=#89b4fa>
+          "●"
+        <Text color=#cdd6f4>
+          "        draft"
+        <Text color=#cba6f7>
+          " [v0.1]"
+      <Text>
+        <Text color=#89b4fa>
+          "├"
+        <Text color=#a6e3a1>
+          "──╮"
+        <Text color=#cdd6f4>
+          "     "
+        <Text color=#a6e3a1>
+          "edits"
+      <Text>
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#a6e3a1>
+          "●"
+        <Text color=#cdd6f4>
+          "     trim"
+      <Text>
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#a6e3a1>
+          "├"
+        <Text color=#f9e2af>
+          "──╮"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#f9e2af>
+          "art"
+      <Text>
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#a6e3a1>
+          "│"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#f9e2af>
+          "●"
+        <Text color=#cdd6f4>
+          "  cover"
+      <Text>
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#a6e3a1>
+          "■"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#f9e2af>
+          "│"
+        <Text color=#cdd6f4>
+          "  typos"
+      <Text>
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#a6e3a1>
+          "●"
+        <Text color=#f9e2af>
+          "──╯"
+        <Text color=#cdd6f4>
+          "  "
+        <Text color=#89b4fa>
+          "merge art"
+      <Text>
+        <Text color=#89b4fa>
+          "●"
+        <Text color=#a6e3a1>
+          "──╯"
+        <Text color=#cdd6f4>
+          "     print"
+        <Text color=#cba6f7>
+          " [v1.0]"
+      <Text>
+        " "
+      <Text>
+        <Text color=#89b4fa>
+          "main"
+        <Text color=#cdd6f4>
+          "   "
+        <Text color=#a6e3a1>
+          "edits"
+        <Text color=#cdd6f4>
+          "   "
+        <Text color=#f9e2af>
+          "art"
+  <Box>
+    <Box>
+      <Text>
+        <Text color=#89b4fa>
           "┌───────┐"
         <Text color=#cdd6f4>
           "   "

@@ -1,6 +1,6 @@
 import type { ChartArt } from './charts'
 import { width } from './layout'
-import { art, BAD_HUE, blank, type Canvas, fit, GOOD_HUE, LINE_HUE, type Line, line, oneLine, paint, rows, unquote, wrap } from './textart'
+import { art, BAD_HUE, blank, type Canvas, fit, GOOD_HUE, LINE_HUE, type Line, line, oneLine, paint, rows, unquote, withoutBlocks, wrap } from './textart'
 
 type Task = { name: string; score: number; actors: string[]; section: number }
 type Journey = { title?: string; sections: string[]; tasks: Task[] }
@@ -28,16 +28,6 @@ const readLine = (j: Journey, text: string): boolean => {
   const actors = (m[3] ?? '').split(',').map(a => a.trim()).filter(Boolean)
   j.tasks.push({ name: oneLine(unquote(m[1]!)), score, actors, section: j.sections.length - 1 })
   return true
-}
-
-const withoutBlocks = (lines: string[]) => {
-  let open = false
-  return lines.filter(l => {
-    const starts = /^accDescr\s*\{/i.test(l)
-    const keep = !open && !starts
-    if (starts || open) open = !l.includes('}')
-    return keep
-  })
 }
 
 const parse = (source: string): Journey | null => {

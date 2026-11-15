@@ -43,3 +43,13 @@ export const wrap = (text: string, w: number, most: number) => {
   const lines = wrapRanges(text, w).map(([a, b]) => text.slice(a, b).trim())
   return lines.length > most ? [...lines.slice(0, most - 1), fit(lines.slice(most - 1).join(' '), w)] : lines
 }
+
+export const withoutBlocks = (lines: string[]) => {
+  let open = false
+  return lines.filter(l => {
+    const starts = /^accDescr\s*\{/i.test(l)
+    const keep = !open && !starts
+    if (starts || open) open = !l.includes('}')
+    return keep
+  })
+}

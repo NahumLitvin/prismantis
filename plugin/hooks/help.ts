@@ -3,7 +3,7 @@ import { RANDOM_THEMES } from './theme'
 export const HINT = [
   'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
   'Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:',
-  'flowcharts, sequence diagrams, xychart-beta bar or line charts (name each series for the legend: line "east" [..]), pie charts, gantt schedules, quadrantChart grids, mindmap trees, journey mood lines and kanban boards.',
+  'flowcharts, sequence diagrams, xychart-beta bar or line charts (name each series for the legend: line "east" [..]), pie charts, gantt schedules, quadrantChart grids, mindmap trees, journey mood lines, kanban boards and gitGraph histories.',
   'When a reply carries a numeric series or a flow that is easier to see than read, add a small diagram or chart with short labels, not a second picture of what a figure already shows.',
   'Skip diagrams and pictures for short or simple answers.',
   'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
@@ -348,6 +348,18 @@ kanban
         c[Dark mode]@{ assigned: 'Ken' }
     done[Done]
         d[Search filters]
+\`\`\`
+
+A git graph runs top to bottom, one colored lane per branch:
+
+\`\`\`mermaid
+gitGraph
+    commit id: "init" tag: "v1.0"
+    branch develop
+    commit id: "login"
+    commit id: "fix" type: HIGHLIGHT
+    checkout main
+    merge develop id: "release" tag: "v1.1"
 \`\`\`
 
 A diagram wider than the terminal stays source, with a dim line saying why:
