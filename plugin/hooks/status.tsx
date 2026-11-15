@@ -2,7 +2,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 
 import { inlineText } from './markdown'
 import type { TableCell, TableBlock } from './markdown'
-import type { Theme } from './theme'
+import type { CellLook, Theme } from './theme'
 
 export type StatusMatrix = 'off' | 'color' | 'summary' | 'group'
 
@@ -71,7 +71,7 @@ export const statusRows = (block: TableBlock, status: Status | undefined, option
   return { rows: grouped.map(cell => cell.cells), buckets: grouped.map(cell => cell.bucket) }
 }
 
-export const statusLook = (t: Theme, status: Status | undefined, c: number, cell: TableCell, plain: { color?: string } = {}): { color?: string } => {
+export const statusLook = (t: Theme, status: Status | undefined, c: number, cell: TableCell, plain: CellLook = {}): CellLook => {
   if (!status || c !== status.column) return plain
   const text = inlineText(cell).trim().toLowerCase()
   const bucket = BYWORD[text] ?? BYGLYPH[inlineText(cell).trim()[0] ?? '']

@@ -895,6 +895,162 @@
   <Text>
     "└────────────┴──────────────┴──────────────┴─────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Comparison"
+  <Text>
+    "━━━━━━━━━━"
+<Text>
+  <Text>
+    "When a table compares options — a column of scores beside a column of ranks — "
+  <Text>
+    "compareTable"
+  <Text>
+    " draws the rank cells as a medal: "
+  <Text>
+    "1"
+  <Text>
+    " in the accent color, "
+  <Text>
+    "2"
+  <Text>
+    " and "
+  <Text>
+    "3"
+  <Text>
+    " in the link color, the same pairing the schema table's PK and FK use. "
+  <Text>
+    "pick"
+  <Text>
+    " draws the score cell of the top score in the improvement green, the hue "
+  <Text>
+    "benchTable"
+  <Text>
+    " gives an improvement, and bolds it so it stands out even in a theme where that green is also the number color, and "
+  <Text>
+    "full"
+  <Text>
+    " does both. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌─────────┬───────┬──────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Option"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Score"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Rank"
+    <Text>
+      " │"
+  <Text>
+    "╞═════════╪═══════╪══════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "mantis"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "9.2"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "1"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼───────┼──────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "origami"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "7.8"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "2"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼───────┼──────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "noodle"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "6.1"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "3"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼───────┼──────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "tofu"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "4.4"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "4"
+    <Text>
+      " │"
+  <Text>
+    "└─────────┴───────┴──────┘"
+<Box>
   <Box row>
     <Text>
       "1. "

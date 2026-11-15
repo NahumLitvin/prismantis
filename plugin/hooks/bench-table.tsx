@@ -2,7 +2,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 
 import { inlineText } from './markdown'
 import type { TableCell, TableBlock } from './markdown'
-import type { Theme } from './theme'
+import type { CellLook, Theme } from './theme'
 
 export type BenchTable = 'off' | 'color' | 'trend'
 
@@ -68,7 +68,7 @@ export const benchOf = (block: TableBlock, option: BenchTable): Bench | undefine
   return { column: delta.column, higher: block.header.some(h => BETTER.test(inlineText(h))), series: numberize(block, numberCell) }
 }
 
-export const benchLook = (t: Theme, bench: Bench | undefined, c: number, cell: TableCell, plain: { color?: string } = {}): { color?: string } => {
+export const benchLook = (t: Theme, bench: Bench | undefined, c: number, cell: TableCell, plain: CellLook = {}): CellLook => {
   if (!bench || c !== bench.column) return plain
   const delta = deltaOf(cell)
   if (delta === undefined) return plain

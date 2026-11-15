@@ -1,6 +1,6 @@
 import { inlineText } from './markdown'
 import type { TableCell, TableBlock } from './markdown'
-import type { Theme } from './theme'
+import type { CellLook, Theme } from './theme'
 
 export type SchemaTable = 'off' | 'types' | 'keys' | 'full'
 
@@ -65,7 +65,7 @@ export const schemaOf = (block: TableBlock, option: SchemaTable): Schema | undef
   return { types: option === 'keys' ? -1 : types, keys: option === 'types' ? -1 : keysOf(block, columnOf(block, KEY)) }
 }
 
-export const schemaLook = (t: Theme, schema: Schema | undefined, c: number, cell: TableCell, plain: { color?: string } = {}): { color?: string } => {
+export const schemaLook = (t: Theme, schema: Schema | undefined, c: number, cell: TableCell, plain: CellLook = {}): CellLook => {
   if (!schema) return plain
   if (c === schema.types) {
     const family = familyOf(cell)

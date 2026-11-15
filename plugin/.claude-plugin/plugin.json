@@ -116,6 +116,13 @@
       "default": "off",
       "options": ["full", "types", "keys", "off"]
     },
+    "compareTable": {
+      "type": "string",
+      "title": "Comparison",
+      "description": "How a table that compares options draws: a column of scores beside a column of ranks. off (the default) keeps tables as written. rank draws the rank cells in the theme's colors: 1 in the accent color, 2 and 3 in the link color. pick draws the score cell of the top score in the theme's improvement color and bold, so it stands out in a theme where that color is also the number color. full does both.",
+      "default": "off",
+      "options": ["full", "rank", "pick", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",
