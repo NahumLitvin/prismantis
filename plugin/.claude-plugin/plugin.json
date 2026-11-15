@@ -509,6 +509,13 @@
       "default": "plain",
       "options": ["plain", "framed", "filled", "card"]
     },
+    "scriptStyle": {
+      "type": "string",
+      "title": "Code Mode script style",
+      "description": "How a Code Mode script draws above the tool calls it makes. frame: a rounded box with Code · N lines in its top border and the copy button at its top right. rail: a colored ▌ before every line on a background. bar: a filled Code · N lines strip that says whether the script is running, done or failed, over the code on a background. chip: one line with the first line of code, which opens the whole script on a click. Needs toolRows on.",
+      "default": "frame",
+      "options": ["frame", "rail", "bar", "chip"]
+    },
     "pieStyle": {
       "type": "string",
       "title": "Pie style",

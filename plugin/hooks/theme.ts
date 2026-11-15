@@ -59,6 +59,7 @@ export type Style = {
   pressPreview?: boolean
   diffStyle: 'card' | 'full' | 'marks' | 'bar'
   codeStyle: 'plain' | 'framed' | 'filled' | 'card'
+  scriptStyle: 'frame' | 'rail' | 'bar' | 'chip'
   pieStyle: 'round' | 'bars'
   highlightNumbers: boolean
   surfaces?: RenderSurface[]
@@ -155,6 +156,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     unreadPrompts: options.unreadPrompts === true,
     diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),
     codeStyle: pick(options.codeStyle, ['plain', 'framed', 'filled', 'card'] as const, 'plain'),
+    scriptStyle: pick(options.scriptStyle, ['frame', 'rail', 'bar', 'chip'] as const, 'frame'),
     pieStyle: pick(options.pieStyle, ['round', 'bars'] as const, 'round'),
     highlightNumbers: options.highlightNumbers !== false,
     surfaces: surfacesOf(options.surfaces),
