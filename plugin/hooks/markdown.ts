@@ -50,6 +50,7 @@ const QUOTE = /^\s*>/
 const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/
 const FENCE = /^\s*(`{3,}|~{3,})\s*([\w+-]*)/
+const PREFIXED_FENCE = /^(\[[^\]\n]{1,40}\])[ \t]+(?=(?:`{3,}|~{3,})[\w+-]*[ \t]*$)/gm
 const NOTE_DEF = /^\[\^([^\]\s]+)\]:\s*(.*)$/
 const TAG_LINE = /^\s*<\/?(?!br\b(?!>))[a-z][\w-]*(?:\s[^<>]*)?>\s*$/i
 const SETEXT = /^ {0,3}(?:=+|-+)\s*$/
@@ -354,7 +355,7 @@ const untint = (b: Block): Block => {
 }
 
 export const parse = (raw: string, hl: Highlight): Block[] => {
-  const source = keepTints(raw).replace(CONTROL, '')
+  const source = keepTints(raw).replace(CONTROL, '').replace(PREFIXED_FENCE, '$1\n')
   const parsed = parseBlocks(source, hl)
   const blocks = /[\uE000\uE001]/.test(source) ? parsed.map(untint) : parsed
   return source.includes('[^') ? numberNotes(blocks, notesOf(source), hl) : blocks
