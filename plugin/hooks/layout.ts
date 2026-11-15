@@ -75,7 +75,9 @@ export const mostLines = (text: string, w: number): number => (text.match(/\S+/g
 export const textRows = (text: string, w: number): number =>
   text.split('\n').reduce((sum, line) => sum + (width(line) <= w ? 1 : mostLines(line, w)), 0)
 
-export const longestWord = (text: string): number => Math.max(0, ...text.split(/\s+/).map(width))
+const IDEOGRAPHIC = /([ᄀ-ᅟ⺀-鿿ꀀ-꓏가-힣豈-﫿︰-﹏＀-｠\u{20000}-\u{3FFFD}])/u
+
+export const longestWord = (text: string): number => Math.max(0, ...text.split(/\s+/).flatMap(word => word.split(IDEOGRAPHIC)).map(width))
 
 export const columnWidths = (natural: number[], available: number, gap: number, words: number[] = []): number[] => {
   const room = Math.max(natural.length, available - gap * (natural.length - 1))
