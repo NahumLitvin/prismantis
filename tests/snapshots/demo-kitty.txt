@@ -1462,6 +1462,134 @@
   <Box>
     <Box>
       <Text>
+        <Text color=#cdd6f4>
+          "Training plan"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#cba6f7>
+          "▲"
+        <Text color=#cdd6f4>
+          " Fun"
+      <Text>
+        <Text color=#cdd6f4>
+          " Warm-ups                       "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "                   Boss fights"
+      <Text>
+        <Text color=#cdd6f4>
+          "         "
+        <Text color=#89b4fa>
+          "1"
+        <Text color=#cdd6f4>
+          "                      "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "           "
+        <Text color=#a6e3a1>
+          "2"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#89b4fa>
+          "────────────────────────────────┼───────────────────────────────"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "                 "
+        <Text color=#f9e2af>
+          "3"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#89b4fa>
+          "│"
+      <Text>
+        <Text color=#cdd6f4>
+          " Chores                         "
+        <Text color=#89b4fa>
+          "│"
+        <Text color=#cdd6f4>
+          "                         Grind"
+      <Text>
+        <Text color=#cdd6f4>
+          "                                "
+        <Text color=#cba6f7>
+          "▼"
+        <Text color=#cdd6f4>
+          " Dull"
+      <Text>
+        <Text color=#cba6f7>
+          "◄"
+        <Text color=#cdd6f4>
+          " Easy                                                    Hard "
+        <Text color=#cba6f7>
+          "►"
+      <Text>
+        <Text color=#89b4fa>
+          "1"
+        <Text color=#cdd6f4>
+          " Dumplings   "
+        <Text color=#a6e3a1>
+          "2"
+        <Text color=#cdd6f4>
+          " Kicks   "
+        <Text color=#f9e2af>
+          "3"
+        <Text color=#cdd6f4>
+          " Stairs"
+  <Box>
+    <Box>
+      <Text>
         <Text color=#89b4fa>
           "┌───────┐"
         <Text color=#cdd6f4>

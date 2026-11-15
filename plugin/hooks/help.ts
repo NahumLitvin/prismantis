@@ -3,7 +3,7 @@ import { RANDOM_THEMES } from './theme'
 export const HINT = [
   'Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.',
   'Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:',
-  'flowcharts, sequence diagrams, xychart-beta bar or line charts (name each series for the legend: line "east" [..]), pie charts and gantt schedules.',
+  'flowcharts, sequence diagrams, xychart-beta bar or line charts (name each series for the legend: line "east" [..]), pie charts, gantt schedules and quadrantChart grids.',
   'When a reply carries a numeric series or a flow that is easier to see than read, add a small diagram or chart with short labels, not a second picture of what a figure already shows.',
   'Skip diagrams and pictures for short or simple answers.',
   'Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not.',
@@ -290,6 +290,23 @@ gantt
     section Ship
     Review   :after r, 2d
     Release  :milestone, 2026-10-12, 0d
+\`\`\`
+
+A quadrant chart numbers its points and lists them under the grid:
+
+\`\`\`mermaid
+quadrantChart
+    title Feature priorities
+    x-axis Low effort --> High effort
+    y-axis Low impact --> High impact
+    quadrant-1 Big bets
+    quadrant-2 Do now
+    quadrant-3 Fill-ins
+    quadrant-4 Skip
+    Reorder: [0.2, 0.85]
+    Search: [0.8, 0.9]
+    Dark mode: [0.3, 0.25]
+    Localisation: [0.75, 0.4]
 \`\`\`
 
 A diagram wider than the terminal stays source, with a dim line saying why:
