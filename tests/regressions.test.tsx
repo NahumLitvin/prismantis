@@ -8,7 +8,7 @@ import { tableHtml, tableText } from '../hooks/html'
 import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import type { TerminalEnv } from '../hooks/render'
 import { drawsHyperlinks, isReadOnlyCall, renderBashEdits, renderBlocks, tableArt, takesClickableMarks, takesEditorLinks, takesHttpLinks } from '../hooks/render'
-import { width } from '../hooks/layout'
+import { longestWord, width } from '../hooks/layout'
 import { PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { resolveStyle } from '../hooks/theme'
 import { claudeAt, linksHttp } from './claude-version'
@@ -1485,6 +1485,25 @@ test('a desktop table column of named links is shared out by their labels', asyn
   const floors = (await ui.findAll({ type: 'Box' })).map(b => b.props.minWidth).filter(w => typeof w === 'number')
   expect(floors.includes('core'.length)).toBe(true)
   expect(floors.some(w => w >= LINK_TARGET.length)).toBe(false)
+  await ui.unmount()
+})
+
+const CJK_TABLE = '| 外掛 | Code | Chat | 說明 |\n|---|:---:|:---:|---|\n| codex、prismantis、flightdeck、agent-usage-guard | ✓ | ✗ | 這 4 個 plugin 只裝在 Claude Code 裡 |\n| Gmail、Google 日曆、Google 雲端硬碟、Claude Docs | ✓ | ✓ | 接在你的 Claude 帳號上，哪裡都能用 |'
+
+test('a line can break before and after every CJK character, so a CJK run is no longer one long word', () => {
+  expect(longestWord('codex、prismantis、flightdeck、agent-usage-guard')).toBe('agent-usage-guard'.length)
+  expect(longestWord('這一段是比較長的文字，用來測試右邊會不會被裁掉')).toBe(2)
+  expect(longestWord('帳號上，哪裡都能用')).toBe(2)
+  expect(longestWord('日本語のテキスト')).toBe(2)
+  expect(longestWord('한국어 문장입니다')).toBe(2)
+  expect(longestWord('plain ascii words only')).toBe('ascii'.length)
+})
+
+test('a desktop table of CJK cells keeps its column floors to the longest Latin word, so it fits the reply', async $ => {
+  const ui = await $.ui.mount({ ...mount(CJK_TABLE, 70), surface: 'desktop' })
+  const floors = (await ui.findAll({ type: 'Box' })).map(b => b.props.minWidth).filter((w): w is number => typeof w === 'number')
+  expect(floors.length > 0).toBe(true)
+  expect(Math.max(...floors)).toBe('agent-usage-guard'.length)
   await ui.unmount()
 })
 
