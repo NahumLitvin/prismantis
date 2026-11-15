@@ -209,16 +209,18 @@ test('toolOutput quiet labels skills and PowerShell, and hides the skill result'
   }
 })
 
-test('toolOutput quiet leaves background and image shell results to the engine', { options: { toolOutput: 'quiet' } }, async ($, on) => {
-  engine(on)
-  for (const [id, output] of [['b-1', { stdout: '', stderr: '', backgroundTaskId: 'task-7' }], ['b-2', { stdout: 'iVBORw0KGgo', stderr: '', isImage: true }], ['b-3', { stdout: 'partial', stderr: '', interrupted: true }]] as const) {
-    const use = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: call('Bash', { command: 'make watch' }, id) })
-    const out = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: id, tool: 'Bash', output, isErrored: false } })
-    expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
-    await out.unmount()
-    await use.unmount()
-  }
-})
+for (const toolOutput of ['quiet', 'rows'] as const) {
+  test(`toolOutput ${toolOutput} leaves background and image shell results to the engine`, { options: { toolOutput } }, async ($, on) => {
+    engine(on)
+    for (const [id, output] of [['b-1', { stdout: '', stderr: '', backgroundTaskId: 'task-7' }], ['b-2', { stdout: 'iVBORw0KGgo', stderr: '', isImage: true }], ['b-3', { stdout: 'partial', stderr: '', interrupted: true }]] as const) {
+      const use = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: call('Bash', { command: 'make watch' }, id) })
+      const out = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: id, tool: 'Bash', output, isErrored: false } })
+      expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+      await out.unmount()
+      await use.unmount()
+    }
+  })
+}
 
 const result = (tool: string, input: unknown, id: string) => [
   { plugin: 'prismantis', surface: 'terminal' as const, component: 'ToolUse' as const, props: call(tool, input, id) },
@@ -309,20 +311,22 @@ test('a refused call inside a collapsed quiet group keeps its whole reason too',
   await group.unmount()
 })
 
-test('toolOutput quiet shows the full reason of a refused call, wrapped and not cut', { options: { toolOutput: 'quiet' } }, async ($, on) => {
-  engine(on)
-  const out = await $.ui.mount({
-    plugin: 'prismantis',
-    surface: 'terminal',
-    component: 'ToolResult',
-    props: { tool_use_id: 'r-1', tool: 'Bash', output: REFUSED, isErrored: true },
+for (const toolOutput of ['quiet', 'rows'] as const) {
+  test(`toolOutput ${toolOutput} shows the full reason of a refused call, wrapped and not cut`, { options: { toolOutput } }, async ($, on) => {
+    engine(on)
+    const out = await $.ui.mount({
+      plugin: 'prismantis',
+      surface: 'terminal',
+      component: 'ToolResult',
+      props: { tool_use_id: 'r-1', tool: 'Bash', output: REFUSED, isErrored: true },
+    })
+    const text = await out.find({ type: 'Text', text: /Reason: Blocked by classifier\. If you have other tasks/ })
+    expect(text).toBeDefined()
+    expect(text?.props.wrap).toBe('wrap')
+    expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+    await out.unmount()
   })
-  const text = await out.find({ type: 'Text', text: /Reason: Blocked by classifier\. If you have other tasks/ })
-  expect(text).toBeDefined()
-  expect(text?.props.wrap).toBe('wrap')
-  expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
-  await out.unmount()
-})
+}
 
 test('the call memory is capped and forgets the oldest ids first', () => {
   const calls = new Set<string>()
@@ -365,6 +369,73 @@ test('toolOutput full leaves every result to the engine', async ($, on) => {
   expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await out.unmount()
   await row.unmount()
+})
+
+for (const toolOutput of ['quiet', 'rows'] as const) {
+  test(`toolOutput ${toolOutput} ${toolOutput === 'rows' ? 'draws only the row of' : 'shows the first lines of'} a successful call that changes something`, { options: { toolOutput } }, async ($, on) => {
+    engine(on)
+    const use = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: call('Bash', { command: 'npm test' }, 'nt-1') })
+    const out = await $.ui.mount({
+      plugin: 'prismantis',
+      surface: 'terminal',
+      component: 'ToolResult',
+      props: { tool_use_id: 'nt-1', tool: 'Bash', output: { stdout: 'PASS src/app.test.ts\nTests: 12 passed\n', stderr: '' }, isErrored: false },
+    })
+    expect((await out.find({ type: 'Text', text: /^PASS src\/app\.test\.ts$/ })) !== undefined).toBe(toolOutput === 'quiet')
+    expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+    await out.unmount()
+    await use.unmount()
+  })
+}
+
+test('toolOutput rows draws nothing under a successful call of any tool', { options: { toolOutput: 'rows' } }, async ($, on) => {
+  engine(on)
+  for (const tool of ['mcp__github__create_issue', 'Agent']) {
+    const out = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: `nt-${tool}`, tool, output: 'created #12', isErrored: false } })
+    expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+    expect(await out.find({ type: 'Text', text: /created #12/ })).toBeUndefined()
+    await out.unmount()
+  }
+})
+
+test('toolOutput rows still shows why a call failed', { options: { toolOutput: 'rows' } }, async ($, on) => {
+  engine(on)
+  const out = await $.ui.mount({
+    plugin: 'prismantis',
+    surface: 'terminal',
+    component: 'ToolResult',
+    props: { tool_use_id: 'ne-1', tool: 'Bash', output: 'Error: Exit code 1\ncat: missing.txt: No such file or directory', isErrored: true },
+  })
+  expect(await out.find({ type: 'Text', text: /No such file or directory$/ })).toBeDefined()
+  expect(await out.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await out.unmount()
+})
+
+test('toolOutput rows hands an expanded call back to the engine and hides it again once collapsed', { options: { toolOutput: 'rows' } }, async ($, on) => {
+  engine(on)
+  const output = { stdout: 'PASS src/app.test.ts\n', stderr: '' }
+  const row = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call('Bash', { command: 'npm test' }, 'nx-1'), ...{ isExpanded: true }, output } as never })
+  expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await row.unmount()
+  const open = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'nx-1', tool: 'Bash', output, isErrored: false, ...{ isExpanded: true } } as never })
+  expect(await open.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await open.unmount()
+  const back = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'nx-1', tool: 'Bash', output, isErrored: false, ...{ isExpanded: false } } as never })
+  expect(await back.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  expect(await back.find({ type: 'Text', text: /PASS src/ })).toBeUndefined()
+  await back.unmount()
+})
+
+test('a collapsed rows group shows no shell results, only its rows and failures', { options: { toolOutput: 'rows', toolStyle: 'classic' } }, async $ => {
+  const read = { ...call('Bash', { command: 'sed -n 1,4p app.py' }, 'ng-1'), output: { stdout: 'file contents\n', stderr: '' } }
+  const tests = { ...call('Bash', { command: 'python3 -m unittest -v', description: 'Run the unit tests' }, 'ng-2'), output: { stdout: '', stderr: 'test_one ... ok\ntest_two ... ok\n\nOK\n' } }
+  const failed = { ...call('Bash', { command: 'cat missing.txt' }, 'ng-3'), isErrored: true, output: 'Exit code 1\ncat: missing.txt: No such file or directory' }
+  const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [read, tests, failed], isActive: false, isExpanded: false } })
+  expect(await group.find({ type: 'Text', text: /^Read app\.py lines 1–4 · Run the unit tests · python3 · Read missing\.txt$/ })).toBeDefined()
+  expect(await group.find({ type: 'Text', text: /cat: missing\.txt: No such file or directory$/ })).toBeDefined()
+  expect(await group.find({ type: 'Text', text: /test_one/ })).toBeUndefined()
+  expect(await group.find({ type: 'Text', text: /file contents/ })).toBeUndefined()
+  await group.unmount()
 })
 
 const expand = async ($: Parameters<TestBody>[0], id: string) => {
@@ -1703,7 +1774,7 @@ test('diff lines number old and new sides', () => {
   expect(diffLines('Updated file')).toBeUndefined()
 })
 
-for (const toolOutput of ['full', 'quiet'] as const) {
+for (const toolOutput of ['full', 'quiet', 'rows'] as const) {
   test(`edits draw a diff card with counts and colored lines (toolOutput ${toolOutput})`, { options: { toolOutput } }, async ($, on) => {
     engine(on)
     for (const surface of ['terminal', 'desktop'] as const) {
@@ -1871,6 +1942,20 @@ test('toolOutput quiet keeps a shell edit diff under the first lines of its outp
   expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('toolOutput rows keeps a shell edit diff without the output lines above it', { options: { toolOutput: 'rows' } }, async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit('patched 2 files')))
+  expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /patched 2 files/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await ui.unmount()
+  const open = editResult('terminal', 'Bash', bashEdit('patched 2 files'))
+  const expanded = await $.ui.mount({ ...open, props: { ...open.props, ...{ isExpanded: true } } as never })
+  expect(await expanded.find({ type: 'Text', text: /^patched 2 files$/ })).toBeDefined()
+  expect(await expanded.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
+  await expanded.unmount()
 })
 
 test('each shell edit card folds on its own', async ($, on) => {
@@ -3316,6 +3401,10 @@ test('/prismantis setup marks light themes for a light terminal', () => {
   expect(labels.find(l => l.includes('mono'))).not.toContain('light terminal')
 })
 
+test('the toolOutput setup step offers rows next to full and quiet', () => {
+  expect(setupSteps(PRESET_NAMES).find(s => s.key === 'toolOutput')?.options).toEqual(['full', 'quiet', 'rows'])
+})
+
 test('/prismantis setup draws each sample in its own style', async $ => {
   const step = (name: string) => setupSteps(PRESET_NAMES).findIndex(s => s.name === name)
   const mount = async (at: number) =>
@@ -3395,11 +3484,15 @@ expect((await status.findAll({ type: 'Text', text: /^✓$/ })).filter(n => n.pro
   expect(await tools.findAll({ type: 'Text', text: /^Read$/ })).toHaveLength(4)
   await tools.unmount()
   const output = await mount(step('output'))
-  expect(await output.findAll({ type: 'Text', text: /^Build the app · npm/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /^Build the app · npm/ })).toHaveLength(2)
+  expect(await output.findAll({ type: 'Text', text: /^Run the tests · npm/ })).toHaveLength(2)
+  expect(await output.findAll({ type: 'Text', text: /^> vitest run$/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /^ {5}> vitest run$/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /\+2 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /Error: Exit code 2/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /error TS2322/ })).toHaveLength(7)
   expect(await output.findAll({ type: 'Text', text: /\+4 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)
-  expect(await output.findAll({ type: 'Text', text: /Found 10 errors in the same file/ })).toHaveLength(1)
+  expect(await output.findAll({ type: 'Text', text: /Found 10 errors in the same file/ })).toHaveLength(2)
   expect(await output.findAll({ type: 'Text', text: /On branch main/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /Allowed by auto mode classifier/ })).toHaveLength(1)
   expect(await output.findAll({ type: 'Text', text: /\+3 lines \(ctrl\+o to expand\)/ })).toHaveLength(1)

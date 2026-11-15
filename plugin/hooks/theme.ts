@@ -36,7 +36,7 @@ export type Style = {
   bubbleLabels: 'large' | 'small' | 'off'
   clock: Clock
   toolStyle: 'chat' | 'tree-dim' | 'tree-bold' | 'classic'
-  toolOutput: 'full' | 'quiet'
+  toolOutput: 'full' | 'quiet' | 'rows'
   runningDot: 'ring' | 'blink'
   dotDark?: boolean
   unreadPrompts: boolean
@@ -129,7 +129,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     bubbleLabels: pick(options.bubbleLabels, ['large', 'small', 'off'] as const, 'large'),
     clock: pick(options.clock, ['off', '24h', '12h'] as const, 'off'),
     toolStyle: pick(options.toolStyle, ['chat', 'tree-dim', 'tree-bold', 'classic'] as const, 'chat'),
-    toolOutput: pick(options.toolOutput, ['full', 'quiet'] as const, 'full'),
+    toolOutput: pick(options.toolOutput, ['full', 'quiet', 'rows'] as const, 'full'),
     runningDot: pick(options.runningDot, ['ring', 'blink'] as const, 'ring'),
     unreadPrompts: options.unreadPrompts === true,
     diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),

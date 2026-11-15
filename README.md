@@ -274,7 +274,7 @@ Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm t
 | dimmed on the right, capped at 60% of the width | tucked under the sentence with `⎿`, dimmed | `tree-dim` with one-line sentences in bold | bold verb and status dot, full brightness |
 | ![chat](docs/tools/chat.png) | ![tree-dim](docs/tools/tree-dim.png) | ![tree-bold](docs/tools/tree-bold.png) | ![classic](docs/tools/classic.png) |
 
-`toolOutput: quiet` shows what Claude did, not what it read: reads, searches and read-only shell commands draw one plain row like `Read src/report.py lines 1–10` and nothing under it. Edits keep their diff and failures show their real error; the full rules are in [docs/tool-output.md](docs/tool-output.md).
+`toolOutput: quiet` shows what Claude did, not what it read: reads, searches and read-only shell commands draw one plain row like `Read src/report.py lines 1–10` and nothing under it. Edits keep their diff and failures show their real error; the full rules are in [docs/tool-output.md](docs/tool-output.md). `toolOutput: rows` goes further: a call that worked draws only its row, so `npm test` shows no output under it, while edits keep their diff and failures their error.
 
 ![quiet: rows say what was read, nothing drawn under reads](docs/tools/quiet.png)
 
@@ -415,7 +415,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `folds` | `closed` (long blocks start folded to their first lines), `open` (they start whole, with `show less`) | `closed` |
 | `toolRows` | `true`, `false` | `true` |
 | `toolStyle` | `chat`, `tree-dim`, `tree-bold`, `classic` | `chat` |
-| `toolOutput` | `full`, `quiet` | `full` |
+| `toolOutput` | `full`, `quiet`, `rows` | `full` |
 | `runningDot` | `ring` (a still `◌`), `blink` (`●` on and off every half second) | `ring` |
 | `unreadPrompts` | `true` (a prompt stays grey and blinks until the model starts on it), `false` | `false` |
 | `copyButtons` | `true`, `false` | `true` |

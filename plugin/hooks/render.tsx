@@ -2523,7 +2523,7 @@ const quietToolRow = (el: ElementTable, style: Style, row: ToolRow, columns: num
 }
 
 export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, columns = DEFAULT_COLUMNS): RenderElement => {
-  if (style.toolOutput === 'quiet') return quietToolRow(el, style, row, columns)
+  if (style.toolOutput !== 'full') return quietToolRow(el, style, row, columns)
   const { Text } = el
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
@@ -2904,6 +2904,11 @@ export const groupSummary = (calls: readonly { tool: string }[]): string => {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
+const quietResults = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[]): RenderElement[] => {
+  const isShell = (c: ToolRow) => c.tool === 'Bash' || c.tool === 'PowerShell'
+  return calls.flatMap((c, i) => (c.isErrored || c.output === undefined || !isShell(c) || isReadOnlyCall(c.tool, c.input) ? [] : [<el.Box key={`o${i}`}>{renderShellResult(el, style, c.output)}</el.Box>]))
+}
+
 const quietToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[], isActive: boolean, columns: number): RenderElement => {
   const t = style.theme
   const failed = calls.filter(c => c.isErrored)
@@ -2912,8 +2917,7 @@ const quietToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow
   const labels = calls.map(c => callPieces(c, style)).filter((l, i, all) => pieceText(l) !== (i ? pieceText(all[i - 1]!) : undefined))
   const label = labels.map(pieceText).join(' · ')
   const reasons = failed.map((c, i) => renderFailure(el, style, c.output, `r${i}`)).filter((r): r is RenderElement => r !== undefined)
-  const isShell = (c: ToolRow) => c.tool === 'Bash' || c.tool === 'PowerShell'
-  const results = calls.flatMap((c, i) => (c.isErrored || c.output === undefined || !isShell(c) || isReadOnlyCall(c.tool, c.input) ? [] : [<el.Box key={`o${i}`}>{renderShellResult(el, style, c.output)}</el.Box>]))
+  const results = style.toolOutput === 'rows' ? [] : quietResults(el, style, calls)
   const row = toolLayout(el, style, columns, label, dot, running, (
     <el.Text wrap="truncate-end" dimColor={toolDim(style)}>{drawPieces(el, style, labels.flatMap((l, i) => (i ? [{ text: ' · ' }, ...l] : l)))}</el.Text>
   ))
@@ -2928,7 +2932,7 @@ const quietToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow
 }
 
 export const renderToolGroup = (el: ElementTable, style: Style, calls: readonly (ToolRow & { output?: unknown })[], isActive: boolean, columns = DEFAULT_COLUMNS): RenderElement => {
-  if (style.toolOutput === 'quiet') return quietToolGroup(el, style, calls, isActive, columns)
+  if (style.toolOutput !== 'full') return quietToolGroup(el, style, calls, isActive, columns)
   const { Text } = el
   const t = style.theme
   const failed = calls.filter(c => c.isErrored).length
