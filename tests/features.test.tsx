@@ -3003,15 +3003,15 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
     return { value: e.value }
   })
   const steps = setupSteps(PRESET_NAMES)
-  expect(steps.map(s => s.key)).toEqual(['theme', 'promptStyle', 'replyStyle', 'tableStyle', 'codeStyle', 'toolOutput', 'diffStyle', 'toolStyle', 'headingStyle', 'tableLayout', 'taskStyle', 'listMarker', 'copyButtonStyle', 'bubbleLabels', 'clock', 'pieStyle', 'statusMatrix', 'testMatrix', 'benchTable', 'schemaTable'])
+  expect(steps.map(s => s.key)).toEqual(['theme', 'promptStyle', 'replyStyle', 'tableStyle', 'codeStyle', 'toolOutput', 'diffStyle', 'toolStyle', 'headingStyle', 'tableLayout', 'taskStyle', 'listMarker', 'copyButtonStyle', 'bubbleLabels', 'clock', 'pieStyle', 'statusMatrix', 'testMatrix', 'benchTable', 'schemaTable', 'desktopColors'])
   for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
   expect(steps[0]!.options).toEqual(PRESET_NAMES)
   expect(steps.find(s => s.key === 'copyButtonStyle')?.note).toContain('`hover` puts a dim ⧉ beside each block instead and shows its buttons only while the pointer is on that ⧉')
   expect(setupParts(PRESET_NAMES, 0).head.startsWith('## Setup 1/6: Theme')).toBe(true)
   expect(setupParts(PRESET_NAMES, 5).head.startsWith('## Setup 6/6: Tool output')).toBe(true)
   expect(setupParts(PRESET_NAMES, 5).tail).not.toContain('Skip with')
-  expect(setupParts(PRESET_NAMES, 6).head.startsWith('## More styles 1/14: Diffs')).toBe(true)
-  expect(SETUP_ESSENTIALS_DONE).toContain('walks 14 more styles')
+  expect(setupParts(PRESET_NAMES, 6).head.startsWith('## More styles 1/15: Diffs')).toBe(true)
+  expect(SETUP_ESSENTIALS_DONE).toContain('walks 15 more styles')
   expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
   expect((await setupRun($, 'setup more')).text).toBe(SETUP_PANE_OPENED)
   expect((await setupRun($, 'setup theme')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
@@ -3030,7 +3030,8 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
   expect((await setupRun($, 'setup labels small')).text).toBe(`Bubble labels set to small.\n\n${setupText(setupParts(PRESET_NAMES, 14))}`)
   expect((await setupRun($, 'setup clock 24h')).text).toBe(`Times set to 24h.\n\n${setupText(setupParts(PRESET_NAMES, 15))}`)
   expect((await setupRun($, 'setup pies bars')).text).toBe(`Pie charts set to bars.\n\n${setupText(setupParts(PRESET_NAMES, 16))}`)
-  expect((await setupRun($, 'setup schema-table full')).text).toBe(`Schema set to full.\n\n${SETUP_DONE}`)
+  expect((await setupRun($, 'setup schema-table full')).text).toBe(`Schema set to full.\n\n${setupText(setupParts(PRESET_NAMES, 20))}`)
+  expect((await setupRun($, 'setup desktop match')).text).toBe(`Desktop app colors set to match.\n\n${SETUP_DONE}`)
   expect(writes).toEqual([
     { key: 'prismantis.theme', value: 'nord' },
     { key: 'prismantis.promptStyle', value: 'bar' },
@@ -3048,12 +3049,13 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
     { key: 'prismantis.clock', value: '24h' },
     { key: 'prismantis.pieStyle', value: 'bars' },
     { key: 'prismantis.schemaTable', value: 'full' },
+    { key: 'prismantis.desktopColors', value: 'match' },
   ])
   expect((await setupRun($, 'setup tasks')).text).toBe(setupText(setupParts(PRESET_NAMES, 10)))
   expect((await setupRun($, 'setup table-layout')).text).toBe(setupText(setupParts(PRESET_NAMES, 9)))
   expect((await setupRun($, 'setup tables 9')).text?.startsWith('Unknown tables pick "9".')).toBe(true)
   expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
-  expect(writes).toHaveLength(16)
+  expect(writes).toHaveLength(17)
   expect(setupText(setupParts(PRESET_NAMES, 7))).toContain('`tree-bold` or `classic`')
 })
 
@@ -3111,13 +3113,15 @@ test('/prismantis setup opens a pane in the terminal: arrows move through the st
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup'])
   expect(toasts.at(-1)).toBe(`Tool output set to quiet. ${SETUP_ESSENTIALS_DONE}`)
   expect((await setupRun($, 'setup more')).text).toBe(SETUP_PANE_OPENED)
-  expect(await pane.find({ type: 'Text', text: /More styles 1\/14: Diffs/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 1\/15: Diffs/ })).toBeTruthy()
   for (const [step, value] of [['diffs', 'bar'], ['tools', 'tree-bold'], ['headings', 'uppercase'], ['table-layout', 'auto'], ['tasks', 'progress'], ['lists', 'dash'], ['copy', 'hover'], ['labels', 'small'], ['clock', '24h'], ['pies', 'bars'], ['status-matrix', 'color'], ['test-report', 'report'], ['bench-table', 'trend']] as const) await pane.press({ key: `pick:${step}:${value}` })
-  expect(await pane.find({ type: 'Text', text: /More styles 14\/14: Schema/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 14\/15: Schema/ })).toBeTruthy()
   await pane.press({ key: 'pick:schema-table:full' })
-  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.promptStyle=bar', 'prismantis.replyStyle=solid', 'prismantis.tableStyle=grid', 'prismantis.codeStyle=framed', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.headingStyle=uppercase', 'prismantis.tableLayout=auto', 'prismantis.taskStyle=progress', 'prismantis.listMarker=dash', 'prismantis.copyButtonStyle=hover', 'prismantis.bubbleLabels=small', 'prismantis.clock=24h', 'prismantis.pieStyle=bars', 'prismantis.statusMatrix=color', 'prismantis.testMatrix=report', 'prismantis.benchTable=trend', 'prismantis.schemaTable=full'])
+  expect(await pane.find({ type: 'Text', text: /More styles 15\/15: Desktop app colors/ })).toBeTruthy()
+  await pane.press({ key: 'pick:desktop:match' })
+  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.promptStyle=bar', 'prismantis.replyStyle=solid', 'prismantis.tableStyle=grid', 'prismantis.codeStyle=framed', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.headingStyle=uppercase', 'prismantis.tableLayout=auto', 'prismantis.taskStyle=progress', 'prismantis.listMarker=dash', 'prismantis.copyButtonStyle=hover', 'prismantis.bubbleLabels=small', 'prismantis.clock=24h', 'prismantis.pieStyle=bars', 'prismantis.statusMatrix=color', 'prismantis.testMatrix=report', 'prismantis.benchTable=trend', 'prismantis.schemaTable=full', 'prismantis.desktopColors=match'])
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup', 'open prismantis-setup', 'close prismantis-setup'])
-  expect(toasts.at(-1)).toBe('Schema set to full. Setup done.')
+  expect(toasts.at(-1)).toBe('Desktop app colors set to match. Setup done.')
   await pane.unmount()
 })
 

@@ -535,6 +535,8 @@ test('the help screen fits one screen: few blocks, two alerts, a table, a list a
   expect(helpText([])).toContain('`random`')
   expect(showcaseText([])).toContain('/prismantis theme random')
   expect(helpText([])).toContain('HTML (macOS/Linux)')
+  expect(helpText([])).toContain('`desktopColors` to `match`')
+  expect(showcaseText([])).toContain('`desktopColors` to `match`')
   expect(helpText([])).toContain('PNG image (macOS/Windows)')
   const diagrams = blocks.flatMap(b => (b.kind === 'code' && b.lang === 'mermaid' ? [b.lines.join('\n')] : []))
   expect(diagrams.length).toBe(2)
