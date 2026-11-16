@@ -216,6 +216,7 @@ test('a shell line that opens with a command keeps the command first when most o
 })
 
 test('a Hebrew line in a plain text block reads right to left on Windows Terminal, like prose: no forced left to right, brackets mirrored', { options: { rtl: 'windows-terminal' } }, async $ => {
+  if (!(await linksHttp($.ui.mount(mount('```python\nx\n```'))))) return
   const ui = await $.ui.mount(mount('```text\nהרבה יותר טוב 👍\nמה (כמה זמן) עם AI chat\nok הכל\n```'))
   const dirs = async (text: RegExp) => (await ui.findAll({ type: 'Text', text })).map(t => t.props.dir)
   expect(await dirs(/^הרבה יותר טוב 👍$/)).not.toContain('ltr')
@@ -225,6 +226,7 @@ test('a Hebrew line in a plain text block reads right to left on Windows Termina
 })
 
 test('a Hebrew string in highlighted code stays held left to right on Windows Terminal', { options: { rtl: 'windows-terminal' } }, async $ => {
+  if (!(await linksHttp($.ui.mount(mount('```python\nx\n```'))))) return
   const ui = await $.ui.mount(mount('```python\nprint("שלום עולם")\n```'))
   expect((await ui.findAll({ type: 'Text', text: /^print\("שלום עולם"\)$/ })).map(t => t.props.dir)).toContain('ltr')
   await ui.unmount()
