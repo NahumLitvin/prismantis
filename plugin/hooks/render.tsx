@@ -3145,7 +3145,7 @@ const fillOf = (style: Style): string | undefined => {
 
 const inked = (style: Style): Style => {
   const fill = fillOf(style)
-  const ink = fill && HEX.test(fill) && !darkBackground(fill) ? style.theme.codeText : undefined
+  const ink = fill && HEX.test(fill) && (style.gridFace || !darkBackground(fill)) ? style.theme.codeText : undefined
   return ink ? { ...style, ink, theme: { ...style.theme, tableText: style.theme.tableText ?? ink } } : style
 }
 

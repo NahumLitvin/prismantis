@@ -712,7 +712,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`statusMatrix ${sur
   const checks = await ui.findAll({ type: 'Text', text: /^✓$/ })
   expect(checks.length >= 2).toBe(true)
   expect(checks.filter(n => n.props.color === t.codeString).length >= 2).toBe(true)
-  expect((await ui.find({ type: 'Text', text: /^Propagation$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^Propagation$/ }))?.props.color).toBe(surface === 'desktop' ? PRESETS['catppuccin-mocha'].codeText : undefined)
   await ui.unmount()
 })
 
@@ -815,7 +815,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`testMatrix ${surfa
   expect(seps).toHaveLength(3)
   expect(seps.every(x => x.props.dimColor)).toBe(true)
   expect((await ui.find({ type: 'Text', text: /^6\.9s total$/ }))?.props.dimColor).toBe(true)
-  expect((await ui.find({ type: 'Text', text: /^failed$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^failed$/ }))?.props.color).toBe(surface === 'desktop' ? PRESETS['catppuccin-mocha'].codeText : undefined)
   await ui.unmount()
 })
 
@@ -1279,8 +1279,8 @@ for (const surface of ['terminal', 'desktop'] as const) test(`benchTable ${surfa
   expect((await ui.find({ type: 'Text', text: /^-10%$/ }))?.props.color).toBe(t.diffAdded)
   expect((await ui.find({ type: 'Text', text: /^\+14%$/ }))?.props.color).toBe(t.diffRemoved)
   expect((await ui.find({ type: 'Text', text: /^-62%$/ }))?.props.color).toBe(t.diffAdded)
-  expect((await ui.find({ type: 'Text', text: /^0%$/ }))?.props.color).toBeUndefined()
-  expect((await ui.find({ type: 'Text', text: /^parse$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^0%$/ }))?.props.color).toBe(surface === 'desktop' ? PRESETS['catppuccin-mocha'].codeText : undefined)
+  expect((await ui.find({ type: 'Text', text: /^parse$/ }))?.props.color).toBe(surface === 'desktop' ? PRESETS['catppuccin-mocha'].codeText : undefined)
   await ui.unmount()
 })
 
@@ -1400,7 +1400,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`compareTable ${sur
   expect((await ui.find({ type: 'Text', text: /^1$/ }))?.props.color).toBe(t.accent)
   expect((await ui.find({ type: 'Text', text: /^2$/ }))?.props.color).toBe(t.link)
   expect((await ui.find({ type: 'Text', text: /^3$/ }))?.props.color).toBe(t.link)
-  expect((await ui.find({ type: 'Text', text: /^4$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^4$/ }))?.props.color).toBe(surface === 'desktop' ? PRESETS['catppuccin-mocha'].codeText : undefined)
   const ones = await ui.findAll({ type: 'Text', text: /^1$/ })
   expect(ones.every(n => n.props.color !== t.number)).toBe(true)
   await ui.unmount()
@@ -1509,7 +1509,7 @@ for (const surface of ['terminal', 'desktop'] as const) test(`apiTable ${surface
   expect((await ui.find({ type: 'Text', text: /^POST$/ }))?.props.color).toBe(t.codeString)
   expect((await ui.find({ type: 'Text', text: /^DELETE$/ }))?.props.color).toBe(t.diffRemoved)
   expect((await ui.find({ type: 'Text', text: /^OPTIONS$/ }))?.props.color).toBe(t.codeComment)
-  expect((await ui.find({ type: 'Text', text: /^\/v1\/scrolls$/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^\/v1\/scrolls$/ }))?.props.color).toBe(surface === 'desktop' ? PRESETS['catppuccin-mocha'].codeText : undefined)
   await ui.unmount()
 })
 
