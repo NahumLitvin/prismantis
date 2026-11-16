@@ -1,6 +1,8 @@
 // ../plugin/hooks/markdown.ts
 var FIGURE_ROLES = ["accent", "warn", "ok", "note", "dim", "strong"];
 var ROLE_MARKUP = new RegExp(`\\{(?:${FIGURE_ROLES.join("|")}):([^{}]*)\\}`, "g");
+var PATH = /(?<![\p{L}\p{M}\p{N}_/.:])((?:~|\.{1,2})?\/[\p{L}\p{M}\p{N}_.@+-]+(?:\/[\p{L}\p{M}\p{N}_.@+-]*)*)/gu;
+var WHOLE_PATH = new RegExp(`^(?:${PATH.source})$`, PATH.flags.replace("g", ""));
 var scriptMap = (from, to) => new Map(Array.from(from).map((c, i) => [c, Array.from(to)[i]]));
 var SUP = scriptMap("0123456789+-\u2212=()niabcdefghjklmoprstuvwxyzABDEGHIJKLMNOPRTUVW", "\u2070\xB9\xB2\xB3\u2074\u2075\u2076\u2077\u2078\u2079\u207A\u207B\u207B\u207C\u207D\u207E\u207F\u2071\u1D43\u1D47\u1D9C\u1D48\u1D49\u1DA0\u1D4D\u02B0\u02B2\u1D4F\u02E1\u1D50\u1D52\u1D56\u02B3\u02E2\u1D57\u1D58\u1D5B\u02B7\u02E3\u02B8\u1DBB\u1D2C\u1D2E\u1D30\u1D31\u1D33\u1D34\u1D35\u1D36\u1D37\u1D38\u1D39\u1D3A\u1D3C\u1D3E\u1D3F\u1D40\u1D41\u2C7D\u1D42");
 var SUB = scriptMap("0123456789+-\u2212=()aehijklmnoprstuvx", "\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089\u208A\u208B\u208B\u208C\u208D\u208E\u2090\u2091\u2095\u1D62\u2C7C\u2096\u2097\u2098\u2099\u2092\u209A\u1D63\u209B\u209C\u1D64\u1D65\u2093");
@@ -16,7 +18,7 @@ var FIGURE_HINT = [
   "A fenced block whose opening line is exactly ```figure is drawn as a text picture, as written.",
   "Prefer one over mermaid when position carries meaning: durations racing on a time axis, a screen layout, phases, before/after; mermaid stays for plain flows and charts; none for short answers, code changes or reports. The prose never retells the picture.",
   "When asked to explain, compare or plan something and pictures would help, build the reply around them, with the core on the first screen as a picture or a sentence.",
-  "Figures only: color with {role:text}, not nested: accent for lines, warn for risk, ok for healthy, note for time, dim for asides, strong for emphasis.",
+  "Figures only: color as {warn:disk full}, not nested: accent for lines, warn for risk, ok for healthy, note for time, dim for asides, strong for emphasis.",
   `At most ${FIGURE_SAFE_COLUMNS} columns, glyphs one column wide such as ${FIGURE_GLYPHS}, no emoji or tabs; markup takes no columns, so align on the drawn text and pad box rows to the top border. CJK letters take two columns, count them twice. Draw a time axis with edge ticks like \u258F\u2500\u2500\u2500\u258F\u2500\u2500\u2500\u258F, not \u251C\u253C\u2524: \u2588 fills its cell, \u251C\u253C\u2524 sit mid-cell.`
 ].join(" ");
 var MARKUP = new RegExp(`\\{(${FIGURE_ROLES.join("|")})(?::([^{}]*)\\}|\\}([^{}]*)\\{\\/\\1\\})`, "g");
@@ -45,7 +47,12 @@ var PRESETS = {
     diagram: "#89b4fa",
     diagramText: "#cdd6f4",
     diffAdded: "#a6e3a1",
-    diffRemoved: "#f38ba8"
+    diffRemoved: "#f38ba8",
+    alertNote: "#89b4fa",
+    alertTip: "#a6e3a1",
+    alertImportant: "#cba6f7",
+    alertWarning: "#f9e2af",
+    alertCaution: "#f38ba8"
   },
   "catppuccin-latte": {
     accent: "#8839ef",
@@ -69,7 +76,12 @@ var PRESETS = {
     diagram: "#1e66f5",
     diagramText: "#4c4f69",
     diffAdded: "#3f9e2b",
-    diffRemoved: "#d20f39"
+    diffRemoved: "#d20f39",
+    alertNote: "#1e66f5",
+    alertTip: "#40a02b",
+    alertImportant: "#8839ef",
+    alertWarning: "#df8e1d",
+    alertCaution: "#d20f39"
   },
   dracula: {
     accent: "#bd93f9",
@@ -93,7 +105,12 @@ var PRESETS = {
     diagram: "#bd93f9",
     diagramText: "#f8f8f2",
     diffAdded: "#50fa7b",
-    diffRemoved: "#ff5555"
+    diffRemoved: "#ff5555",
+    alertNote: "#8be9fd",
+    alertTip: "#50fa7b",
+    alertImportant: "#bd93f9",
+    alertWarning: "#f1fa8c",
+    alertCaution: "#ff5555"
   },
   nord: {
     accent: "#88c0d0",
@@ -117,7 +134,12 @@ var PRESETS = {
     diagram: "#81a1c1",
     diagramText: "#d8dee9",
     diffAdded: "#a3be8c",
-    diffRemoved: "#bf616a"
+    diffRemoved: "#bf616a",
+    alertNote: "#81a1c1",
+    alertTip: "#a3be8c",
+    alertImportant: "#b48ead",
+    alertWarning: "#ebcb8b",
+    alertCaution: "#bf616a"
   },
   "tokyo-night": {
     accent: "#bb9af7",
@@ -141,7 +163,12 @@ var PRESETS = {
     diagram: "#7aa2f7",
     diagramText: "#c0caf5",
     diffAdded: "#9ece6a",
-    diffRemoved: "#f7768e"
+    diffRemoved: "#f7768e",
+    alertNote: "#7aa2f7",
+    alertTip: "#9ece6a",
+    alertImportant: "#bb9af7",
+    alertWarning: "#e0af68",
+    alertCaution: "#f7768e"
   },
   "gruvbox-dark": {
     accent: "#d3869b",
@@ -165,7 +192,12 @@ var PRESETS = {
     diagram: "#83a598",
     diagramText: "#ebdbb2",
     diffAdded: "#b8bb26",
-    diffRemoved: "#fb4934"
+    diffRemoved: "#fb4934",
+    alertNote: "#83a598",
+    alertTip: "#b8bb26",
+    alertImportant: "#d3869b",
+    alertWarning: "#fabd2f",
+    alertCaution: "#fb4934"
   },
   "gruvbox-light": {
     accent: "#8f3f71",
@@ -189,7 +221,12 @@ var PRESETS = {
     diagram: "#076678",
     diagramText: "#3c3836",
     diffAdded: "#79740e",
-    diffRemoved: "#9d0006"
+    diffRemoved: "#9d0006",
+    alertNote: "#076678",
+    alertTip: "#79740e",
+    alertImportant: "#8f3f71",
+    alertWarning: "#b57614",
+    alertCaution: "#9d0006"
   },
   "rose-pine": {
     accent: "#c4a7e7",
@@ -213,7 +250,12 @@ var PRESETS = {
     diagram: "#c4a7e7",
     diagramText: "#e0def4",
     diffAdded: "#9ccfd8",
-    diffRemoved: "#eb6f92"
+    diffRemoved: "#eb6f92",
+    alertNote: "#9ccfd8",
+    alertTip: "#31748f",
+    alertImportant: "#c4a7e7",
+    alertWarning: "#f6c177",
+    alertCaution: "#eb6f92"
   },
   "rose-pine-dawn": {
     accent: "#907aa9",
@@ -237,7 +279,12 @@ var PRESETS = {
     diagram: "#907aa9",
     diagramText: "#464261",
     diffAdded: "#56949f",
-    diffRemoved: "#b4637a"
+    diffRemoved: "#b4637a",
+    alertNote: "#56949f",
+    alertTip: "#286983",
+    alertImportant: "#907aa9",
+    alertWarning: "#ea9d34",
+    alertCaution: "#b4637a"
   },
   everforest: {
     accent: "#a7c080",
@@ -261,7 +308,12 @@ var PRESETS = {
     diagram: "#7fbbb3",
     diagramText: "#d3c6aa",
     diffAdded: "#a7c080",
-    diffRemoved: "#e67e80"
+    diffRemoved: "#e67e80",
+    alertNote: "#7fbbb3",
+    alertTip: "#a7c080",
+    alertImportant: "#d699b6",
+    alertWarning: "#dbbc7f",
+    alertCaution: "#e67e80"
   },
   "github-dark": {
     accent: "#d2a8ff",
@@ -285,7 +337,12 @@ var PRESETS = {
     diagram: "#58a6ff",
     diagramText: "#e6edf3",
     diffAdded: "#3fb950",
-    diffRemoved: "#f85149"
+    diffRemoved: "#f85149",
+    alertNote: "#58a6ff",
+    alertTip: "#3fb950",
+    alertImportant: "#d2a8ff",
+    alertWarning: "#ffa657",
+    alertCaution: "#f85149"
   },
   "github-light": {
     accent: "#8250df",
@@ -309,7 +366,12 @@ var PRESETS = {
     diagram: "#0969da",
     diagramText: "#1f2328",
     diffAdded: "#1a7f37",
-    diffRemoved: "#cf222e"
+    diffRemoved: "#cf222e",
+    alertNote: "#0969da",
+    alertTip: "#1a7f37",
+    alertImportant: "#8250df",
+    alertWarning: "#953800",
+    alertCaution: "#cf222e"
   },
   "one-dark": {
     accent: "#c678dd",
@@ -333,7 +395,12 @@ var PRESETS = {
     diagram: "#61afef",
     diagramText: "#abb2bf",
     diffAdded: "#98c379",
-    diffRemoved: "#e06c75"
+    diffRemoved: "#e06c75",
+    alertNote: "#61afef",
+    alertTip: "#98c379",
+    alertImportant: "#c678dd",
+    alertWarning: "#e5c07b",
+    alertCaution: "#e06c75"
   },
   "solarized-dark": {
     accent: "#6c71c4",
@@ -357,7 +424,12 @@ var PRESETS = {
     diagram: "#268bd2",
     diagramText: "#93a1a1",
     diffAdded: "#859900",
-    diffRemoved: "#dc322f"
+    diffRemoved: "#dc322f",
+    alertNote: "#268bd2",
+    alertTip: "#859900",
+    alertImportant: "#6c71c4",
+    alertWarning: "#b58900",
+    alertCaution: "#dc322f"
   },
   "solarized-light": {
     accent: "#6c71c4",
@@ -381,7 +453,12 @@ var PRESETS = {
     diagram: "#268bd2",
     diagramText: "#586e75",
     diffAdded: "#849800",
-    diffRemoved: "#dc322f"
+    diffRemoved: "#dc322f",
+    alertNote: "#268bd2",
+    alertTip: "#859900",
+    alertImportant: "#6c71c4",
+    alertWarning: "#b58900",
+    alertCaution: "#dc322f"
   },
   neon: {
     accent: "#00e5ff",
@@ -405,7 +482,70 @@ var PRESETS = {
     diagram: "#66708f",
     diagramText: "#c9d4f2",
     diffAdded: "#3dff9a",
-    diffRemoved: "#ff4d6d"
+    diffRemoved: "#ff4d6d",
+    alertNote: "#00e5ff",
+    alertTip: "#3dff9a",
+    alertImportant: "#a77bff",
+    alertWarning: "#ffcc33",
+    alertCaution: "#ff4d6d"
+  },
+  "kanagawa-wave": {
+    accent: "#957fb8",
+    heading: "#ffa066",
+    tableHeader: "#e6c384",
+    strong: "#dcd7ba",
+    emphasis: "#d27e99",
+    inlineCode: "#7fb4ca",
+    codeText: "#dcd7ba",
+    codeCommand: "#7e9cd8",
+    codeFlag: "#e46876",
+    codeString: "#98bb6c",
+    codeComment: "#727169",
+    link: "#7e9cd8",
+    path: "#7aa89f",
+    number: "#98bb6c",
+    quote: "#938aa9",
+    rule: "#2a2a37",
+    tableRule: "#54546d",
+    bullet: "#957fb8",
+    diagram: "#7e9cd8",
+    diagramText: "#dcd7ba",
+    diffAdded: "#76946a",
+    diffRemoved: "#c34043",
+    alertNote: "#7e9cd8",
+    alertTip: "#98bb6c",
+    alertImportant: "#957fb8",
+    alertWarning: "#e6c384",
+    alertCaution: "#e46876"
+  },
+  "morning-haze": {
+    accent: "#c4b7dc",
+    heading: "#c4b7dc",
+    tableHeader: "#f8e6d2",
+    strong: "#e9cc97",
+    emphasis: "#dcc0d2",
+    inlineCode: "#9ec3c0",
+    codeText: "#ccd9ec",
+    codeCommand: "#a8c98c",
+    codeFlag: "#dcc0d2",
+    codeString: "#c2d8b9",
+    codeComment: "#8191ad",
+    link: "#8fb8d6",
+    path: "#a1b5d8",
+    number: "#b7d6a6",
+    quote: "#8191ad",
+    rule: "#394152",
+    tableRule: "#8191ad",
+    bullet: "#c4b7dc",
+    diagram: "#a1b5d8",
+    diagramText: "#ccd9ec",
+    diffAdded: "#b7d6a6",
+    diffRemoved: "#e3968f",
+    alertNote: "#a1b5d8",
+    alertTip: "#b7d6a6",
+    alertImportant: "#c4b7dc",
+    alertWarning: "#ebc98e",
+    alertCaution: "#e3968f"
   },
   mono: {}
 };
@@ -418,7 +558,7 @@ var RANDOM_THEMES = PRESET_NAMES.filter((t) => !/latte|light|dawn/.test(t) && t 
 var HINT = [
   "Replies in this session are drawn by the prismantis mod, which runs inside Claude Code and is not a command or tool to call: when the user asks to show something with prismantis, write it as markdown in the reply.",
   "Markdown tables, GitHub alerts (> [!WARNING], > [!NOTE]), fenced code with a language tag, and ```mermaid blocks render as colored terminal graphics:",
-  'flowcharts, sequence diagrams, xychart-beta bar or line charts (name each series for the legend: line "east" [..]), pie charts and gantt schedules.',
+  'flowcharts, sequence diagrams, xychart-beta bar or line charts (name each series for the legend: line "east" [..]), pie charts, gantt schedules, quadrantChart grids, mindmap trees, journey mood lines, kanban boards and gitGraph histories.',
   "When a reply carries a numeric series or a flow that is easier to see than read, add a small diagram or chart with short labels, not a second picture of what a figure already shows.",
   "Skip diagrams and pictures for short or simple answers.",
   "Put any command or snippet the user may run or copy in a fenced block with a language tag, never inline code: fenced blocks get a copy button, inline code does not."
@@ -445,7 +585,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | \`/prismantis\` | This screen |
 | \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
-| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts and the table extras |
+| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
 | \`/config\` | Edit any option |
 
 > [!NOTE]
@@ -464,6 +604,8 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 3. Plain
    - mono
 
+In the desktop app, set \`desktopColors\` to \`match\` and the whole Code tab takes the theme too, in light mode for a light one (Claude Code 2.1.324+).
+
 > [!TIP]
 > Any color slot beats the theme. Set \`headingColor\` or \`numberColor\` to a hex value in \`/config\`.
 
@@ -471,7 +613,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 
 ### Copy tables
 
-Use \`\u29C9 md\` for Markdown, \`\u29C9 art\` for chat, or \`\u29C9 html\` for a formatted table. \`\u29C9 html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. \`\u25A3 png\` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set \`copyButtonStyle\` to \`inline\` in \`/config\` for the accent color, or to \`hover\` and each block shows a dim \u29C9 instead: point at it for its buttons. Set \`textCopyButtons\` to \`false\` to keep only the buttons on code, tables, diagrams and the reply.
+Use \`\u29C9 md\` for Markdown, \`\u29C9 art\` for chat, or \`\u29C9 html\` for a formatted table. \`\u29C9 html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. \`\u25A3 png\` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set \`copyButtonStyle\` to \`inline\` in \`/config\` for the accent color, or to \`hover\` and each block shows a dim \u29C9 instead: point at it for its buttons. Set \`textCopyButtons\` to \`false\` to keep only the buttons on code, tables, diagrams and the reply. Set \`sectionCopyButtons\` to \`true\` for a \`\u29C9 copy\` on each heading that copies its section, up to the next heading of its level.
 
 | Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
@@ -530,6 +672,51 @@ When a table describes a database schema \u2014 a column of fields beside a colu
 | org_id | bigint | FK \u2192 orgs.id | |
 | created_at | timestamp | | now() |
 
+### Comparison
+
+When a table compares options \u2014 a column of scores beside a column of ranks \u2014 \`compareTable\` draws the rank cells as a medal: 1 in the accent color, 2 and 3 in the link color, the same pairing the schema table's PK and FK use. \`pick\` draws the score cell of the top score in the improvement green, the hue \`benchTable\` gives an improvement, and bolds it so it stands out even in a theme where that green is also the number color, and \`full\` does both. The default \`off\` keeps tables as written:
+
+| Option | Score | Rank |
+|:-------|------:|-----:|
+| mantis | 9.2 | 1 |
+| origami | 7.8 | 2 |
+| noodle | 6.1 | 3 |
+| tofu | 4.4 | 4 |
+
+### API
+
+When a table documents an API \u2014 a method column whose cells read like HTTP verbs \u2014 \`apiTable\` draws the method cells by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. \`auth\` draws the scheme cells of an auth column \u2014 Bearer, OAuth, API key, JWT \u2014 in the accent color, and \`full\` does both. The default \`off\` keeps tables as written:
+
+| Method | Endpoint | Auth | Description |
+|:-------|:---------|:-----|:------------|
+| GET | /v1/scrolls | Bearer | List the scrolls |
+| POST | /v1/scrolls | Bearer | Add a scroll |
+| DELETE | /v1/scrolls/:id | API key | Remove a scroll |
+| GET | /v1/health | none | Liveness check |
+
+### Key-value
+
+When a table lists configuration \u2014 a column of options beside columns of values, sources and defaults \u2014 \`kvTable\` draws the source cells by where it says the value comes from: env in the link color, config in the string color, default in gray. \`overrides\` draws the value cell in the accent color when the row's value differs from its default, and \`full\` does both. The default \`off\` keeps tables as written:
+
+| Option | Value | Source | Default |
+|:-------|:------|:-------|:--------|
+| retries | 5 | env | 3 |
+| format | json | config | json |
+| timeout | 30s | default | 30s |
+| token | abc123 | env | unset |
+
+### Groups
+
+When a table groups its rows \u2014 the first column whose cells repeat in runs, like a column of services or teams \u2014 \`groupTable\` draws each group once: \`merge\` labels the group in the accent color and blanks the repeats under it, \`count\` also adds the group's size to its label, and \`full\` also draws a heavy rule where one group ends and the next begins. A column of numbers never groups, and a table already grouped by status keeps its status grouping. The default \`off\` keeps tables as written:
+
+| Service | Region | Requests | p99 |
+|:--------|:-------|---------:|----:|
+| api | us-east | 1.2M | 84 ms |
+| api | us-west | 900k | 91 ms |
+| worker | us-east | 2.4M | 120 ms |
+| worker | us-west | 1.8M | 132 ms |
+| cron | us-east | 96k | 40 ms |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -558,7 +745,7 @@ Scroll up: what you typed sits on the right under \`You \u2B24\` and Claude's re
 
 ### Tool rows
 
-Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1\u201340\`, \`Searched src/ for "TODO"\`. A call still running shows a still \`\u25CC\`; \`runningDot: blink\` makes it a \`\u25CF\` that blinks every half second, and \`unreadPrompts\` keeps each prompt you send grey and blinking until Claude starts on it, so one queued mid-turn stands out.
+Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set \`toolStyle\` in \`/config\` to \`chat\`, \`tree-dim\`, \`tree-bold\` or \`classic\`. \`toolOutput: quiet\` in \`/config\` hides what Claude only read and says in plain words what each call did: \`Read src/app.ts lines 1\u201340\`, \`Searched src/ for "TODO"\`, and \`toolOutput: rows\` draws only the row of every call that worked. A call still running shows a still \`\u25CC\`; \`runningDot: blink\` makes it a \`\u25CF\` that blinks every half second, and \`unreadPrompts\` keeps each prompt you send grey and blinking until Claude starts on it, so one queued mid-turn stands out.
 
 Each edit draws as a diff card headed \`+N \u2212M\`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (\`sed -i\`, a script) get the same card, one per file, headed by its path. Set \`diffStyle\` in \`/config\` for the look: \`card\`, \`full\`, \`marks\` or \`bar\`.
 
@@ -706,6 +893,76 @@ gantt
     Release  :milestone, 2026-10-12, 0d
 \`\`\`
 
+A quadrant chart numbers its points and lists them under the grid:
+
+\`\`\`mermaid
+quadrantChart
+    title Feature priorities
+    x-axis Low effort --> High effort
+    y-axis Low impact --> High impact
+    quadrant-1 Big bets
+    quadrant-2 Do now
+    quadrant-3 Fill-ins
+    quadrant-4 Skip
+    Reorder: [0.2, 0.85]
+    Search: [0.8, 0.9]
+    Dark mode: [0.3, 0.25]
+    Localisation: [0.75, 0.4]
+\`\`\`
+
+A mind map grows from its root to the right, one color per branch:
+
+\`\`\`mermaid
+mindmap
+    root((Release))
+        Code
+            Tests
+            Review
+        Docs
+            Changelog
+        Ship
+            Tag
+            Announce
+\`\`\`
+
+A user journey draws its mood line across the tasks, green when it goes well and red when it hurts:
+
+\`\`\`mermaid
+journey
+    title First order
+    section Find
+        Search: 4: Shopper
+        Compare: 3: Shopper
+    section Buy
+        Checkout: 1: Shopper
+        Delivery: 5: Shopper, Courier
+\`\`\`
+
+A kanban board puts its columns side by side, each card with its owner, ticket and priority:
+
+\`\`\`mermaid
+kanban
+    todo[To do]
+        a[Fix login timeout]@{ assigned: 'Amy', priority: 'High' }
+        b[Write release notes]@{ ticket: DOC-7 }
+    doing[In progress]
+        c[Dark mode]@{ assigned: 'Ken' }
+    done[Done]
+        d[Search filters]
+\`\`\`
+
+A git graph runs top to bottom, one colored lane per branch:
+
+\`\`\`mermaid
+gitGraph
+    commit id: "init" tag: "v1.0"
+    branch develop
+    commit id: "login"
+    commit id: "fix" type: HIGHLIGHT
+    checkout main
+    merge develop id: "release" tag: "v1.1"
+\`\`\`
+
 A diagram wider than the terminal stays source, with a dim line saying why:
 
 \`\`\`mermaid
@@ -739,7 +996,7 @@ var setupSteps = (themes) => [
   { name: "replies", key: "replyStyle", title: "Claude's replies", note: "How Claude's replies draw in the transcript. `auto` draws them as `bubble` while your prompts are a `bubble`, so the transcript reads as a chat, and as `off` with any other prompt style. `bubble` puts each one under `\u2B24 Claude` in a rounded frame of Claude's orange on a fill a step off the background, `solid` fills it to the edge with no frame, `framed` keeps the frame with no fill. A reply that calls tools between its sentences draws one bubble per block of text. `off` keeps a dot before the first line.", options: ["auto", "bubble", "solid", "framed", "off"], sample: "" },
   { name: "tables", key: "tableStyle", title: "Tables", note: "How markdown tables draw.", options: ["box", "rules", "grid", "minimal"], sample: "| Item | Qty |\n|:-----|----:|\n| Apples | 3 |\n| Pears | 5 |" },
   { name: "code", key: "codeStyle", title: "Code blocks", note: "How code blocks draw. `plain` has no frame, so a mouse selection copies only the code. `framed` adds a rounded box, whose characters land in a mouse selection; the copy button leaves them out. `filled` adds a background, or the box in a theme with no colors to fill with. `card` adds both.", options: ["plain", "framed", "filled", "card"], sample: "```ts\nconst retries = 3\n```" },
-  { name: "output", key: "toolOutput", title: "Tool output", note: "How much of a tool call shows. `full` keeps Claude Code's own results under each row. `quiet` names a shell call by what it does and shows a failure's last real line instead of its whole output; it also shows reads, searches and listings as their row only and drops approval lines. Edits keep their diff either way. Needs `toolRows` on.", options: ["full", "quiet"], sample: "" },
+  { name: "output", key: "toolOutput", title: "Tool output", note: "How much of a tool call shows. `full` keeps Claude Code's own results under each row. `quiet` names a shell call by what it does and shows a failure's last real line instead of its whole output; it also shows reads, searches and listings as their row only and drops approval lines. `rows` is `quiet` that draws only the row of a call that worked, so `npm test` shows no output either. Edits keep their diff in every mode. Needs `toolRows` on.", options: ["full", "quiet", "rows"], sample: "" },
   { name: "diffs", key: "diffStyle", title: "Diffs", note: "How an edit or a new file draws under its row. `card` frames the lines in a rounded box, `full` drops the box and tints each changed line across the width, `marks` drops the tint and colors only the `+` and `\u2212` marks, `bar` puts a colored `\u258C` before each changed line. Every look highlights the code and the words that changed. Needs `toolRows` on.", options: ["card", "full", "marks", "bar"], sample: "" },
   { name: "tools", key: "toolStyle", title: "Tool rows", note: "How tool rows sit next to Claude's sentences. Sharing sessions as screenshots? `chat` and `tree-dim` draw tool rows in dim gray, the first thing to blur when an image gets resized, so pick `tree-bold` or `classic`.", options: ["chat", "tree-dim", "tree-bold", "classic"], sample: "" },
   { name: "headings", key: "headingStyle", title: "Headings", note: "How `#` and `##` headings draw. Terminals have one font size, so headings stand out through style and color.", options: ["banner", "bold", "underline", "uppercase"], sample: "# Release notes\n\n## Fixes\n\nTables keep their width." },
@@ -753,7 +1010,12 @@ var setupSteps = (themes) => [
   { name: "status-matrix", key: "statusMatrix", title: "Status matrix", note: "How the status cells of a table draw: the column whose cells are things like \u2713, passed, failed or pending. `off` keeps tables as written. `color` draws them in theme colors, `summary` adds a count line under the table, and `group` also reorders rows by status and draws a heavy rule where the status changes.", options: ["color", "summary", "group", "off"], sample: "| Suite | Cases | Result |\n|:------|------:|:-------|\n| Unit | 412 | \u2713 |\n| Propagation | 88 | failed |\n| Smoke | 24 | pending |" },
   { name: "test-report", key: "testMatrix", title: "Test report", note: "What a table of test results reports: a status column of things like \u2713 or failed next to durations like 120 ms. `off` keeps tables as written. `report` draws a line under the table with the share of the run that passed, a count of every other kind of result and the time all of it took.", options: ["report", "off"], sample: "| Check | Time | Result |\n|:------|-----:|:-------|\n| parse | 120 ms | \u2713 |\n| draw | 4 s | \u2713 |\n| scan | 130 ms | failed |\n| typeset | 2.6 s | pending |" },
   { name: "bench-table", key: "benchTable", title: "Benchmarks", note: "How a table that compares benchmarks draws: a column of changes like -10% or +3%. `off` keeps tables as written. `color` draws each change in theme colors, green for an improvement and red for a regression, and `trend` also draws a sparkline of the runs under the table.", options: ["trend", "color", "off"], sample: "| Benchmark | Before | After | Change |\n|:----------|-------:|------:|:-------|\n| parse | 12.4 ms | 11.1 ms | -10% |\n| layout | 19.6 ms | 22.4 ms | +14% |\n| paint | 2.1 ms | 0.8 ms | -62% |" },
-  { name: "schema-table", key: "schemaTable", title: "Schema", note: "How a table that describes a database schema draws: a column of fields beside a column of types. `off` keeps tables as written. `types` draws each type cell in theme colors by its family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. `keys` draws the constraint cells: PK in the accent color, FK in the link color, unique and index cells in gray. `full` does both.", options: ["full", "types", "keys", "off"], sample: "| Column | Type | Key | Default |\n|:-------|:-----|:----|:--------|\n| id | uuid | PK | |\n| email | varchar(255) | UNIQUE | |\n| org_id | bigint | FK \u2192 orgs.id | |\n| created_at | timestamp | | now() |" }
+  { name: "schema-table", key: "schemaTable", title: "Schema", note: "How a table that describes a database schema draws: a column of fields beside a column of types. `off` keeps tables as written. `types` draws each type cell in theme colors by its family: text types like varchar in the string color, numeric types like int in the number color, booleans in the emphasis color, time types like timestamp in the link color. `keys` draws the constraint cells: PK in the accent color, FK in the link color, unique and index cells in gray. `full` does both.", options: ["full", "types", "keys", "off"], sample: "| Column | Type | Key | Default |\n|:-------|:-----|:----|:--------|\n| id | uuid | PK | |\n| email | varchar(255) | UNIQUE | |\n| org_id | bigint | FK \u2192 orgs.id | |\n| created_at | timestamp | | now() |" },
+  { name: "compare-table", key: "compareTable", title: "Comparison", note: "How a table that compares options draws: a column of scores beside a column of ranks. `off` keeps tables as written. `rank` draws the rank cells in theme colors: 1 in the accent color, 2 and 3 in the link color. `pick` draws the score cell of the top score in the improvement green and bold, so it stands out in a theme where that green is also the number color. `full` does both.", options: ["full", "rank", "pick", "off"], sample: "| Option | Score | Rank |\n|:-------|------:|-----:|\n| mantis | 9.2 | 1 |\n| origami | 7.8 | 2 |\n| noodle | 6.1 | 3 |\n| tofu | 4.4 | 4 |" },
+  { name: "api-table", key: "apiTable", title: "API reference", note: "How an API reference table draws: a method column whose cells read like HTTP verbs. `off` keeps tables as written. `verbs` draws each method cell by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. `auth` draws the scheme cells of an auth column: Bearer, OAuth, API key and JWT in the accent color. `full` does both.", options: ["full", "verbs", "auth", "off"], sample: "| Method | Endpoint | Auth | Description |\n|:-------|:---------|:-----|:------------|\n| GET | /v1/scrolls | Bearer | List the scrolls |\n| POST | /v1/scrolls | Bearer | Add a scroll |\n| DELETE | /v1/scrolls/:id | API key | Remove a scroll |\n| GET | /v1/health | none | Liveness check |" },
+  { name: "kv-table", key: "kvTable", title: "Key-value", note: "How a table that lists configuration draws: a column of options beside columns of values, sources or defaults. `off` keeps tables as written. `sources` draws each source cell in theme colors by where it says the value comes from: env in the link color, config in the string color, default in gray. `overrides` draws the value cell in the accent color when the row's value differs from its default. `full` does both.", options: ["full", "sources", "overrides", "off"], sample: "| Option | Value | Source | Default |\n|:-------|:------|:-------|:--------|\n| retries | 5 | env | 3 |\n| format | json | config | json |\n| timeout | 30s | default | 30s |\n| token | abc123 | env | unset |" },
+  { name: "group-table", key: "groupTable", title: "Groups", note: "How a table that groups its rows draws: the first column whose cells repeat in runs, like a column of services or teams. `off` keeps tables as written. `merge` labels the group once in the accent color and blanks the repeats under it, `count` also adds the group size to the label, and `full` also draws a heavy rule where one group ends and the next begins.", options: ["full", "count", "merge", "off"], sample: "| Service | Region | Requests | p99 |\n|:--------|:-------|---------:|----:|\n| api | us-east | 1.2M | 84 ms |\n| api | us-west | 900k | 91 ms |\n| worker | us-east | 2.4M | 120 ms |\n| worker | us-west | 1.8M | 132 ms |\n| cron | us-east | 96k | 40 ms |" },
+  { name: "desktop", key: "desktopColors", title: "Desktop app colors", note: "Whether the Claude Code desktop app (Code tab) takes the theme too: its background, text, borders and accent. `match` paints it in the theme you picked, in light mode for a light theme, and needs Claude Code 2.1.324 or later. `off` leaves the app as it is, and going back to it restores the app's own look. The terminal and VS Code keep their colors either way.", options: ["match", "off"], sample: "**Bold**, `inline code` and a [link](https://example.com)." }
 ];
 var ESSENTIAL_STEPS = 6;
 var SETUP_ESSENTIALS_DONE = `Essentials set. \`/prismantis setup more\` walks ${setupSteps([]).length - ESSENTIAL_STEPS} more styles, from diffs and headings to tables of test results, and \`/config\` has every option.`;
@@ -776,7 +1038,7 @@ var THEME_PREVIEW = [
 var OPENCODE = [
   "This session runs in OpenCode, not Claude Code. The notes after this paragraph are what prismantis tells Claude in Claude Code; follow them with these OpenCode differences.",
   "OpenCode draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph and timeline. xychart-beta and pie print as source, so draw those as a figure instead.",
-  "Figure blocks are drawn with their {role:text} colors. There are no copy buttons and GitHub alerts draw as plain quotes."
+  "Figure blocks are drawn with their role colors, written like {warn:disk full}. There are no copy buttons and GitHub alerts draw as plain quotes."
 ].join(" ");
 var SYSTEM = `${OPENCODE}
 

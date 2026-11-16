@@ -1,13 +1,13 @@
 # prismantis for OpenCode
 
-OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode draws ```figure blocks in color, gives OpenCode the same session note as Claude Code, so replies come back with tables, diagrams and figures, and ships 16 prismantis themes that color code and prose.
+OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode draws ```figure blocks in color, gives OpenCode the same session note as Claude Code, so replies come back with tables, diagrams and figures, and ships 18 prismantis themes that color code and prose.
 
 ## Install
 
 Needs OpenCode 2.2.5 or later.
 
 ```bash
-opencode plugin add 'github:NahumLitvin/prismantis#v0.46.0::path:opencode'
+opencode plugin add 'github:NahumLitvin/prismantis#v0.47.0::path:opencode'
 ```
 
 Run `/prismantis-themes` to install the themes, and pick one in settings > Theme. `/prismantis` prints the demo.
