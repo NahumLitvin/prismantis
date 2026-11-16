@@ -834,6 +834,24 @@ test('a folder links once its stat lands, even when the engine refuses the first
   await ui.unmount()
 })
 
+for (const [where, env, root] of [
+  ['outside WSL', {}, 'file://'],
+  ['under WSL', { WSL_DISTRO_NAME: 'Ubuntu' }, 'file://wsl.localhost/Ubuntu'],
+] as const) {
+  test(`an absolute path in inline code links as it does in text, ${where}`, async ($, on) => {
+    filesAt(on, '2.1.289', env)
+    const clock = folders(on, ['/home/me/notes'])
+    if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const ui = await $.ui.mount(mount('Open `/srv/app/main.ts`, `~/notes` or `/srv`, and run `npm test`.'))
+    await clock.settle()
+    expect((await ui.findAll({ type: 'Link' })).map(l => [l.props.label, l.props.href])).toEqual([
+      ['/srv/app/main.ts', `${root}/srv/app/main.ts`],
+      ['~/notes', `${root}/home/me/notes`],
+    ])
+    await ui.unmount()
+  })
+}
+
 const withoutLinks = (node: unknown): unknown => {
   if (node === null || typeof node !== 'object') return node
   const { type, props, children } = node as { type?: string; props?: Record<string, unknown>; children?: unknown[] }
