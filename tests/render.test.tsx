@@ -208,6 +208,7 @@ test('picks a named theme and falls back on unknown names', async () => {
   expect(resolveStyle({ theme: 'dracula' }).theme.tableHeader).toBe('#f1fa8c')
   expect(resolveStyle({ theme: 'neon' }).theme.tableHeader).toBe('#00e5ff')
   expect(resolveStyle({ theme: 'kanagawa-wave' }).theme.tableHeader).toBe('#e6c384')
+  expect(resolveStyle({ theme: 'morning-haze' }).theme.tableHeader).toBe('#f8e6d2')
   expect(resolveStyle({ theme: 'nope' }).theme.tableHeader).toBe(PRESETS['catppuccin-mocha'].tableHeader)
 })
 
