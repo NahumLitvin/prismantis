@@ -1391,6 +1391,224 @@
   <Text>
     "└─────────┴────────┴─────────┴─────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Groups"
+  <Text>
+    "━━━━━━"
+<Text>
+  <Text>
+    "When a table groups its rows — the first column whose cells repeat in runs, like a column of services or teams — "
+  <Text>
+    "groupTable"
+  <Text>
+    " draws each group once: "
+  <Text>
+    "merge"
+  <Text>
+    " labels the group in the accent color and blanks the repeats under it, "
+  <Text>
+    "count"
+  <Text>
+    " also adds the group's size to its label, and "
+  <Text>
+    "full"
+  <Text>
+    " also draws a heavy rule where one group ends and the next begins. A column of numbers never groups, and a table already grouped by status keeps its status grouping. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌─────────┬─────────┬──────────┬────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Service"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Region"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Requests"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "p99"
+    <Text>
+      " │"
+  <Text>
+    "╞═════════╪═════════╪══════════╪════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "1"
+        <Text>
+          ".2M"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "84"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-west"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "900k"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "91"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "worker"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "2"
+        <Text>
+          ".4M"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "120"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "worker"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-west"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "1"
+        <Text>
+          ".8M"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "132"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "cron"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "96k"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "40"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "└─────────┴─────────┴──────────┴────────┘"
+<Box>
   <Box row>
     <Text>
       "1. "

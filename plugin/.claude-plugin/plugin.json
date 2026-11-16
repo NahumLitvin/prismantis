@@ -138,6 +138,13 @@
       "default": "off",
       "options": ["full", "sources", "overrides", "off"]
     },
+    "groupTable": {
+      "type": "string",
+      "title": "Grouped table",
+      "description": "How a table that groups its rows draws: the first column whose cells repeat in runs, like a column of services or teams. off (the default) keeps tables as written. merge draws each group label once, in the accent color, and blanks the repeats under it. count also adds the group's size to the label, like api (2). full also draws a heavy rule where one group ends and the next begins. A column of numbers never groups, and a table already grouped by statusMatrix keeps its status grouping.",
+      "default": "off",
+      "options": ["full", "count", "merge", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

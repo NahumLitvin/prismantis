@@ -1391,6 +1391,224 @@
   <Text color=#585b70>
     "└─────────┴────────┴─────────┴─────────┘"
 <Box>
+  <Text color=#f9e2af bold>
+    <Text>
+      "Groups"
+  <Text color=#f9e2af>
+    "━━━━━━"
+<Text>
+  <Text>
+    "When a table groups its rows — the first column whose cells repeat in runs, like a column of services or teams — "
+  <Text color=#89dceb>
+    "groupTable"
+  <Text>
+    " draws each group once: "
+  <Text color=#89dceb>
+    "merge"
+  <Text>
+    " labels the group in the accent color and blanks the repeats under it, "
+  <Text color=#89dceb>
+    "count"
+  <Text>
+    " also adds the group's size to its label, and "
+  <Text color=#89dceb>
+    "full"
+  <Text>
+    " also draws a heavy rule where one group ends and the next begins. A column of numbers never groups, and a table already grouped by status keeps its status grouping. The default "
+  <Text color=#89dceb>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#585b70>
+    "┌─────────┬─────────┬──────────┬────────┐"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Service"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Region"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Requests"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "p99"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞═════════╪═════════╪══════════╪════════╡"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "1"
+        <Text>
+          ".2M"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "84"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-west"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "900k"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "91"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "worker"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "2"
+        <Text>
+          ".4M"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "120"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "worker"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-west"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "1"
+        <Text>
+          ".8M"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "132"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼─────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "cron"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "96k"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "40"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└─────────┴─────────┴──────────┴────────┘"
+<Box>
   <Box row>
     <Text color=#cba6f7>
       "1. "
