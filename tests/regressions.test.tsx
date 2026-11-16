@@ -866,6 +866,21 @@ for (const [where, env, root] of [
   })
 }
 
+for (const [where, env, root] of [
+  ['outside WSL', {}, 'file://'],
+  ['under WSL', { WSL_DISTRO_NAME: 'Ubuntu' }, 'file://wsl.localhost/Ubuntu'],
+] as const) {
+  test(`a path with non-ASCII names links whole, not up to its first such name, ${where}`, async ($, on) => {
+    filesAt(on, '2.1.289', env)
+    if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const ui = await $.ui.mount(mount('Open /srv/專案/報告.md or ~/筆記/待辦.md.'))
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(
+      ['/srv/%E5%B0%88%E6%A1%88/%E5%A0%B1%E5%91%8A.md', '/home/me/%E7%AD%86%E8%A8%98/%E5%BE%85%E8%BE%A6.md'].map(path => `${root}${path}`))
+    expect((await ui.find({ type: 'Text', text: exact('/srv/專案/報告.md') }))?.props.color).toBe(PRESETS['catppuccin-mocha'].path)
+    await ui.unmount()
+  })
+}
+
 const LABELS: [label: string, href: string, linked: boolean][] = [
   ['/tmp/notes.md', 'file:///tmp/notes.md', true],
   ['file:///tmp/notes.md', 'file:///tmp/notes.md', true],
