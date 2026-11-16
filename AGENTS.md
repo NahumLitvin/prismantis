@@ -57,6 +57,12 @@ Dependencies and licenses:
 - Plugin names cannot start with `claude-`, `anthropic-` or `cc-plugin-`, and must not use other products' trademarks (no "Codex" in names).
 - Feature and fix PRs leave `docs/CHANGELOG.md` and the version alone, and say what changes for the user in the PR description's "What changes for the user" section. The release commit writes the version's CHANGELOG section from those, so parallel PRs never conflict over it.
 
+Triage:
+
+- Every open issue and PR carries a type (`bug`, `enhancement`, `theme`, `documentation`, `question`, `release`), at least one `area:` label and, while it waits on someone, one status. Areas: `mermaid`, `tables`, `copy`, `desktop`, `opencode`, `prompt`, `figures`, `i18n` (CJK and RTL), `links`, `tools`. A topic with no fitting area gets a new `area:` label, not a near fit.
+- Status names who moves next: `needs-info` the reporter, `needs-design` the maintainer (a SCOPE.md ask-first idea), `accepted` a contributor (shape agreed, PR welcome), `upstream` Claude Code or another tool. Change it when the ball moves.
+- Every issue from someone else gets a human reply before it closes, unless a merged PR closes it. Every PR gets a review, a merge or a closing comment.
+
 ## Mod API facts that bite
 
 - `$` cannot cross an import. Any function that takes `$` must be declared in `plugin/hooks/register.tsx`. `claude plugin validate` does not catch this; `claude plugin test` does ("hooks module did not load").
