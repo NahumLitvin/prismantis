@@ -19,6 +19,7 @@ const UPSTREAM_PALETTE_BELOW_AA: Record<string, Record<string, number>> = {
   'one-dark': { heading: 4.38, codeFlag: 4.38, codeComment: 2.31, quote: 3.98, diffRemoved: 4.38 },
   'solarized-dark': { accent: 3.42, emphasis: 3.3, codeCommand: 4.07, codeFlag: 3.25, codeComment: 2.78, link: 4.07, quote: 3.37, bullet: 3.42, diffRemoved: 3.24 },
   'solarized-light': { accent: 4.05, heading: 2.97, tableHeader: 2.97, emphasis: 4.21, inlineCode: 2.92, codeCommand: 3.41, codeFlag: 4.27, codeString: 2.97, codeComment: 2.47, link: 3.41, path: 2.92, number: 2.97, quote: 2.93, bullet: 4.05, diffAdded: 3, diffRemoved: 4.28 },
+  'kanagawa-wave': { diffRemoved: 3.21 },
 }
 
 const presets = () =>
