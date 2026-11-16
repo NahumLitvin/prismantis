@@ -5,7 +5,7 @@ import { PRESET_NAMES } from '../../plugin/hooks/presets'
 const OPENCODE = [
   'This session runs in OpenCode, not Claude Code. The notes after this paragraph are what prismantis tells Claude in Claude Code; follow them with these OpenCode differences.',
   'OpenCode draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph and timeline. xychart-beta and pie print as source, so draw those as a figure instead.',
-  'Figure blocks are drawn with their {role:text} colors. There are no copy buttons and GitHub alerts draw as plain quotes.',
+  'Figure blocks are drawn with their role colors, written like {warn:disk full}. There are no copy buttons and GitHub alerts draw as plain quotes.',
 ].join(' ')
 
 const SYSTEM = `${OPENCODE}\n\n${HINT}\n\n${FIGURE_HINT}`
