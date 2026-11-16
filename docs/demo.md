@@ -97,6 +97,18 @@ When a table lists configuration — a column of options beside columns of value
 | timeout | 30s | default | 30s |
 | token | abc123 | env | unset |
 
+## Groups
+
+When a table groups its rows — the first column whose cells repeat in runs, like a column of services or teams — `groupTable` draws each group once: `merge` labels the group in the accent color and blanks the repeats under it, `count` also adds the group's size to its label, and `full` also draws a heavy rule where one group ends and the next begins. A column of numbers never groups, and a table already grouped by status keeps its status grouping. The default `off` keeps tables as written:
+
+| Service | Region | Requests | p99 |
+|:--------|:-------|---------:|----:|
+| api | us-east | 1.2M | 84 ms |
+| api | us-west | 900k | 91 ms |
+| worker | us-east | 2.4M | 120 ms |
+| worker | us-west | 1.8M | 132 ms |
+| cron | us-east | 96k | 40 ms |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings

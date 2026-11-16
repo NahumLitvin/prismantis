@@ -749,6 +749,16 @@ const KEYLESS = [
   '| org_id | bigint | FK |',
 ].join('\n')
 
+const GROUPED = [
+  '| Service | Region | Requests |',
+  '|:--------|:-------|---------:|',
+  '| api | us-east | 1.2M |',
+  '| api | us-west | 900k |',
+  '| worker | us-east | 2.4M |',
+  '| worker | us-west | 1.8M |',
+  '| cron | us-east | 96k |',
+].join('\n')
+
 
 test('statusMatrix off keeps tables as written', async $ => {
   const ui = await $.ui.mount({ ...draw(STATUS), surface: 'terminal' })
@@ -1651,5 +1661,82 @@ test('kvTable tells the source tokens apart in a theme where they differ', { opt
   expect((await ui.find({ type: 'Text', text: /^env$/ }))?.props.color).toBe(t.link)
   expect((await ui.find({ type: 'Text', text: /^config$/ }))?.props.color).toBe(t.codeString)
   expect(t.link).not.toBe(t.codeString)
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop'] as const) test(`groupTable ${surface} merges a repeated label into its first row in the accent color`, { options: { groupTable: 'merge' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(GROUPED), surface })
+  expect((await ui.findAll({ type: 'Text', text: /^api$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^worker$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^cron$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^us-east$/ })).filter(n => n.props.color === t.accent)).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('groupTable count adds each group size to its label', { options: { groupTable: 'count' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(GROUPED), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^api$/ })).filter(n => n.props.color === t.accent)).toHaveLength(0)
+  expect((await ui.findAll({ type: 'Text', text: /^api \(2\)$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^worker \(2\)$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^cron \(1\)$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  await ui.unmount()
+})
+
+test('groupTable full draws a heavy rule where one group ends and the next begins', { options: { groupTable: 'full' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(GROUPED), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ })).toHaveLength(3)
+  expect(await ui.find({ type: 'Text', text: /^api \(2\)$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('groupTable merge draws no heavy rules beyond the header', { options: { groupTable: 'merge' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(GROUPED), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ })).toHaveLength(1)
+  await ui.unmount()
+})
+
+test('groupTable off keeps tables as written', { options: { groupTable: 'off' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(GROUPED), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^api$/ })).filter(n => n.props.color === t.accent)).toHaveLength(0)
+  expect(await ui.find({ type: 'Text', text: /^api \(2\)$/ })).toBeUndefined()
+  expect(await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ })).toHaveLength(1)
+  await ui.unmount()
+})
+
+test('a table whose labels never repeat draws no groups', { options: { groupTable: 'full' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(SCHEMA), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ })).toHaveLength(1)
+  await ui.unmount()
+})
+
+test('a column of numbers never groups', { options: { groupTable: 'merge' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Step | Name |\n|-----:|:-----|\n| 1 | load |\n| 1 | parse |\n| 2 | draw |\n| 2 | paint |'), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^1$/ })).filter(n => n.props.color === t.number)).toHaveLength(2)
+  expect((await ui.findAll({ type: 'Text' })).filter(n => n.props.color === t.accent)).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('a table with a single repeated run draws no groups', { options: { groupTable: 'merge' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Name | Team |\n|:-----|:-----|\n| aa | core |\n| bb | core |\n| cc | web |\n| dd | ops |'), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text' })).filter(n => n.props.color === t.accent)).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('groupTable keeps off a table that statusMatrix already groups', { options: { groupTable: 'full', statusMatrix: 'group' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Service | Region | Result |\n|:--------|:-------|:-------|\n| api | us-east | ✓ |\n| api | us-west | ✓ |\n| worker | us-east | ✓ |\n| worker | us-west | failed |'), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^(api|worker)$/ })).filter(n => n.props.color === t.accent)).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('groupTable stays off stacked tables', { options: { groupTable: 'merge', tableLayout: 'stacked' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(GROUPED), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text' })).filter(n => n.props.color === t.accent)).toHaveLength(0)
   await ui.unmount()
 })
