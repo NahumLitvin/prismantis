@@ -52,7 +52,8 @@ jobs:
           if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "::notice::No Claude token on fork PRs, so the typecheck runs on main after the merge"; exit 0; fi
           claude --plugin-dir plugin -p /prismantis --debug-file /tmp/cc-debug.txt > /dev/null || echo "claude exited $?"
           grep -iE 'type root|not laid|laid|types|oauth|auth|error' /tmp/cc-debug.txt | cut -c1-300 | head -40 || true
-          ls -la plugin/.claude-plugin/ plugin/.claude-plugin/types 2>&1 | head
+          find / -path /proc -prune -o \( -name 'index.d.ts' -path '*claude-code*' \) -print 2>/dev/null | grep -v node_modules/typescript | head
+          grep -c . /tmp/cc-debug.txt; grep -iE 'plugin-dir|prismantis' /tmp/cc-debug.txt | cut -c1-250 | head -20
           npx --yes -p typescript@5.9.3 tsc -p .
 
   vendor:
