@@ -27,6 +27,7 @@
 
 - Claude Code prints mermaid as source and tool calls as walls of text. prismantis draws them: real charts and flowcharts, typeset LaTeX math in kitty and Ghostty, colored tables and code, and quiet tool rows.
 - 18 palettes plus `mono`, and copy buttons on everything.
+- Full app themes for Claude Code desktop: set `desktopColors` to `match` and the whole Code tab takes the palette too (Claude Code 2.1.324+).
 - Two commands to install, `/plugin` to turn it off. Claude Code's own renderer comes back the moment you do.
 - No network calls. It runs a program only when you click `⧉ html` or `▣ png` (the clipboard helper) or turn on LaTeX (RaTeX's renderer).
 
@@ -38,7 +39,7 @@
 /plugin install prismantis@prismantis
 ```
 
-Then run `/prismantis setup` to pick a theme and the five styles that change every session (prompts, replies, tables, code blocks and tool output) from drawn samples, and `/prismantis demo` for a tour of the main features. `/prismantis setup more` goes on through the other 14 styles, from diffs and headings to tables of test results. In a terminal, setup opens a pane: the arrows or Tab move through the styles of a step with a preview of the one in focus, Enter saves it and shows the next step. Where the session has no terminal, as in the desktop app, it walks the same steps in the transcript.
+Then run `/prismantis setup` to pick a theme and the five styles that change every session (prompts, replies, tables, code blocks and tool output) from drawn samples, and `/prismantis demo` for a tour of the main features. `/prismantis setup more` goes on through the other 19 styles, from diffs and headings to tables of test results. In a terminal, setup opens a pane: the arrows or Tab move through the styles of a step with a preview of the one in focus, Enter saves it and shows the next step. Where the session has no terminal, as in the desktop app, it walks the same steps in the transcript.
 
 ## Install
 
@@ -101,6 +102,18 @@ Dark: `catppuccin-mocha` (default), `dracula`, `nord`, `tokyo-night`, `gruvbox-d
 Light: `catppuccin-latte`, `gruvbox-light`, `rose-pine-dawn`, `github-light`, `solarized-light`.
 
 `mono` drops the palette for bold and dim; alerts keep their colors. Switch with `/prismantis theme nord`, or run `/prismantis` for the help screen with every theme. Every palette is MIT licensed and credited in [THIRD_PARTY_NOTICES.md](plugin/THIRD_PARTY_NOTICES.md).
+
+#### Full app themes for Claude Code desktop
+
+In the Claude Code desktop app, prismantis can paint the whole Code tab in the theme, not only the replies: background, panels, text, borders, accent, and the success, warning and danger colors. A light theme switches the app to light mode, a dark one to dark mode. It's off until you turn it on:
+
+1. Update Claude Code to **2.1.324** or later (in the desktop app, the version the Code tab runs).
+2. Run `/prismantis setup desktop match`, or set `desktopColors` to `match` in `/config`.
+3. Start a new session in the Code tab, or `/reload`. From then on `/prismantis theme <name>` repaints the app as well.
+
+To go back, run `/prismantis setup desktop off` (or set it to `off` in `/config`): prismantis clears its colors once and the app's own look returns. The colors come from each palette through prismantis's own mapper, which holds text to a contrast floor so the app doesn't refuse the theme. Your `*Color` overrides carry over, like `accentColor`.
+
+There's one desktop theme per session, so with `match` on, prismantis and another mod that sets desktop colors or a backdrop replace each other; use one at a time. The terminal, VS Code and older Claude Code versions keep their own colors, and prismantis skips the call there without a message.
 
 ### Tables
 
@@ -424,6 +437,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `enabled` | `true`, `false` | `true` |
 | `surfaces` | `all`, or a comma-separated list of `terminal`, `desktop`, `vscode`, `mobile` (like `terminal,vscode`); the rest use Claude Code's own renderer | `all` |
 | `theme` | see [Themes](#themes), or `random` for a new dark color preset each time the mod loads | `catppuccin-mocha` |
+| `desktopColors` | `match` (the Claude Code desktop app takes the theme's colors, light mode for a light theme; Claude Code 2.1.324+, see [Full app themes for Claude Code desktop](#full-app-themes-for-claude-code-desktop)), `off` (the default, the app keeps its own look) | `off` |
 | `tableStyle` | `box`, `rules`, `grid`, `minimal` | `box` |
 | `tableLayout` | `classic` (today's look, the default), `auto` (stack to cards when the longest words do not fit), `compact` (columns at their longest word), `stacked` (always cards) | `classic` |
 | `statusMatrix` | `color` (status cells in theme colors), `summary` (adds a count line under the table), `group` (also reorders rows by status with a heavy rule), `off` (the default) | `off` |
@@ -522,6 +536,7 @@ No network calls. The programs it runs, the files it reads and the settings it w
 - The parser covers what Claude writes (headings, lists, tables, fences, quotes, emphasis, links). It's not full CommonMark: HTML draws as plain text, and a quote ends at the first line without `>`.
 - Widths count CJK and emoji as two columns. Terminals disagree on a few emoji, so those can still be off by one.
 - Languages outside the 24 above draw in `codeText`.
+- `desktopColors` needs Claude Code 2.1.324+ and paints only the desktop app's Code tab; it shares the one desktop theme per session with other mods.
 - Tested by hand in the macOS terminal; CI runs the tests on macOS, Linux and Windows. The desktop app, VS Code and mobile use the same mod API but are not checked by hand yet.
 
 <details>

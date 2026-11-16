@@ -44,9 +44,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - run: npm install -g @anthropic-ai/claude-code@2.1.294
-      - name: Lay the mod API types
-        run: claude --plugin-dir plugin -p hi || test -d plugin/.claude-plugin/types/claude-code
+      - run: npm install -g @anthropic-ai/claude-code@2.1.325
+      - name: Lay the mod API types from the Claude Code binary
+        run: node scripts/lay-types.mjs
       - run: npx --yes -p typescript@5.9.3 tsc -p .
 
   vendor:

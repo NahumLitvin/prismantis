@@ -15,6 +15,7 @@ import { MARK, bashEdits, lineCount, drawMath, drawsHyperlinks, editNotes, fileL
 import type { SetupStep } from './help'
 import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
+import { desktopLook } from './desktop'
 import { textRows } from './layout'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
@@ -552,9 +553,26 @@ const saveOption = ($: EngineInterface, key: SetupStep['key'], value: string): P
     (e: unknown) => `${e instanceof Error ? e.message : String(e)}. Set "${key}": "${value}" by hand in the ${$.plugin.name} options under pluginConfigs in ~/.claude/settings.json, then restart.`,
   )
 
+const paintDesktop = async ($: EngineInterface, options: PluginOptions, name: string): Promise<boolean> => {
+  if (options.desktopColors !== 'match') return false
+  const look = desktopLook(name, resolveStyle({ ...options, theme: name }).theme)
+  try {
+    return (await $.theme.set({ colors: look.colors, overrideColorScheme: look.scheme })).isDrawn
+  } catch {
+    return false
+  }
+}
+
+const clearDesktop = async ($: EngineInterface): Promise<void> => {
+  try {
+    await $.theme.clear()
+  } catch {}
+}
+
 const setTheme = async ($: EngineInterface, picked: Picked, name: string): Promise<string> => {
   const deny = await saveOption($, 'theme', name)
   if (deny) return `Could not switch theme: ${deny}`
+  if (name !== 'random') await paintDesktop($, picked.options, name)
   if (name !== 'random' || picked.options.theme !== 'random') return `Theme set to ${name}.`
   const others = RANDOM_THEMES.filter(t => t !== picked.theme)
   picked.theme = others[Math.floor(Math.random() * others.length)]!
@@ -562,6 +580,7 @@ const setTheme = async ($: EngineInterface, picked: Picked, name: string): Promi
   style.theme = resolveStyle({ ...picked.options, theme: picked.theme }).theme
   picked.latex.color = ratexColor(style.theme.diagramText ?? style.theme.codeText ?? '#808080')
   $.ui.invalidate('ui.render')
+  await paintDesktop($, picked.options, picked.theme)
   return `Theme set to random: ${picked.theme} for now.\nkeep it: /prismantis theme ${picked.theme}`
 }
 
@@ -897,10 +916,17 @@ export const register: Register = (on, options) => {
     await probe($, style, probes)
     void latexEngine($, latex)
     const started = await next(e)
+    await paintDesktop($, options, picked.theme)
     await $.command
       .register({ name: 'prismantis', description: 'Switch the prismantis theme, pick styles from samples, copy the last reply, or show the demo', argumentHint: '[theme [<name> | random] | setup [<step> [<pick>]] | copy [code] | demo]' })
       .catch(() => undefined)
     return started
+  })
+
+  on('config.set', { key: 'prismantis.desktopColors' }, async ($, e, next) => {
+    const written = await next(e)
+    if ('value' in written && options.desktopColors === 'match' && written.value !== 'match') await clearDesktop($)
+    return written
   })
 
   on('command.run', { command: 'prismantis' }, async ($, e) => {
