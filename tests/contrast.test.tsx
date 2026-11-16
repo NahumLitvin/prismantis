@@ -9,16 +9,17 @@ const BACKGROUNDS: Record<string, string | undefined> = PRESET_BACKGROUNDS
 const FLOOR: Record<string, number> = { rule: 1.05, tableRule: 1.05, diagram: 3, codeComment: 3 }
 
 const UPSTREAM_PALETTE_BELOW_AA: Record<string, Record<string, number>> = {
-  'catppuccin-latte': { heading: 2.31, tableHeader: 2.31, emphasis: 2.33, inlineCode: 2.46, codeCommand: 4.34, codeString: 2.95, codeComment: 2.3, link: 4.34, path: 2.77, number: 2.95, quote: 4.36, diffAdded: 3.02 },
+  'catppuccin-latte': { heading: 2.31, tableHeader: 2.31, emphasis: 2.33, inlineCode: 2.46, codeCommand: 4.34, codeString: 2.95, codeComment: 2.3, link: 4.34, path: 2.77, number: 2.95, quote: 4.36, diffAdded: 3.02, alertNote: 4.33, alertTip: 2.95, alertWarning: 2.30 },
   dracula: { quote: 3.02 },
-  nord: { emphasis: 4.4, codeComment: 1.69, number: 4.4, diffRemoved: 3.05 },
+  nord: { emphasis: 4.4, codeComment: 1.69, number: 4.4, diffRemoved: 3.05, alertImportant: 4.40, alertCaution: 3.04 },
   'tokyo-night': { codeComment: 2.76 },
-  'gruvbox-dark': { diffRemoved: 4.28 },
-  'gruvbox-light': { heading: 3.32, tableHeader: 3.32, inlineCode: 4.4, codeString: 4.28, path: 4.4, quote: 4.28, diffAdded: 4.28 },
-  'rose-pine-dawn': { accent: 3.46, heading: 3.46, tableHeader: 2.05, emphasis: 2.6, inlineCode: 3.13, codeCommand: 3.13, codeFlag: 3.84, codeString: 2.05, codeComment: 2.72, link: 3.46, number: 2.6, quote: 4.02, bullet: 3.84, diffAdded: 3.13, diffRemoved: 3.84 },
-  'one-dark': { heading: 4.38, codeFlag: 4.38, codeComment: 2.31, quote: 3.98, diffRemoved: 4.38 },
-  'solarized-dark': { accent: 3.42, emphasis: 3.3, codeCommand: 4.07, codeFlag: 3.25, codeComment: 2.78, link: 4.07, quote: 3.37, bullet: 3.42, diffRemoved: 3.24 },
-  'solarized-light': { accent: 4.05, heading: 2.97, tableHeader: 2.97, emphasis: 4.21, inlineCode: 2.92, codeCommand: 3.41, codeFlag: 4.27, codeString: 2.97, codeComment: 2.47, link: 3.41, path: 2.92, number: 2.97, quote: 2.93, bullet: 4.05, diffAdded: 3, diffRemoved: 4.28 },
+  'gruvbox-dark': { diffRemoved: 4.28, alertCaution: 4.28 },
+  'gruvbox-light': { heading: 3.32, tableHeader: 3.32, inlineCode: 4.4, codeString: 4.28, path: 4.4, quote: 4.28, diffAdded: 4.28, alertTip: 4.28, alertWarning: 3.32 },
+  'rose-pine-dawn': { accent: 3.46, heading: 3.46, tableHeader: 2.05, emphasis: 2.6, inlineCode: 3.13, codeCommand: 3.13, codeFlag: 3.84, codeString: 2.05, codeComment: 2.72, link: 3.46, number: 2.6, quote: 4.02, bullet: 3.84, diffAdded: 3.13, diffRemoved: 3.84, alertNote: 3.13, alertImportant: 3.46, alertWarning: 2.04, alertCaution: 3.83 },
+  'one-dark': { heading: 4.38, codeFlag: 4.38, codeComment: 2.31, quote: 3.98, diffRemoved: 4.38, alertCaution: 4.37 },
+  'solarized-dark': { accent: 3.42, emphasis: 3.3, codeCommand: 4.07, codeFlag: 3.25, codeComment: 2.78, link: 4.07, quote: 3.37, bullet: 3.42, diffRemoved: 3.24, alertNote: 4.07, alertImportant: 3.42, alertCaution: 3.24 },
+  'solarized-light': { accent: 4.05, heading: 2.97, tableHeader: 2.97, emphasis: 4.21, inlineCode: 2.92, codeCommand: 3.41, codeFlag: 4.27, codeString: 2.97, codeComment: 2.47, link: 3.41, path: 2.92, number: 2.97, quote: 2.93, bullet: 4.05, diffAdded: 3, diffRemoved: 4.28, alertNote: 3.40, alertTip: 2.96, alertImportant: 4.05, alertWarning: 2.97, alertCaution: 4.28 },
+  'rose-pine': { alertTip: 3.37 },
   'kanagawa-wave': { diffRemoved: 3.21 },
 }
 

@@ -2843,7 +2843,7 @@
       <Text color=#0a3069>
         ""skadoosh""
 <Box border=round>
-  <Text color=green bold>
+  <Text color=#1a7f37 bold>
     "Tip"
   <Box>
     <Text>

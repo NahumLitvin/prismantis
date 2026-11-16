@@ -1192,9 +1192,9 @@ test('a bubble keeps the theme green frame and heading text while promptBorderCo
   await ui.unmount()
 })
 
-test('alert color options set each alert kind, and an empty one keeps the terminal color', { options: { alertNoteColor: '#a1b5d8', alertCautionColor: '#e3968f', replyStyle: 'off' } }, async $ => {
+test('alert color options set each alert kind, and an empty one keeps the theme color', { options: { alertNoteColor: '#a1b5d8', alertCautionColor: '#e3968f', replyStyle: 'off' } }, async $ => {
   for (const surface of ['terminal', 'desktop'] as const) {
-    for (const [kind, color] of [['NOTE', '#a1b5d8'], ['CAUTION', '#e3968f'], ['TIP', 'green']] as const) {
+    for (const [kind, color] of [['NOTE', '#a1b5d8'], ['CAUTION', '#e3968f'], ['TIP', PRESETS['catppuccin-mocha'].alertTip]] as const) {
       const ui = await $.ui.mount(answer(`> [!${kind}]\n> careful`, true, surface))
       const label = kind[0] + kind.slice(1).toLowerCase()
       expect((await ui.find({ type: 'Text', text: new RegExp(`^${label}$`) }))?.props.color).toBe(color)

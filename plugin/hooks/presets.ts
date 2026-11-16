@@ -7,6 +7,7 @@ export const PRESETS = {
     codeComment: '#6c7086', link: '#89b4fa', path: '#89dceb', number: '#a6e3a1', quote: '#9399b2',
     rule: '#45475a', tableRule: '#585b70', bullet: '#cba6f7', diagram: '#89b4fa', diagramText: '#cdd6f4',
     diffAdded: '#a6e3a1', diffRemoved: '#f38ba8',
+    alertNote: '#89b4fa', alertTip: '#a6e3a1', alertImportant: '#cba6f7', alertWarning: '#f9e2af', alertCaution: '#f38ba8',
   },
   'catppuccin-latte': {
     accent: '#8839ef', heading: '#df8e1d', tableHeader: '#df8e1d', strong: '#11111b', emphasis: '#ea76cb',
@@ -14,6 +15,7 @@ export const PRESETS = {
     codeComment: '#9ca0b0', link: '#1e66f5', path: '#209fb5', number: '#40a02b', quote: '#6c6f85',
     rule: '#bcc0cc', tableRule: '#acb0be', bullet: '#8839ef', diagram: '#1e66f5', diagramText: '#4c4f69',
     diffAdded: '#3f9e2b', diffRemoved: '#d20f39',
+    alertNote: '#1e66f5', alertTip: '#40a02b', alertImportant: '#8839ef', alertWarning: '#df8e1d', alertCaution: '#d20f39',
   },
   dracula: {
     accent: '#bd93f9', heading: '#bd93f9', tableHeader: '#f1fa8c', strong: '#f8f8f2', emphasis: '#ff79c6',
@@ -21,6 +23,7 @@ export const PRESETS = {
     codeComment: '#6272a4', link: '#8be9fd', path: '#ffb86c', number: '#bd93f9', quote: '#6272a4',
     rule: '#44475a', tableRule: '#6272a4', bullet: '#ff79c6', diagram: '#bd93f9', diagramText: '#f8f8f2',
     diffAdded: '#50fa7b', diffRemoved: '#ff5555',
+    alertNote: '#8be9fd', alertTip: '#50fa7b', alertImportant: '#bd93f9', alertWarning: '#f1fa8c', alertCaution: '#ff5555',
   },
   nord: {
     accent: '#88c0d0', heading: '#88c0d0', tableHeader: '#ebcb8b', strong: '#eceff4', emphasis: '#b48ead',
@@ -28,6 +31,7 @@ export const PRESETS = {
     codeComment: '#4c566a', link: '#88c0d0', path: '#8fbcbb', number: '#b48ead', quote: '#81a1c1',
     rule: '#3b4252', tableRule: '#4c566a', bullet: '#88c0d0', diagram: '#81a1c1', diagramText: '#d8dee9',
     diffAdded: '#a3be8c', diffRemoved: '#bf616a',
+    alertNote: '#81a1c1', alertTip: '#a3be8c', alertImportant: '#b48ead', alertWarning: '#ebcb8b', alertCaution: '#bf616a',
   },
   'tokyo-night': {
     accent: '#bb9af7', heading: '#7dcfff', tableHeader: '#e0af68', strong: '#c0caf5', emphasis: '#f7768e',
@@ -35,6 +39,7 @@ export const PRESETS = {
     codeComment: '#565f89', link: '#73daca', path: '#2ac3de', number: '#ff9e64', quote: '#9aa5ce',
     rule: '#414868', tableRule: '#565f89', bullet: '#bb9af7', diagram: '#7aa2f7', diagramText: '#c0caf5',
     diffAdded: '#9ece6a', diffRemoved: '#f7768e',
+    alertNote: '#7aa2f7', alertTip: '#9ece6a', alertImportant: '#bb9af7', alertWarning: '#e0af68', alertCaution: '#f7768e',
   },
   'gruvbox-dark': {
     accent: '#d3869b', heading: '#fabd2f', tableHeader: '#fabd2f', strong: '#fbf1c7', emphasis: '#d3869b',
@@ -42,6 +47,7 @@ export const PRESETS = {
     codeComment: '#928374', link: '#83a598', path: '#8ec07c', number: '#d3869b', quote: '#a89984',
     rule: '#3c3836', tableRule: '#504945', bullet: '#fe8019', diagram: '#83a598', diagramText: '#ebdbb2',
     diffAdded: '#b8bb26', diffRemoved: '#fb4934',
+    alertNote: '#83a598', alertTip: '#b8bb26', alertImportant: '#d3869b', alertWarning: '#fabd2f', alertCaution: '#fb4934',
   },
   'gruvbox-light': {
     accent: '#8f3f71', heading: '#b57614', tableHeader: '#b57614', strong: '#282828', emphasis: '#8f3f71',
@@ -49,6 +55,7 @@ export const PRESETS = {
     codeComment: '#928374', link: '#076678', path: '#427b58', number: '#8f3f71', quote: '#7c6f64',
     rule: '#ebdbb2', tableRule: '#a89984', bullet: '#af3a03', diagram: '#076678', diagramText: '#3c3836',
     diffAdded: '#79740e', diffRemoved: '#9d0006',
+    alertNote: '#076678', alertTip: '#79740e', alertImportant: '#8f3f71', alertWarning: '#b57614', alertCaution: '#9d0006',
   },
   'rose-pine': {
     accent: '#c4a7e7', heading: '#c4a7e7', tableHeader: '#f6c177', strong: '#e0def4', emphasis: '#ebbcba',
@@ -56,6 +63,7 @@ export const PRESETS = {
     codeComment: '#6e6a86', link: '#c4a7e7', path: '#9ccfd8', number: '#ebbcba', quote: '#908caa',
     rule: '#26233a', tableRule: '#6e6a86', bullet: '#eb6f92', diagram: '#c4a7e7', diagramText: '#e0def4',
     diffAdded: '#9ccfd8', diffRemoved: '#eb6f92',
+    alertNote: '#9ccfd8', alertTip: '#31748f', alertImportant: '#c4a7e7', alertWarning: '#f6c177', alertCaution: '#eb6f92',
   },
   'rose-pine-dawn': {
     accent: '#907aa9', heading: '#907aa9', tableHeader: '#ea9d34', strong: '#464261', emphasis: '#d7827e',
@@ -63,6 +71,7 @@ export const PRESETS = {
     codeComment: '#9893a5', link: '#907aa9', path: '#286983', number: '#d7827e', quote: '#797593',
     rule: '#f2e9e1', tableRule: '#9893a5', bullet: '#b4637a', diagram: '#907aa9', diagramText: '#464261',
     diffAdded: '#56949f', diffRemoved: '#b4637a',
+    alertNote: '#56949f', alertTip: '#286983', alertImportant: '#907aa9', alertWarning: '#ea9d34', alertCaution: '#b4637a',
   },
   everforest: {
     accent: '#a7c080', heading: '#e69875', tableHeader: '#dbbc7f', strong: '#d3c6aa', emphasis: '#d699b6',
@@ -70,6 +79,7 @@ export const PRESETS = {
     codeComment: '#859289', link: '#7fbbb3', path: '#83c092', number: '#d699b6', quote: '#9da9a0',
     rule: '#475258', tableRule: '#7a8478', bullet: '#e69875', diagram: '#7fbbb3', diagramText: '#d3c6aa',
     diffAdded: '#a7c080', diffRemoved: '#e67e80',
+    alertNote: '#7fbbb3', alertTip: '#a7c080', alertImportant: '#d699b6', alertWarning: '#dbbc7f', alertCaution: '#e67e80',
   },
   'github-dark': {
     accent: '#d2a8ff', heading: '#79c0ff', tableHeader: '#ffa657', strong: '#e6edf3', emphasis: '#d2a8ff',
@@ -77,6 +87,7 @@ export const PRESETS = {
     codeComment: '#7d8590', link: '#58a6ff', path: '#7ee787', number: '#79c0ff', quote: '#7d8590',
     rule: '#30363d', tableRule: '#8b949e', bullet: '#ff7b72', diagram: '#58a6ff', diagramText: '#e6edf3',
     diffAdded: '#3fb950', diffRemoved: '#f85149',
+    alertNote: '#58a6ff', alertTip: '#3fb950', alertImportant: '#d2a8ff', alertWarning: '#ffa657', alertCaution: '#f85149',
   },
   'github-light': {
     accent: '#8250df', heading: '#0550ae', tableHeader: '#953800', strong: '#1f2328', emphasis: '#8250df',
@@ -84,6 +95,7 @@ export const PRESETS = {
     codeComment: '#6e7781', link: '#0969da', path: '#116329', number: '#0550ae', quote: '#656d76',
     rule: '#d0d7de', tableRule: '#6e7781', bullet: '#cf222e', diagram: '#0969da', diagramText: '#1f2328',
     diffAdded: '#1a7f37', diffRemoved: '#cf222e',
+    alertNote: '#0969da', alertTip: '#1a7f37', alertImportant: '#8250df', alertWarning: '#953800', alertCaution: '#cf222e',
   },
   'one-dark': {
     accent: '#c678dd', heading: '#e06c75', tableHeader: '#e5c07b', strong: '#d19a66', emphasis: '#c678dd',
@@ -91,6 +103,7 @@ export const PRESETS = {
     codeComment: '#5c6370', link: '#61afef', path: '#56b6c2', number: '#d19a66', quote: '#828997',
     rule: '#3a3f4b', tableRule: '#5c6370', bullet: '#c678dd', diagram: '#61afef', diagramText: '#abb2bf',
     diffAdded: '#98c379', diffRemoved: '#e06c75',
+    alertNote: '#61afef', alertTip: '#98c379', alertImportant: '#c678dd', alertWarning: '#e5c07b', alertCaution: '#e06c75',
   },
   'solarized-dark': {
     accent: '#6c71c4', heading: '#b58900', tableHeader: '#b58900', strong: '#eee8d5', emphasis: '#d33682',
@@ -98,6 +111,7 @@ export const PRESETS = {
     codeComment: '#586e75', link: '#268bd2', path: '#2aa198', number: '#859900', quote: '#657b83',
     rule: '#073642', tableRule: '#586e75', bullet: '#6c71c4', diagram: '#268bd2', diagramText: '#93a1a1',
     diffAdded: '#859900', diffRemoved: '#dc322f',
+    alertNote: '#268bd2', alertTip: '#859900', alertImportant: '#6c71c4', alertWarning: '#b58900', alertCaution: '#dc322f',
   },
   'solarized-light': {
     accent: '#6c71c4', heading: '#b58900', tableHeader: '#b58900', strong: '#073642', emphasis: '#d33682',
@@ -105,6 +119,7 @@ export const PRESETS = {
     codeComment: '#93a1a1', link: '#268bd2', path: '#2aa198', number: '#859900', quote: '#839496',
     rule: '#eee8d5', tableRule: '#93a1a1', bullet: '#6c71c4', diagram: '#268bd2', diagramText: '#586e75',
     diffAdded: '#849800', diffRemoved: '#dc322f',
+    alertNote: '#268bd2', alertTip: '#859900', alertImportant: '#6c71c4', alertWarning: '#b58900', alertCaution: '#dc322f',
   },
   neon: {
     accent: '#00e5ff', heading: '#00e5ff', tableHeader: '#00e5ff', strong: '#00e5ff', emphasis: '#a77bff',
@@ -112,6 +127,7 @@ export const PRESETS = {
     codeComment: '#66708f', link: '#a77bff', path: '#ffcc33', number: '#3dff9a', quote: '#c9d4f2',
     rule: '#343c5c', tableRule: '#343c5c', bullet: '#8b95b8', diagram: '#66708f', diagramText: '#c9d4f2',
     diffAdded: '#3dff9a', diffRemoved: '#ff4d6d',
+    alertNote: '#00e5ff', alertTip: '#3dff9a', alertImportant: '#a77bff', alertWarning: '#ffcc33', alertCaution: '#ff4d6d',
   },
   'kanagawa-wave': {
     accent: '#957fb8', heading: '#ffa066', tableHeader: '#e6c384', strong: '#dcd7ba', emphasis: '#d27e99',
@@ -119,6 +135,15 @@ export const PRESETS = {
     codeComment: '#727169', link: '#7e9cd8', path: '#7aa89f', number: '#98bb6c', quote: '#938aa9',
     rule: '#2a2a37', tableRule: '#54546d', bullet: '#957fb8', diagram: '#7e9cd8', diagramText: '#dcd7ba',
     diffAdded: '#76946a', diffRemoved: '#c34043',
+    alertNote: '#7e9cd8', alertTip: '#98bb6c', alertImportant: '#957fb8', alertWarning: '#e6c384', alertCaution: '#e46876',
+  },
+  'morning-haze': {
+    accent: '#c4b7dc', heading: '#c4b7dc', tableHeader: '#f8e6d2', strong: '#e9cc97', emphasis: '#dcc0d2',
+    inlineCode: '#9ec3c0', codeText: '#ccd9ec', codeCommand: '#a8c98c', codeFlag: '#dcc0d2', codeString: '#c2d8b9',
+    codeComment: '#8191ad', link: '#8fb8d6', path: '#a1b5d8', number: '#b7d6a6', quote: '#8191ad',
+    rule: '#394152', tableRule: '#8191ad', bullet: '#c4b7dc', diagram: '#a1b5d8', diagramText: '#ccd9ec',
+    diffAdded: '#b7d6a6', diffRemoved: '#e3968f',
+    alertNote: '#a1b5d8', alertTip: '#b7d6a6', alertImportant: '#c4b7dc', alertWarning: '#ebc98e', alertCaution: '#e3968f',
   },
   'morning-haze': {
     accent: '#c4b7dc', heading: '#c4b7dc', tableHeader: '#f8e6d2', strong: '#e9cc97', emphasis: '#dcc0d2',
