@@ -145,13 +145,6 @@ export const PRESETS = {
     diffAdded: '#b7d6a6', diffRemoved: '#e3968f',
     alertNote: '#a1b5d8', alertTip: '#b7d6a6', alertImportant: '#c4b7dc', alertWarning: '#ebc98e', alertCaution: '#e3968f',
   },
-  'morning-haze': {
-    accent: '#c4b7dc', heading: '#c4b7dc', tableHeader: '#f8e6d2', strong: '#e9cc97', emphasis: '#dcc0d2',
-    inlineCode: '#9ec3c0', codeText: '#ccd9ec', codeCommand: '#a8c98c', codeFlag: '#dcc0d2', codeString: '#c2d8b9',
-    codeComment: '#8191ad', link: '#8fb8d6', path: '#a1b5d8', number: '#b7d6a6', quote: '#8191ad',
-    rule: '#394152', tableRule: '#8191ad', bullet: '#c4b7dc', diagram: '#a1b5d8', diagramText: '#ccd9ec',
-    diffAdded: '#b7d6a6', diffRemoved: '#e3968f',
-  },
   mono: {} as Theme,
 } satisfies Record<string, Theme>
 
