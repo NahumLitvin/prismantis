@@ -7,7 +7,7 @@ import type { Block, Inline, TableAlign, TableCell, TableBlock } from './markdow
 import { mathOf } from './latex'
 import { CONTROL, displayText, inlineText, isPathSpelling, isWebLink, nestedBlocks, parseInline, texParses, texText } from './markdown'
 import type { Flow } from './rtl'
-import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
+import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, engineProse, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
 import { statusEdge, statusFooter, statusHeavy, statusLook, statusOf, statusRows } from './status'
 import type { Bucket } from './status'
@@ -718,6 +718,12 @@ const figureFallbackLines = (block: Extract<Block, { kind: 'code' }>): string[] 
 const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string, isOpen?: boolean): RenderElement[] => {
   if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
   const plain = plainBlock(lang, lines)
+  if (style.shape === 'engine' && !plain && !isShellLang(lang) && Object.keys(grammarFor(lang) ?? {}).length === 0) {
+    return lines.slice(0, shown).map((line, i) => {
+      const text = BOX_DRAWING.test(line) ? null : engineProse(line)
+      return text === null ? <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{codeLine(el, style, line, lang, `${key}.${i}`, room)}</el.Text> : <el.Text key={`${key}.${i}`} color={style.theme.codeText}>{text}</el.Text>
+    })
+  }
   const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room, shown, isOpen)) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room, plain))
   return style.shape === 'engine' ? rows.map((row, i) => <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</el.Text>) : rows
 }
