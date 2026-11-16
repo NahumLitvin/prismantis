@@ -2,6 +2,44 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.47.0] - 2026-11-16
+
+The desktop app takes the theme, five more mermaid diagrams draw, and tables learn four new shapes.
+
+### Added
+
+- `desktopColors`: `match` paints the whole Claude Code desktop app (Code tab) in the theme, not only the replies, and switches it to light mode for a light theme. `*Color` overrides carry over. Needs Claude Code 2.1.324 or later; off by default, and turning it back off restores the app's own look. Also the last step of `/prismantis setup more` ([#530](https://github.com/NahumLitvin/prismantis/pull/530)).
+- Mermaid `gitGraph` draws as one colored lane per branch with forks, merges and tags. Thanks @Nanako0129 ([#528](https://github.com/NahumLitvin/prismantis/pull/528)).
+- Mermaid `kanban` draws as a board of boxed cards with owner, ticket and priority. Thanks @Nanako0129 ([#527](https://github.com/NahumLitvin/prismantis/pull/527)).
+- Mermaid `journey` draws as a mood line across the tasks, green where it goes well and red where it hurts. Thanks @Nanako0129 ([#526](https://github.com/NahumLitvin/prismantis/pull/526)).
+- Mermaid `mindmap` draws as a colored tree from its root, or an indented outline when too wide. Thanks @Nanako0129 ([#525](https://github.com/NahumLitvin/prismantis/pull/525)).
+- Mermaid `quadrantChart` draws as a colored grid with numbered points and a legend. Thanks @Nanako0129 ([#524](https://github.com/NahumLitvin/prismantis/pull/524)).
+- `groupTable`: `merge` labels each run of a repeated first column once, `count` adds the run's size like `api (2)`, `full` also draws a rule between groups. Off by default. Thanks @buer5 ([#536](https://github.com/NahumLitvin/prismantis/pull/536)).
+- `kvTable`: a config table's source cells colored by origin (env, config, default) and values that moved off their default marked. Off by default. Thanks @buer5 ([#509](https://github.com/NahumLitvin/prismantis/pull/509)).
+- `apiTable`: an API table's method cells colored by verb (GET, POST, DELETE) and its auth schemes marked. Off by default. Thanks @buer5 ([#507](https://github.com/NahumLitvin/prismantis/pull/507)).
+- `compareTable`: rank 1, 2 and 3 drawn as medals and the top score marked green and bold. Off by default. Thanks @buer5 ([#516](https://github.com/NahumLitvin/prismantis/pull/516)).
+- `sectionCopyButtons`: a `⧉ copy` beside each heading copies its section without the heading line. Off by default. Thanks @FlorianBruniaux ([#515](https://github.com/NahumLitvin/prismantis/pull/515)).
+- `toolOutput` `rows`: a call that worked shows only its row, edits keep their diff card, failures still show their last line. Thanks @FlorianBruniaux ([#522](https://github.com/NahumLitvin/prismantis/pull/522)).
+- Two presets: `kanagawa-wave` from kanagawa.nvim, thanks @mangow314 ([#540](https://github.com/NahumLitvin/prismantis/pull/540)), and `morning-haze` from coralline, thanks @Nanako0129 ([#543](https://github.com/NahumLitvin/prismantis/pull/543)).
+
+### Changed
+
+- Alerts take each theme's own blue, green, purple, yellow and red instead of the terminal's ANSI colors, so every theme's alerts look a little different now. The default `catppuccin-mocha` Tip is `#a6e3a1` instead of ANSI green. Any `alert…Color` you set still wins, and `mono` is unchanged. Thanks @Nanako0129 ([#545](https://github.com/NahumLitvin/prismantis/pull/545)).
+- A number in a table cell takes the color the table's look gives that cell instead of the number color ([#516](https://github.com/NahumLitvin/prismantis/pull/516)).
+- In the desktop app, prose and table cells use the theme's text color on its fill instead of the app's dim gray. Thanks @Jenso-DE for the report ([#542](https://github.com/NahumLitvin/prismantis/pull/542)).
+
+### Fixed
+
+- A path with Chinese, Japanese, Korean, Hebrew or accented names is colored and linked whole. Thanks @Boring206 ([#533](https://github.com/NahumLitvin/prismantis/pull/533)).
+- An absolute path in inline code, like `` `/srv/app/main.ts` ``, links to its file as in text. Thanks @Boring206 ([#538](https://github.com/NahumLitvin/prismantis/pull/538)).
+- Under WSL in fullscreen, clicking a path reaches Claude Code's opener instead of doing nothing. Thanks @Boring206 ([#534](https://github.com/NahumLitvin/prismantis/pull/534)).
+- Models no longer copy a `{role:text}` placeholder into figures and print raw braces. Thanks @edwardzhanged for the report ([#541](https://github.com/NahumLitvin/prismantis/pull/541)).
+- A fence after a bracketed prefix like a timestamp opens its block. Thanks @humanityBG for the report ([#529](https://github.com/NahumLitvin/prismantis/pull/529)).
+- Under ctrl+o and `--verbose`, shell commands show in color again. Thanks @SirFrey ([#495](https://github.com/NahumLitvin/prismantis/pull/495)).
+- Hebrew reads in order in Warp on Windows with `rtl: auto` instead of reversed ([#501](https://github.com/NahumLitvin/prismantis/pull/501)).
+- In the desktop app, a table with Chinese, Japanese or Korean cells fits the reply instead of cutting off its last column. In the terminal such a column may now wrap between characters ([#521](https://github.com/NahumLitvin/prismantis/pull/521)).
+- In the desktop app, a round pie is round instead of an upright egg. Thanks @berkay8987 for the measurements ([#494](https://github.com/NahumLitvin/prismantis/pull/494)).
+
 ## [0.46.0] - 2026-11-13
 
 Tables learn to read their own content, and setup gets shorter.

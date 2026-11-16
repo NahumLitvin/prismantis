@@ -29,11 +29,11 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
-| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts and the table extras |
+| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
 | `/config` | Edit any option |
 
 > [!NOTE]
-> 17 themes ship with it. `mono` uses no color, only bold and dim.
+> 19 themes ship with it. `mono` uses no color, only bold and dim.
 
 ### Pick a theme
 
@@ -43,10 +43,12 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 /prismantis theme random
 ```
 
-1. Dark: catppuccin-mocha, dracula, nord, tokyo-night, gruvbox-dark, rose-pine, everforest, github-dark, one-dark, solarized-dark, neon
+1. Dark: catppuccin-mocha, dracula, nord, tokyo-night, gruvbox-dark, rose-pine, everforest, github-dark, one-dark, solarized-dark, neon, kanagawa-wave, morning-haze
 2. Light: catppuccin-latte, gruvbox-light, rose-pine-dawn, github-light, solarized-light
 3. Plain
    - mono
+
+In the desktop app, set `desktopColors` to `match` and the whole Code tab takes the theme too, in light mode for a light one (Claude Code 2.1.324+).
 
 > [!TIP]
 > Any color slot beats the theme. Set `headingColor` or `numberColor` to a hex value in `/config`.
@@ -55,7 +57,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 
 ### Copy tables
 
-Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted table. `⧉ html` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. `▣ png` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set `copyButtonStyle` to `inline` in `/config` for the accent color, or to `hover` and each block shows a dim ⧉ instead: point at it for its buttons. Set `textCopyButtons` to `false` to keep only the buttons on code, tables, diagrams and the reply.
+Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted table. `⧉ html` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. `▣ png` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set `copyButtonStyle` to `inline` in `/config` for the accent color, or to `hover` and each block shows a dim ⧉ instead: point at it for its buttons. Set `textCopyButtons` to `false` to keep only the buttons on code, tables, diagrams and the reply. Set `sectionCopyButtons` to `true` for a `⧉ copy` on each heading that copies its section, up to the next heading of its level.
 
 | Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
@@ -114,6 +116,51 @@ When a table describes a database schema — a column of fields beside a column 
 | org_id | bigint | FK → orgs.id | |
 | created_at | timestamp | | now() |
 
+### Comparison
+
+When a table compares options — a column of scores beside a column of ranks — `compareTable` draws the rank cells as a medal: 1 in the accent color, 2 and 3 in the link color, the same pairing the schema table's PK and FK use. `pick` draws the score cell of the top score in the improvement green, the hue `benchTable` gives an improvement, and bolds it so it stands out even in a theme where that green is also the number color, and `full` does both. The default `off` keeps tables as written:
+
+| Option | Score | Rank |
+|:-------|------:|-----:|
+| mantis | 9.2 | 1 |
+| origami | 7.8 | 2 |
+| noodle | 6.1 | 3 |
+| tofu | 4.4 | 4 |
+
+### API
+
+When a table documents an API — a method column whose cells read like HTTP verbs — `apiTable` draws the method cells by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. `auth` draws the scheme cells of an auth column — Bearer, OAuth, API key, JWT — in the accent color, and `full` does both. The default `off` keeps tables as written:
+
+| Method | Endpoint | Auth | Description |
+|:-------|:---------|:-----|:------------|
+| GET | /v1/scrolls | Bearer | List the scrolls |
+| POST | /v1/scrolls | Bearer | Add a scroll |
+| DELETE | /v1/scrolls/:id | API key | Remove a scroll |
+| GET | /v1/health | none | Liveness check |
+
+### Key-value
+
+When a table lists configuration — a column of options beside columns of values, sources and defaults — `kvTable` draws the source cells by where it says the value comes from: env in the link color, config in the string color, default in gray. `overrides` draws the value cell in the accent color when the row's value differs from its default, and `full` does both. The default `off` keeps tables as written:
+
+| Option | Value | Source | Default |
+|:-------|:------|:-------|:--------|
+| retries | 5 | env | 3 |
+| format | json | config | json |
+| timeout | 30s | default | 30s |
+| token | abc123 | env | unset |
+
+### Groups
+
+When a table groups its rows — the first column whose cells repeat in runs, like a column of services or teams — `groupTable` draws each group once: `merge` labels the group in the accent color and blanks the repeats under it, `count` also adds the group's size to its label, and `full` also draws a heavy rule where one group ends and the next begins. A column of numbers never groups, and a table already grouped by status keeps its status grouping. The default `off` keeps tables as written:
+
+| Service | Region | Requests | p99 |
+|:--------|:-------|---------:|----:|
+| api | us-east | 1.2M | 84 ms |
+| api | us-west | 900k | 91 ms |
+| worker | us-east | 2.4M | 120 ms |
+| worker | us-west | 1.8M | 132 ms |
+| cron | us-east | 96k | 40 ms |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -142,7 +189,7 @@ Scroll up: what you typed sits on the right under `You ⬤` and Claude's replies
 
 ### Tool rows
 
-Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set `toolStyle` in `/config` to `chat`, `tree-dim`, `tree-bold` or `classic`. `toolOutput: quiet` in `/config` hides what Claude only read and says in plain words what each call did: `Read src/app.ts lines 1–40`, `Searched src/ for "TODO"`. A call still running shows a still `◌`; `runningDot: blink` makes it a `●` that blinks every half second, and `unreadPrompts` keeps each prompt you send grey and blinking until Claude starts on it, so one queued mid-turn stands out.
+Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set `toolStyle` in `/config` to `chat`, `tree-dim`, `tree-bold` or `classic`. `toolOutput: quiet` in `/config` hides what Claude only read and says in plain words what each call did: `Read src/app.ts lines 1–40`, `Searched src/ for "TODO"`, and `toolOutput: rows` draws only the row of every call that worked. A call still running shows a still `◌`; `runningDot: blink` makes it a `●` that blinks every half second, and `unreadPrompts` keeps each prompt you send grey and blinking until Claude starts on it, so one queued mid-turn stands out.
 
 Each edit draws as a diff card headed `+N −M`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a `+K more lines` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (`sed -i`, a script) get the same card, one per file, headed by its path. Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`.
 
@@ -288,6 +335,76 @@ gantt
     section Ship
     Review   :after r, 2d
     Release  :milestone, 2026-10-12, 0d
+```
+
+A quadrant chart numbers its points and lists them under the grid:
+
+```mermaid
+quadrantChart
+    title Feature priorities
+    x-axis Low effort --> High effort
+    y-axis Low impact --> High impact
+    quadrant-1 Big bets
+    quadrant-2 Do now
+    quadrant-3 Fill-ins
+    quadrant-4 Skip
+    Reorder: [0.2, 0.85]
+    Search: [0.8, 0.9]
+    Dark mode: [0.3, 0.25]
+    Localisation: [0.75, 0.4]
+```
+
+A mind map grows from its root to the right, one color per branch:
+
+```mermaid
+mindmap
+    root((Release))
+        Code
+            Tests
+            Review
+        Docs
+            Changelog
+        Ship
+            Tag
+            Announce
+```
+
+A user journey draws its mood line across the tasks, green when it goes well and red when it hurts:
+
+```mermaid
+journey
+    title First order
+    section Find
+        Search: 4: Shopper
+        Compare: 3: Shopper
+    section Buy
+        Checkout: 1: Shopper
+        Delivery: 5: Shopper, Courier
+```
+
+A kanban board puts its columns side by side, each card with its owner, ticket and priority:
+
+```mermaid
+kanban
+    todo[To do]
+        a[Fix login timeout]@{ assigned: 'Amy', priority: 'High' }
+        b[Write release notes]@{ ticket: DOC-7 }
+    doing[In progress]
+        c[Dark mode]@{ assigned: 'Ken' }
+    done[Done]
+        d[Search filters]
+```
+
+A git graph runs top to bottom, one colored lane per branch:
+
+```mermaid
+gitGraph
+    commit id: "init" tag: "v1.0"
+    branch develop
+    commit id: "login"
+    commit id: "fix" type: HIGHLIGHT
+    checkout main
+    merge develop id: "release" tag: "v1.1"
 ```
 
 A diagram wider than the terminal stays source, with a dim line saying why:
