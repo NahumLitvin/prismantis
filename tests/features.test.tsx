@@ -1156,6 +1156,15 @@ test('a dark theme leaves a reply\'s plain text in the terminal\'s own color', a
   await ui.unmount()
 })
 
+test('on desktop a dark theme draws a reply\'s plain text and table cells in its own text color, readable on its fill', async $ => {
+  const mocha = PRESETS['catppuccin-mocha']
+  const fill = replyFill(mocha, PRESET_BACKGROUNDS['catppuccin-mocha'])!
+  const ui = await $.ui.mount(answer('A plain sentence.\n\n- a list item\n\n| a | b |\n|---|---|\n| cell | 2 |', true, 'desktop'))
+  for (const text of [/^A plain sentence\.$/, /^a list item$/, /^cell/]) expect((await ui.find({ type: 'Text', text }))?.props.color).toBe(mocha.codeText)
+  expect(contrast(mocha.codeText!, fill)).toBeGreaterThanOrEqual(4.5)
+  await ui.unmount()
+})
+
 test('promptFillColor and replyFillColor set the fills of the bubbles', { options: { promptFillColor: '#1e3a28', replyFillColor: '#1c2233' } }, async $ => {
   const mine = await $.ui.mount(prompt('how many frog raids?'))
   expect((await mine.findAll({ type: 'Box' })).find(b => b.props.borderStyle === 'round')?.props.backgroundColor).toBe('#1e3a28')
