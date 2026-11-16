@@ -678,7 +678,7 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
 
 test('only http, https and file links become terminal hyperlinks', async ($, on) => {
   claudeAt(on, '2.1.289')
-  mock.env(on, {})
+  mock.env(on, { FORCE_HYPERLINK: '1' })
   if (!(await linksHttp($.ui.mount(mount('[x](http://example.com)'))))) return
   const ui = await $.ui.mount(mount('[docs](https://example.com) [dev](http://localhost:3000) [plain](http://example.com) [mail](mailto:a@example.com) [run](javascript:alert(1)) [/etc/hosts.txt](file:///etc/hosts.txt)'))
   const links = (await ui.findAll({ type: 'Link' })).map(l => l.props.href)
@@ -1216,13 +1216,17 @@ for (const [where, surface, base, env] of [
   })
 }
 
-test('a terminal that draws no hyperlinks still links file:// markdown links', async ($, on) => {
-  filesAt(on, '2.1.289', { FORCE_HYPERLINK: '0', TERM_PROGRAM: 'Apple_Terminal' })
-  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
-  const ui = await $.ui.mount(mount('[~/notes.md](file:///home/me/notes.md) and ~/notes/todo.md'))
-  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['file:///home/me/notes.md'])
-  await ui.unmount()
-})
+for (const [where, env] of [['outside WSL', {}], ['under WSL', { WSL_DISTRO_NAME: 'Ubuntu' }]] as const) {
+  test(`a terminal that draws no hyperlinks draws a file:// link that shows its path as that path alone, ${where}`, async ($, on) => {
+    filesAt(on, '2.1.289', { FORCE_HYPERLINK: '0', TERM_PROGRAM: 'Apple_Terminal', ...env })
+    if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const ui = await $.ui.mount(mount('[~/notes.md](file:///home/me/notes.md), [/srv/專案/報告.md](file:///srv/%E5%B0%88%E6%A1%88/%E5%A0%B1%E5%91%8A.md), [notes](file:///home/me/notes.md), [docs](https://example.com) and ~/notes/todo.md'))
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['https://example.com'])
+    for (const path of ['~/notes.md', '/srv/專案/報告.md']) expect((await ui.find({ type: 'Text', text: exact(path) }))?.props.color).toBe(PRESETS['catppuccin-mocha'].path)
+    expect(await ui.find({ type: 'Text', text: exact('notes (file:///home/me/notes.md)') })).toBeDefined()
+    await ui.unmount()
+  })
+}
 
 for (const env of [{ SSH_CONNECTION: '10.0.0.2 52814 10.0.0.9 22' }, { SSH_TTY: '/dev/pts/3' }] as Record<string, string>[]) {
   test(`file:// links draw as plain text in a session over SSH (${Object.keys(env)[0]})`, async ($, on) => {
