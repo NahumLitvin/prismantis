@@ -460,3 +460,8 @@ export const led = (chars: string[], held: Held): Held => {
   const blank = chars.some(ch => R.test(ch)) ? LTR_BLANK : ' '
   return { cells: [blank, blank, ...held.cells], from: [-1, -1, ...held.from] }
 }
+
+export const engineProse = (text: string): string | null => {
+  const line = units(text, { wrap: [], leaf: 'text' })
+  return startsLatin(line) || !R.test(text) ? null : forEngine(line, false).map(u => u.ch).join('')
+}
