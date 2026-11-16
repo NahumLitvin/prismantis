@@ -866,6 +866,24 @@ for (const [where, env, root] of [
   })
 }
 
+const FULLSCREEN = { columns: 120, rows: 40, isFullscreen: true }
+
+test('under WSL in fullscreen, paths link without wsl.localhost, since Claude Code opens the click itself and refuses a file:// link that names a host', async ($, on) => {
+  filesAt(on, '2.1.289', { WSL_DISTRO_NAME: 'Ubuntu' })
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const ui = await $.ui.mount({ ...mount(PATHS), viewport: FULLSCREEN })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(
+    ['/srv/app/main.ts', '/home/me/notes/todo.md', '/work/app/docs/guide.md', '/home/me/notes/list.md', '/srv/data/table.csv'].map(path => `file://${path}`))
+  await ui.unmount()
+})
+
+test('under WSL in fullscreen, a tool row links its file without wsl.localhost', async ($, on) => {
+  filesAt(on, '2.1.289', { WSL_DISTRO_NAME: 'Ubuntu' })
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: toolCall('Read', { file_path: '/work/app/z.ts' }, 't-Read'), viewport: FULLSCREEN })
+  expect(await linkPairs(ui)).toEqual([['z.ts', 'file:///work/app/z.ts']])
+  await ui.unmount()
+})
+
 const LABELS: [label: string, href: string, linked: boolean][] = [
   ['/tmp/notes.md', 'file:///tmp/notes.md', true],
   ['file:///tmp/notes.md', 'file:///tmp/notes.md', true],
