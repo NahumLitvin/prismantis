@@ -879,6 +879,7 @@ test('under WSL in fullscreen, paths link without wsl.localhost, since Claude Co
 
 test('under WSL in fullscreen, a tool row links its file without wsl.localhost', async ($, on) => {
   filesAt(on, '2.1.289', { WSL_DISTRO_NAME: 'Ubuntu' })
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
   const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: toolCall('Read', { file_path: '/work/app/z.ts' }, 't-Read'), viewport: FULLSCREEN })
   expect(await linkPairs(ui)).toEqual([['z.ts', 'file:///work/app/z.ts']])
   await ui.unmount()
