@@ -104,7 +104,7 @@ export const drawsHyperlinks = (env: TerminalEnv): boolean => {
     || env.TERMINAL_EMULATOR === 'JetBrains-JediTerm'
 }
 
-type Reach = Pick<Style, 'httpLinks' | 'editorLinks' | 'obsidianLinks' | 'fileLinks' | 'pathLinks' | 'cwd' | 'home' | 'found'>
+type Reach = Pick<Style, 'httpLinks' | 'editorLinks' | 'obsidianLinks' | 'fileLinks' | 'pathLinks' | 'hyperlinks' | 'cwd' | 'home' | 'found'>
 
 const LAUNCHERS = new Set([
   'app', 'command', 'tool', 'terminal', 'pkg', 'mpkg', 'mobileconfig', 'prefpane', 'workflow', 'action', 'fileloc', 'inetloc', 'webloc',
@@ -268,6 +268,7 @@ const spoofs = (label: string, href: string): boolean => {
 const drawnLink = (n: Extract<Inline, { kind: 'link' }>, reach: Reach): Inline => {
   const href = reach.fileLinks !== null && /^file:/i.test(n.href) ? fileHref(reach.fileLinks, n.href) : n.href
   if (!isHyperlink(n.href, reach) || encodedLength(href) > LINK_MAX || hidesFile(reach, n, href) || spoofs(n.text, n.href)) return { kind: 'text', text: plainLink(n.text.replace(ZERO_WIDTH, ''), n.href) }
+  if (!reach.hyperlinks && /^file:/i.test(n.href)) return { kind: 'path', text: n.text }
   return href === n.href ? n : { ...n, href }
 }
 
@@ -412,7 +413,7 @@ const hyperlinked = new WeakMap<Block, Record<string, Block>>()
 const drawable = (block: Block, reach: Reach): Block => {
   const cached = hyperlinked.get(block) ?? {}
   hyperlinked.set(block, cached)
-  const key = `${+reach.httpLinks}${+reach.editorLinks}${+reach.obsidianLinks}${reach.fileLinks ?? ''}\0${reach.found?.size ?? 0}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}` : ''}`
+  const key = `${+reach.httpLinks}${+reach.editorLinks}${+reach.obsidianLinks}${+reach.hyperlinks}${reach.fileLinks ?? ''}\0${reach.found?.size ?? 0}${reach.pathLinks ? `\0${reach.home}\0${reach.cwd}` : ''}`
   return (cached[key] ??= hyperlinkBlock(block, reach))
 }
 
