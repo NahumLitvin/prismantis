@@ -95,6 +95,7 @@ export type Style = {
   hyperlinks: boolean
   found?: ReadonlySet<string>
   diagramHints: boolean
+  diagramHintsWhen: 'every' | 'once'
   issueHint: boolean
   keyPointHint: boolean
   rtl: 'auto' | Terminal | 'off'
@@ -191,6 +192,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     pathLinks: false,
     hyperlinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
+    diagramHintsWhen: pick(options.diagramHintsWhen, ['every', 'once'] as const, 'every'),
     issueHint: options.issueHint !== false,
     keyPointHint: options.keyPointHint === true,
     rtl,

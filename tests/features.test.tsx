@@ -687,6 +687,38 @@ test('no render hint when diagramHints is off', { options: { diagramHints: false
   expect(seen[0] ?? []).not.toContain(FIGURE_HINT)
 })
 
+test('diagramHintsWhen once: the note rides the first prompt and the first after a compaction', { options: { diagramHintsWhen: 'once' } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('session.compact', () => ({ messages: [{ role: 'user', text: 'summary', toolUses: [] }] }))
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'one', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'two', wait: false, origin: { kind: 'composer' } })
+  await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: 'one', toolUses: [] }] })
+  await $.prompt.submit({ text: 'three', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'four', wait: false, origin: { kind: 'composer' } })
+  expect(seen.map(c => (c ?? []).includes(FIGURE_HINT))).toEqual([true, false, true, false])
+})
+
+test('diagramHintsWhen once: the note rides the first prompt after a /clear', { options: { diagramHintsWhen: 'once' } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'one', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'two', wait: false, origin: { kind: 'composer' } })
+  await $.session.end({ reason: 'clear', sessionId: 'old', resume: { id: 'old' } })
+  await $.prompt.submit({ text: 'three', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'four', wait: false, origin: { kind: 'composer' } })
+  expect(seen.map(c => (c ?? []).includes(FIGURE_HINT))).toEqual([true, false, true, false])
+})
+
 test('no figure hint when mermaid is off', { options: { mermaid: false } }, async ($, on) => {
   const seen: (readonly string[] | undefined)[] = []
   mock.env(on, {})
