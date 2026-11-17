@@ -916,6 +916,12 @@ for (const surface of ['desktop', 'vscode'] as const) for (const tableStyle of [
   await ui.unmount()
 })
 
+for (const surface of ['terminal', 'desktop', 'vscode'] as const) test(`two tables in a row on ${surface} ${surface === 'terminal' ? 'keep the width they are drawn at' : 'shrink to the reply instead of running past it'}`, async $ => {
+  const ui = await $.ui.mount({ ...draw(`${TABLE}\n\n${TABLE}`), surface })
+  expect([(await ui.find({ key: 'f0' }))?.props.flexShrink, (await ui.find({ key: 'f1' }))?.props.flexShrink]).toEqual(surface === 'terminal' ? [0, 0] : [1, 1])
+  await ui.unmount()
+})
+
 test('a theme without a table rule color draws desktop table lines in gray', { options: { theme: 'mono' } }, async $ => {
   const ui = await $.ui.mount({ ...draw(TABLE), surface: 'desktop' })
   const walls = (await ui.findAll({ type: 'Box' })).filter(b => b.props.width === 0.12)

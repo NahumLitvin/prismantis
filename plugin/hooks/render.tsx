@@ -1663,7 +1663,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     while (isFigure(b + 1)) b++
     out.push(
       <Box key={`row${start}`} flexDirection="row" flexWrap="wrap" columnGap={4} rowGap={1}>
-        {copied.slice(start, b + 1).map((figure, i) => <Box key={`f${start + i}`} flexShrink={0}>{figure}</Box>)}
+        {copied.slice(start, b + 1).map((figure, i) => <Box key={`f${start + i}`} flexShrink={style.gridFace ? 1 : 0}>{figure}</Box>)}
       </Box>,
     )
   }
