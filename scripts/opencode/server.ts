@@ -4,13 +4,13 @@ import { PRESET_NAMES } from '../../plugin/hooks/presets'
 
 const OPENCODE = [
   'This session runs in OpenCode, not Claude Code. The notes after this paragraph are what prismantis tells Claude in Claude Code; follow them with these OpenCode differences.',
-  'OpenCode draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph and timeline. xychart-beta and pie print as source, so draw those as a figure instead.',
+  'OpenCode draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph and timeline. For xychart-beta and pie, open the block with ```chart instead of ```mermaid, keeping the same mermaid source: prismantis draws those.',
   'Figure blocks are drawn with their role colors, written like {warn:disk full}. There are no copy buttons and GitHub alerts draw as plain quotes.',
 ].join(' ')
 
 const SYSTEM = `${OPENCODE}\n\n${HINT}\n\n${FIGURE_HINT}`
 
-const DEMO = `Reply with exactly the markdown between the START and END lines, nothing before or after it.\n\nSTART\n> This is the Claude Code demo. In OpenCode, copy buttons, tool rows, diff cards, alert boxes, footnotes, xychart and pie charts are not drawn yet: see opencode/README.md in the prismantis repo.\n${showcaseText(PRESET_NAMES)}END`
+const DEMO = `Reply with exactly the markdown between the START and END lines, nothing before or after it.\n\nSTART\n> This is the Claude Code demo. In OpenCode, copy buttons, tool rows, diff cards, alert boxes and footnotes are not drawn yet: see opencode/README.md in the prismantis repo.\n${showcaseText(PRESET_NAMES).replace(/```mermaid\n(?=xychart|pie)/g, '```chart\n')}END`
 
 type Text = { type: 'text'; text: string }
 type Prompt = { text?: string }

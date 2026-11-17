@@ -161,7 +161,7 @@ writeFileSync(join(opencode, 'package.json'), `${JSON.stringify({ name: manifest
 writeFileSync(join(opencode, 'README.md'), [
   '# prismantis for OpenCode',
   '',
-  `OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode draws \`\`\`figure blocks in color, gives OpenCode the same session note as Claude Code, so replies come back with tables, diagrams and figures, and ships ${opencodeThemes.length} prismantis themes that color code and prose.`,
+  `OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode draws \`\`\`figure blocks in color and xychart and pie charts as \`\`\`chart blocks, gives OpenCode the same session note as Claude Code, so replies come back with tables, diagrams and figures, and ships ${opencodeThemes.length} prismantis themes that color code and prose.`,
   '',
   '## Install',
   '',
@@ -181,7 +181,7 @@ writeFileSync(join(opencode, 'README.md'), [
   '| Code, headings, bold, italic, quotes, lists and links in the theme colors | ✓ |',
   '| Figures drawn with their colors | ✓ |',
   '| Mermaid flowchart, sequence, state, gantt, gitGraph and timeline (drawn by OpenCode) | ✓ |',
-  '| xychart bar and line charts, pie | |',
+  '| xychart bar and line charts, pie (drawn by prismantis as ```chart) | ✓ |',
   '| Copy buttons, tool rows, diff cards, prompt styles, alert boxes, footnotes, right-to-left text | |',
   '',
   'This folder is generated from the Claude Code source by `npm --prefix scripts run build:codex`. Edit the source, not these files.',

@@ -206,8 +206,7 @@ type Painted = { grid: string[][]; colors: (string | undefined)[][] }
 
 export const diagramPalette = (t: Theme): string[] => [...new Set([t.link, t.number, t.heading, t.emphasis, t.path, t.codeFlag, t.accent])].filter((c): c is string => c !== undefined)
 
-const paint = (art: string, style: Style, series?: number[][]): Painted => {
-  const t = style.theme
+const paint = (art: string, t: Theme, series?: number[][]): Painted => {
   const grid = art.split('\n').map(cells)
   const cell = (r: number, c: number) => grid[r]?.[c] ?? ''
   const color: (string | undefined)[][] = grid.map(row => row.map(() => undefined))
@@ -266,8 +265,7 @@ const paint = (art: string, style: Style, series?: number[][]): Painted => {
   return { grid, colors: color }
 }
 
-const paintPie = (art: string, slices: number[][], style: Style): Painted => {
-  const t = style.theme
+const paintPie = (art: string, slices: number[][], t: Theme): Painted => {
   const palette = diagramPalette(t)
   const grid = art.split('\n').map(cells)
   const named: Record<number, string | undefined> = { [LINE_HUE]: t.diagram, [ARROW_HUE]: t.accent, [GOOD_HUE]: t.diffAdded, [BAD_HUE]: t.diffRemoved }
@@ -279,21 +277,21 @@ const painted = new WeakMap<Theme, Map<string, Painted>>()
 
 const piePainted = new WeakMap<Theme, WeakMap<number[][], Painted>>()
 
-const painting = (style: Style, art: string, slices?: number[][], series?: number[][]): Painted => {
+const painting = (theme: Theme, art: string, slices?: number[][], series?: number[][]): Painted => {
   if (!slices) {
-    const cache = painted.get(style.theme) ?? new Map<string, Painted>()
-    painted.set(style.theme, cache)
-    return remember(cache, art, () => paint(art, style, series))
+    const cache = painted.get(theme) ?? new Map<string, Painted>()
+    painted.set(theme, cache)
+    return remember(cache, art, () => paint(art, theme, series))
   }
-  const cache = piePainted.get(style.theme) ?? new WeakMap<number[][], Painted>()
-  piePainted.set(style.theme, cache)
-  const done = cache.get(slices) ?? paintPie(art, slices, style)
+  const cache = piePainted.get(theme) ?? new WeakMap<number[][], Painted>()
+  piePainted.set(theme, cache)
+  const done = cache.get(slices) ?? paintPie(art, slices, theme)
   cache.set(slices, done)
   return done
 }
 
 export const boxArt = ({ Box, Text }: ElementTable, style: Style, art: string, key: string, marks: [string[], Mark][] = [], slices?: number[][], series?: number[][]): RenderElement => {
-  const { grid, colors } = painting(style, art, slices, series)
+  const { grid, colors } = painting(style.theme, art, slices, series)
   const visual = style.reorder && style.shape === 'visual' && hasRtl(art)
   return (
     <Box key={key} flexDirection="column" paddingLeft={mirrored(style) ? 0 : 2}>
@@ -382,6 +380,11 @@ const piePicture = (el: ElementTable, style: Style, pie: Pie, key: string): Rend
   )
 }
 
+export const chartCells = (source: string, columns: number, theme: Theme): Painted | null => {
+  const art = mermaidArt(source, false, columns, diagramPalette(theme).length)
+  return art && artWidth(art.text) <= columns ? painting(theme, art.text, art.slices, art.series) : null
+}
+
 const chartHues = ({ grid, colors }: Painted): Ink[][] => colors.map((row, r) => row.map((color, c) => color ?? (grid[r]![c] === '·' ? { dim: true } : undefined)))
 
 const chartElement = (el: ElementTable, style: Style, art: ChartArt, block: Extract<Block, { kind: 'code' }>, key: string): RenderElement =>
@@ -393,7 +396,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
   const pieColors = pieColorsOf(style)
   if (style.mermaid) {
     for (const [i, block] of blocks.entries()) {
-      if (block.kind !== 'code' || block.lang.toLowerCase() !== 'mermaid') continue
+      if (block.kind !== 'code' || !/^(mermaid|chart)$/i.test(block.lang)) continue
       const source = block.lines.join('\n')
       let narrowest = Infinity
       for (const max of [Infinity, 24, 12]) {
@@ -401,7 +404,7 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
         const wide = art === null ? Infinity : artWidth(art.text)
         narrowest = Math.min(narrowest, wide)
         if (art === null || wide > columns - 2) continue
-        drawn.set(i, { element: chartElement(el, style, art, block, `b${i}`), art: art.text, hues: () => chartHues(painting(style, art.text, art.slices, art.series)) })
+        drawn.set(i, { element: chartElement(el, style, art, block, `b${i}`), art: art.text, hues: () => chartHues(painting(style.theme, art.text, art.slices, art.series)) })
         break
       }
       if (!drawn.has(i) && !block.isOpen) {
