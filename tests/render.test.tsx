@@ -471,8 +471,8 @@ test('copyButtonStyle dim, the default, keeps every copy button in the flow', as
   await ui.unmount()
 })
 
-test('copyButtonStyle hover draws inline on mobile, which has no pointer', { options: { copyButtonStyle: 'hover' } }, async $ => {
-  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'mobile' })
+for (const surface of ['mobile', 'vscode'] as const) test(`copyButtonStyle hover draws inline on ${surface}, ${surface === 'mobile' ? 'which has no pointer' : 'whose panel reveals nothing on hover'}`, { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface })
   expect(await floatingCopies(ui)).toHaveLength(0)
   await ui.unmount()
 })
