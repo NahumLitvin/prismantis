@@ -3030,7 +3030,16 @@ for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) {
   })
 }
 
-for (const body of ['xychart-beta\n  x-axis [a, b]\n  bar [1, 2]', 'pie\n  "apples" : 3\n  "pears" : 1']) {
+for (const body of [
+  'xychart-beta\n  x-axis [a, b]\n  bar [1, 2]',
+  'pie\n  "apples" : 3\n  "pears" : 1',
+  'quadrantChart\n  x-axis Low --> High\n  y-axis Low --> High\n  A: [0.3, 0.6]',
+  'mindmap\n  root\n    a\n    b',
+  'journey\n  section Day\n    Wake: 3: Me',
+  'kanban\n  todo\n    t1[Write]\n  done\n    t2[Ship]',
+  'classDiagram\n  A <|-- B',
+  'erDiagram\n  A ||--o{ B : has',
+]) {
   test(`a chart block draws like its mermaid twin and paints the same cells for OpenCode: ${body.split('\n')[0]}`, async $ => {
     const drawn = async (lang: string) => {
       const ui = await $.ui.mount(mount(`\`\`\`${lang}\n${body}\n\`\`\``))
