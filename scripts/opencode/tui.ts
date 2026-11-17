@@ -6,11 +6,15 @@ import { bold, fg, StyledText, TextRenderable, type MarkdownCodeBlockRenderer, t
 
 import { figureRuns, reframe } from '../../plugin/hooks/figure'
 import type { FIGURE_ROLES } from '../../plugin/hooks/markdown'
+import { chartCells } from '../../plugin/hooks/mermaid'
+import type { Theme as ChartTheme } from '../../plugin/hooks/theme'
 
 type Role = (typeof FIGURE_ROLES)[number]
 type Theme = {
-  text: { base: RGBA; muted: RGBA; feedback: Record<'error' | 'success' | 'info', { base: RGBA }> }
-  markdown: Record<'link' | 'strong' | 'codeBlock', RGBA>
+  text: { base: RGBA; muted: RGBA; feedback: Record<'error' | 'warning' | 'success' | 'info', { base: RGBA }> }
+  markdown: Record<'link' | 'strong' | 'codeBlock' | 'heading' | 'emphasis' | 'blockQuote' | 'horizontalRule' | 'listItem', RGBA>
+  syntax: Record<'number' | 'keyword', RGBA>
+  diff: { text: Record<'added' | 'removed' | 'hunkHeader', RGBA> }
 }
 type Context = {
   renderer: ConstructorParameters<typeof TextRenderable>[0]
@@ -39,6 +43,27 @@ const figureChunks = (theme: Theme, lines: readonly string[]): TextChunk[] =>
       return run.role === 'strong' ? bold(chunk) : chunk
     }),
   ])
+
+const hex = (color: RGBA) => `#${color.toInts().slice(0, 3).map(n => n.toString(16).padStart(2, '0')).join('')}`
+
+const chartTheme = (theme: Theme): ChartTheme => ({
+  link: hex(theme.markdown.link),
+  number: hex(theme.syntax.number),
+  heading: hex(theme.markdown.heading),
+  emphasis: hex(theme.markdown.emphasis),
+  path: hex(theme.text.feedback.warning.base),
+  codeFlag: hex(theme.syntax.keyword),
+  accent: hex(theme.markdown.listItem),
+  quote: hex(theme.markdown.blockQuote),
+  rule: hex(theme.markdown.horizontalRule),
+  diagram: hex(theme.diff.text.hunkHeader),
+  diagramText: hex(theme.text.base),
+  diffAdded: hex(theme.diff.text.added),
+  diffRemoved: hex(theme.diff.text.removed),
+})
+
+const chartChunks = (theme: Theme, grid: string[][], colors: (string | undefined)[][]): TextChunk[] =>
+  grid.flatMap((row, r) => [...(r ? [fg(theme.text.base)('\n')] : []), ...row.map((cell, c) => fg(colors[r]![c] ?? theme.text.base)(cell))])
 
 const installThemes = (): number => {
   const from = fileURLToPath(new URL('./themes/', import.meta.url))
@@ -69,7 +94,18 @@ export default {
         },
       ],
     }))
-    return context.markdown.registerCodeBlockRenderer('figure', token => {
+    const dropChart = context.markdown.registerCodeBlockRenderer('chart', token => {
+      const painted = chartCells(token.text.replace(/\n+$/, ''), (process.stdout.columns || 80) - 4, chartTheme(context.theme))
+      if (!painted) return undefined
+      return new TextRenderable(context.renderer, {
+        content: new StyledText(chartChunks(context.theme, painted.grid, painted.colors)),
+        width: '100%',
+        height: painted.grid.length,
+        wrapMode: 'none',
+        marginTop: 1,
+      })
+    })
+    const dropFigure = context.markdown.registerCodeBlockRenderer('figure', token => {
       const lines = token.text.replace(/\n+$/, '').split('\n')
       return new TextRenderable(context.renderer, {
         content: new StyledText(figureChunks(context.theme, lines)),
@@ -79,5 +115,9 @@ export default {
         marginTop: 1,
       })
     })
+    return () => {
+      dropChart()
+      dropFigure()
+    }
   },
 }

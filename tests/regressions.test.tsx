@@ -5,7 +5,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import { helpText, setupParts, setupText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
-import { inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
+import { chartCells, diagramPalette, inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import type { TerminalEnv } from '../hooks/render'
 import { drawsHyperlinks, isReadOnlyCall, renderBashEdits, renderBlocks, tableArt, takesClickableMarks, takesEditorLinks, takesHttpLinks } from '../hooks/render'
 import { longestWord, width } from '../hooks/layout'
@@ -3027,5 +3027,32 @@ for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) {
       expect(await quoteBarRows(ui)).toEqual([rows])
       await ui.unmount()
     }
+  })
+}
+
+for (const body of [
+  'xychart-beta\n  x-axis [a, b]\n  bar [1, 2]',
+  'pie\n  "apples" : 3\n  "pears" : 1',
+  'quadrantChart\n  x-axis Low --> High\n  y-axis Low --> High\n  A: [0.3, 0.6]',
+  'mindmap\n  root\n    a\n    b',
+  'journey\n  section Day\n    Wake: 3: Me',
+  'kanban\n  todo\n    t1[Write]\n  done\n    t2[Ship]',
+  'classDiagram\n  A <|-- B',
+  'erDiagram\n  A ||--o{ B : has',
+]) {
+  test(`a chart block draws like its mermaid twin and paints the same cells for OpenCode: ${body.split('\n')[0]}`, async $ => {
+    const drawn = async (lang: string) => {
+      const ui = await $.ui.mount(mount(`\`\`\`${lang}\n${body}\n\`\`\``))
+      const texts = (await ui.findAll({ type: 'Text', text: /\S/ })).map(n => n.props.children)
+      await ui.unmount()
+      return JSON.stringify(texts)
+    }
+    expect(await drawn('chart')).toBe(await drawn('mermaid'))
+    const t = PRESETS['catppuccin-mocha']
+    const cells = chartCells(body, 80, t)!
+    expect(cells.grid.map(row => row.join('')).join('\n')).toBe(mermaidText(body, false, 80, diagramPalette(t).length))
+    expect(cells.colors.flat()).toContain(t.link)
+    expect(chartCells('xychart-beta\n  x-axis [a, b]\n  bar [1, 2]', 10, t)).toBeNull()
+    expect(chartCells('not a chart at all', 80, t)).toBeNull()
   })
 }
