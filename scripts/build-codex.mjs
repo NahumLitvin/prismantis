@@ -157,11 +157,11 @@ const opencodeTheme = (t, bg) => {
 const opencodeThemes = cc.PRESET_NAMES.filter(n => cc.PRESETS[n].codeText)
 mkdirSync(join(opencode, 'themes'), { recursive: true })
 for (const name of opencodeThemes) writeFileSync(join(opencode, `themes/prismantis-${name}.json`), `${JSON.stringify(opencodeTheme(cc.PRESETS[name], cc.PRESET_BACKGROUNDS[name]), null, 2)}\n`)
-writeFileSync(join(opencode, 'package.json'), `${JSON.stringify({ name: manifest.name, version: manifest.version, description: 'Themeable OpenCode replies: prismantis themes, colored figure blocks, and a session note that gets tables, diagrams and figures into replies.', type: 'module', license: 'MIT', exports: { '.': './server.js', './tui': './tui.js' } }, null, 2)}\n`)
+writeFileSync(join(opencode, 'package.json'), `${JSON.stringify({ name: manifest.name, version: manifest.version, description: 'Themeable OpenCode replies: prismantis themes, colored figure and chart blocks, and a session note that gets tables, diagrams and charts into replies.', type: 'module', license: 'MIT', exports: { '.': './server.js', './tui': './tui.js' } }, null, 2)}\n`)
 writeFileSync(join(opencode, 'README.md'), [
   '# prismantis for OpenCode',
   '',
-  `OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode draws \`\`\`figure blocks in color, gives OpenCode the same session note as Claude Code, so replies come back with tables, diagrams and figures, and ships ${opencodeThemes.length} prismantis themes that color code and prose.`,
+  `OpenCode lets a plugin draw its own fenced blocks, so prismantis in OpenCode draws \`\`\`figure blocks in color and mermaid xychart-beta and pie in \`\`\`chart blocks. It gives OpenCode the same session note as Claude Code, so replies come back with tables, diagrams, figures and charts, and ships ${opencodeThemes.length} prismantis themes that color code and prose.`,
   '',
   '## Install',
   '',
@@ -177,12 +177,14 @@ writeFileSync(join(opencode, 'README.md'), [
   '',
   '| Feature | OpenCode |',
   '|---|---|',
-  '| The session note: tables, diagrams and figures in replies | ✓ |',
+  '| The session note: tables, diagrams, figures and charts in replies | ✓ |',
   '| Code, headings, bold, italic, quotes, lists and links in the theme colors | ✓ |',
   '| Figures drawn with their colors | ✓ |',
   '| Mermaid flowchart, sequence, state, gantt, gitGraph and timeline (drawn by OpenCode) | ✓ |',
-  '| xychart bar and line charts, pie | |',
+  '| Mermaid xychart bar and line charts, and pie, in a `chart` fence | ✓ |',
   '| Copy buttons, tool rows, diff cards, prompt styles, alert boxes, footnotes, right-to-left text | |',
+  '',
+  '`chart` fences hold mermaid xychart-beta and pie source, the two kinds OpenCode leaves as source; every other fence stays as written.',
   '',
   'This folder is generated from the Claude Code source by `npm --prefix scripts run build:codex`. Edit the source, not these files.',
   '',

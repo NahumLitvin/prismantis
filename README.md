@@ -65,9 +65,11 @@ prismantis also runs in Codex, with themes for code, tables and diagrams and the
 
 ### OpenCode
 
-prismantis also runs in OpenCode 2.2.5 and later, where it draws figure blocks in color, ships its themes for code and prose, and adds the same session note. Install and what works: [opencode/README.md](opencode/README.md).
+prismantis also runs in OpenCode 2.2.5 and later, where it draws figure blocks and charts in color, ships its themes for code and prose, and adds the same session note. Install and what works: [opencode/README.md](opencode/README.md).
 
 ![OpenCode in prismantis-dracula](docs/compare/opencode.png)
+
+![OpenCode drawing a bar chart, a line chart and a pie from chart blocks in prismantis-catppuccin-mocha](docs/compare/opencode-charts.png)
 
 ## Features
 
