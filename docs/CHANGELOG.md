@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.49.0] - 2026-11-18
+
+prismantis runs in Google Antigravity, tables draw properly in the VS Code extension, and two new options.
+
+### Added
+
+- Google Antigravity: a plugin with the prismantis session note as an always-on rule and a `/prismantis` demo, so replies there come back with tables, diagrams and figures. Antigravity draws tables and mermaid flowcharts and sequence diagrams itself; for other diagrams the note asks for a figure block. No themes, since Antigravity's color schemes are built in. Thanks @buer5 ([#561](https://github.com/NahumLitvin/prismantis/pull/561)).
+- `fullPaths` (default `false`): a path that opens on click draws as the absolute path its link opens, like `src/app.ts:42` as `/work/app/src/app.ts:42`, with backslashes on Windows. Thanks @Boring206 ([#562](https://github.com/NahumLitvin/prismantis/pull/562)).
+- `keyPointHint` (default `false`): a model-only note on each prompt, about 80 tokens, asking Claude to put each reply's key points in bold, which prismantis draws in the theme's `strong` color. Thanks @Boring206 ([#563](https://github.com/NahumLitvin/prismantis/pull/563)).
+
+### Fixed
+
+- VS Code extension: tables draw as boxes that share the reply's width, like the desktop app, instead of rules that missed the columns in the panel's proportional font or stacked cards; two tables in a row both fit, and a wrapped list item keeps its marker beside its text. Side-by-side tables in the desktop app shrink to fit too. Thanks @sagikakon2 ([#557](https://github.com/NahumLitvin/prismantis/pull/557)).
+- A quoted pie title, like `pie title "Punchy's kills"`, draws without its quotes ([#574](https://github.com/NahumLitvin/prismantis/pull/574)).
+
 ## [0.48.2] - 2026-11-18
 
 Gantt charts with ISO timestamps draw, and the README shows prismantis in OpenCode.

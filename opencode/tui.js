@@ -388,13 +388,14 @@ var barPie = (slices, rows2, ascii, columns) => {
     return `${rows2[i].label}  ${(ascii ? "#" : "\u2588").repeat(cells2).padEnd(bar)} ${rows2[i].tail}`;
   });
 };
+var unquote = (text) => text?.trim().replace(/^"(.*)"$/, "$1");
 var pieLines = (lines, heading, data) => {
   let title = heading;
   let showData = data;
   const slices = [];
   for (const line2 of lines) {
     const named = /^title\s+(.*)$/i.exec(line2);
-    if (named) title = named[1];
+    if (named) title = unquote(named[1]);
     else if (/^showData$/i.test(line2)) showData = true;
     else if (!/^acc(Title|Descr)\b/.test(line2)) {
       const slice = /^"([^"]*)"\s*:\s*([\d.]+)$/.exec(line2);
@@ -409,7 +410,7 @@ var pieText = (source, ascii, columns, colors = 0, aspect = 2) => {
   const [first = "", ...rest] = body(source);
   const head = /^pie\b(\s+showData)?(?:\s+title\s+(.*))?$/i.exec(first);
   if (!head) return null;
-  const parsed = pieLines(rest, head[2], !!head[1]);
+  const parsed = pieLines(rest, unquote(head[2]), !!head[1]);
   if (!parsed) return null;
   const { title, showData, slices } = parsed;
   slices.sort((a, b) => b.value - a.value);
@@ -532,7 +533,7 @@ var fit3 = (label, max) => {
   return `${out.trimEnd()}\u2026`;
 };
 var oneLine = (label) => label.replace(/<br\s*\/?>/gi, " ").replace(/\s+/g, " ").trim();
-var unquote = (text) => text.trim().replace(/^"(.*)"$/, "$1");
+var unquote2 = (text) => text.trim().replace(/^"(.*)"$/, "$1");
 var line = (...parts) => ({ text: parts.map(([t]) => t).join(""), hue: parts.flatMap(([t, h]) => cells(t).map(() => h)) });
 var blank = (rows2, cols) => ({
   grid: Array.from({ length: rows2 }, () => Array(cols).fill(" ")),
@@ -579,7 +580,7 @@ var commit = (g, rest, label) => {
 };
 var merge = (g, rest) => {
   const [, name = "", more = ""] = /^("[^"]*"|\S+)\s*(.*)$/.exec(rest) ?? [];
-  const from = g.names.indexOf(unquote(name));
+  const from = g.names.indexOf(unquote2(name));
   const o = optionsOf(more);
   const mark = markOf(o.type);
   if (from < 0 || from === g.current || !mark || o.id && g.ids.has(o.id)) return false;
@@ -588,7 +589,7 @@ var merge = (g, rest) => {
   return true;
 };
 var branch = (g, rest) => {
-  const name = unquote(rest.replace(/\s+order:\s*\d+\s*$/i, ""));
+  const name = unquote2(rest.replace(/\s+order:\s*\d+\s*$/i, ""));
   if (!name || g.names.includes(name)) return false;
   g.names.push(name);
   g.rows.push({ kind: "fork", from: g.current, to: g.names.length - 1 });
@@ -596,7 +597,7 @@ var branch = (g, rest) => {
   return true;
 };
 var checkout = (g, rest) => {
-  g.current = g.names.indexOf(unquote(rest));
+  g.current = g.names.indexOf(unquote2(rest));
   return g.current >= 0;
 };
 var pick = (g, rest) => {
@@ -696,15 +697,15 @@ var MAX_STEP = 16;
 var readLine = (j, text) => {
   const title = /^title\s+(.*)$/i.exec(text);
   const section = /^section\s+([^:]*)$/i.exec(text);
-  if (title) j.title = unquote(title[1]);
-  if (section) j.sections.push(unquote(section[1]));
+  if (title) j.title = unquote2(title[1]);
+  if (section) j.sections.push(unquote2(section[1]));
   if (title || section) return true;
   if (IGNORED3.test(text)) return true;
   const m = TASK.exec(text);
   const score = Number(m?.[2]);
   if (!m || score < 1 || score > 5) return false;
   const actors = (m[3] ?? "").split(",").map((a) => a.trim()).filter(Boolean);
-  j.tasks.push({ name: oneLine(unquote(m[1])), score, actors, section: j.sections.length - 1 });
+  j.tasks.push({ name: oneLine(unquote2(m[1])), score, actors, section: j.sections.length - 1 });
   return true;
 };
 var parse2 = (source) => {
@@ -811,7 +812,7 @@ var MIN_WIDTH = 16;
 var MAX_WIDTH = 32;
 var MOST_LINES = 4;
 var URGENT = /^(very )?high$/i;
-var textOf = (body2) => oneLine(unquote(/^[^\s[\]]*\[(.*)\]$/.exec(body2)?.[1] ?? body2));
+var textOf = (body2) => oneLine(unquote2(/^[^\s[\]]*\[(.*)\]$/.exec(body2)?.[1] ?? body2));
 var metaOf = (body2) => Object.fromEntries([...body2.matchAll(/(\w+)\s*:\s*('[^']*'|"[^"]*"|[^,}]+)/g)].map((m) => [m[1].toLowerCase(), m[2].trim().replace(/^(['"])(.*)\1$/, "$2")]));
 var nodeOf = (text) => {
   const at = text.indexOf("@{", Math.max(0, text.lastIndexOf("]")));
@@ -910,7 +911,7 @@ var shaped = (body2) => {
 };
 var unmark = (text) => text.replace(/(\*\*|__)(.+?)\1|([*_])(.+?)\3/g, "$2$4");
 var labelOf2 = (text) => {
-  const body2 = unquote(shaped(text.replace(/\s*:::[\w\s-]*$/, "")));
+  const body2 = unquote2(shaped(text.replace(/\s*:::[\w\s-]*$/, "")));
   const markdown = /^`(.*)`$/.exec(body2);
   return oneLine(markdown ? unmark(markdown[1]) : body2);
 };
@@ -1007,21 +1008,21 @@ var MARKS = "123456789abcdefghijklmnopqrstuvwxyz";
 var IGNORED4 = /^(classDef|accTitle|accDescr)\b/i;
 var POINT = /^(.+?)(?::::[\w-]+)?\s*:\s*\[\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]/;
 var axisOf = (text) => {
-  const [from = "", to] = text.split("-->").map(unquote);
+  const [from = "", to] = text.split("-->").map(unquote2);
   return [from, to || void 0];
 };
 var pointOf = (line2) => {
   const m = POINT.exec(line2);
   if (!m) return void 0;
   const [x, y] = [Number(m[2]), Number(m[3])];
-  return x >= 0 && x <= 1 && y >= 0 && y <= 1 ? { name: unquote(m[1]), x, y } : null;
+  return x >= 0 && x <= 1 && y >= 0 && y <= 1 ? { name: unquote2(m[1]), x, y } : null;
 };
 var readLine2 = (q, line2) => {
   const named = /^(title|x-axis|y-axis|quadrant-([1-4]))\s+(.*)$/i.exec(line2);
   if (named) {
     const [key, slot, text] = [named[1].toLowerCase(), named[2], named[3]];
-    if (slot) q.names[Number(slot) - 1] = unquote(text);
-    else if (key === "title") q.title = unquote(text);
+    if (slot) q.names[Number(slot) - 1] = unquote2(text);
+    else if (key === "title") q.title = unquote2(text);
     else q[key === "x-axis" ? "x" : "y"] = axisOf(text);
     return true;
   }
