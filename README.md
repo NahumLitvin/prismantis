@@ -342,7 +342,7 @@ Claude rarely writes a chart unless it knows the terminal can draw one. With `di
 
 The note costs about 630 tokens per prompt: about 275 for the main part and about 360 for the figure part, plus about 80 while [LaTeX math](#latex-math) is on, when it also says `$$` formulas render. All three are counted with Claude's tokenizer. It's off whenever `mermaid` is off, and skipped for the prompt a headless `claude -p` run starts with and for background notifications; a prompt another plugin sends inside such a run still carries it.
 
-With `keyPointHint` on (off by default), each prompt also carries a note that asks Claude to put each reply's key points in bold: the answer, the result, the decision, or what you have to do. The theme draws bold in its own color, so those phrases stand out. Each one is a short phrase, usually no more than three per reply. The note costs about 80 tokens per prompt, whether `diagramHints` is on or off.
+With `keyPointHint` on (off by default), each prompt also carries a note that asks Claude to put each reply's key points in bold: the answer, the result, the decision, or what you have to do. Bold draws in the theme's `strong` color. In a theme where that color is close to the body text, such as `catppuccin-mocha`, set `strongColor` (for example `#fab387`) so those phrases stand out. Each one is a short phrase, usually no more than three per reply. The note costs about 80 tokens per prompt, whether `diagramHints` is on or off.
 
 ### Text
 
