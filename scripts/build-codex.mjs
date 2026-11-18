@@ -1,5 +1,5 @@
 import { build } from 'esbuild'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -29,6 +29,12 @@ const CODEX = [
   'Codex draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart, sequenceDiagram, stateDiagram-v2, classDiagram and erDiagram. Any other mermaid kind prints as source, so draw it as a figure instead.',
   'Codex also prints a diagram as source when it is wider than the terminal or a label, message or note holds ; or quotes or HTML: use flowchart TD past 4 steps, at most 4 nodes side by side, labels under 20 characters, and sequence diagrams with at most 4 one-word participants and messages under 16 characters.',
   'A figure block prints as written in a plain code block, so leave out the {role:text} color markup. There are no copy buttons and GitHub alerts draw as plain quotes.',
+].join(' ')
+
+const ANTIGRAVITY = [
+  'This session runs in Google Antigravity, not Claude Code. The notes after this paragraph are what prismantis tells Claude in Claude Code; follow them with these Antigravity differences.',
+  'Here Antigravity draws the reply, not prismantis: it draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart and sequenceDiagram. Any other mermaid kind prints as source, so draw it as a figure instead.',
+  'Antigravity keeps its own colors, so leave out the {role:text} color markup: a figure block prints as written in a plain code block. There are no copy buttons and GitHub alerts draw as plain quotes.',
 ].join(' ')
 
 const TEXTMATE = {
@@ -124,6 +130,64 @@ const pinned = JSON.parse(readFileSync(join(root, '.agents/plugins/marketplace.j
 const codexSource = p => (p.source.source === 'archive' ? pinned.find(c => c.name === p.name).source : { ...p.source, source: 'url', path: undefined })
 const codexMarket = { ...market, plugins: market.plugins.map(p => ({ ...p, source: codexSource(p) })) }
 writeFileSync(join(root, '.agents/plugins/marketplace.json'), `${JSON.stringify(codexMarket, null, 2)}\n`)
+
+const antigravity = join(root, 'antigravity')
+rmSync(antigravity, { recursive: true, force: true })
+const writeAgy = (path, text) => {
+  mkdirSync(dirname(join(antigravity, path)), { recursive: true })
+  writeFileSync(join(antigravity, path), text)
+}
+writeAgy('plugin.json', `${JSON.stringify({
+  $schema: 'https://antigravity.google/schemas/v1/plugin.json',
+  name: manifest.name,
+  displayName: 'Prismantis',
+  version: manifest.version,
+  description: 'A session note that gets tables, diagrams and figures into Antigravity replies, and a demo skill.',
+  logo: 'assets/logo.png',
+  suggestedPrompts: [
+    'Compare three approaches in a table, with a recommendation',
+    'Draw this flow as a flowchart',
+    'Show the prismantis demo',
+  ],
+  author: manifest.author,
+  homepage: manifest.homepage,
+  repository: manifest.repository,
+  license: manifest.license,
+  keywords: ['markdown', 'tables', 'diagrams', 'figures', 'prompt'],
+}, null, 2)}\n`)
+mkdirSync(join(antigravity, 'assets'), { recursive: true })
+copyFileSync(join(root, 'plugin/.claude-plugin/icon.png'), join(antigravity, 'assets/logo.png'))
+writeAgy('rules/AGENTS.md', `${ANTIGRAVITY}\n\n${cc.HINT}\n\n${cc.FIGURE_HINT}\n`)
+const AGY_DEMO_NOTE = '> This is the Claude Code demo. In Antigravity, prismantis has no colors and only mermaid flowcharts and sequence diagrams are drawn; the other mermaid kinds print as source, and a figure prints as the text picture it is: see antigravity/README.md in the prismantis repo.'
+writeAgy('skills/prismantis/SKILL.md', skill('prismantis', 'Show the prismantis demo. Use when the user runs /prismantis or asks what prismantis is or does.',
+  `Reply with exactly the markdown between the START and END lines, nothing before or after it.\n\nSTART\n${AGY_DEMO_NOTE}\n${cc.showcaseText(cc.PRESET_NAMES)}END\n`))
+writeAgy('README.md', [
+  '# prismantis for Antigravity',
+  '',
+  'Antigravity draws replies itself and keeps its own color scheme, so prismantis in Antigravity does not color anything. It gives Antigravity the same session note as Claude Code, so replies come back with tables, diagrams and figures, and adds a `/prismantis` demo.',
+  '',
+  '## Install',
+  '',
+  '```bash',
+  'git clone https://github.com/NahumLitvin/prismantis && agy plugin install ./prismantis/antigravity',
+  '```',
+  '',
+  'Or copy this folder to `.agents/plugins/prismantis/` in a workspace, or to `~/.gemini/config/plugins/prismantis/` for every workspace. `/prismantis` prints the demo.',
+  '',
+  '## What works',
+  '',
+  '| Feature | Antigravity |',
+  '|---|---|',
+  '| The session note: tables, diagrams and figures in replies | ✓ |',
+  '| Tables, headings, lists, links and fenced code, in the Antigravity color scheme | ✓ |',
+  '| Mermaid flowchart and sequenceDiagram, drawn by Antigravity | ✓ |',
+  '| Figure blocks, printed as the text pictures they are | ✓ |',
+  '| Mermaid state, class, ER, gantt, gitGraph, timeline, pie and xychart | source, so the note asks for a figure instead |',
+  '| prismantis themes, copy buttons, tool rows, diff cards, prompt styles, alert boxes, footnotes, right-to-left text | not in Antigravity |',
+  '',
+  'This folder is generated from the Claude Code source by `npm --prefix scripts run build:codex`. Edit the source, not these files.',
+  '',
+].join('\n'))
 
 const opencode = join(root, 'opencode')
 rmSync(opencode, { recursive: true, force: true })

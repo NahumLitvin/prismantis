@@ -71,6 +71,12 @@ prismantis also runs in OpenCode 2.2.5 and later, where it draws figure blocks i
 
 <sub><a href="https://www.catchkill9.dev/video/prismantis-opencode.mp4">▶ Watch it with sound</a> (22 seconds).</sub>
 
+### Antigravity
+
+prismantis also runs in Antigravity, where it adds the same session note and a `/prismantis` demo. Antigravity draws the tables and flowcharts itself in its own color scheme, and prints figure blocks as the text pictures they are. Install and what works: [antigravity/README.md](antigravity/README.md).
+
+![Antigravity drawing a table, a flowchart and a figure from a prismantis reply](docs/compare/antigravity.png)
+
 ## Features
 
 | Feature | What you get |
