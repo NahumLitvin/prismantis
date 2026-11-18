@@ -261,6 +261,12 @@
       "description": "Color file paths like ~/src/app.ts or /var/log.",
       "default": true
     },
+    "fullPaths": {
+      "type": "boolean",
+      "title": "Full paths",
+      "description": "Show a path that opens on click in full: ~/notes.md, ./src/app.ts and src/app.ts draw as their absolute path.",
+      "default": false
+    },
     "accentColor": {
       "type": "string",
       "title": "Accent",
