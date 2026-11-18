@@ -63,6 +63,7 @@ export type Style = {
   highlightNumbers: boolean
   surfaces?: RenderSurface[]
   highlightPaths: boolean
+  fullPaths: boolean
   mermaid: boolean
   mermaidAscii: boolean
   copyButtons: boolean
@@ -156,6 +157,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     highlightNumbers: options.highlightNumbers !== false,
     surfaces: surfacesOf(options.surfaces),
     highlightPaths: options.highlightPaths !== false,
+    fullPaths: options.fullPaths === true,
     mermaid: options.mermaid !== false,
     mermaidAscii: options.mermaidAscii === true,
     copyButtons: options.copyButtons !== false,

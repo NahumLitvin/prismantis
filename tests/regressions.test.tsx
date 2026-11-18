@@ -440,6 +440,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('⧉ html')
   expect(showcaseText([])).toContain('`▣ png`')
   expect(showcaseText([])).toContain('src/app.ts:42, and Windows paths like C:\\work\\plan.md')
+  expect(showcaseText([])).toContain('`fullPaths` in `/config`')
   expect(showcaseText([])).toContain('<i>Reply</i>')
   expect(showcaseText([])).toContain('CopyQ')
   expect(showcaseText([])).toContain('plain text')
@@ -1191,6 +1192,25 @@ test('a line number after a path stays out of its link with number colors off', 
   expect((await ui.findAll({ type: 'Link' })).map(l => [l.props.label, l.props.href])).toEqual([['src/app.ts', 'file:///work/app/src/app.ts'], ['C:\\work\\notes\\plan.md', 'file:///C:/work/notes/plan.md']])
   await ui.unmount()
 })
+
+for (const [where, root, home, full] of [
+  ['on macOS and Linux', '/work/app', '/home/me', ['/work/app/src/app.ts', '/work/app/docs/guide/', '/work/app/src/app.ts', '/home/me/notes/todo.md.', 'C:\\work\\notes\\plan.md']],
+  ['on Windows', 'C:\\work\\app', 'C:\\Users\\me', ['C:\\work\\app\\src\\app.ts', 'C:\\work\\app\\docs\\guide\\', 'C:\\work\\app\\src\\app.ts', 'C:\\Users\\me\\notes\\todo.md.', 'C:\\work\\notes\\plan.md']],
+] as const) {
+  test(`with fullPaths on, a path that opens on click shows in full and an absolute one as written, ${where}`, { options: { fullPaths: true } }, async ($, on) => {
+    claudeAt(on, '2.1.289')
+    mock.env(on, { FORCE_HYPERLINK: '1', HOME: home })
+    on('session.root', () => ({ value: root }))
+    const clock = mock.clock(on)
+    await onDisk($, on)
+    if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const ui = await $.ui.mount(mount('See src/app.ts:42, ./docs/guide/, `src/app.ts`, ~/notes/todo.md. and C:\\work\\notes\\plan.md, not docs/missing.md.'))
+    await clock.settle()
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.label)).toEqual([...full])
+    expect(await ui.find({ type: 'Text', text: /docs\/missing\.md/ })).toBeDefined()
+    await ui.unmount()
+  })
+}
 
 test('in Orca paths link without FORCE_HYPERLINK', async ($, on) => {
   filesAt(on, '2.1.289', { FORCE_HYPERLINK: '', TERM_PROGRAM: 'Orca', TERM_PROGRAM_VERSION: '1.4.230' })
