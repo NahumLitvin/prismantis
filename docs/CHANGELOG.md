@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.48.2] - 2026-11-18
+
+Gantt charts with ISO timestamps draw, and the README shows prismantis in OpenCode.
+
+### Fixed
+
+- Gantt charts whose `dateFormat` has literal letters, like the ISO `T` in `YYYY-MM-DDTHH:mm:ss`, or bracketed text, draw instead of showing the source ([#570](https://github.com/NahumLitvin/prismantis/pull/570)).
+- OpenCode: `/prismantis` counts the 18 themes OpenCode gets, not all 19 presets ([#569](https://github.com/NahumLitvin/prismantis/pull/569)).
+
+### Changed
+
+- The README links the 1:44 film, and the OpenCode section and `opencode/README.md` show a clip of prismantis drawing charts in OpenCode ([#569](https://github.com/NahumLitvin/prismantis/pull/569)).
+
 ## [0.48.1] - 2026-11-18
 
 OpenCode charts stay readable in the default theme, and `/prismantis` there shows only what OpenCode draws.
