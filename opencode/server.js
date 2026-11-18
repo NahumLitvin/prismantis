@@ -1085,7 +1085,7 @@ ${FIGURE_HINT}`;
 var DEMO = `Reply with exactly the markdown between the START and END lines, nothing before or after it.
 
 START
-${opencodeShowcase(PRESET_NAMES)}END`;
+${opencodeShowcase(PRESET_NAMES.filter((name) => PRESETS[name].codeText))}END`;
 var server_default = {
   id: "prismantis",
   async setup(ctx) {

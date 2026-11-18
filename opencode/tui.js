@@ -417,12 +417,15 @@ var pieText = (source, ascii, columns, colors = 0, aspect = 2) => {
   return roundPie(ascii ? 0 : colors, title, slices, rows2.map((r) => `${r.label} ${r.tail}`), columns, aspect) ?? { text: [...title ? [title.trim()] : [], ...barPie(slices, rows2, ascii, columns)].join("\n") };
 };
 var dateParser = (format) => {
-  if (/[A-Za-z]/.test(format.replace(/YYYY|MM|DD|HH|mm|ss/g, ""))) return null;
   const order = [];
-  const pattern = format.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/YYYY|MM|DD|HH|mm|ss/g, (token) => {
-    order.push(token);
-    return token === "YYYY" ? "(\\d{4})" : "(\\d{1,2})";
-  });
+  let pattern = "";
+  for (const [token, literal] of format.matchAll(/\[([^\]]*)\]|YYYY|MM|DD|HH|mm|ss|[\s\S]/g)) {
+    if (token.length > 1 && literal === void 0) {
+      order.push(token);
+      pattern += token === "YYYY" ? "(\\d{4})" : "(\\d{1,2})";
+    } else if (/^[YMDHhmsSAaXxQwk]$/.test(token)) return null;
+    else pattern += (literal ?? token).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
   const exact = new RegExp(`^${pattern}$`);
   return (text) => {
     const m = exact.exec(text);
