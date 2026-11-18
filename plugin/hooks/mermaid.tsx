@@ -204,6 +204,32 @@ const barStart = (row: string[], c: number): number => {
 
 type Painted = { grid: string[][]; colors: (string | undefined)[][] }
 
+const hueOf = (hex: string): number | undefined => {
+  const [r, g, b] = [1, 3, 5].map(i => Number.parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number]
+  const max = Math.max(r, g, b)
+  const spread = max - Math.min(r, g, b)
+  if (!max || spread / max < 0.25) return undefined
+  const sector = max === r ? (g - b) / spread : max === g ? 2 + (b - r) / spread : 4 + (r - g) / spread
+  return (sector * 60 + 360) % 360
+}
+
+const clashes = (color: string, kept: string[]): boolean => {
+  const hue = hueOf(color)
+  return hue !== undefined && kept.some(other => {
+    const near = hueOf(other)
+    return near !== undefined && Math.min(Math.abs(hue - near), 360 - Math.abs(hue - near)) < 25
+  })
+}
+
+export const distinctHues = (colors: string[], reserve: string[]): string[] => {
+  const pool = [...reserve]
+  return colors.reduce<string[]>((kept, color) => {
+    if (!clashes(color, kept)) return [...kept, color]
+    const free = pool.findIndex(spare => !clashes(spare, kept))
+    return [...kept, free < 0 ? color : pool.splice(free, 1)[0]!]
+  }, [])
+}
+
 export const diagramPalette = (t: Theme): string[] => [...new Set([t.link, t.number, t.heading, t.emphasis, t.path, t.codeFlag, t.accent])].filter((c): c is string => c !== undefined)
 
 const paint = (art: string, t: Theme, series?: number[][]): Painted => {

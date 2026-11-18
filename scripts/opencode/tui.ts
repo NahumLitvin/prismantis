@@ -6,7 +6,7 @@ import { bold, fg, StyledText, TextRenderable, type MarkdownCodeBlockRenderer, t
 
 import { figureRuns, reframe } from '../../plugin/hooks/figure'
 import type { FIGURE_ROLES } from '../../plugin/hooks/markdown'
-import { chartCells } from '../../plugin/hooks/mermaid'
+import { chartCells, distinctHues } from '../../plugin/hooks/mermaid'
 import type { Theme as ChartTheme } from '../../plugin/hooks/theme'
 
 type Role = (typeof FIGURE_ROLES)[number]
@@ -46,21 +46,22 @@ const figureChunks = (theme: Theme, lines: readonly string[]): TextChunk[] =>
 
 const hex = (color: RGBA) => `#${color.toInts().slice(0, 3).map(n => n.toString(16).padStart(2, '0')).join('')}`
 
-const chartTheme = (theme: Theme): ChartTheme => ({
-  link: hex(theme.markdown.link),
-  number: hex(theme.syntax.number),
-  heading: hex(theme.markdown.heading),
-  emphasis: hex(theme.markdown.emphasis),
-  path: hex(theme.text.feedback.warning.base),
-  codeFlag: hex(theme.syntax.keyword),
-  accent: hex(theme.markdown.listItem),
-  quote: hex(theme.markdown.blockQuote),
-  rule: hex(theme.markdown.horizontalRule),
-  diagram: hex(theme.diff.text.hunkHeader),
-  diagramText: hex(theme.text.base),
-  diffAdded: hex(theme.diff.text.added),
-  diffRemoved: hex(theme.diff.text.removed),
-})
+const chartTheme = (theme: Theme): ChartTheme => {
+  const feedback = theme.text.feedback
+  const [link, number, heading, emphasis, path, codeFlag, accent] = distinctHues(
+    [theme.markdown.link, theme.syntax.number, theme.markdown.heading, theme.markdown.emphasis, feedback.warning.base, theme.syntax.keyword, theme.markdown.listItem].map(hex),
+    [feedback.info.base, feedback.success.base, feedback.error.base].map(hex),
+  )
+  return {
+    link, number, heading, emphasis, path, codeFlag, accent,
+    quote: hex(theme.markdown.blockQuote),
+    rule: hex(theme.markdown.horizontalRule),
+    diagram: hex(theme.diff.text.hunkHeader),
+    diagramText: hex(theme.text.base),
+    diffAdded: hex(theme.diff.text.added),
+    diffRemoved: hex(theme.diff.text.removed),
+  }
+}
 
 const chartChunks = (theme: Theme, grid: string[][], colors: (string | undefined)[][]): TextChunk[] =>
   grid.flatMap((row, r) => [...(r ? [fg(theme.text.base)('\n')] : []), ...row.map((cell, c) => fg(colors[r]![c] ?? theme.text.base)(cell))])
