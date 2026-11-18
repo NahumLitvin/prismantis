@@ -1202,7 +1202,11 @@ for (const [where, root, home, full] of [
     mock.env(on, { FORCE_HYPERLINK: '1', HOME: home })
     on('session.root', () => ({ value: root }))
     const clock = mock.clock(on)
-    await onDisk($, on)
+    on('fs.stat', (_, e) => {
+      const path = e.path.replace(/\\/g, '/')
+      const kind = path.endsWith('/work/app/docs/guide') ? 'dir' as const : ['/work/app/src/app.ts', '/work/notes/plan.md'].some(f => path.endsWith(f)) ? 'file' as const : undefined
+      return kind ? { value: { kind, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` }
+    })
     if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
     const ui = await $.ui.mount(mount('See src/app.ts:42, ./docs/guide/, `src/app.ts`, ~/notes/todo.md. and C:\\work\\notes\\plan.md, not docs/missing.md.'))
     await clock.settle()
