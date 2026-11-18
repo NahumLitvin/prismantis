@@ -471,8 +471,8 @@ test('copyButtonStyle dim, the default, keeps every copy button in the flow', as
   await ui.unmount()
 })
 
-test('copyButtonStyle hover draws inline on mobile, which has no pointer', { options: { copyButtonStyle: 'hover' } }, async $ => {
-  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface: 'mobile' })
+for (const surface of ['mobile', 'vscode'] as const) test(`copyButtonStyle hover draws inline on ${surface}, ${surface === 'mobile' ? 'which has no pointer' : 'whose panel reveals nothing on hover'}`, { options: { copyButtonStyle: 'hover' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(COPY_SAMPLE), surface })
   expect(await floatingCopies(ui)).toHaveLength(0)
   await ui.unmount()
 })
@@ -882,8 +882,8 @@ for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tab
   await ui.unmount()
 })
 
-for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tableStyle ${tableStyle} on desktop draws its lines as thin colored boxes that share the percent widths of their columns`, { options: { tableStyle } }, async $ => {
-  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'desktop' })
+for (const surface of ['desktop', 'vscode'] as const) for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tableStyle ${tableStyle} on ${surface} draws its lines as thin colored boxes that share the percent widths of their columns`, { options: { tableStyle } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TABLE), surface })
   const ink = PRESETS['catppuccin-mocha'].tableRule
   const boxes = await ui.findAll({ type: 'Box' })
   expect(await ui.find({ type: 'Text', text: /[┌┐└┘│╞╡├┤┬┴┼╪─━═]/ })).toBeUndefined()
@@ -893,6 +893,8 @@ for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tab
   expect(headers.map(b => [b?.props.flexShrink, b?.props.minWidth])).toEqual([[1, 'api-gateway'.length], [1, 'Regions'.length], [1, 'Version'.length]])
   expect((await ui.find({ key: 'b0' }))?.props.alignSelf).toBe('flex-start')
   expect(headers.every(b => b?.props.alignItems === 'flex-start')).toBe(true)
+  const cellRows = boxes.filter(b => b.props.flexDirection === 'row' && ['Service', 'api-gateway', 'billing'].filter(cell => (b.text ?? '').includes(cell)).length === 1)
+  expect(cellRows.map(b => b.props.flexWrap)).toEqual(Array(3).fill('nowrap'))
   const lines = boxes.filter(b => b.props.backgroundColor === ink)
   const walls = lines.filter(b => b.props.width === 0.12)
   const runs = lines.filter(b => typeof b.props.width === 'string')
@@ -906,10 +908,17 @@ for (const tableStyle of ['box', 'rules', 'grid', 'minimal'] as const) test(`tab
     expect(walls).toHaveLength(0)
     expect(spans).toHaveLength(0)
     const rows = tableStyle === 'minimal' ? 1 : 2
+    expect(boxes.filter(b => b.props.marginY === 1).map(b => b.props.flexWrap)).toEqual(Array(rows).fill('nowrap'))
     expect(runs.map(b => percent(b.props.width))).toEqual(Array.from({ length: rows }, () => shares).flat())
     expect(runs.map(b => b.props.minWidth)).toEqual(Array.from({ length: rows }, () => headers.map(h => h?.props.minWidth)).flat())
     expect(runs.slice(0, 3).map(b => b.props.height)).toEqual(Array(3).fill(tableStyle === 'grid' ? 0.12 : 0.06))
   }
+  await ui.unmount()
+})
+
+for (const surface of ['terminal', 'desktop', 'vscode'] as const) test(`two tables in a row on ${surface} ${surface === 'terminal' ? 'keep the width they are drawn at' : 'shrink to the reply instead of running past it'}`, async $ => {
+  const ui = await $.ui.mount({ ...draw(`${TABLE}\n\n${TABLE}`), surface })
+  expect([(await ui.find({ key: 'f0' }))?.props.flexShrink, (await ui.find({ key: 'f1' }))?.props.flexShrink]).toEqual(surface === 'terminal' ? [0, 0] : [1, 1])
   await ui.unmount()
 })
 
@@ -1066,17 +1075,19 @@ test('two code blocks that differ only in where lines break fold on their own', 
   await ui.unmount()
 })
 
-for (const surface of ['terminal', 'desktop'] as const) test(`a list item on ${surface} ${surface === 'desktop' ? 'keeps its marker on the first line, unshrunk, when its text wraps' : 'draws its marker as plain text beside its text'}`, async $ => {
+for (const surface of ['terminal', 'desktop', 'vscode'] as const) test(`a list item on ${surface} ${surface !== 'terminal' ? 'keeps its marker on the first line, unshrunk, when its text wraps' : 'draws its marker as plain text beside its text'}`, async $ => {
   const ui = await $.ui.mount({ ...draw(`1. ${'long words '.repeat(30).trim()}\n2. Short`), surface })
   const rows = (await ui.findAll({ type: 'Box' })).filter(b => b.props.flexDirection === 'row' && /^1\. long/.test(b.text ?? ''))
   const row = rows[rows.length - 1]
   expect(row).toBeDefined()
   const holders = (await ui.findAll({ type: 'Box' })).filter(b => b.props.flexShrink === 0 && b.text === '1. ')
-  if (surface === 'desktop') {
+  if (surface !== 'terminal') {
     expect(row!.props.alignItems).toBe('flex-start')
+    expect(row!.props.flexWrap).toBe('nowrap')
     expect(holders).toHaveLength(1)
   } else {
     expect(row!.props.alignItems).toBeUndefined()
+    expect(row!.props.flexWrap).toBeUndefined()
     expect(holders).toHaveLength(0)
   }
   await ui.unmount()

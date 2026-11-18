@@ -1037,7 +1037,9 @@ const tableRuleRun = ({ Box, Text }: ElementTable, style: Style, w: number, shar
 
 const tableRoot = (style: Style, flip: boolean) => (flip ? { alignSelf: 'flex-end' as const } : style.gridFace ? { alignSelf: 'flex-start' as const } : {})
 
-const laidRuleSpace = (style: Style) => (style.gridFace ? { marginY: 1 } : {})
+const laidLine = (style: Style) => (style.gridFace ? { flexWrap: 'nowrap' as const } : {})
+
+const laidRuleSpace = (style: Style) => (style.gridFace ? { marginY: 1, ...laidLine(style) } : {})
 
 const laidCell = (style: Style, box: boolean) => (style.gridFace ? { alignItems: 'flex-start' as const, ...(box ? { paddingY: 1 } : {}) } : {})
 
@@ -1136,7 +1138,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   }
 
   const row = (cells: Inline[][], k: string, isHeader: boolean, border: (k: string, text: string) => RenderElement = bar, at?: number) => drawsTextRows(style, rtl) ? terminalRow(cells, k, isHeader) : (
-    <Box key={k} flexDirection="row" columnGap={columnGap} alignItems="stretch">
+    <Box key={k} flexDirection="row" columnGap={columnGap} alignItems="stretch" {...laidLine(style)}>
       {!box && lead(k)}
       {box && border(`${k}.l`, wall('│ '))}
       {order.map((c, i) => {
@@ -1329,7 +1331,7 @@ const listSide = (style: Style, block: Extract<Block, { kind: 'list' }>): 'R' | 
   return mostlyRtl(style, block.items.map(item => item.inline)) ? 'R' : 'L'
 }
 
-const laidRow = (style: Style) => (style.gridFace ? { alignItems: 'flex-start' as const } : {})
+const laidRow = (style: Style) => (style.gridFace ? { alignItems: 'flex-start' as const, ...laidLine(style) } : {})
 
 const laidMarker = ({ Box }: ElementTable, style: Style, marker: RenderElement) => (style.gridFace ? <Box flexShrink={0}>{marker}</Box> : marker)
 
@@ -1668,7 +1670,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     while (isFigure(b + 1)) b++
     out.push(
       <Box key={`row${start}`} flexDirection="row" flexWrap="wrap" columnGap={4} rowGap={1}>
-        {copied.slice(start, b + 1).map((figure, i) => <Box key={`f${start + i}`} flexShrink={0}>{figure}</Box>)}
+        {copied.slice(start, b + 1).map((figure, i) => <Box key={`f${start + i}`} flexShrink={style.gridFace && blocks[start + i]?.kind === 'table' ? 1 : 0}>{figure}</Box>)}
       </Box>,
     )
   }
