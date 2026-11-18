@@ -165,12 +165,15 @@ export const pieText = (source: string, ascii: boolean, columns: number, colors 
 }
 
 const dateParser = (format: string) => {
-  if (/[A-Za-z]/.test(format.replace(/YYYY|MM|DD|HH|mm|ss/g, ''))) return null
   const order: string[] = []
-  const pattern = format.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/YYYY|MM|DD|HH|mm|ss/g, token => {
-    order.push(token)
-    return token === 'YYYY' ? '(\\d{4})' : '(\\d{1,2})'
-  })
+  let pattern = ''
+  for (const [token, literal] of format.matchAll(/\[([^\]]*)\]|YYYY|MM|DD|HH|mm|ss|[\s\S]/g)) {
+    if (token.length > 1 && literal === undefined) {
+      order.push(token)
+      pattern += token === 'YYYY' ? '(\\d{4})' : '(\\d{1,2})'
+    } else if (/^[YMDHhmsSAaXxQwk]$/.test(token)) return null
+    else pattern += (literal ?? token).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
   const exact = new RegExp(`^${pattern}$`)
   return (text: string): number | undefined => {
     const m = exact.exec(text)

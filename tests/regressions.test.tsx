@@ -2071,6 +2071,14 @@ test('pie and gantt charts shrink to a narrow terminal and use plain glyphs in a
   expect(mermaidText(gantt, false, 80)).toContain('10:00')
 })
 
+test('a gantt dateFormat matches letters that are not date tokens, and [escaped] text, as written', () => {
+  const iso = mermaidText('gantt\n  dateFormat YYYY-MM-DDTHH:mm:ss\n  axisFormat %H:%M\n  section upwind\n  CI :done, 2026-11-18T08:23:00, 2026-11-18T08:27:12\n  watch :active, 2026-11-18T08:29:45, 2026-11-18T09:29:45', false, 80)
+  expect(iso).toContain('08:23')
+  expect(iso).toContain('watch')
+  expect(mermaidText('gantt\n  dateFormat YYYY-MM-DD[ at ]HH:mmZ\n  Deploy : 2026-11-18 at 10:00Z, 45m', false, 80)).toContain('10:00')
+  for (const format of ['MMM DD YYYY', 'Do MM YYYY', 'x', 'hh:mm A', 'HH:mm:ss.SSS']) expect(mermaidText(`gantt\n  dateFormat ${format}\n  Task : 1, 2`, false, 80)).toBeNull()
+})
+
 const QUADRANT = 'quadrantChart\n  title Priorities\n  x-axis Low effort --> High effort\n  y-axis Low impact --> High impact\n  quadrant-1 Big bets\n  quadrant-2 Do now\n  quadrant-3 Fill-ins\n  quadrant-4 Skip\n  Reorder: [0.2, 0.85]\n  Search:::hot: [0.8, 0.9]\n  Dark mode: [0.3, 0.25] radius: 8'
 
 test('a quadrant chart puts each point in its quadrant, the quadrant names in their corners and a numbered legend under it', () => {
