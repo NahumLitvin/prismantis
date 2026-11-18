@@ -21,7 +21,7 @@
 
 ![Plain Claude Code replies wiping into prismantis: the chat layout, a table and a line chart](docs/tour.gif)
 
-<sub>Same prompt, same model: plain Claude Code, then with prismantis. <a href="https://github.com/user-attachments/assets/6a7f627c-3270-46f5-8a9d-2703fc4b9f50">▶ Watch the full 49-second tour</a> (chat layout, tables, charts, diagrams, pie charts, diffs, callouts).</sub>
+<sub>Same prompt, same model: plain Claude Code, then with prismantis. <a href="https://www.catchkill9.dev/video/prismantis-why.mp4">▶ Watch the 1:44 film</a> (tables, charts, diagrams, tool rows, and what people use it for).</sub>
 
 ## TL;DR
 
@@ -67,7 +67,9 @@ prismantis also runs in Codex, with themes for code, prose, tables and diagrams 
 
 prismantis also runs in OpenCode 2.2.5 and later, where it draws figure blocks in color and every mermaid kind OpenCode leaves as source, ships its themes for code and prose, and adds the same session note. Install and what works: [opencode/README.md](opencode/README.md).
 
-![OpenCode in prismantis-dracula](docs/compare/opencode.png)
+![prismantis in OpenCode drawing a line chart, a pie, a kanban board and a figure](docs/opencode/demo.gif)
+
+<sub><a href="https://www.catchkill9.dev/video/prismantis-opencode.mp4">▶ Watch it with sound</a> (22 seconds).</sub>
 
 ## Features
 
