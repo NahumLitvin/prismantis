@@ -990,6 +990,43 @@ A box whose rows slip off its frame is lined up with its corner:
 {accent:\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518}
 \`\`\`
 `;
+var OPENCODE_CHARTS = ["xychart-beta", "pie", "quadrantChart", "mindmap", "journey", "kanban", "classDiagram", "erDiagram"];
+var opencodeShowcase = (themes) => {
+  const full = showcaseText(themes);
+  const diagrams = full.slice(full.indexOf("#### Diagrams") + 2).replace(/A diagram wider than the terminal[^]*?```\n\n/, "").replace(/<\/?[bius]>/g, "").replace(/, as a smooth picture in kitty and Ghostty\. Set `pieStyle`[^:]*:/, ":").replace(new RegExp(`\`\`\`mermaid\\n(?=(?:${OPENCODE_CHARTS.join("|")})\\b)`, "g"), "```chart\n");
+  return `
+# prismantis in OpenCode
+
+OpenCode draws the prose in the theme colors: **bold**, *italic*, \`inline code\`, [links](https://github.com/NahumLitvin/prismantis), lists, quotes, tables and code. Run \`/prismantis-themes\` to install ${themes.length} prismantis themes, then pick one in settings > Theme.
+
+| Block | Drawn by |
+|---|---|
+| flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph, timeline | OpenCode |
+| ${OPENCODE_CHARTS.join(", ")} | prismantis, in a chart block |
+| figure | prismantis |
+
+Copy buttons, tool rows, diff cards, alert boxes, footnotes, math, images and prompt styles draw in Claude Code only.
+
+\`\`\`ts
+const total = (items: { price: number; qty: number }[]) => items.reduce((sum, item) => sum + item.price * item.qty, 0)
+\`\`\`
+
+${diagrams}
+Class and entity diagrams draw as boxes joined by their relations:
+
+\`\`\`chart
+classDiagram
+    Reply <|-- Chart
+    Reply : +text
+    Chart : +draw()
+\`\`\`
+
+\`\`\`chart
+erDiagram
+    THEME ||--o{ COLOR : has
+\`\`\`
+`;
+};
 var setupSteps = (themes) => [
   { name: "theme", key: "theme", title: "Theme", note: "Each theme draws the same line. `random` picks a new dark one each time the mod loads.", options: themes, sample: "**Bold**, `inline code`, 250ms and ~/src/app.ts." },
   { name: "prompts", key: "promptStyle", title: "Your prompts", note: "How what you type draws in the transcript. `bubble` puts it on the right like a chat app, under `You \u2B24`, and Claude's replies in a bubble of their own. `framed` draws it the same way with no fill. The other styles keep Claude's replies as they were. `off` keeps Claude Code's own look.", options: ["bubble", "framed", "wide", "bar", "chevron", "off"], sample: "" },
@@ -1035,10 +1072,9 @@ var THEME_PREVIEW = [
 ].join("\n");
 
 // opencode/server.ts
-var CHART_KINDS = ["xychart-beta", "pie", "quadrantChart", "mindmap", "journey", "kanban", "classDiagram", "erDiagram"];
 var OPENCODE = [
   "This session runs in OpenCode, not Claude Code. The notes after this paragraph are what prismantis tells Claude in Claude Code; follow them with these OpenCode differences.",
-  `OpenCode draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph and timeline. For ${CHART_KINDS.join(", ")}, open the block with \`\`\`chart instead of \`\`\`mermaid, keeping the same mermaid source: prismantis draws those.`,
+  `OpenCode draws markdown tables, headings, lists, links and fenced code itself, and mermaid only for flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph and timeline. For ${OPENCODE_CHARTS.join(", ")}, open the block with \`\`\`chart instead of \`\`\`mermaid, keeping the same mermaid source: prismantis draws those.`,
   "Figure blocks are drawn with their role colors, written like {warn:disk full}. There are no copy buttons and GitHub alerts draw as plain quotes."
 ].join(" ");
 var SYSTEM = `${OPENCODE}
@@ -1049,8 +1085,7 @@ ${FIGURE_HINT}`;
 var DEMO = `Reply with exactly the markdown between the START and END lines, nothing before or after it.
 
 START
-> This is the Claude Code demo. In OpenCode, copy buttons, tool rows, diff cards, alert boxes and footnotes are not drawn yet: see opencode/README.md in the prismantis repo.
-${showcaseText(PRESET_NAMES).replace(new RegExp(`\`\`\`mermaid\\n(?=(?:${CHART_KINDS.join("|")})\\b)`, "g"), "```chart\n")}END`;
+${opencodeShowcase(PRESET_NAMES)}END`;
 var server_default = {
   id: "prismantis",
   async setup(ctx) {
