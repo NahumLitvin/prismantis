@@ -3,6 +3,7 @@ import type { ElementTable, RenderElement } from 'claude-code'
 import type { ChartArt, Pie, Rgb } from './charts'
 import { ganttText, pieRgba, pieText } from './charts'
 import type { Ink } from './clipboard'
+import { artColors, artPicture } from './clipboard'
 import { drawFigure, isFigureLang } from './figure'
 import { ratexColor } from './latex'
 import type { Block } from './markdown'
@@ -17,6 +18,7 @@ import { journeyText } from './journey'
 import { kanbanText } from './kanban'
 import { mindmapText } from './mindmap'
 import { quadrantText } from './quadrant'
+import { SVG_CELL_ASPECT, artSvg } from './svg'
 import { ARROW_HUE, BAD_HUE, GOOD_HUE, LINE_HUE, oneLine } from './textart'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
@@ -378,7 +380,7 @@ const base64 = (bytes: Uint8Array) => {
 
 const pictures = new Map<string, string>()
 
-const cellAspect = (style: Style) => (style.gridFace ? 2.5 : 2)
+const cellAspect = (style: Style) => (style.svgArt ? SVG_CELL_ASPECT : style.gridFace ? 2.5 : 2)
 
 const piePicture = (el: ElementTable, style: Style, pie: Pie, key: string): RenderElement | null => {
   const Image = 'Image' in el ? el.Image : null
@@ -417,7 +419,7 @@ const chartElement = (el: ElementTable, style: Style, art: ChartArt, block: Extr
   (art.pie && style.images && !block.isOpen && !mirrored(style) && !hasRtl(art.text) ? piePicture(el, style, art.pie, key) : null) ??
   boxArt(el, style, art.text, key, inlineMarks(block.lines.join('\n')), art.slices, art.series)
 
-export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {
+const drawnArt = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {
   const drawn: Drawn = new Map()
   const pieColors = pieColorsOf(style)
   if (style.mermaid) {
@@ -446,3 +448,20 @@ export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], co
   }
   return drawn
 }
+
+const MAX_SVG_CHARS = 131072
+const SVG_COLUMNS = 200
+
+const pictured = (el: ElementTable, style: Style, drawn: Drawn): Drawn => {
+  if (!('Svg' in el)) return drawn
+  const colors = artColors(style)
+  for (const [i, entry] of drawn) {
+    if (!entry.element || entry.art === undefined) continue
+    const source = artSvg(artPicture(entry.art, colors, entry.hues?.()))
+    if (source.length <= MAX_SVG_CHARS) drawn.set(i, { ...entry, scales: true, element: <el.Box key={`b${i}`} paddingLeft={2}><el.Svg source={source} alt={entry.art} /></el.Box> })
+  }
+  return drawn
+}
+
+export const drawDiagrams = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn =>
+  style.svgArt ? pictured(el, style, drawnArt(el, style, blocks, Math.max(columns, SVG_COLUMNS))) : drawnArt(el, style, blocks, columns)

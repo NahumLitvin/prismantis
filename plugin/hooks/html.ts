@@ -11,7 +11,7 @@ export const tableText = (table: Extract<Block, { kind: 'table' }>): string =>
 
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 
-const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, c => ENTITIES[c]!)
+export const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, c => ENTITIES[c]!)
 
 const inlineHtml = (nodes: Inline[]): string => nodes.map(node => {
   switch (node.kind) {

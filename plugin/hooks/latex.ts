@@ -17,7 +17,7 @@ export const MAX_IMAGE_BYTES = 2 * 1024 * 1024
 const ANSI16 = ['000000', 'cd0000', '00cd00', 'cdcd00', '0000ee', 'cd00cd', '00cdcd', 'e5e5e5', '7f7f7f', 'ff0000', '00ff00', 'ffff00', '5c5cff', 'ff00ff', '00ffff', 'ffffff']
 const ANSI_NAMES = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
 
-const hex = (...rgb: number[]): string => `#${rgb.map(n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('')}`
+export const hex = (...rgb: number[]): string => `#${rgb.map(n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')).join('')}`
 
 const ansi256 = (n: number): string => {
   if (n < 16) return `#${ANSI16[n]}`

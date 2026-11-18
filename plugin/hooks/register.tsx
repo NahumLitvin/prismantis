@@ -7,7 +7,7 @@ import { LATEX_DPR, LATEX_FONT_PX, MAX_IMAGE_BYTES, fitImage, fitsImage, imageFi
 import type { Block } from './markdown'
 import { nestedBlocks, parse } from './markdown'
 import type { ClipboardBackend, HelperCommand } from './clipboard'
-import { clipboardCommand, drawsImages, imageCommand } from './clipboard'
+import { artColors, clipboardCommand, drawsImages, imageCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { CopyButton, DrawPaste, Fold, Hues, TerminalEnv } from './render'
@@ -459,7 +459,7 @@ const runHelper = async ($: EngineInterface, backend: ClipboardBackend, build: (
 }
 
 const richCommand = (style: Style, backend: ClipboardBackend, content: string, rich: (() => string) | 'png', hues?: Hues) => (systemRoot?: string): HelperCommand => rich === 'png'
-  ? imageCommand(backend, content, { foreground: style.theme.diagramText ?? style.theme.codeText, background: style.theme.pngBackground, themeBackground: style.background }, systemRoot, hues)
+  ? imageCommand(backend, content, artColors(style), systemRoot, hues)
   : clipboardCommand(backend, rich(), content, systemRoot)
 
 const offers = (style: Style, rich?: (() => string) | 'png'): boolean => !rich || (rich === 'png' ? drawsImages(style.htmlCopy) : !!style.htmlCopy)
@@ -828,7 +828,7 @@ export const register: Register = (on, options) => {
   const probes: Probes = {}
   const pathChecks: PathChecks = { asked: new Set(), batch: [], found: new Set() }
   const forSurface = (base: Style, { surface, viewport }: { surface: RenderSurface; viewport?: { isFullscreen?: boolean } }, links: LinkReach): Style => {
-    const drawn = surface === 'terminal' ? { ...base, hyperlinks: links.hyperlinks, ...(links.http || links.editor ? { httpLinks: links.http, editorLinks: links.editor, obsidianLinks: links.editor && viewport?.isFullscreen === false, fileLinks: fileLinkRoot(links.files, viewport?.isFullscreen), pathLinks: links.paths } : {}) } : { ...base, hyperlinks: true, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop' || surface === 'vscode', monoFace: surface === 'desktop' && links.monoText }
+    const drawn = surface === 'terminal' ? { ...base, hyperlinks: links.hyperlinks, ...(links.http || links.editor ? { httpLinks: links.http, editorLinks: links.editor, obsidianLinks: links.editor && viewport?.isFullscreen === false, fileLinks: fileLinkRoot(links.files, viewport?.isFullscreen), pathLinks: links.paths } : {}) } : { ...base, hyperlinks: true, htmlCopy: null, nativeCode: true, gridFace: surface === 'desktop' || surface === 'vscode', monoFace: surface === 'desktop' && links.monoText, svgArt: surface === 'vscode' }
     return (surface === 'mobile' || surface === 'vscode') && drawn.copyButtonStyle === 'hover' ? { ...drawn, copyButtonStyle: 'inline' } : drawn
   }
   const fullWidth = (text: string) => (style.reorder && hasRtl(text) ? { width: '100%' as const } : {})

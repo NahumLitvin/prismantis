@@ -1,6 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
+import { artPicture } from '../hooks/clipboard'
 import { takesMonoText } from '../hooks/render'
+import { artSvg } from '../hooks/svg'
 import { claudeAt } from './claude-version'
 
 const ART = {
@@ -8,7 +10,7 @@ const ART = {
   figure: '```figure\n┌──────┐\n│ cell │\n└──────┘\n```',
 }
 
-const reply = (text: string, surface: 'terminal' | 'desktop') => ({
+const reply = (text: string, surface: 'terminal' | 'desktop' | 'vscode') => ({
   plugin: 'prismantis',
   surface,
   component: 'AssistantMessage' as const,
@@ -54,5 +56,37 @@ for (const [surface, base, note] of [['terminal', '2.1.299', undefined], ['deskt
   claudeAt(on, base)
   const ui = await $.ui.mount({ ...reply(`\`\`\`figure\n{accent:${'─'.repeat(100)}}\n\`\`\``, surface), viewport: { columns: 110, rows: 40 } })
   expect((await ui.find({ type: 'Text', text: /^figure is \d+ cols, \d+ fit$/ }))?.text).toBe(note)
+  await ui.unmount()
+})
+
+for (const [kind, source] of Object.entries(ART)) for (const surface of ['terminal', 'desktop', 'vscode'] as const) test(`a ${kind} on ${surface} ${surface === 'vscode' ? 'draws as one picture in a monospaced face, its glyphs pinned to their columns' : 'draws its rows as text'}`, async ($, on) => {
+  claudeAt(on, '2.1.296')
+  const ui = await $.ui.mount(reply(source, surface))
+  const pictures = await ui.findAll({ type: 'Svg' })
+  if (surface === 'vscode') {
+    expect(pictures).toHaveLength(1)
+    const svg = String(pictures[0]!.props.source)
+    expect(svg).toMatch(/^<svg [^>]*font-family="[^"]*monospace"/)
+    expect(String(pictures[0]!.props.alt)).toMatch(/[┌│└]/)
+    expect(await artRows(ui)).toHaveLength(0)
+  } else {
+    expect(pictures).toHaveLength(0)
+    expect((await artRows(ui)).length).toBeGreaterThan(1)
+  }
+  await ui.unmount()
+})
+
+test('the VS Code picture of art pins each glyph to its column and draws a run of blocks as one rect', () => {
+  const svg = artSvg(artPicture('███ x\n│ │', { foreground: '#ffffff', background: '#000000' }))
+  expect(svg.match(/<rect /g)).toHaveLength(2)
+  expect(svg).toContain('<text x="30" y="16" fill="#ffffff">x</text>')
+  expect(svg).toContain('<text x="6 18" y="28" fill="#ffffff">││</text>')
+})
+
+for (const surface of ['terminal', 'desktop', 'vscode'] as const) test(`two diagrams in a row on ${surface} ${surface === 'vscode' ? 'shrink to the reply, since their pictures scale' : 'keep the width their art is drawn at'}`, async ($, on) => {
+  claudeAt(on, '2.1.296')
+  const ui = await $.ui.mount(reply(`${ART.diagram}\n\n${ART.diagram}`, surface))
+  const shrink = surface === 'vscode' ? 1 : 0
+  expect([(await ui.find({ key: 'f0' }))?.props.flexShrink, (await ui.find({ key: 'f1' }))?.props.flexShrink]).toEqual([shrink, shrink])
   await ui.unmount()
 })

@@ -2,6 +2,7 @@ import { QUADRANTS } from './charts'
 import { ratexColor } from './latex'
 import { cells, width } from './layout'
 import { holdVisual } from './rtl'
+import type { Style } from './theme'
 import { longHex } from './theme'
 
 export const MAC_TABLE_COPY = `
@@ -282,11 +283,21 @@ const faceOf = (ink: Ink, background: number[], foreground: number[], art: boole
   return Object.keys(face).length ? face : undefined
 }
 
-export const imageCommand = (backend: ClipboardBackend, text: string, colors: { foreground?: string; background?: string; themeBackground?: string }, systemRoot?: string, hues?: Ink[][]): HelperCommand => {
+export type ArtColors = { foreground?: string; background?: string; themeBackground?: string }
+
+export const artColors = (style: Style): ArtColors => ({ foreground: style.theme.diagramText ?? style.theme.codeText, background: style.theme.pngBackground, themeBackground: style.background })
+
+export type ArtPicture = { lines: ReturnType<typeof imageLines>; columns: number; foreground: number[]; background: number[] }
+
+export const artPicture = (text: string, colors: ArtColors, hues?: Ink[][]): ArtPicture => {
   const background = rgbOf(colors.background, rgbOf(colors.themeBackground, [255, 255, 255]))
   const foreground = readable(rgbOf(colors.foreground, [0, 0, 0]), background)
   const lines = imageLines(text, (row, cell, glyph) => faceOf(hues?.[row]?.[cell], background, foreground, /^[─-╿·]$/.test(glyph)))
-  const json = JSON.stringify({ lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground, background })
+  return { lines, columns: Math.max(0, ...text.split('\n').map(width)), foreground, background }
+}
+
+export const imageCommand = (backend: ClipboardBackend, text: string, colors: ArtColors, systemRoot?: string, hues?: Ink[][]): HelperCommand => {
+  const json = JSON.stringify(artPicture(text, colors, hues))
   return backend === 'windows'
     ? { stdin: ascii(json), argv: powershell(systemRoot, WIN_IMAGE_COPY), failure: 'Windows image helper failed' }
     : { ...osascript(MAC_IMAGE_COPY, json), failure: 'macOS image helper failed' }
