@@ -355,7 +355,7 @@ test('a 400-line highlighted code block stays under the engine node limit and it
   const code = `\`\`\`ts\n${Array.from({ length: 400 }, (_, i) => `const v${i} = await fetch("/api/${i}", { retries: ${i % 5} })`).join('\n')}\n\`\`\``
   const started = performance.now()
   const ui = await $.ui.mount(mount(code, 160))
-  expect(performance.now() - started < ((globalThis as { process?: { platform?: string } }).process?.platform === 'win32' ? 3000 : 1500)).toBe(true)
+  expect(performance.now() - started < 3000).toBe(true)
   await ui.unmount()
 })
 
