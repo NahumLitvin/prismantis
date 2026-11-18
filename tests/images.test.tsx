@@ -262,3 +262,9 @@ test('a round pie on the desktop draws wider than in a terminal, for its taller 
   }
   expect(await glyphs('desktop')).toBeGreaterThan(await glyphs('terminal'))
 })
+
+test('a quoted pie title draws without its quotes, on the pie line or its own line', () => {
+  for (const source of ['pie title "Punchy\'s kills"\n  "shells" : 3\n  "crabs" : 1', 'pie showData\n  title "Punchy\'s kills"\n  "shells" : 3\n  "crabs" : 1']) {
+    expect(pieText(source, false, 80)!.text.split('\n')[0]).toBe("Punchy's kills")
+  }
+})
