@@ -12,7 +12,7 @@ Redrawing anything Claude Code already shows is in.
 - Copying what's drawn: Markdown, the drawn art, HTML tables and PNG pictures.
 - Right to left text, and every surface Claude Code draws on: terminal, desktop, VS Code and mobile.
 - More languages to highlight and diagram types to draw, when a vendored MIT library or a short parser covers them.
-- `/prismantis` and its setup, `$.prismantis.markdown` for other mods, and the Codex and OpenCode ports built from the same source.
+- `/prismantis` and its setup, `$.prismantis.markdown` for other mods, and the Codex, OpenCode and Antigravity ports built from the same source.
 
 ## You pick how it looks
 

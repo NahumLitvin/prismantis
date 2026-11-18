@@ -1,0 +1,27 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "prismantis",
+  "displayName": "Prismantis",
+  "version": "0.48.2",
+  "description": "A session note that gets tables, diagrams and figures into Antigravity replies, and a demo skill.",
+  "logo": "assets/logo.png",
+  "suggestedPrompts": [
+    "Compare three approaches in a table, with a recommendation",
+    "Draw this flow as a flowchart",
+    "Show the prismantis demo"
+  ],
+  "author": {
+    "name": "Nahum Litvin",
+    "url": "https://github.com/NahumLitvin"
+  },
+  "homepage": "https://github.com/NahumLitvin/prismantis",
+  "repository": "https://github.com/NahumLitvin/prismantis",
+  "license": "MIT",
+  "keywords": [
+    "markdown",
+    "tables",
+    "diagrams",
+    "figures",
+    "prompt"
+  ]
+}
