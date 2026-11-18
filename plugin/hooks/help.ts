@@ -437,6 +437,50 @@ A box whose rows slip off its frame is lined up with its corner:
 \`\`\`
 `
 
+export const OPENCODE_CHARTS = ['xychart-beta', 'pie', 'quadrantChart', 'mindmap', 'journey', 'kanban', 'classDiagram', 'erDiagram']
+
+export const opencodeShowcase = (themes: readonly string[]): string => {
+  const full = showcaseText(themes)
+  const diagrams = full
+    .slice(full.indexOf('#### Diagrams') + 2)
+    .replace(/A diagram wider than the terminal[^]*?```\n\n/, '')
+    .replace(/<\/?[bius]>/g, '')
+    .replace(/, as a smooth picture in kitty and Ghostty\. Set `pieStyle`[^:]*:/, ':')
+    .replace(new RegExp(`\`\`\`mermaid\\n(?=(?:${OPENCODE_CHARTS.join('|')})\\b)`, 'g'), '```chart\n')
+  return `
+# prismantis in OpenCode
+
+OpenCode draws the prose in the theme colors: **bold**, *italic*, \`inline code\`, [links](https://github.com/NahumLitvin/prismantis), lists, quotes, tables and code. Run \`/prismantis-themes\` to install ${themes.length} prismantis themes, then pick one in settings > Theme.
+
+| Block | Drawn by |
+|---|---|
+| flowchart, sequenceDiagram, stateDiagram-v2, gantt, gitGraph, timeline | OpenCode |
+| ${OPENCODE_CHARTS.join(', ')} | prismantis, in a chart block |
+| figure | prismantis |
+
+Copy buttons, tool rows, diff cards, alert boxes, footnotes, math, images and prompt styles draw in Claude Code only.
+
+\`\`\`ts
+const total = (items: { price: number; qty: number }[]) => items.reduce((sum, item) => sum + item.price * item.qty, 0)
+\`\`\`
+
+${diagrams}
+Class and entity diagrams draw as boxes joined by their relations:
+
+\`\`\`chart
+classDiagram
+    Reply <|-- Chart
+    Reply : +text
+    Chart : +draw()
+\`\`\`
+
+\`\`\`chart
+erDiagram
+    THEME ||--o{ COLOR : has
+\`\`\`
+`
+}
+
 export const helpText = (themes: readonly string[]): string => `
 ## Commands
 

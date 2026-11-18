@@ -2,10 +2,10 @@ import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 import { expect, mock, test } from 'claude-code/testing'
 
-import { helpText, setupParts, setupText, showcaseText } from '../hooks/help'
+import { helpText, OPENCODE_CHARTS, opencodeShowcase, setupParts, setupText, showcaseText } from '../hooks/help'
 import { inlineText, parse } from '../hooks/markdown'
 import { tableHtml, tableText } from '../hooks/html'
-import { chartCells, diagramPalette, inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
+import { chartCells, diagramPalette, distinctHues, inlineMarks, mermaidText, shortenEdgeLabels } from '../hooks/mermaid'
 import type { TerminalEnv } from '../hooks/render'
 import { drawsHyperlinks, isReadOnlyCall, renderBashEdits, renderBlocks, tableArt, takesClickableMarks, takesEditorLinks, takesHttpLinks } from '../hooks/render'
 import { longestWord, width } from '../hooks/layout'
@@ -3056,3 +3056,17 @@ for (const body of [
     expect(chartCells('not a chart at all', 80, t)).toBeNull()
   })
 }
+
+test('OpenCode chart colors swap a hue that repeats an earlier one for a spare hue', () => {
+  expect(distinctHues(['#fab283', '#f5a742', '#9d7cd8', '#e5c07b'], ['#56b6c2', '#7fd88f'])).toEqual(['#fab283', '#56b6c2', '#9d7cd8', '#7fd88f'])
+  expect(distinctHues(['#ff0000', '#00ff00', '#808080', '#7f7f7f'], ['#0000ff'])).toEqual(['#ff0000', '#00ff00', '#808080', '#7f7f7f'])
+  expect(distinctHues(['#ff0000', '#ff1000'], [])).toEqual(['#ff0000', '#ff1000'])
+})
+
+test('the OpenCode demo shows only what OpenCode draws and opens its charts as chart blocks', () => {
+  const demo = opencodeShowcase(PRESET_NAMES)
+  for (const gone of ['/config', 'Claude Code 2.', 'kitty', '<b>', 'Worker 16', '[!', '[^', '$$']) expect(demo).not.toContain(gone)
+  for (const kind of OPENCODE_CHARTS) expect(demo).toContain(`\`\`\`chart\n${kind}`)
+  for (const kind of ['flowchart', 'sequenceDiagram', 'gantt', 'gitGraph']) expect(demo).toContain(`\`\`\`mermaid\n${kind}`)
+  expect(demo).toContain('```figure')
+})
