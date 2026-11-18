@@ -7,7 +7,7 @@ import { FIGURE_HINT } from '../hooks/figure'
 import { parse } from '../hooks/markdown'
 import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from '../hooks/theme'
-import { ISSUE_HINT, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, setupParts, setupSteps, setupText } from '../hooks/help'
+import { ISSUE_HINT, KEY_POINT_HINT, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, setupParts, setupSteps, setupText } from '../hooks/help'
 import type { Theme } from '../hooks/theme'
 import { BAND_STEP, BUBBLE_STEP, EDIT_NOTES, PRISM_COLORS, bashEdits, bubbleFill, replyFill, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, renderDiffCard, tint, wordTint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 import { columnWidths } from '../hooks/layout'
@@ -3587,6 +3587,29 @@ test('with diagram hints off, the issue hint still goes out alone', { options: {
   })
   await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
   expect(seen[0]).toEqual([ISSUE_HINT])
+})
+
+test('the key point hint stays out by default', async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } })
+  expect(seen[0]?.includes(KEY_POINT_HINT) ?? false).toBe(false)
+})
+
+test('keyPointHint on adds the key point hint to every prompt, also with diagram hints off', { options: { keyPointHint: true, diagramHints: false } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  await $.prompt.submit({ text: 'one', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'two', wait: false, origin: { kind: 'composer' } })
+  expect(seen).toEqual([[KEY_POINT_HINT, ISSUE_HINT], [KEY_POINT_HINT]])
 })
 
 test('/prismantis demo adds a section in the language of LANG, and demo ko picks one', async ($, on) => {

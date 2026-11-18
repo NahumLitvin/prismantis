@@ -560,6 +560,12 @@
       "description": "On your first prompt and every tenth after it, tell the model it can offer, after asking you, to open a minimal repro issue on prismantis when you say something drew wrong. About 35 tokens each time.",
       "default": true
     },
+    "keyPointHint": {
+      "type": "boolean",
+      "title": "Key point hint",
+      "description": "Attach a short note, read by the model and never shown, to each prompt you type or another plugin sends, asking for each reply's key points in bold. Set strongColor too if bold looks close to the body text. About 80 tokens per prompt.",
+      "default": false
+    },
     "diagramHints": {
       "type": "boolean",
       "title": "Diagram hints",

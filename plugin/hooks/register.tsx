@@ -13,7 +13,7 @@ import { drawDiagrams } from './mermaid'
 import type { CopyButton, DrawPaste, Fold, Hues, TerminalEnv } from './render'
 import { MARK, bashEdits, lineCount, drawMath, drawsHyperlinks, editNotes, fileLinkRoot, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
-import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
+import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, KEY_POINT_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
 import { desktopLook } from './desktop'
 import { textRows } from './layout'
@@ -805,6 +805,7 @@ const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['res
 
 const hintsFor = (style: Style, latex: LatexSession, nth: number, pane?: number): string[] => [
   ...(style.diagramHints ? [HINT, FIGURE_HINT, ...(pane !== undefined && pane < NARROW_PANE ? [narrowHint(pane)] : []), ...(latex.ready && !latex.stopped ? [LATEX_HINT] : [])] : []),
+  ...(style.keyPointHint ? [KEY_POINT_HINT] : []),
   ...(style.issueHint && nth % 10 === 0 ? [ISSUE_HINT] : []),
 ]
 

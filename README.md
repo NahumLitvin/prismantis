@@ -342,6 +342,8 @@ Claude rarely writes a chart unless it knows the terminal can draw one. With `di
 
 The note costs about 630 tokens per prompt: about 275 for the main part and about 360 for the figure part, plus about 80 while [LaTeX math](#latex-math) is on, when it also says `$$` formulas render. All three are counted with Claude's tokenizer. It's off whenever `mermaid` is off, and skipped for the prompt a headless `claude -p` run starts with and for background notifications; a prompt another plugin sends inside such a run still carries it.
 
+With `keyPointHint` on (off by default), each prompt also carries a note that asks Claude to put each reply's key points in bold: the answer, the result, the decision, or what you have to do. Bold draws in the theme's `strong` color. In a theme where that color is close to the body text, such as `catppuccin-mocha`, set `strongColor` (for example `#fab387`) so those phrases stand out. Each one is a short phrase, usually no more than three per reply. The note costs about 80 tokens per prompt, whether `diagramHints` is on or off.
+
 ### Text
 
 ![Text: plain Claude Code on the left, prismantis on the right](docs/compare/text.png)
@@ -476,6 +478,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `sectionCopyButtons` | `true`, `false` | `false` |
 | `diagramHints` | `true`, `false` | `true` |
 | `issueHint` | `true`, `false` | `true` |
+| `keyPointHint` | `true` (each prompt carries a model-only note asking for each reply's key points in bold), `false` | `false` |
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
@@ -553,10 +556,10 @@ No network calls. The programs it runs, the files it reads and the settings it w
 
 To change the code, read [AGENTS.md](AGENTS.md) instead.
 
-- **What it is:** a Claude Code mod (function hooks in TypeScript) that redraws assistant replies, slash-command output, tool rows, the turn footer and user prompts. It changes how things look, and with `diagramHints` on (the default) it also asks Claude to build a reply around pictures when they make it easier to grasp, with the core on the first screen as a picture or a sentence. The one thing it sends the model is the optional diagram hint below.
+- **What it is:** a Claude Code mod (function hooks in TypeScript) that redraws assistant replies, slash-command output, tool rows, the turn footer and user prompts. It changes how things look, and with `diagramHints` on (the default) it also asks Claude to build a reply around pictures when they make it easier to grasp, with the core on the first screen as a picture or a sentence. What it sends the model is the optional notes below: the diagram hint, the issue hint and, with `keyPointHint` on, the key points note.
 - **Install:** `/plugin marketplace add NahumLitvin/prismantis`, then `/plugin install prismantis@prismantis`. Needs Claude Code 2.1.287+. Changes apply after `/reload`.
 - **Configure:** `/prismantis theme <name>` and `/prismantis setup` set options at runtime. Every option is a key under `pluginConfigs["prismantis@prismantis"].options` in `~/.claude/settings.json` (or a row in `/config`), then `/reload`. Options and defaults are in the [Configure](#configure) table; the machine-readable source is `userConfig` in [.claude-plugin/plugin.json](plugin/.claude-plugin/plugin.json). Color values that don't parse are ignored.
-- **Side effects:** no network. Programs it runs: the `⧉ html` and `▣ png` clipboard helper (`/usr/bin/osascript` on macOS, `powershell.exe` on Windows, `copyq` on Linux for `⧉ html` only, 5 second timeout, 15 on Windows, only on a click), and `ratex-render` while `latex` is on. With `diagramHints` on, it adds about 630 tokens of model-only context (about 710 while `latex` is on) to each prompt you type and each prompt another plugin sends, as broken down under [Diagram hints](#diagram-hints).
+- **Side effects:** no network. Programs it runs: the `⧉ html` and `▣ png` clipboard helper (`/usr/bin/osascript` on macOS, `powershell.exe` on Windows, `copyq` on Linux for `⧉ html` only, 5 second timeout, 15 on Windows, only on a click), and `ratex-render` while `latex` is on. With `diagramHints` on, it adds about 630 tokens of model-only context (about 710 while `latex` is on) to each prompt you type and each prompt another plugin sends, as broken down under [Diagram hints](#diagram-hints). With `keyPointHint` on, it adds about 80 more.
 - **Turning it off:** `"enabled": false`, or disable the plugin in `/plugin`. To keep it in one app only, like the terminal but not the desktop app, set `"surfaces": "terminal"`.
 - **For other mods:** `$.prismantis.markdown({ surface, text, columns })`, typed in [plugin/types/index.d.ts](plugin/types/index.d.ts). See [Other mods](#other-mods).
 

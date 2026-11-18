@@ -86,6 +86,7 @@ export type Style = {
   found?: ReadonlySet<string>
   diagramHints: boolean
   issueHint: boolean
+  keyPointHint: boolean
   rtl: 'auto' | Terminal | 'off'
   reorder: boolean
   shape: Shape
@@ -175,6 +176,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     hyperlinks: false,
     diagramHints: options.diagramHints !== false && options.mermaid !== false,
     issueHint: options.issueHint !== false,
+    keyPointHint: options.keyPointHint === true,
     rtl,
     reorder: rtl !== 'auto' && rtl !== 'off',
     shape: rtl === 'auto' || rtl === 'off' ? 'visual' : TERMINALS[rtl],
