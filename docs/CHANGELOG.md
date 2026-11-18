@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.48.0] - 2026-11-17
+
+OpenCode draws every mermaid kind its own renderer leaves as source, and two fixes for Windows Terminal.
+
+### Added
+
+- OpenCode: xychart bar and line charts, pie, quadrantChart, mindmap, journey, kanban, classDiagram and erDiagram draw in the active OpenCode theme as ```` ```chart ```` blocks, with the same chart art as Claude Code. The session note tells the model which kinds to write that way, and a body that can't be drawn shows as source. Claude Code reads ```` ```chart ```` as ```` ```mermaid ````, so one reply draws in both. Designed by @buer5 in [#539](https://github.com/NahumLitvin/prismantis/issues/539) ([#558](https://github.com/NahumLitvin/prismantis/pull/558)).
+
+### Changed
+
+- The Codex README says prose colors shipped in Codex 0.169.0, so Codex parity waits on one Codex issue ([#558](https://github.com/NahumLitvin/prismantis/pull/558)).
+
+### Fixed
+
+- On Windows Terminal and Warp for Windows, a Hebrew line in a `text` or untagged code block reads right to left like the same line in a paragraph. Code with a real grammar stays left to right ([#552](https://github.com/NahumLitvin/prismantis/pull/552)).
+- In a terminal where Claude Code draws no hyperlinks, a file link whose text is its own path draws as that path alone, so a long percent-escaped `file://` URL no longer wraps and breaks Ctrl+click on Windows Terminal. Thanks @Boring206 ([#554](https://github.com/NahumLitvin/prismantis/pull/554)).
+
 ## [0.47.0] - 2026-11-16
 
 The desktop app takes the theme, five more mermaid diagrams draw, and tables learn four new shapes.
