@@ -575,6 +575,7 @@ export const NARROW_PANE = 100
 export const narrowHint = (columns: number): string =>
   `This terminal pane is ${columns} columns wide, and a diagram wider than the pane draws as its source. Keep diagrams narrow: flowchart TD, never LR, node and edge labels of 1 to 3 words, at most 3 boxes side by side, and at most 3 sequence diagram participants.`
 
+export const KEY_POINT_HINT = 'This terminal draws **bold** text in a highlight color, so bold is how the user spots what matters. In each reply, put the key point or points in bold: the answer, the result, the decision, or what the user has to do. Bold a short phrase, not a whole sentence or paragraph, and usually no more than three per reply.'
 export const ISSUE_HINT = 'If the user says prismantis drew something wrong, offer (ask first) a minimal repro issue at https://github.com/NahumLitvin/prismantis/issues.'
 const KOREAN_SHOWCASE = `
 ## 한국어
