@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.48.1] - 2026-11-18
+
+OpenCode charts stay readable in the default theme, and `/prismantis` there shows only what OpenCode draws.
+
+### Fixed
+
+- OpenCode: chart series, pie slices and kanban columns no longer share near-identical colors in themes like OpenCode's default, where links, numbers and warnings are all orange. A color whose hue repeats an earlier one is swapped for the theme's info, success or error color ([#565](https://github.com/NahumLitvin/prismantis/pull/565)).
+- OpenCode: `/prismantis` prints a demo of what OpenCode draws, with class and ER samples, instead of the Claude Code demo with its `/config` options and Claude Code-only features ([#565](https://github.com/NahumLitvin/prismantis/pull/565)).
+
 ## [0.48.0] - 2026-11-17
 
 OpenCode draws every mermaid kind its own renderer leaves as source, and two fixes for Windows Terminal.

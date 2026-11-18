@@ -4703,6 +4703,29 @@ var barStart = (row, c) => {
   while (row[start - 1] === solid) start--;
   return start;
 };
+var hueOf = (hex2) => {
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex2.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const spread = max - Math.min(r, g, b);
+  if (!max || spread / max < 0.25) return void 0;
+  const sector = max === r ? (g - b) / spread : max === g ? 2 + (b - r) / spread : 4 + (r - g) / spread;
+  return (sector * 60 + 360) % 360;
+};
+var clashes = (color, kept) => {
+  const hue = hueOf(color);
+  return hue !== void 0 && kept.some((other) => {
+    const near = hueOf(other);
+    return near !== void 0 && Math.min(Math.abs(hue - near), 360 - Math.abs(hue - near)) < 25;
+  });
+};
+var distinctHues = (colors, reserve) => {
+  const pool = [...reserve];
+  return colors.reduce((kept, color) => {
+    if (!clashes(color, kept)) return [...kept, color];
+    const free = pool.findIndex((spare) => !clashes(spare, kept));
+    return [...kept, free < 0 ? color : pool.splice(free, 1)[0]];
+  }, []);
+};
 var diagramPalette = (t) => [.../* @__PURE__ */ new Set([t.link, t.number, t.heading, t.emphasis, t.path, t.codeFlag, t.accent])].filter((c) => c !== void 0);
 var paint2 = (art2, t, series) => {
   const grid = art2.split("\n").map(cells);
@@ -4804,21 +4827,28 @@ var figureChunks = (theme, lines) => reframe(lines.map(figureRuns)).flatMap((run
   })
 ]);
 var hex = (color) => `#${color.toInts().slice(0, 3).map((n) => n.toString(16).padStart(2, "0")).join("")}`;
-var chartTheme = (theme) => ({
-  link: hex(theme.markdown.link),
-  number: hex(theme.syntax.number),
-  heading: hex(theme.markdown.heading),
-  emphasis: hex(theme.markdown.emphasis),
-  path: hex(theme.text.feedback.warning.base),
-  codeFlag: hex(theme.syntax.keyword),
-  accent: hex(theme.markdown.listItem),
-  quote: hex(theme.markdown.blockQuote),
-  rule: hex(theme.markdown.horizontalRule),
-  diagram: hex(theme.diff.text.hunkHeader),
-  diagramText: hex(theme.text.base),
-  diffAdded: hex(theme.diff.text.added),
-  diffRemoved: hex(theme.diff.text.removed)
-});
+var chartTheme = (theme) => {
+  const feedback = theme.text.feedback;
+  const [link2, number, heading, emphasis, path, codeFlag, accent] = distinctHues(
+    [theme.markdown.link, theme.syntax.number, theme.markdown.heading, theme.markdown.emphasis, feedback.warning.base, theme.syntax.keyword, theme.markdown.listItem].map(hex),
+    [feedback.info.base, feedback.success.base, feedback.error.base].map(hex)
+  );
+  return {
+    link: link2,
+    number,
+    heading,
+    emphasis,
+    path,
+    codeFlag,
+    accent,
+    quote: hex(theme.markdown.blockQuote),
+    rule: hex(theme.markdown.horizontalRule),
+    diagram: hex(theme.diff.text.hunkHeader),
+    diagramText: hex(theme.text.base),
+    diffAdded: hex(theme.diff.text.added),
+    diffRemoved: hex(theme.diff.text.removed)
+  };
+};
 var chartChunks = (theme, grid, colors) => grid.flatMap((row, r) => [...r ? [fg(theme.text.base)("\n")] : [], ...row.map((cell, c) => fg(colors[r][c] ?? theme.text.base)(cell))]);
 var installThemes = () => {
   const from = fileURLToPath(new URL("./themes/", import.meta.url));
