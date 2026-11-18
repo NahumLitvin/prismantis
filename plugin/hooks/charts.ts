@@ -134,13 +134,15 @@ const barPie = (slices: Slice[], rows: { label: string; tail: string }[], ascii:
   })
 }
 
+const unquote = (text: string | undefined) => text?.trim().replace(/^"(.*)"$/, '$1')
+
 const pieLines = (lines: string[], heading: string | undefined, data: boolean): { title?: string; showData: boolean; slices: Slice[] } | null => {
   let title = heading
   let showData = data
   const slices: Slice[] = []
   for (const line of lines) {
     const named = /^title\s+(.*)$/i.exec(line)
-    if (named) title = named[1]
+    if (named) title = unquote(named[1])
     else if (/^showData$/i.test(line)) showData = true
     else if (!/^acc(Title|Descr)\b/.test(line)) {
       const slice = /^"([^"]*)"\s*:\s*([\d.]+)$/.exec(line)
@@ -156,7 +158,7 @@ export const pieText = (source: string, ascii: boolean, columns: number, colors 
   const [first = '', ...rest] = body(source)
   const head = /^pie\b(\s+showData)?(?:\s+title\s+(.*))?$/i.exec(first)
   if (!head) return null
-  const parsed = pieLines(rest, head[2], !!head[1])
+  const parsed = pieLines(rest, unquote(head[2]), !!head[1])
   if (!parsed) return null
   const { title, showData, slices } = parsed
   slices.sort((a, b) => b.value - a.value)
