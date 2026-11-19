@@ -1423,7 +1423,7 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, rich?: (() => string) | 'png', hues?: () => Hues) => RenderElement | null
 export type Hues = Ink[][]
-export type Drawn = Map<number, { element?: RenderElement; art?: string; hues?: () => Hues; note?: string }>
+export type Drawn = Map<number, { element?: RenderElement; art?: string; hues?: () => Hues; note?: string; scales?: boolean }>
 export type FoldLook = { label?: string; face?: (folded: boolean) => RenderElement }
 export type Fold = (id: string, hidden: number, key: string, look?: FoldLook) => { folded: boolean; element: RenderElement; faced: boolean; around?: (rows: RenderElement, hover: TextHoverProps) => RenderElement } | null
 export type Tip = (note: number) => (() => void) | undefined
@@ -1670,7 +1670,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     while (isFigure(b + 1)) b++
     out.push(
       <Box key={`row${start}`} flexDirection="row" flexWrap="wrap" columnGap={4} rowGap={1}>
-        {copied.slice(start, b + 1).map((figure, i) => <Box key={`f${start + i}`} flexShrink={style.gridFace && blocks[start + i]?.kind === 'table' ? 1 : 0}>{figure}</Box>)}
+        {copied.slice(start, b + 1).map((figure, i) => <Box key={`f${start + i}`} flexShrink={style.gridFace && (blocks[start + i]?.kind === 'table' || drawn.get(start + i)?.scales) ? 1 : 0}>{figure}</Box>)}
       </Box>,
     )
   }

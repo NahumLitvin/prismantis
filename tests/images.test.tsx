@@ -240,13 +240,13 @@ test('the image cache keeps about 32 MB of pictures and reads an evicted one aga
   expect(reads.filter(path => path === paths[17])).toHaveLength(1)
 })
 
-const disc = (aspect?: number) => {
-  const lines = pieText(PIE.split('\n').slice(1, -1).join('\n'), false, 120, 6, aspect)!.text.split('\n').slice(1).map(line => line.split('   ██')[0]!.trimEnd())
+const disc = (art: string) => {
+  const lines = art.split('\n').slice(1).map(line => line.split('   ██')[0]!.trimEnd())
   return { rows: lines.length, columns: Math.max(...lines.map(line => line.length)) - Math.min(...lines.filter(line => line.trim()).map(line => line.search(/\S/))) }
 }
 
 for (const aspect of [undefined, 2.5]) test(`a round pie is as wide as it is tall for a ${aspect ?? 2}:1 cell`, () => {
-  const { rows, columns } = disc(aspect)
+  const { rows, columns } = disc(pieText(PIE.split('\n').slice(1, -1).join('\n'), false, 120, 6, aspect)!.text)
   expect(rows).toBeGreaterThan(6)
   expect(Math.abs(columns - rows * (aspect ?? 2))).toBeLessThanOrEqual(1)
 })
@@ -261,6 +261,14 @@ test('a round pie on the desktop draws wider than in a terminal, for its taller 
     return count
   }
   expect(await glyphs('desktop')).toBeGreaterThan(await glyphs('terminal'))
+})
+
+test('a round pie in VS Code is as wide as it is tall in its picture, whose cells are 2:1', async $ => {
+  const ui = await $.ui.mount({ ...reply(PIE), surface: 'vscode' })
+  const { rows, columns } = disc(String((await ui.find({ type: 'Svg' }))?.props.alt))
+  expect(rows).toBeGreaterThan(6)
+  expect(Math.abs(columns - rows * 2)).toBeLessThanOrEqual(1)
+  await ui.unmount()
 })
 
 test('a quoted pie title draws without its quotes, on the pie line or its own line', () => {
