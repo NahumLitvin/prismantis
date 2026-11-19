@@ -1922,10 +1922,21 @@ for (const surface of ['terminal', 'desktop'] as const) {
   }
 }
 
+test('a flowchart too wide at its usual gaps draws with tighter gaps, and one that fits keeps them', async $ => {
+  const chain = (n: number) => '```mermaid\nflowchart LR\n' + Array.from({ length: n }, (_, i) => `  N${i}[step ${i}] --> N${i + 1}[step ${i + 1}]`).join('\n') + '\n```'
+  const tight = await $.ui.mount(mount(chain(8), 106))
+  expect(await tight.find({ type: 'Text', text: /too wide/ })).toBeUndefined()
+  expect(await tight.find({ type: 'Text', text: /├►│/ })).toBeDefined()
+  await tight.unmount()
+  const roomy = await $.ui.mount(mount(chain(2), 106))
+  expect(await roomy.find({ type: 'Text', text: /├──►│/ })).toBeDefined()
+  await roomy.unmount()
+})
+
 test('a diagram too wide for the terminal shows its source under a note with its width', async $ => {
   const workers = Array.from({ length: 16 }, (_, i) => `W${i + 1}[Worker ${i + 1}]`).join(' & ')
   const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n  Q[Queue] --> ' + workers + '\n```'))
-  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols, 112 fit$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^diagram too wide to render \(\d+ cols, 112 fit\)$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
   await ui.unmount()
 })
@@ -1934,7 +1945,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   test(`the fallback note is drawn in the comment color like the label on ${surface}`, async $ => {
     const workers = Array.from({ length: 16 }, (_, i) => `W${i + 1}[Worker ${i + 1}]`).join(' & ')
     const ui = await $.ui.mount({ ...mount('```mermaid\nflowchart TD\n  Q[Queue] --> ' + workers + '\n```'), surface })
-    const note = await ui.find({ type: 'Text', text: /^diagram is/ })
+    const note = await ui.find({ type: 'Text', text: /^diagram too wide/ })
     const label = await ui.find({ type: 'Text', text: /^── mermaid$/ })
     expect(note?.props.color).toBe(PRESETS['catppuccin-mocha'].codeComment)
     expect(note?.props).toEqual(label?.props)
@@ -1953,9 +1964,9 @@ test('a flowchart more than 25 ranks deep draws, in Hebrew too', async $ => {
 })
 
 test('a diagram over the line or character cap shows its source under a note naming the cap', async $ => {
-  for (const [source, note] of [['flowchart TD\n' + '  A --> B\n'.repeat(80), 'diagram is 81 lines, 80 draw'], ['flowchart TD\n  A[' + 'x'.repeat(8000) + '] --> B', 'diagram is 8024 characters, 8000 draw']] as const) {
+  for (const [source, note] of [['flowchart TD\n' + '  A --> B\n'.repeat(80), 'diagram too long to render (81 lines, max 80)'], ['flowchart TD\n  A[' + 'x'.repeat(8000) + '] --> B', 'diagram too long to render (8024 characters, max 8000)']] as const) {
     const ui = await $.ui.mount(mount('```mermaid\n' + source.trimEnd() + '\n```'))
-    expect(await ui.find({ type: 'Text', text: new RegExp(`^${note}$`) })).toBeDefined()
+    expect((await ui.find({ type: 'Text', text: /^diagram too long/ }))?.text).toBe(note)
     expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
     await ui.unmount()
@@ -2160,7 +2171,7 @@ test('quoted quadrant labels draw without their quotes, and a terminal too narro
   expect(art).not.toContain('"')
   expect(art.split('\n').at(-1)).toBe('1 Campaign A')
   const ui = await $.ui.mount(mount('```mermaid\nquadrantChart\n  A: [0.1, 0.2]\n```', 24))
-  expect(await ui.find({ type: 'Text', text: /^diagram is \d+ cols/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^diagram too wide to render \(\d+ cols/ })).toBeDefined()
   await ui.unmount()
 })
 

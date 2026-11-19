@@ -2643,7 +2643,7 @@
           "└──────┘"
 <Box>
   <Text color=#6e7781>
-    "diagram is 180 cols, 98 fit"
+    "diagram too wide to render (158 cols, 98 fit)"
   <Box row>
     <Text color=#6e7781>
       "── mermaid"
