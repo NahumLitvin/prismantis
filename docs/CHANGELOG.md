@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.49.2] - 2026-11-19
+
+Too-wide flowcharts squeeze to fit, and a diagram that can't draw says why.
+
+### Fixed
+
+- A flowchart too wide for the reply lays out again with one-cell gaps between boxes before it falls back to its source, so a 9-step chain that took 114 columns now draws in 98. Diagrams that already fit keep their spacing ([#582](https://github.com/NahumLitvin/prismantis/pull/582)).
+- A diagram that falls back to its source says why: `diagram too wide to render (N cols, M fit)`, or `diagram too long to render (81 lines, max 80)` for a block over the 80-line or 8000-character cap, which used to say `diagram failed to render` ([#582](https://github.com/NahumLitvin/prismantis/pull/582)).
+
 ## [0.49.1] - 2026-11-19
 
 Mermaid diagrams, charts and figures draw as pictures in the VS Code extension.
