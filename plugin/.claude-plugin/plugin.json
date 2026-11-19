@@ -156,6 +156,27 @@
       "default": "off",
       "options": ["full", "count", "merge", "off"]
     },
+    "heatTable": {
+      "type": "string",
+      "title": "Heatmap table",
+      "description": "How a table of numbers draws. off (the default) keeps tables as written. color reads every numeric column and draws each number by where it sits between that column's lowest and highest: the lowest in the table's text color, then the number color, then the accent color, the highest in the accent color and bold. bars adds one block glyph after each number, ▁, ▄, ▆ or █ by the same four steps. A column whose values are all equal stays as written, and a cell another table look already colored keeps that color.",
+      "default": "off",
+      "options": ["color", "bars", "off"]
+    },
+    "treeTable": {
+      "type": "string",
+      "title": "Tree table",
+      "description": "How a table that nests its rows draws: a first column whose cells repeat in runs, like a column of areas beside a column of services. off (the default) keeps tables as written. branch labels each run once in the accent color and prefixes the rows under it with ├─ or └─, the last row of a run taking the corner; when the next column repeats too it merges the same way and carries one │ per continuing parent before its branch, so three levels draw as a tree. full also draws a heavy rule where one top-level group ends and the next begins. A column of numbers never nests, a table already grouped by statusMatrix keeps its status grouping, and stacked tables stay as they are.",
+      "default": "off",
+      "options": ["full", "branch", "off"]
+    },
+    "pivotTable": {
+      "type": "string",
+      "title": "Pivot table",
+      "description": "How a table of metrics and periods draws. off (the default) keeps tables as written. transpose swaps its rows and columns: a table with a first column of metric labels, a header of period labels and at least 60% numbers draws with the periods as rows and the metrics as columns. It adds no totals and no averages, so a table copied as markdown keeps exactly what was written.",
+      "default": "off",
+      "options": ["transpose", "off"]
+    },
     "promptStyle": {
       "type": "string",
       "title": "Your prompt style",

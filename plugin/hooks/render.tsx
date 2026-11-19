@@ -17,7 +17,12 @@ import { compareLook, compareOf } from './compare-table'
 import { apiLook, apiOf } from './api-table'
 import { kvLook, kvOf } from './kv-table'
 import { groupEdge, groupHeavy, groupLook, groupOf, groupRows } from './group-table'
-import type { Group } from './group-table'
+import type { Group, GroupTable } from './group-table'
+import { heatLook, heatOf, heatRows } from './heat-table'
+import type { Heat } from './heat-table'
+import { treeLook, treeOf, treeRows } from './tree-table'
+import type { Tree } from './tree-table'
+import { pivotOf } from './pivot-table'
 import { testReport } from './test-report'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
@@ -419,6 +424,15 @@ const drawable = (block: Block, reach: Reach): Block => {
 
 const heightOf = (blocks: Block[], w: number, style: Style): number => blocks.reduce((sum, block, b) => sum + (b ? 1 : 0) + blockHeight(block, w, style), 0)
 
+const tableShape = (block: TableBlock, style: Style): { base: TableBlock; block: TableBlock; tree: Tree | undefined; heat: Heat | undefined } => {
+  const base = pivotOf(block, style.pivotTable) ?? block
+  const tree = treeOf(base, style.treeTable, statusOf(base, style.statusMatrix, false) !== undefined)
+  const heat = heatOf(base, style.heatTable)
+  if (!tree && !heat) return { base, block: base, tree, heat }
+  const rows = heatRows({ ...base, rows: treeRows(base, tree) }, heat, style.heatTable)
+  return { base, block: { ...base, rows }, tree, heat }
+}
+
 const blockHeight = (block: Block, w: number, style: Style): number => {
   switch (block.kind) {
     case 'heading':
@@ -433,12 +447,15 @@ const blockHeight = (block: Block, w: number, style: Style): number => {
     case 'code':
       return block.lines.reduce((sum, line) => sum + textRows(line, w - 8), 3)
     case 'table': {
-      const plan = tablePlan(block, style, w, textsOf(style, block))
-      if (plan.stack) return stackedHeight(block, w)
-      const classic = style.tableLayout === 'classic' && tableSize(block)
+      const base = pivotOf(block, style.pivotTable) ?? block
+      if (tablePlan(base, style, w, textsOf(style, base)).stack) return stackedHeight(base, w)
+      const shaped = tableShape(block, style).block
+      const plan = tablePlan(shaped, style, w, textsOf(style, shaped))
+      if (plan.stack) return stackedHeight(base, w)
+      const classic = style.tableLayout === 'classic' && tableSize(shaped)
       const widths = classic ? columnWidths(classic.natural, w - 4, 3, classic.words) : plan.widths
       const tallest = (cells: TableCell[]) => Math.max(1, ...widths.map((cw, c) => textRows(displayText(cells[c]!), cw)))
-      return block.rows.reduce((sum, row) => sum + 1 + tallest(row), 4 + tallest(block.header))
+      return shaped.rows.reduce((sum, row) => sum + 1 + tallest(row), 4 + tallest(shaped.header))
     }
     case 'quote':
       return Math.max(1, heightOf(block.blocks, w - 2, style))
@@ -1058,43 +1075,54 @@ const tableEdges = (style: Style, block: Extract<Block, { kind: 'table' }>, rtl:
   }
 }
 
-const heavyBetween = (style: Style, buckets: (Bucket | undefined)[], group: Group | undefined, i: number): boolean =>
-  statusHeavy(style.statusMatrix, buckets, i) || groupHeavy(style.groupTable, group, i)
+const heavyBetween = (style: Style, buckets: (Bucket | undefined)[], group: Group | undefined, groupOption: GroupTable, i: number): boolean =>
+  statusHeavy(style.statusMatrix, buckets, i) || groupHeavy(groupOption, group, i)
+
+const treeRuns = (tree: Tree | undefined, style: Style, group: Group | undefined): { option: GroupTable; runs: Group | undefined } => ({
+  option: tree ? (style.treeTable === 'full' ? 'full' : 'merge') : style.groupTable,
+  runs: tree ? { column: 0, starts: tree.starts[0]!, sizes: tree.sizes[0]! } : group,
+})
 
 const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'table' }>, columns: number, key: string, rtl: boolean, tip?: Tip) => {
   const { Box, Text } = el
   const t = style.theme
-  const group = groupOf(block, style.groupTable, style.statusMatrix === 'group')
-  const drawn = { ...block, rows: groupRows(block, group, style.groupTable) }
+  const shape = tableShape(block, style)
+  const base = shape.base
+  const tree = shape.tree
+  const heat = shape.heat
+  const group = groupOf(base, tree ? 'off' : style.groupTable, style.statusMatrix === 'group')
+  const { option: groupOption, runs } = treeRuns(tree, style, group)
+  if (tablePlan(base, style, columns, textsOf(style, base)).stack) return stackedTable(el, style, base, columns, key, tip)
+  const drawn = group ? { ...shape.block, rows: groupRows(shape.block, group, style.groupTable) } : shape.block
   const texts = textsOf(style, drawn)
   const plan = tablePlan(drawn, style, columns, texts)
+  if (plan.stack) return stackedTable(el, style, base, columns, key, tip)
   const shown = cellText(style)
-  const status = statusOf(block, style.statusMatrix, plan.stack && !texts)
+  const status = statusOf(base, style.statusMatrix, false)
   const layout = statusRows(drawn, status, style.statusMatrix)
   const { natural, words, widths, box, gap } = plan
-  if (plan.stack) return stackedTable(el, style, block, columns, key, tip)
-  const test = testReport(el, t, block, style.testMatrix, `${key}.t`)
+  const test = testReport(el, t, base, style.testMatrix, `${key}.t`)
   const foot = test ? undefined : statusFooter(el, t, status, style.statusMatrix, `${key}.f`)
-  const bench = benchOf(block, style.benchTable)
-  const spark = benchSpark(el, t, block, bench, style.benchTable, `${key}.s`)
-  const schema = schemaOf(block, style.schemaTable)
-  const api = apiOf(block, style.apiTable)
-  const compare = compareOf(block, style.compareTable)
-  const kv = kvOf(block, style.kvTable)
-  const rowAt = compare || kv || group ? new Map(drawn.rows.map((cells, r) => [cells, r])) : undefined
-  const look = (at: number | undefined) => (c: number, cell: TableCell, plain: { color?: string } = {}) => groupLook(t, group, at, c, statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, compareLook(t, compare, at, c, cell, apiLook(t, api, c, cell, kvLook(t, kv, at, c, cell, plain)))))))
+  const bench = benchOf(base, style.benchTable)
+  const spark = benchSpark(el, t, base, bench, style.benchTable, `${key}.s`)
+  const schema = schemaOf(base, style.schemaTable)
+  const api = apiOf(base, style.apiTable)
+  const compare = compareOf(base, style.compareTable)
+  const kv = kvOf(base, style.kvTable)
+  const rowAt = compare || kv || group || tree || heat ? new Map(drawn.rows.map((cells, r) => [cells, r])) : undefined
+  const look = (at: number | undefined) => (c: number, cell: TableCell, plain: { color?: string } = {}) => treeLook(t, tree, at, c, groupLook(t, group, at, c, statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, compareLook(t, compare, at, c, cell, apiLook(t, api, c, cell, kvLook(t, kv, at, c, cell, heatLook(t, heat, at, c, plain)))))))))
   const shares = percentShares(widths)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
   const flip = rtl && !mirror
-  const { opening, wall, held, marked } = tableEdges(style, block, rtl, mirror)
+  const { opening, wall, held, marked } = tableEdges(style, base, rtl, mirror)
   if (flip) order.reverse()
   const lead = (k: string) => (opening ? <Text key={`${k}.m`} color={t.rule}>{opening}</Text> : null)
   const columnGap = held ? 0 : gap
   const spacer = (k: string) => (held ? <Text key={k}>{LTR_BLANK + ' '.repeat(gap - 1)}</Text> : null)
   const ruleChar = style.tableStyle === 'grid' ? '━' : '─'
   const justify = (c: number) =>
-    block.align[c] === 'right' ? 'flex-end' : block.align[c] === 'center' ? 'center' : 'flex-start'
+    base.align[c] === 'right' ? 'flex-end' : base.align[c] === 'center' ? 'center' : 'flex-start'
 
   const rule = (k: string, heavy: boolean) => (
     <Box key={k} flexDirection="row" columnGap={columnGap} {...laidRuleSpace(style)}>
@@ -1120,7 +1148,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       const cell = flowOf({ ...style, shape: 'visual' }, cells[c]!, Infinity)
       const content = cell ? cell.lines[0]! : cells[c]!
       const pad = Math.max(0, widths[c]! - width(inlineText(content)))
-      const side = cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
+      const side = cell?.base === 'R' && base.align[c] !== 'center' ? 'flex-end' : justify(c)
       const before = side === 'flex-end' ? pad : side === 'center' ? Math.floor(pad / 2) : 0
       parts.push({ kind: 'text', text: ' '.repeat(before) }, ...(isHeader ? [{ kind: 'strong' as const, children: content }] : content), { kind: 'text', text: ' '.repeat(pad - before) })
     })
@@ -1136,7 +1164,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
         const w = widths[c]!
         const cell = cellFlow(style, cells[c]!, held, marked)
         const content = cell ? cell.lines[0]! : cells[c]!
-        const side = mirror ? (block.align[c] === 'center' ? 'center' : 'flex-start') : cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
+        const side = mirror ? (base.align[c] === 'center' ? 'center' : 'flex-start') : cell?.base === 'R' && block.align[c] !== 'center' ? 'flex-end' : justify(c)
         const runs = isHeader ? headerRuns(content) : content
         const face = isHeader ? { bold: true, color: t.tableHeader } : look(at)(c, cells[c]!, own({ color: t.tableText }))
         const numberFace = numberPaint(face, isHeader, t)
@@ -1170,7 +1198,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   if (box) {
     const lines: RenderElement[] = [edge(`${key}.t`, '┌─┬┐'), ...wrappedRow(drawn.header, `${key}.h`, true), edge(`${key}.hr`, '╞═╪╡')]
     layout.rows.forEach((r, i) => {
-      if (i > 0) lines.push(edge(`${key}.r${i}r`, groupEdge(style.groupTable, group, i, statusEdge(style.statusMatrix, layout.buckets, i - 1, '├─┼┤', '╞═╪╡'), '╞═╪╡')))
+      if (i > 0) lines.push(edge(`${key}.r${i}r`, groupEdge(groupOption, runs, i, statusEdge(style.statusMatrix, layout.buckets, i - 1, '├─┼┤', '╞═╪╡'), '╞═╪╡')))
       lines.push(...wrappedRow(r, `${key}.r${i}`, false, rowAt?.get(r)))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
@@ -1180,7 +1208,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const body: RenderElement[] = [row(drawn.header, `${key}.h`, true), rule(`${key}.hr`, true)]
   layout.rows.forEach((r, i) => {
     body.push(row(r, `${key}.r${i}`, false, undefined, rowAt?.get(r)))
-    if (style.tableStyle !== 'minimal' && i < layout.rows.length - 1) body.push(rule(`${key}.r${i}r`, heavyBetween(style, layout.buckets, group, i)))
+    if (style.tableStyle !== 'minimal' && i < layout.rows.length - 1) body.push(rule(`${key}.r${i}r`, heavyBetween(style, layout.buckets, runs, groupOption, i)))
   })
   return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{body}{foot}{test}{spark}</Box>
 }
