@@ -4566,6 +4566,7 @@ var renderMermaidAscii = renderMermaidASCII;
 
 // ../plugin/hooks/mermaid.tsx
 var MAX_LINES = 80;
+var MAX_CHARS = 8e3;
 var PAD = "\uFDD0";
 var textCache = /* @__PURE__ */ new Map();
 var chartSize = (columns, source = "") => {
@@ -4626,11 +4627,13 @@ var artWidths = /* @__PURE__ */ new Map();
 var artWidth = (art2) => remember(artWidths, art2, () => Math.max(...art2.split("\n").map(width)));
 var mermaidArt = (source, ascii, columns, pieColors, aspect = 2) => remember(fitted, `${ascii}:${columns}:${pieColors}:${aspect}:${source}`, () => {
   source = source.replace(INLINE_TAG, "");
-  if (source.length > 8e3 || source.split("\n").length > MAX_LINES) return null;
+  if (source.length > MAX_CHARS || source.split("\n").length > MAX_LINES) return null;
   const own = OWN[kindOf(source).toLowerCase()];
   if (own) return own(labelEntities(source, false), ascii, columns, pieColors, aspect);
-  const art2 = draw(source, ascii, columns);
-  const text = art2 === null || artWidth(art2) <= columns - 2 || !SIDEWAYS.test(source) ? art2 : draw(source.replace(SIDEWAYS, "$1TD"), ascii, columns) ?? art2;
+  const fits = (art3) => art3 === null || artWidth(art3) <= columns - 2;
+  const wide = draw(source, ascii, columns);
+  const art2 = fits(wide) ? wide : draw(source, ascii, columns, 1) ?? wide;
+  const text = fits(art2) || !SIDEWAYS.test(source) ? art2 : draw(source.replace(SIDEWAYS, "$1TD"), ascii, columns) ?? art2;
   return text === null ? null : { text, series: chartSeries(source, ascii, columns) };
 });
 var MERMAID_ENTITY = /#(\d{1,7}|[A-Za-z][A-Za-z\d]{1,31});/g;
@@ -4681,15 +4684,15 @@ var chartSeries = (source, ascii, columns) => {
     }
   }) ?? void 0;
 };
-var draw = (source, ascii, columns) => {
+var draw = (source, ascii, columns, gap = 3) => {
   const isChart = /^\s*xychart/.test(source);
   const padded = padWide(source);
   const size = chartSize(columns, isChart ? padded : "");
-  const key = `${ascii}:${isChart ? size.width : 0}:${source}`;
+  const key = `${ascii}:${isChart ? size.width : 0}:${gap}:${source}`;
   return remember(textCache, key, () => {
     try {
       if (isChart) setChartSize(size.width, size.height);
-      const art2 = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: "none", paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, "").trimEnd().replace(/▶/g, "\u25BA").replace(/◀/g, "\u25C4");
+      const art2 = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: "none", paddingX: gap, paddingY: 1 }).replace(/[ \t]+$/gm, "").trimEnd().replace(/▶/g, "\u25BA").replace(/◀/g, "\u25C4");
       return unshield((isChart ? labelBars(art2, padded) : art2.split("\n").filter((l) => !/^[\s│|]*$/.test(l)).join("\n")).replaceAll(PAD, ""));
     } catch {
       return null;
