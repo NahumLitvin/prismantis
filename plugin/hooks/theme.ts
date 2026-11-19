@@ -10,6 +10,9 @@ import type { CompareTable } from './compare-table'
 import type { ApiTable } from './api-table'
 import type { KvTable } from './kv-table'
 import type { GroupTable } from './group-table'
+import type { HeatTable } from './heat-table'
+import type { TreeTable } from './tree-table'
+import type { PivotTable } from './pivot-table'
 import type { StatusMatrix } from './status'
 import type { Shape, Terminal } from './rtl'
 import { TERMINALS } from './rtl'
@@ -41,6 +44,9 @@ export type Style = {
   apiTable: ApiTable
   kvTable: KvTable
   groupTable: GroupTable
+  heatTable: HeatTable
+  treeTable: TreeTable
+  pivotTable: PivotTable
   taskStyle: 'checks' | 'ticks' | 'box' | 'progress'
   listMarker: 'dots' | 'dash'
   promptStyle: 'bubble' | 'framed' | 'wide' | 'bar' | 'chevron' | 'off'
@@ -145,6 +151,9 @@ export const resolveStyle = (options: PluginOptions): Style => {
     apiTable: pick(options.apiTable, ['full', 'verbs', 'auth', 'off'] as const, 'off'),
     kvTable: pick(options.kvTable, ['full', 'sources', 'overrides', 'off'] as const, 'off'),
     groupTable: pick(options.groupTable, ['full', 'count', 'merge', 'off'] as const, 'off'),
+    heatTable: pick(options.heatTable, ['color', 'bars', 'off'] as const, 'off'),
+    treeTable: pick(options.treeTable, ['full', 'branch', 'off'] as const, 'off'),
+    pivotTable: pick(options.pivotTable, ['transpose', 'off'] as const, 'off'),
     taskStyle: pick(options.taskStyle, ['checks', 'ticks', 'box', 'progress'] as const, 'checks'),
     listMarker: pick(options.listMarker, ['dots', 'dash'] as const, 'dots'),
     promptStyle: pick(options.promptStyle, ['bubble', 'framed', 'wide', 'bar', 'chevron', 'off'] as const, 'bubble'),

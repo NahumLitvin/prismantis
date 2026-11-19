@@ -3116,15 +3116,15 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
     return { value: e.value }
   })
   const steps = setupSteps(PRESET_NAMES)
-  expect(steps.map(s => s.key)).toEqual(['theme', 'promptStyle', 'replyStyle', 'tableStyle', 'codeStyle', 'toolOutput', 'diffStyle', 'toolStyle', 'headingStyle', 'tableLayout', 'taskStyle', 'listMarker', 'copyButtonStyle', 'bubbleLabels', 'clock', 'pieStyle', 'statusMatrix', 'testMatrix', 'benchTable', 'schemaTable', 'compareTable', 'apiTable', 'kvTable', 'groupTable', 'desktopColors', 'planStyle'])
+  expect(steps.map(s => s.key)).toEqual(['theme', 'promptStyle', 'replyStyle', 'tableStyle', 'codeStyle', 'toolOutput', 'diffStyle', 'toolStyle', 'headingStyle', 'tableLayout', 'taskStyle', 'listMarker', 'copyButtonStyle', 'bubbleLabels', 'clock', 'pieStyle', 'statusMatrix', 'testMatrix', 'benchTable', 'schemaTable', 'compareTable', 'apiTable', 'kvTable', 'groupTable', 'heatTable', 'treeTable', 'pivotTable', 'desktopColors', 'planStyle'])
   for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
   expect(steps[0]!.options).toEqual(PRESET_NAMES)
   expect(steps.find(s => s.key === 'copyButtonStyle')?.note).toContain('`hover` puts a dim ⧉ beside each block instead and shows its buttons only while the pointer is on that ⧉')
   expect(setupParts(PRESET_NAMES, 0).head.startsWith('## Setup 1/6: Theme')).toBe(true)
   expect(setupParts(PRESET_NAMES, 5).head.startsWith('## Setup 6/6: Tool output')).toBe(true)
   expect(setupParts(PRESET_NAMES, 5).tail).not.toContain('Skip with')
-  expect(setupParts(PRESET_NAMES, 6).head.startsWith('## More styles 1/20: Diffs')).toBe(true)
-  expect(SETUP_ESSENTIALS_DONE).toContain('walks 20 more styles')
+  expect(setupParts(PRESET_NAMES, 6).head.startsWith('## More styles 1/23: Diffs')).toBe(true)
+  expect(SETUP_ESSENTIALS_DONE).toContain('walks 23 more styles')
   expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
   expect((await setupRun($, 'setup more')).text).toBe(SETUP_PANE_OPENED)
   expect((await setupRun($, 'setup theme')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
@@ -3148,7 +3148,10 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
   expect((await setupRun($, 'setup api-table full')).text).toBe(`API reference set to full.\n\n${setupText(setupParts(PRESET_NAMES, 22))}`)
   expect((await setupRun($, 'setup kv-table full')).text).toBe(`Key-value set to full.\n\n${setupText(setupParts(PRESET_NAMES, 23))}`)
   expect((await setupRun($, 'setup group-table count')).text).toBe(`Groups set to count.\n\n${setupText(setupParts(PRESET_NAMES, 24))}`)
-  expect((await setupRun($, 'setup desktop match')).text).toBe(`Desktop app colors set to match.\n\n${setupText(setupParts(PRESET_NAMES, 25))}`)
+  expect((await setupRun($, 'setup heat-table bars')).text).toBe(`Heatmap set to bars.\n\n${setupText(setupParts(PRESET_NAMES, 25))}`)
+  expect((await setupRun($, 'setup tree-table branch')).text).toBe(`Tree set to branch.\n\n${setupText(setupParts(PRESET_NAMES, 26))}`)
+  expect((await setupRun($, 'setup pivot-table transpose')).text).toBe(`Pivot set to transpose.\n\n${setupText(setupParts(PRESET_NAMES, 27))}`)
+  expect((await setupRun($, 'setup desktop match')).text).toBe(`Desktop app colors set to match.\n\n${setupText(setupParts(PRESET_NAMES, 28))}`)
   expect((await setupRun($, 'setup plans card')).text).toBe(`Plans set to card.\n\n${SETUP_DONE}`)
   expect(writes).toEqual([
     { key: 'prismantis.theme', value: 'nord' },
@@ -3171,6 +3174,9 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
     { key: 'prismantis.apiTable', value: 'full' },
     { key: 'prismantis.kvTable', value: 'full' },
     { key: 'prismantis.groupTable', value: 'count' },
+    { key: 'prismantis.heatTable', value: 'bars' },
+    { key: 'prismantis.treeTable', value: 'branch' },
+    { key: 'prismantis.pivotTable', value: 'transpose' },
     { key: 'prismantis.desktopColors', value: 'match' },
     { key: 'prismantis.planStyle', value: 'card' },
   ])
@@ -3178,7 +3184,7 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
   expect((await setupRun($, 'setup table-layout')).text).toBe(setupText(setupParts(PRESET_NAMES, 9)))
   expect((await setupRun($, 'setup tables 9')).text?.startsWith('Unknown tables pick "9".')).toBe(true)
   expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
-  expect(writes).toHaveLength(22)
+  expect(writes).toHaveLength(25)
   expect(setupText(setupParts(PRESET_NAMES, 7))).toContain('`tree-bold` or `classic`')
 })
 
@@ -3236,23 +3242,29 @@ test('/prismantis setup opens a pane in the terminal: arrows move through the st
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup'])
   expect(toasts.at(-1)).toBe(`Tool output set to quiet. ${SETUP_ESSENTIALS_DONE}`)
   expect((await setupRun($, 'setup more')).text).toBe(SETUP_PANE_OPENED)
-  expect(await pane.find({ type: 'Text', text: /More styles 1\/20: Diffs/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 1\/23: Diffs/ })).toBeTruthy()
   for (const [step, value] of [['diffs', 'bar'], ['tools', 'tree-bold'], ['headings', 'uppercase'], ['table-layout', 'auto'], ['tasks', 'progress'], ['lists', 'dash'], ['copy', 'hover'], ['labels', 'small'], ['clock', '24h'], ['pies', 'bars'], ['status-matrix', 'color'], ['test-report', 'report'], ['bench-table', 'trend']] as const) await pane.press({ key: `pick:${step}:${value}` })
-  expect(await pane.find({ type: 'Text', text: /More styles 14\/20: Schema/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 14\/23: Schema/ })).toBeTruthy()
   await pane.press({ key: 'pick:schema-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 15\/20: Comparison/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 15\/23: Comparison/ })).toBeTruthy()
   await pane.press({ key: 'pick:compare-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 16\/20: API reference/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 16\/23: API reference/ })).toBeTruthy()
   await pane.press({ key: 'pick:api-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 17\/20: Key-value/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 17\/23: Key-value/ })).toBeTruthy()
   await pane.press({ key: 'pick:kv-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 18\/20: Groups/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 18\/23: Groups/ })).toBeTruthy()
   await pane.press({ key: 'pick:group-table:count' })
-  expect(await pane.find({ type: 'Text', text: /More styles 19\/20: Desktop app colors/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 19\/23: Heatmap/ })).toBeTruthy()
+  await pane.press({ key: 'pick:heat-table:bars' })
+  expect(await pane.find({ type: 'Text', text: /More styles 20\/23: Tree/ })).toBeTruthy()
+  await pane.press({ key: 'pick:tree-table:branch' })
+  expect(await pane.find({ type: 'Text', text: /More styles 21\/23: Pivot/ })).toBeTruthy()
+  await pane.press({ key: 'pick:pivot-table:transpose' })
+  expect(await pane.find({ type: 'Text', text: /More styles 22\/23: Desktop app colors/ })).toBeTruthy()
   await pane.press({ key: 'pick:desktop:match' })
-  expect(await pane.find({ type: 'Text', text: /More styles 20\/20: Plans/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 23\/23: Plans/ })).toBeTruthy()
   await pane.press({ key: 'pick:plans:card' })
-  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.promptStyle=bar', 'prismantis.replyStyle=solid', 'prismantis.tableStyle=grid', 'prismantis.codeStyle=framed', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.headingStyle=uppercase', 'prismantis.tableLayout=auto', 'prismantis.taskStyle=progress', 'prismantis.listMarker=dash', 'prismantis.copyButtonStyle=hover', 'prismantis.bubbleLabels=small', 'prismantis.clock=24h', 'prismantis.pieStyle=bars', 'prismantis.statusMatrix=color', 'prismantis.testMatrix=report', 'prismantis.benchTable=trend', 'prismantis.schemaTable=full', 'prismantis.compareTable=full', 'prismantis.apiTable=full', 'prismantis.kvTable=full', 'prismantis.groupTable=count', 'prismantis.desktopColors=match', 'prismantis.planStyle=card'])
+  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.promptStyle=bar', 'prismantis.replyStyle=solid', 'prismantis.tableStyle=grid', 'prismantis.codeStyle=framed', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.headingStyle=uppercase', 'prismantis.tableLayout=auto', 'prismantis.taskStyle=progress', 'prismantis.listMarker=dash', 'prismantis.copyButtonStyle=hover', 'prismantis.bubbleLabels=small', 'prismantis.clock=24h', 'prismantis.pieStyle=bars', 'prismantis.statusMatrix=color', 'prismantis.testMatrix=report', 'prismantis.benchTable=trend', 'prismantis.schemaTable=full', 'prismantis.compareTable=full', 'prismantis.apiTable=full', 'prismantis.kvTable=full', 'prismantis.groupTable=count', 'prismantis.heatTable=bars', 'prismantis.treeTable=branch', 'prismantis.pivotTable=transpose', 'prismantis.desktopColors=match', 'prismantis.planStyle=card'])
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup', 'open prismantis-setup', 'close prismantis-setup'])
   expect(toasts.at(-1)).toBe('Plans set to card. Setup done.')
   await pane.unmount()

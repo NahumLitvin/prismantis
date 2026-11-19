@@ -1752,3 +1752,164 @@ test('groupTable stays off stacked tables', { options: { groupTable: 'merge', ta
   expect((await ui.findAll({ type: 'Text' })).filter(n => n.props.color === t.accent)).toHaveLength(0)
   await ui.unmount()
 })
+
+const HEAT = [
+  '| Region | Requests | p99 |',
+  '|:-------|---------:|----:|',
+  '| us-east | 1200 | 84 ms |',
+  '| us-west | 900 | 91 ms |',
+  '| eu-west | 640 | 120 ms |',
+  '| ap-south | 480 | 132 ms |',
+  '| sa-east | 96 | 140 ms |',
+].join('\n')
+
+for (const surface of ['terminal', 'desktop'] as const) test(`heatTable ${surface} colors each column from its own lowest to its highest`, { options: { heatTable: 'color' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ink = surface === 'desktop' ? t.codeText : undefined
+  const ui = await $.ui.mount({ ...draw(HEAT), surface })
+  expect(await ui.find({ type: 'Text', text: /^1200$/ })).toMatchObject({ props: { color: t.accent, bold: true } })
+  expect(await ui.find({ type: 'Text', text: /^640$/ })).toMatchObject({ props: { color: t.number } })
+  expect((await ui.find({ type: 'Text', text: /^96$/ }))?.props.color).toBe(ink)
+  expect((await ui.find({ type: 'Text', text: /^84 ms$/ }))?.props.color).toBe(ink)
+  expect(await ui.find({ type: 'Text', text: /^132 ms$/ })).toMatchObject({ props: { color: t.accent, bold: true } })
+  await ui.unmount()
+})
+
+test('heatTable bars adds one block by the same four steps', { options: { heatTable: 'bars' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(HEAT), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^1200█$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^900▆$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^640▄$/ }))?.props.color).toBe(t.number)
+  expect((await ui.find({ type: 'Text', text: /^96▁$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('heatTable leaves a column whose values are all equal as written', { options: { heatTable: 'color' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Host | CPU | Memory |\n|:-----|----:|-------:|\n| aa | 50 | 512 |\n| bb | 50 | 256 |'), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^50$/ })).filter(n => n.props.color === t.number)).toHaveLength(2)
+  expect((await ui.find({ type: 'Text', text: /^512$/ }))?.props.color).toBe(t.accent)
+  expect((await ui.find({ type: 'Text', text: /^256$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('heatTable off keeps tables as written', { options: { heatTable: 'off' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(HEAT), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^1200$/ })).filter(n => n.props.color === t.number)).toHaveLength(1)
+  expect((await ui.find({ type: 'Text', text: /^1200$/ }))?.props.bold).toBeUndefined()
+  await ui.unmount()
+})
+
+test('heatTable gives a bench cell to benchTable', { options: { heatTable: 'color', benchTable: 'color' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(BENCH), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^-10%$/ }))?.props.color).toBe(t.diffAdded)
+  expect((await ui.find({ type: 'Text', text: /^\+14%$/ }))?.props.color).toBe(t.diffRemoved)
+  await ui.unmount()
+})
+
+const TREE = [
+  '| Area | Service | Task |',
+  '|:-----|:--------|:-----|',
+  '| core | api | boot |',
+  '| core | api | sync |',
+  '| core | worker | draw |',
+  '| web | ui | paint |',
+  '| web | ui | route |',
+].join('\n')
+
+test('treeTable branch labels every run once and prefixes the rows under it', { options: { treeTable: 'branch' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text', text: /^core$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^web$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^├─ api$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect((await ui.findAll({ type: 'Text', text: /^└─ worker$/ })).filter(n => n.props.color === t.accent)).toHaveLength(1)
+  expect(await ui.find({ type: 'Text', text: /^│  └─ sync$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^   └─ route$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('treeTable full draws a heavy rule where one top-level group ends and the next begins', { options: { treeTable: 'full' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ })).toHaveLength(2)
+  expect(await ui.find({ type: 'Text', text: /^├─ api$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('treeTable branch draws no heavy rules beyond the header', { options: { treeTable: 'branch' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
+  expect(await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ })).toHaveLength(1)
+  await ui.unmount()
+})
+
+test('treeTable off keeps tables as written', { options: { treeTable: 'off' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^├─ api$/ })).toBeUndefined()
+  expect((await ui.findAll({ type: 'Text', text: /^api$/ })).length).toBeGreaterThan(0)
+  await ui.unmount()
+})
+
+test('a column of numbers never nests', { options: { treeTable: 'branch' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw('| Step | Name |\n|-----:|:-----|\n| 1 | load |\n| 1 | parse |\n| 2 | draw |\n| 2 | paint |'), surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Text' })).filter(n => n.props.color === t.accent)).toHaveLength(0)
+  await ui.unmount()
+})
+
+test('treeTable stays off stacked tables', { options: { treeTable: 'branch', tableLayout: 'stacked' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^├─ api$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('treeTable wins over groupTable on the same table', { options: { treeTable: 'branch', groupTable: 'count' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^core \(3\)$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^├─ api$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('treeTable draws a table with no status column while statusMatrix groups', { options: { treeTable: 'branch', statusMatrix: 'group' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^├─ api$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+const PIVOT = [
+  '| Metric | Q1 | Q2 |',
+  '|:-------|----:|----:|',
+  '| Revenue | 120 | 148 |',
+  '| Cost | 80 | 96 |',
+  '| Margin | 40 | 52 |',
+].join('\n')
+
+test('pivotTable transpose swaps the rows and the columns', { options: { pivotTable: 'transpose' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(PIVOT), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^Revenue$/ })).toMatchObject({ props: { color: t.tableHeader, bold: true } })
+  expect((await ui.find({ type: 'Text', text: /^Q1$/ }))?.props.bold).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^Q1$/ }))?.props.color).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^120$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^148$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Metric$/ })).toMatchObject({ props: { color: t.tableHeader } })
+  await ui.unmount()
+})
+
+test('pivotTable off keeps tables as written', { options: { pivotTable: 'off' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(PIVOT), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^Metric$/ })).toMatchObject({ props: { color: t.tableHeader } })
+  expect((await ui.find({ type: 'Text', text: /^Revenue$/ }))?.props.color).not.toBe(t.tableHeader)
+  await ui.unmount()
+})
+
+test('pivotTable leaves a table of words as written', { options: { pivotTable: 'transpose' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(TABLE), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^Service$/ })).toMatchObject({ props: { color: t.tableHeader } })
+  expect(await ui.find({ type: 'Text', text: /^api-gateway$/ })).toBeDefined()
+  await ui.unmount()
+})
