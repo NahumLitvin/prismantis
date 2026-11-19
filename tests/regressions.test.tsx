@@ -1952,11 +1952,14 @@ test('a flowchart more than 25 ranks deep draws, in Hebrew too', async $ => {
   }
 })
 
-test('a diagram the renderer cannot draw shows its source under a failure note', async $ => {
-  const ui = await $.ui.mount(mount('```mermaid\nflowchart TD\n' + '  A --> B\n'.repeat(900) + '```'))
-  expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
-  await ui.unmount()
+test('a diagram over the line or character cap shows its source under a note naming the cap', async $ => {
+  for (const [source, note] of [['flowchart TD\n' + '  A --> B\n'.repeat(80), 'diagram is 81 lines, 80 draw'], ['flowchart TD\n  A[' + 'x'.repeat(8000) + '] --> B', 'diagram is 8024 characters, 8000 draw']] as const) {
+    const ui = await $.ui.mount(mount('```mermaid\n' + source.trimEnd() + '\n```'))
+    expect(await ui.find({ type: 'Text', text: new RegExp(`^${note}$`) })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^diagram failed to render$/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^── mermaid$/ })).toBeDefined()
+    await ui.unmount()
+  }
 })
 
 test('a diagram type the renderer has no drawing for says so instead of failing', async $ => {

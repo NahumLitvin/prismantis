@@ -23,6 +23,7 @@ import { ARROW_HUE, BAD_HUE, GOOD_HUE, LINE_HUE, oneLine } from './textart'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
 const MAX_LINES = 80
+const MAX_CHARS = 8000
 const PAD = '\uFDD0'
 const textCache = new Map<string, string | null>()
 
@@ -112,7 +113,7 @@ export const mermaidText = (source: string, ascii: boolean, columns: number, pie
 const mermaidArt = (source: string, ascii: boolean, columns: number, pieColors: number, aspect = 2): ChartArt | null =>
   remember(fitted, `${ascii}:${columns}:${pieColors}:${aspect}:${source}`, () => {
     source = source.replace(INLINE_TAG, '')
-    if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
+    if (source.length > MAX_CHARS || source.split('\n').length > MAX_LINES) return null
     const own = OWN[kindOf(source).toLowerCase()]
     if (own) return own(labelEntities(source, false), ascii, columns, pieColors, aspect)
     const art = draw(source, ascii, columns)
@@ -419,6 +420,11 @@ const chartElement = (el: ElementTable, style: Style, art: ChartArt, block: Extr
   (art.pie && style.images && !block.isOpen && !mirrored(style) && !hasRtl(art.text) ? piePicture(el, style, art.pie, key) : null) ??
   boxArt(el, style, art.text, key, inlineMarks(block.lines.join('\n')), art.slices, art.series)
 
+const capNote = (source: string) => {
+  const lines = source.split('\n').length
+  return lines > MAX_LINES ? `diagram is ${lines} lines, ${MAX_LINES} draw` : source.length > MAX_CHARS ? `diagram is ${source.length} characters, ${MAX_CHARS} draw` : 'diagram failed to render'
+}
+
 const drawnArt = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {
   const drawn: Drawn = new Map()
   const pieColors = pieColorsOf(style)
@@ -437,7 +443,7 @@ const drawnArt = (el: ElementTable, style: Style, blocks: Block[], columns: numb
       }
       if (!drawn.has(i) && !block.isOpen) {
         const kind = unsupportedKind(source)
-        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, ${columns - 2} fit` })
+        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? capNote(source) : `diagram is ${narrowest} cols, ${columns - 2} fit` })
       }
     }
   }
