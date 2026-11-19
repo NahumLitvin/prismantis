@@ -23,6 +23,7 @@ import { ARROW_HUE, BAD_HUE, GOOD_HUE, LINE_HUE, oneLine } from './textart'
 import { renderMermaidAscii, setChartSize } from './vendor/mermaid-text.js'
 
 const MAX_LINES = 80
+const MAX_CHARS = 8000
 const PAD = '\uFDD0'
 const textCache = new Map<string, string | null>()
 
@@ -112,11 +113,13 @@ export const mermaidText = (source: string, ascii: boolean, columns: number, pie
 const mermaidArt = (source: string, ascii: boolean, columns: number, pieColors: number, aspect = 2): ChartArt | null =>
   remember(fitted, `${ascii}:${columns}:${pieColors}:${aspect}:${source}`, () => {
     source = source.replace(INLINE_TAG, '')
-    if (source.length > 8000 || source.split('\n').length > MAX_LINES) return null
+    if (source.length > MAX_CHARS || source.split('\n').length > MAX_LINES) return null
     const own = OWN[kindOf(source).toLowerCase()]
     if (own) return own(labelEntities(source, false), ascii, columns, pieColors, aspect)
-    const art = draw(source, ascii, columns)
-    const text = art === null || artWidth(art) <= columns - 2 || !SIDEWAYS.test(source) ? art : (draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art)
+    const fits = (art: string | null) => art === null || artWidth(art) <= columns - 2
+    const wide = draw(source, ascii, columns)
+    const art = fits(wide) ? wide : (draw(source, ascii, columns, 1) ?? wide)
+    const text = fits(art) || !SIDEWAYS.test(source) ? art : (draw(source.replace(SIDEWAYS, '$1TD'), ascii, columns) ?? art)
     return text === null ? null : { text, series: chartSeries(source, ascii, columns) }
   })
 
@@ -175,15 +178,15 @@ const chartSeries = (source: string, ascii: boolean, columns: number): number[][
   }) ?? undefined
 }
 
-const draw = (source: string, ascii: boolean, columns: number): string | null => {
+const draw = (source: string, ascii: boolean, columns: number, gap = 3): string | null => {
   const isChart = /^\s*xychart/.test(source)
   const padded = padWide(source)
   const size = chartSize(columns, isChart ? padded : '')
-  const key = `${ascii}:${isChart ? size.width : 0}:${source}`
+  const key = `${ascii}:${isChart ? size.width : 0}:${gap}:${source}`
   return remember(textCache, key, () => {
     try {
       if (isChart) setChartSize(size.width, size.height)
-      const art = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: 'none', paddingX: 3, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
+      const art = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: 'none', paddingX: gap, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
       return unshield((isChart ? labelBars(art, padded) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')).replaceAll(PAD, ''))
     } catch {
       return null
@@ -419,6 +422,11 @@ const chartElement = (el: ElementTable, style: Style, art: ChartArt, block: Extr
   (art.pie && style.images && !block.isOpen && !mirrored(style) && !hasRtl(art.text) ? piePicture(el, style, art.pie, key) : null) ??
   boxArt(el, style, art.text, key, inlineMarks(block.lines.join('\n')), art.slices, art.series)
 
+const capNote = (source: string) => {
+  const lines = source.split('\n').length
+  return lines > MAX_LINES ? `diagram too long to render (${lines} lines, max ${MAX_LINES})` : source.length > MAX_CHARS ? `diagram too long to render (${source.length} characters, max ${MAX_CHARS})` : 'diagram failed to render'
+}
+
 const drawnArt = (el: ElementTable, style: Style, blocks: Block[], columns: number): Drawn => {
   const drawn: Drawn = new Map()
   const pieColors = pieColorsOf(style)
@@ -437,7 +445,7 @@ const drawnArt = (el: ElementTable, style: Style, blocks: Block[], columns: numb
       }
       if (!drawn.has(i) && !block.isOpen) {
         const kind = unsupportedKind(source)
-        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? 'diagram failed to render' : `diagram is ${narrowest} cols, ${columns - 2} fit` })
+        drawn.set(i, { note: kind ? `${kind} diagrams draw as source for now` : narrowest === Infinity ? capNote(source) : `diagram too wide to render (${narrowest} cols, ${columns - 2} fit)` })
       }
     }
   }
