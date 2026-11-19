@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.49.1] - 2026-11-19
+
+Mermaid diagrams, charts and figures draw as pictures in the VS Code extension.
+
+### Fixed
+
+- VS Code extension: mermaid diagrams, charts and figures draw as aligned pictures in the theme's colors, instead of misaligned in the panel's proportional font or falling back to their source with "diagram is N cols, M fit". Hebrew labels keep their right-to-left order. The terminal and the desktop app are unchanged. Thanks @sagikakon2 ([#578](https://github.com/NahumLitvin/prismantis/pull/578)).
+
 ## [0.49.0] - 2026-11-18
 
 prismantis runs in Google Antigravity, tables draw properly in the VS Code extension, and two new options.
