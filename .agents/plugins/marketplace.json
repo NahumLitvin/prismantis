@@ -11,8 +11,8 @@
       "source": {
         "source": "url",
         "url": "https://github.com/NahumLitvin/prismantis.git",
-        "ref": "v0.49.1",
-        "sha": "d48d6b92e53e1d041987abcbc954ea0f60042176"
+        "ref": "v0.49.2",
+        "sha": "c8f91497bbefd63fd45a067c1d529da3d966d936"
       },
       "version": "0.49.2",
       "category": "appearance",
