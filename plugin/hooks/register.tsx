@@ -11,7 +11,7 @@ import { artColors, clipboardCommand, drawsImages, imageCommand } from './clipbo
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { CallWatch, CopyButton, DrawPaste, Fold, Hues, Script, TerminalEnv } from './render'
-import { MARK, SCRIPT_SHOW, SCRIPT_TOOL, bashEdits, drawScript, dropRunning, scriptChip, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, replyRoom, replyStyleFor, scriptLines, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, watchCalls, withoutBashEdits } from './render'
+import { MARK, SCRIPT_SHOW, SCRIPT_TOOL, bashEdits, chipLabel, drawScript, dropRunning, scriptChip, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, replyRoom, replyStyleFor, scriptLines, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, watchCalls, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, KEY_POINT_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -552,29 +552,29 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
 
 const SCRIPT_SAMPLE: Script = { id: 'setup', code: "const files = await $`git ls-files src`.lines()\nconst tests = files.filter(f => f.endsWith('.test.ts'))\nreturn { files: files.length, tests: tests.length }", status: 'done' }
 
-const scriptCard = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, script: Script, open: string[], columns: number): RenderElement | null => {
+const scriptCard = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, script: Script, open: string[], columns: number, press: boolean): RenderElement | null => {
   const lines = scriptLines(script.code)
   if (!lines) return null
   const fold = style.scriptStyle === 'chip'
-    ? folder($, el, open, true)(`${script.id}:chip`, lines.length, 'chip', { face: folded => scriptChip(el, style, lines, folded, columns - 2) })
+    ? folder($, el, open, press)(`${script.id}:chip`, lines.length, 'chip', { label: chipLabel(lines, columns - 2), face: folded => scriptChip(el, style, lines, folded, columns - 2) })
     : lines.length > SCRIPT_SHOW ? folder($, el, open, false, style.folds === 'open')(`${script.id}:script`, lines.length - SCRIPT_SHOW, 'fold') : null
   const copy = copier($, el, style)(script.code, 'copy')
   return drawScript(el, style, { lines, copy, fold, status: script.status, columns }, `script:${script.id}`)
 }
 
-const withScript = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, viewport: { columns?: number } | undefined, style: Style, script: Script, row: RenderElement): Promise<RenderElement> => {
+const withScript = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, viewport: { columns?: number } | undefined, style: Style, script: Script, row: RenderElement, press: boolean): Promise<RenderElement> => {
   const open = await read($, unfolded)
   return (
     <el.Box flexDirection="column">
-      {scriptCard($, el, style, script, open, columnsOf(viewport, style))}
+      {scriptCard($, el, style, script, open, columnsOf(viewport, style), press)}
       {row}
     </el.Box>
   )
 }
 
-const scriptRow = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, viewport: { columns?: number } | undefined, style: Style, props: Parameters<typeof ownScript>[0], row: () => Promise<RenderElement>): Promise<RenderElement> => {
+const scriptRow = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, viewport: { columns?: number } | undefined, style: Style, props: Parameters<typeof ownScript>[0], press: boolean, row: () => Promise<RenderElement>): Promise<RenderElement> => {
   const own = ownScript(props)
-  return own ? withScript($, el, viewport, style, own, await row()) : row()
+  return own ? withScript($, el, viewport, style, own, await row(), press) : row()
 }
 
 const ownScript = (props: { tool_use_id: string; input: unknown; isRunning: boolean; isErrored: boolean; isInterrupted: boolean }): Script | undefined => {
@@ -848,7 +848,7 @@ const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['res
     clock: (style, value, id) => clockSample(el, style, value, id, columns),
     replyStyle: (style, _, id) => replySample($, el, style, id, columns),
     bubbleLabels: (style, _, id) => [...promptSample(el, style, style.promptStyle, `${id}p`, columns), ...replySample($, el, style, id, columns)],
-    scriptStyle: (style, _, id) => [<el.Box key={id}>{scriptCard($, el, style, SCRIPT_SAMPLE, [], columns)}</el.Box>],
+    scriptStyle: (style, _, id) => [<el.Box key={id}>{scriptCard($, el, style, SCRIPT_SAMPLE, [], columns, false)}</el.Box>],
   }
   const sample = (style: Style, value: string, id: string): RenderElement[] => samples[key]?.(style, value, id) ?? []
   const picks = found.parts.options.map(({ value, text }, i) => {
@@ -921,7 +921,10 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'ToolUse', ...here }, async ($, e, next) => {
     watchRuns($, runs, [e.props])
     if (!toolRowsOn) return next(e)
-    if (e.props.tool === SCRIPT_TOOL) return scriptRow($, $.ui.resolve(e), e.viewport, forSurface(style, e, await linkReach($, probes, style)), e.props, () => next(e))
+    if (e.props.tool === SCRIPT_TOOL) {
+      const reach = await linkReach($, probes, style)
+      return scriptRow($, $.ui.resolve(e), e.viewport, forSurface(style, e, reach), e.props, reach.marks, () => next(e))
+    }
     await locate($, style)
     noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
     if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
