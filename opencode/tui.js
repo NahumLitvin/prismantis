@@ -4608,6 +4608,8 @@ var labelBars = (art2, source) => {
   return grid.map((row) => row.join("").trimEnd()).join("\n").replace(/^\n/, "");
 };
 var SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/;
+var LABELED_EDGE = /\|[^|\n]+\||(?<![-.=])(?:--|==|-\.)[ \t]*[^-.=>\s]/;
+var rowsBetween = (source) => /^\s*(?:flowchart|graph)\b/.test(source) && !SIDEWAYS.test(source) && LABELED_EDGE.test(source) ? 3 : 1;
 var kindOf = (source) => source.replace(/^(\s*%%[^\n]*\n)+/, "").trim().split(/[\s:]/)[0] ?? "";
 var OWN = {
   pie: pieText,
@@ -4692,7 +4694,7 @@ var draw = (source, ascii, columns, gap = 3) => {
   return remember(textCache, key, () => {
     try {
       if (isChart) setChartSize(size.width, size.height);
-      const art2 = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: "none", paddingX: gap, paddingY: 1 }).replace(/[ \t]+$/gm, "").trimEnd().replace(/▶/g, "\u25BA").replace(/◀/g, "\u25C4");
+      const art2 = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: "none", paddingX: gap, paddingY: rowsBetween(padded) }).replace(/[ \t]+$/gm, "").trimEnd().replace(/▶/g, "\u25BA").replace(/◀/g, "\u25C4");
       return unshield((isChart ? labelBars(art2, padded) : art2.split("\n").filter((l) => !/^[\s│|]*$/.test(l)).join("\n")).replaceAll(PAD, ""));
     } catch {
       return null;

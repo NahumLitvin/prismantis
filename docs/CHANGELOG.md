@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.49.3] - 2026-11-20
+
+Edge labels sit on their own edge, CJK URLs stop at the punctuation, and WSL paths open from fullscreen.
+
+### Added
+
+- A [compatibility page](docs/compatibility.md) puts Claude Code, Codex, OpenCode and Antigravity side by side: who draws a reply, how tables, code and mermaid fare, and what is missing where. Thanks @buer5 ([#591](https://github.com/NahumLitvin/prismantis/pull/591)).
+
+### Fixed
+
+- In a top-down or bottom-up flowchart, an edge label sits on its own edge instead of the bottom border of an unrelated box. Labeled TD and BT charts get 3 rows between ranks; other diagrams keep their spacing. Thanks @bastien-gallay for the report ([#592](https://github.com/NahumLitvin/prismantis/pull/592)).
+- In Chinese and Japanese replies, a bare URL followed by full-width punctuation such as `，`, `。`, `、`, `（` or `」` links only the URL, instead of running on into the sentence after it. Thanks @Boring206 ([#588](https://github.com/NahumLitvin/prismantis/pull/588)).
+- Under WSL in Windows Terminal, Ctrl+clicking a path in fullscreen opens it again, instead of "This link type is currently not supported". Thanks @Boring206 ([#587](https://github.com/NahumLitvin/prismantis/pull/587)).
+
 ## [0.49.2] - 2026-11-19
 
 Too-wide flowcharts squeeze to fit, and a diagram that can't draw says why.
