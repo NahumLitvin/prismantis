@@ -10,7 +10,7 @@
   "code block, 1500 lines, highlighted": 0.07338,
   "code block, 10000 lines, folded (cold)": 9.34187,
   "stream replay, 100 redraws of a folded code block (per redraw)": 0.0443,
-  "stream replay, 710 redraws of a 71076-char reply (per redraw)": 1.17,
+  "stream replay, 710 redraws of a 71076-char reply (per redraw)": 0.41186,
   "nodes: 500 highlighted ts lines": 15607,
   "nodes: 300 table rows": 10533,
   "nodes: 300 paragraphs": 6600,
