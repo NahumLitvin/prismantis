@@ -42,20 +42,27 @@ const extended = (codes: number[], i: number): { color?: string; skip: number } 
   return { skip: 0 }
 }
 
+const basic = (code: number): AnsiLook | undefined => {
+  if (code >= 30 && code <= 37) return { color: NAMES[code - 30] }
+  if (code >= 90 && code <= 97) return { color: `${NAMES[code - 90]}Bright` }
+  return FLAGS[code]
+}
+
+const step = (look: AnsiLook, codes: number[], i: number): { look: AnsiLook; skip: number } => {
+  const code = codes[i]!
+  if (code === 0) return { look: {}, skip: 0 }
+  if (code !== 38 && code !== 48 && code !== 58) return { look: { ...look, ...basic(code) }, skip: 0 }
+  const { color, skip } = extended(codes, i)
+  return { look: code === 38 ? { ...look, color } : look, skip }
+}
+
 const applied = (look: AnsiLook, params: string): AnsiLook => {
   const codes = params === '' ? [0] : params.split(';').map(Number)
-  let next: AnsiLook = { ...look }
+  let next = look
   for (let i = 0; i < codes.length; i++) {
-    const code = codes[i]!
-    if (code === 0) next = {}
-    else if (code in FLAGS) next = { ...next, ...FLAGS[code] }
-    else if (code >= 30 && code <= 37) next.color = NAMES[code - 30]
-    else if (code >= 90 && code <= 97) next.color = `${NAMES[code - 90]}Bright`
-    else if (code === 38 || code === 48 || code === 58) {
-      const { color, skip } = extended(codes, i)
-      if (code === 38) next.color = color
-      i += skip
-    }
+    const done = step(next, codes, i)
+    next = done.look
+    i += done.skip
   }
   return next
 }
