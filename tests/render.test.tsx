@@ -1832,6 +1832,13 @@ test('treeTable branch labels every run once and prefixes the rows under it', { 
   await ui.unmount()
 })
 
+test('treeTable draws no guide under the last child of a group', { options: { treeTable: 'branch' } }, async $ => {
+  const ui = await $.ui.mount({ ...draw('| Area | Service | Task |\n|:-----|:--------|:-----|\n| core | api | boot |\n| core | worker | a |\n| core | worker | b |\n| core | worker | c |\n| web | ui | d |'), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^   ├─ b$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^│  ├─ b$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('treeTable full draws a heavy rule where one top-level group ends and the next begins', { options: { treeTable: 'full' } }, async $ => {
   const ui = await $.ui.mount({ ...draw(TREE), surface: 'terminal' })
   expect(await ui.findAll({ type: 'Text', text: /^╞[═╪]+╡$/ })).toHaveLength(2)

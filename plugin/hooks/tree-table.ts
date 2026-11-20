@@ -37,8 +37,6 @@ const levelOf = (labels: string[], parents: boolean[]): Level | undefined => {
   return { labels, starts, sizes }
 }
 
-const continues = (level: Level, r: number): boolean => r + 1 < level.starts.length && level.starts[r + 1] !== true
-
 const lastIn = (levels: Level[], c: number, r: number): boolean => {
   let end = r + 1
   while (end < levels[c]!.starts.length && !levels[c]!.starts[end]) end++
@@ -47,7 +45,7 @@ const lastIn = (levels: Level[], c: number, r: number): boolean => {
 }
 
 const guides = (levels: Level[], upto: number, r: number): string =>
-  Array.from({ length: upto }, (_, a) => (continues(levels[a]!, r) ? '│  ' : '   ')).join('')
+  Array.from({ length: upto }, (_, a) => (lastIn(levels, a + 1, r) ? '   ' : '│  ')).join('')
 
 export const treeOf = (block: TableBlock, option: TreeTable, statusGrouped: boolean): Tree | undefined => {
   if (option === 'off' || statusGrouped || block.rows.length < 3 || block.header.length < 2) return undefined
