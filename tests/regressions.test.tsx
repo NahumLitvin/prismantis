@@ -272,6 +272,14 @@ test('a left-to-right flowchart too wide for the terminal draws top-down instead
   expect(art).toContain('▼')
 })
 
+test('a top-down or bottom-up flowchart draws its edge labels off box borders', async () => {
+  for (const dir of ['TD', 'BT']) {
+    const art = mermaidText(`flowchart ${dir}\n  A{A?} -- yes --> B[B]\n  A -- no --> C{C?}\n  C -- yes --> D[D]\n  C -- no --> E[E]`, false, 100)!
+    expect(art.match(/yes|no/g)?.length).toBe(4)
+    expect(art).not.toMatch(/[┌└◇]─*(yes|no)─*[┐┘◇]/)
+  }
+})
+
 test('a GitHub alert draws its title and body, and copies its text without the > markers or the alert tag', async ($, on) => {
   const copied = stubClipboard(on)
   const ui = await $.ui.mount(mount('> [!WARNING]\n> disk is almost full'))

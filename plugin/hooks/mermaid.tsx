@@ -72,6 +72,8 @@ const labelBars = (art: string, source: string): string => {
 }
 
 const SIDEWAYS = /^(\s*(?:flowchart|graph)[ \t]+)(LR|RL)\b/
+const LABELED_EDGE = /\|[^|\n]+\||(?<![-.=])(?:--|==|-\.)[ \t]*[^-.=>\s]/
+const rowsBetween = (source: string) => (/^\s*(?:flowchart|graph)\b/.test(source) && !SIDEWAYS.test(source) && LABELED_EDGE.test(source) ? 3 : 1)
 
 const SUPPORTED = /^(flowchart|graph|statediagram(-v2)?|xychart(-beta)?|sequencediagram|classdiagram|erdiagram|pie|gantt|quadrantchart|mindmap|journey|kanban|gitgraph)$/i
 
@@ -186,7 +188,7 @@ const draw = (source: string, ascii: boolean, columns: number, gap = 3): string 
   return remember(textCache, key, () => {
     try {
       if (isChart) setChartSize(size.width, size.height)
-      const art = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: 'none', paddingX: gap, paddingY: 1 }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
+      const art = renderMermaidAscii(prepared(padded), { useAscii: ascii, colorMode: 'none', paddingX: gap, paddingY: rowsBetween(padded) }).replace(/[ \t]+$/gm, '').trimEnd().replace(/▶/g, '►').replace(/◀/g, '◄')
       return unshield((isChart ? labelBars(art, padded) : art.split('\n').filter(l => !/^[\s│|]*$/.test(l)).join('\n')).replaceAll(PAD, ''))
     } catch {
       return null
