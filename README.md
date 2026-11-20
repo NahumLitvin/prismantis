@@ -77,6 +77,8 @@ prismantis also runs in Antigravity, where it adds the same session note and a `
 
 ![Antigravity drawing a table, a flowchart and a figure from a prismantis reply](docs/compare/antigravity.png)
 
+The four surfaces side by side: [docs/compatibility.md](docs/compatibility.md).
+
 ## Features
 
 | Feature | What you get |

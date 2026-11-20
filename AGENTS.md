@@ -31,6 +31,7 @@ Render and performance regressions:
 ```
 npm --prefix scripts run snapshot        # demo.md drawn in 3 themes vs tests/snapshots, color and structure
 npm --prefix scripts run bench:check     # timings vs docs/bench-baseline.json (x1.6, normalized by a calibration loop) and node counts (+10%)
+npm --prefix scripts run compat:check    # Claude Code, Codex, OpenCode and Antigravity agree on versions, themes, the note and the mermaid kinds
 ```
 
 CI gates snapshots and node counts but only prints timings (`bench:check -- --no-time`), because the calibration ratio differs between an M-series laptop and a Linux runner. Run the full check locally before a release. After an intended visual change run `snapshot:update` and review the diff; after an intended speed or size change run `npm --prefix scripts run bench -- --update`.

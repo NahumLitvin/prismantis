@@ -68,6 +68,8 @@ jobs:
         run: test "$(jq -r '.plugins[0].source | .ref // (.url | capture("/download/(?<tag>v[^/]+)/").tag)' .claude-plugin/marketplace.json)" = "$(jq -r '.plugins[0].source.ref' .agents/plugins/marketplace.json)"
       - name: Codex files match their Claude Code source on a release
         run: git ls-remote --exit-code --tags origin "refs/tags/v$(jq -r .version plugin/.claude-plugin/plugin.json)" >/dev/null || { npm --prefix scripts run build:codex && test -z "$(git status --porcelain codex opencode antigravity .codex-plugin .agents)"; }
+      - name: The four surfaces agree
+        run: npm --prefix scripts run compat:check
       - name: Render snapshots match
         run: npm --prefix scripts run snapshot
       - name: Node counts stay within baseline (timings reported, not gated)

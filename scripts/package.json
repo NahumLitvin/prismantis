@@ -12,6 +12,7 @@
     "snapshot": "node snapshot.mjs",
     "snapshot:update": "node snapshot.mjs --update",
     "build:codex": "node build-codex.mjs",
+    "compat:check": "node compat.mjs",
     "complexity:check": "node complexity.mjs",
     "complexity:update": "node complexity.mjs --update"
   },
