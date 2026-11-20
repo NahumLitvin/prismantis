@@ -957,6 +957,18 @@ test('markdown links and bare URLs draw as clickable links', async $ => {
   }
 })
 
+test('a bare URL ends before full-width punctuation, so the Chinese sentence after it stays text', async $ => {
+  const text = '草稿在 https://example.com/a/X1，只有你看得到。也可以看 https://example.com/wiki、https://example.com/b（備份）或「https://example.com/c」。'
+  const ui = await $.ui.mount({ plugin: 'prismantis', component: 'AssistantMessage', props: { text, isFirstOfReply: true }, viewport: { columns: 160, rows: 20 }, surface: 'terminal' })
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual([
+    'https://example.com/a/X1',
+    'https://example.com/wiki',
+    'https://example.com/b',
+    'https://example.com/c',
+  ])
+  await ui.unmount()
+})
+
 const run = (args: string) => ({ command: 'prismantis', args, origin: { kind: 'composer' as const }, presentation: { isFullscreen: false, columns: 120 } })
 
 const transcript = (on: On, messages: { role: 'user' | 'assistant'; text: string }[]) => {
