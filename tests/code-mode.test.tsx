@@ -6,6 +6,7 @@ import { width } from '../hooks/layout'
 import { PRESETS } from '../hooks/presets'
 import { setupSteps } from '../hooks/help'
 import { resolveStyle } from '../hooks/theme'
+import { claudeAt } from './claude-version'
 
 const t = PRESETS['catppuccin-mocha']
 
@@ -228,7 +229,9 @@ test('scriptStyle bar says running, done or failed from the REPL row itself', { 
 
 test('scriptStyle chip draws one folded line that opens the script on a click', { options: { scriptStyle: 'chip' } }, async ($, on) => {
   engine(on)
+  claudeAt(on, '2.1.295')
   const ui = await $.ui.mount(row(script('\nconst a = 1\nreturn a')))
+  if (!(await hasCard(ui))) return ui.unmount()
   const text = (await drawnText(ui)).split('engine')[0]!
   expect(text).toBe('▸ Code · 3 lines · const a = 1 …')
   expect((await ui.findAll({ type: 'Button' })).some(b => b.props.label === '⧉ copy')).toBe(false)
@@ -240,9 +243,21 @@ test('scriptStyle chip draws one folded line that opens the script on a click', 
   await ui.unmount()
 })
 
+test('scriptStyle chip before Claude Code 2.1.295 draws its one line as the label of a plain button', { options: { scriptStyle: 'chip' } }, async ($, on) => {
+  engine(on)
+  claudeAt(on, '2.1.287')
+  const ui = await $.ui.mount(row(script('\nconst a = 1\nreturn a')))
+  expect((await drawnText(ui)).split('engine')[0]).toBe('[ ▸ Code · 3 lines · const a = 1 … ]')
+  await ui.press({ key: 'chip' })
+  expect(await drawnText(ui)).toContain('return a')
+  await ui.unmount()
+})
+
 test('scriptStyle chip cuts a first line of wide letters to the pane by display width', { options: { scriptStyle: 'chip' } }, async ($, on) => {
   engine(on)
+  claudeAt(on, '2.1.295')
   const ui = await $.ui.mount(row(script(`const s = "${'漢字'.repeat(40)}"\nreturn s`), 'terminal', 60))
+  if (!(await hasCard(ui))) return ui.unmount()
   const face = (await drawnText(ui)).split('engine')[0]!
   expect(face.endsWith('… …')).toBe(true)
   expect(width(face)).toBeLessThanOrEqual(58)

@@ -2743,12 +2743,19 @@ const barScript = (el: ElementTable, style: Style, parts: ScriptParts): RenderEl
   )
 }
 
+const chipParts = (lines: readonly string[], folded: boolean, columns: number) => {
+  const head = `${folded ? '▸' : '▾'} ${scriptTitle(lines)}`
+  return { head, shown: cutTo((lines.find(line => line.trim()) ?? '').trim(), columns - width(head) - 5) }
+}
+
+export const chipLabel = (lines: readonly string[], columns: number): string => {
+  const { head, shown } = chipParts(lines, true, columns)
+  return shown ? `${head} · ${shown} …` : head
+}
+
 export const scriptChip = (el: ElementTable, style: Style, lines: readonly string[], folded: boolean, columns: number): RenderElement => {
   const { Text } = el
-  const head = `${folded ? '▸' : '▾'} ${scriptTitle(lines)}`
-  const first = (lines.find(line => line.trim()) ?? '').trim()
-  const room = columns - width(head) - 5
-  const shown = cutTo(first, room)
+  const { head, shown } = chipParts(lines, folded, columns)
   return (
     <Text>
       <Text color={style.theme.accent}>{head}</Text>
