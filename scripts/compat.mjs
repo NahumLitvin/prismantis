@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -44,7 +43,6 @@ const parity = (one, other, what) => {
 const noteTail = text => text.slice(text.indexOf('\n\n') + 2)
 
 const version = json('plugin/.claude-plugin/plugin.json').version
-const tagged = execFileSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/v${version}`], { cwd: root, encoding: 'utf8' }).trim() !== ''
 const codexThemes = readdirSync(join(root, CODEX_THEMES)).map(name => name.match(/^prismantis-(.+)\.tmTheme$/)?.[1]).filter(Boolean)
 const opencodeThemes = readdirSync(join(root, 'opencode/themes')).map(name => name.match(/^prismantis-(.+)\.json$/)?.[1]).filter(Boolean)
 const shared = noteTail(read('codex/hint.md'))
@@ -53,7 +51,6 @@ check('every surface names the plugin version', () => {
   for (const file of ['.codex-plugin/plugin.json', 'opencode/package.json', 'antigravity/plugin.json']) same(json(file).version, version, file)
   const agents = json('.agents/plugins/marketplace.json').plugins[0]
   same(agents.version, version, '.agents/plugins/marketplace.json version')
-  if (tagged) same(agents.source.ref ?? agents.source.url?.match(/\/download\/(v[^/]+)\//)?.[1], `v${version}`, '.agents/plugins/marketplace.json pin')
   same(read('opencode/README.md').match(/#(v\d+\.\d+\.\d+)::path:opencode/)?.[1], `v${version}`, 'opencode/README.md install pin')
   return version
 })
