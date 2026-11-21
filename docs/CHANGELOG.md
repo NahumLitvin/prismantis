@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.49.4] - 2026-11-21
+
+Shell output keeps the colors the command printed.
+
+### Fixed
+
+- A shell call's output keeps the command's own colors and styles, so `ls --color`, git, test runners and linters no longer draw as plain text. The 16 basic colors follow your terminal palette, 256-color and truecolor codes draw as their exact color, and bold, dim, italic, underline, inverse and strikethrough carry over. Thanks @SirFrey ([#596](https://github.com/NahumLitvin/prismantis/pull/596)).
+
 ## [0.49.3] - 2026-11-20
 
 Edge labels sit on their own edge, CJK URLs stop at the punctuation, and WSL paths open from fullscreen.
