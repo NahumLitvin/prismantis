@@ -5,6 +5,8 @@ import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
 import type { Block, Inline, TableAlign, TableCell, TableBlock } from './markdown'
 import { mathOf } from './latex'
+import type { AnsiRun } from './ansi'
+import { ansiLines, hasAnsi, hasLook } from './ansi'
 import { CONTROL, displayText, inlineText, isPathSpelling, isWebLink, nestedBlocks, parseInline, texParses, texText } from './markdown'
 import type { Flow } from './rtl'
 import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, engineProse, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
@@ -1798,11 +1800,11 @@ const RESULT_LINES = 3
 export const renderShellResult = (el: ElementTable, style: Style, output: unknown): RenderElement => {
   const { Box, Text } = el
   const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
-  const shown = [...lines(out.stdout), ...lines(out.stderr)]
-  const head = shown.slice(0, RESULT_LINES).map(l => shortenPaths(l, style))
+  const shown = [...outputLines(out.stdout), ...outputLines(out.stderr)]
+  const head = shown.slice(0, RESULT_LINES).map(l => ({ ...l, text: shortenPaths(l.text, style), runs: l.runs?.map(r => ({ ...r, text: shortenPaths(r.text, style) })) }))
   return (
     <Box flexDirection="column">
-      {head.length === 0 ? heldRow(el, style, 'l0', '  ⎿  ', '', <Text dimColor>(No output)</Text>) : head.map((l, i) => heldRow(el, style, `l${i}`, i ? '     ' : '  ⎿  ', l, <Text wrap="truncate-end">{l === '' ? ' ' : l}</Text>))}
+      {head.length === 0 ? heldRow(el, style, 'l0', '  ⎿  ', '', <Text dimColor>(No output)</Text>) : head.map((l, i) => heldRow(el, style, `l${i}`, i ? '     ' : '  ⎿  ', l.text, outputCell(el, l, 'truncate-end')))}
       {shown.length > head.length ? heldRow(el, style, 'more', '     ', '', <Text dimColor>{`… +${shown.length - head.length} lines`}</Text>) : null}
     </Box>
   )
@@ -2852,7 +2854,24 @@ const COMMAND_LEAD = 2
 
 type HeldPiece = Piece & { bold?: boolean }
 
-type OutputLine = { text: string; color?: string }
+type OutputLine = { text: string; color?: string; runs?: AnsiRun[] }
+
+const outputLines = (value: unknown, color?: string): OutputLine[] => {
+  if (typeof value !== 'string' || !hasAnsi(value)) return lines(value).map(text => ({ text, color }))
+  return ansiLines(value.replace(/\n$/, '')).map(runs => ({ text: runs.map(r => r.text).join(''), color, runs: hasLook(runs) ? runs : undefined }))
+}
+
+const outputCell = (el: ElementTable, line: OutputLine, wrap?: 'truncate-end'): RenderElement => {
+  const { Text } = el
+  if (!line.runs) return <Text color={line.color} wrap={wrap}>{line.text === '' ? ' ' : line.text}</Text>
+  const run = (r: AnsiRun, key?: string) => (
+    <Text key={key} wrap={key ? undefined : wrap} color={r.color ?? line.color} bold={r.bold} dimColor={r.dim} italic={r.italic} underline={r.underline} inverse={r.inverse} strikethrough={r.strikethrough}>
+      {r.text}
+    </Text>
+  )
+  if (line.runs.length === 1) return run(line.runs[0]!)
+  return <Text wrap={wrap}>{line.runs.map((r, j) => run(r, `a${j}`))}</Text>
+}
 
 const trimLead = ([first, ...rest]: HeldPiece[]): HeldPiece[] => {
   if (!first) return rest
@@ -2877,7 +2896,8 @@ const outputRows = (style: Style, shown: OutputLine[], room: number | undefined)
     if (left <= 0) break
     const head = room !== undefined && mirrored(style) && hasRtl(l.text) ? clusters(l.text, left * room) : l.text
     const split = outputLineRows(style, head, room)
-    rows.push(...split.slice(0, left).map(text => ({ text, color: l.color })))
+    const intact = split.length === 1 && head === l.text
+    rows.push(...split.slice(0, left).map(text => ({ text, color: l.color, runs: intact ? l.runs : undefined })))
     if (split.length > left || head.length < l.text.length) break
     whole++
   }
@@ -2923,7 +2943,7 @@ const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { ou
   const { Box, Text } = el
   const t = style.theme
   const out = row.output !== null && typeof row.output === 'object' ? (row.output as Record<string, unknown>) : {}
-  const shown: OutputLine[] = [...lines(out.stdout).map(text => ({ text })), ...lines(out.stderr).map(text => ({ text, color: t.codeFlag }))]
+  const shown: OutputLine[] = [...outputLines(out.stdout), ...outputLines(out.stderr, t.codeFlag)]
   const { rows, hidden } = outputRows(style, shown, columns === undefined ? undefined : columns - SHELL_FRAME)
   return (
     <Box flexDirection="column">
@@ -2931,7 +2951,7 @@ const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { ou
       {row.isRunning ? null : (
         <Box paddingLeft={BOX_INDENT}>
           <Box flexDirection="column" alignSelf="flex-start" borderStyle="round" borderColor={t.codeComment} paddingRight={1}>
-            {rows.length === 0 ? heldRow(el, style, 'o0', ' ', '', <Text dimColor>(No output)</Text>) : rows.map((r, i) => heldRow(el, style, `o${i}`, ' ', r.text, <Text color={r.color}>{r.text === '' ? ' ' : r.text}</Text>))}
+            {rows.length === 0 ? heldRow(el, style, 'o0', ' ', '', <Text dimColor>(No output)</Text>) : rows.map((r, i) => heldRow(el, style, `o${i}`, ' ', r.text, outputCell(el, r)))}
             {hidden ? heldRow(el, style, 'more', ' ', '', <Text dimColor>{`\u2026 +${hidden} lines`}</Text>) : null}
           </Box>
         </Box>

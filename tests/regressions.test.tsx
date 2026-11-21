@@ -1,5 +1,5 @@
 import type { On } from 'claude-code'
-import type { Engine } from 'claude-code/testing'
+import type { Engine, TestBody } from 'claude-code/testing'
 import { expect, mock, test } from 'claude-code/testing'
 
 import { helpText, OPENCODE_CHARTS, opencodeShowcase, setupParts, setupText, showcaseText } from '../hooks/help'
@@ -3123,4 +3123,58 @@ test('the OpenCode demo shows only what OpenCode draws and opens its charts as c
   for (const kind of OPENCODE_CHARTS) expect(demo).toContain(`\`\`\`chart\n${kind}`)
   for (const kind of ['flowchart', 'sequenceDiagram', 'gantt', 'gitGraph']) expect(demo).toContain(`\`\`\`mermaid\n${kind}`)
   expect(demo).toContain('```figure')
+})
+
+const ansiShell = (id: string, stdout: string, stderr = '') => ({ tool_use_id: id, tool: 'Bash', input: { command: 'ls --color=always' }, isRunning: false, isErrored: false, isInterrupted: false, output: { stdout, stderr } })
+
+const expandAnsi = async ($: Parameters<TestBody>[0], id: string, stdout: string, stderr = '') => {
+  const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [ansiShell(id, '')], isActive: false, isExpanded: true } })
+  await group.unmount()
+  return $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: ansiShell(id, stdout, stderr) })
+}
+
+const engineStandIn = (on: On) =>
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+
+test('an expanded shell call keeps the colors the command printed and drops the escape codes', async ($, on) => {
+  engineStandIn(on)
+  const ui = await expandAnsi($, 'ansi-1', '\x1b[31mred\x1b[0m plain \x1b[1;34mbold blue\x1b[0m\n\x1b[90mgrey\x1b[39m')
+  expect((await ui.find({ type: 'Text', text: /^red$/ }))?.props.color).toBe('red')
+  const bold = await ui.find({ type: 'Text', text: /^bold blue$/ })
+  expect(bold?.props.color).toBe('blue')
+  expect(bold?.props.bold).toBe(true)
+  expect((await ui.find({ type: 'Text', text: /^ plain $/ }))?.props.color).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^grey$/ }))?.props.color).toBe('blackBright')
+  expect((await ui.findAll({ type: 'Text' })).some(t => /\[\d+(;\d+)*m/.test(t.text))).toBe(false)
+  expect(await ui.find({ type: 'Box', text: /^ red plain bold blue$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a color the command opened on one line carries on to the next until it is reset', async ($, on) => {
+  engineStandIn(on)
+  const ui = await expandAnsi($, 'ansi-2', '\x1b[32mfirst\nsecond\x1b[0m\nthird')
+  expect((await ui.find({ type: 'Text', text: /^second$/ }))?.props.color).toBe('green')
+  expect((await ui.find({ type: 'Text', text: /^third$/ }))?.props.color).toBeUndefined()
+  await ui.unmount()
+})
+
+test('256-color and truecolor codes draw as hex, and stderr without its own color keeps the flag color', { options: { codeFlagColor: '#ff0000' } }, async ($, on) => {
+  engineStandIn(on)
+  const ui = await expandAnsi($, 'ansi-3', '\x1b[38;5;208morange\x1b[0m \x1b[38;2;1;2;3mrgb\x1b[0m', 'oops \x1b[33mwarn\x1b[0m')
+  expect((await ui.find({ type: 'Text', text: /^orange$/ }))?.props.color).toBe('#ff8700')
+  expect((await ui.find({ type: 'Text', text: /^rgb$/ }))?.props.color).toBe('#010203')
+  expect((await ui.find({ type: 'Text', text: /^oops $/ }))?.props.color).toBe('#ff0000')
+  expect((await ui.find({ type: 'Text', text: /^warn$/ }))?.props.color).toBe('yellow')
+  await ui.unmount()
+})
+
+test('a quiet shell result keeps the colors the command printed', { options: { toolOutput: 'quiet' } }, async ($, on) => {
+  engineStandIn(on)
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'ansi-q', tool: 'Bash', output: { stdout: '\x1b[32mok\x1b[0m done\n', stderr: '' }, isErrored: false } })
+  expect((await ui.find({ type: 'Text', text: /^ok$/ }))?.props.color).toBe('green')
+  expect(await ui.find({ type: 'Box', text: /^ {2}⎿ {2}ok done$/ })).toBeDefined()
+  await ui.unmount()
 })
