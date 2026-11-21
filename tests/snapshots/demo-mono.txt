@@ -1609,6 +1609,483 @@
   <Text>
     "└─────────┴─────────┴──────────┴────────┘"
 <Box>
+  <Text bold>
+    <Text>
+      "Heatmap"
+  <Text>
+    "━━━━━━━"
+<Text>
+  <Text>
+    "When a table holds a matrix of numbers — a column of requests beside a column of latencies, each number carrying the same suffix down its column — "
+  <Text>
+    "heatTable"
+  <Text>
+    " draws each number by where it sits between its column's lowest and highest: "
+  <Text>
+    "color"
+  <Text>
+    " puts the lowest in the table's text color, the next in the number color, the next in the accent color and the highest in the accent color and bold, and "
+  <Text>
+    "bars"
+  <Text>
+    " also adds one block glyph after each number, "
+  <Text>
+    "▁"
+  <Text>
+    ", "
+  <Text>
+    "▄"
+  <Text>
+    ", "
+  <Text>
+    "▆"
+  <Text>
+    " or "
+  <Text>
+    "█"
+  <Text>
+    " by the same four steps, so size reads without color. A column whose values are all equal stays as written, and a cell another table look already colored keeps that color. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌──────────┬──────────┬────────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Region"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Requests"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "p99"
+    <Text>
+      " │"
+  <Text>
+    "╞══════════╪══════════╪════════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "1200"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "84"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "us-west"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "900"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "91"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "eu-west"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "640"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "120"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "ap-south"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "480"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "132"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "sa-east"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "96"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "140"
+        <Text>
+          " ms"
+    <Text>
+      " │"
+  <Text>
+    "└──────────┴──────────┴────────┘"
+<Box>
+  <Text bold>
+    <Text>
+      "Tree"
+  <Text>
+    "━━━━"
+<Text>
+  <Text>
+    "When a table nests its rows — a column of areas beside a column of services and their tasks — "
+  <Text>
+    "treeTable"
+  <Text>
+    " draws each run of a repeated first column once, in the accent color, and the rows under it as branches: "
+  <Text>
+    "branch"
+  <Text>
+    " prefixes each row with "
+  <Text>
+    "├─"
+  <Text>
+    " or "
+  <Text>
+    "└─"
+  <Text>
+    ", the last row of the run taking the corner, and when the next column repeats too it merges the same way and carries one "
+  <Text>
+    "│"
+  <Text>
+    " per continuing parent before its branch, so three levels draw as a tree. "
+  <Text>
+    "full"
+  <Text>
+    " also draws a heavy rule where one top-level group ends and the next begins. A column of numbers never nests, a table already grouped by status keeps its status grouping, and stacked tables stay as they are. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌──────┬─────────┬───────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Area"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Service"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Task"
+    <Text>
+      " │"
+  <Text>
+    "╞══════╪═════════╪═══════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "core"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "boot"
+    <Text>
+      " │"
+  <Text>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "core"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "sync"
+    <Text>
+      " │"
+  <Text>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "core"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "worker"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "draw"
+    <Text>
+      " │"
+  <Text>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "web"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "ui"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "paint"
+    <Text>
+      " │"
+  <Text>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "web"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "ui"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "route"
+    <Text>
+      " │"
+  <Text>
+    "└──────┴─────────┴───────┘"
+<Box>
+  <Text bold>
+    <Text>
+      "Pivot"
+  <Text>
+    "━━━━━"
+<Text>
+  <Text>
+    "When a table holds metrics and periods — a column of names beside a header of quarters — "
+  <Text>
+    "pivotTable"
+  <Text>
+    " "
+  <Text>
+    "transpose"
+  <Text>
+    " draws it with rows and columns swapped, so the quarters read down the side and each metric has a column of its own, which fits a narrow terminal better than a long row. It adds no totals and no averages, so what you copy as markdown stays exactly what was written. The default "
+  <Text>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text>
+    "┌─────────┬─────┬─────┐"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text bold>
+        "Metric"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Q1"
+    <Text>
+      " │ "
+    <Box>
+      <Text bold>
+        "Q2"
+    <Text>
+      " │"
+  <Text>
+    "╞═════════╪═════╪═════╡"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Revenue"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "120"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "148"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼─────┼─────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Cost"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "80"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "96"
+    <Text>
+      " │"
+  <Text>
+    "├─────────┼─────┼─────┤"
+  <Box row>
+    <Text>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Margin"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "40"
+    <Text>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "52"
+    <Text>
+      " │"
+  <Text>
+    "└─────────┴─────┴─────┘"
+<Box>
   <Box row>
     <Text>
       "1. "
