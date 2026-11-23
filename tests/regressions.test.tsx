@@ -555,7 +555,7 @@ test('a mounted diagram with wide labels draws its box borders on the same colum
 })
 
 test('a flowchart draws the same whatever order its edges are declared in', async () => {
-  for (const dir of ['TD', 'TB', 'BT']) {
+  for (const dir of ['TD', 'TB', 'BT', 'LR', 'RL']) {
     const art = mermaidText(`flowchart ${dir}\n  A --> C\n  B --> C\n  C --> D`, false, 100)
     expect(art).not.toBeNull()
     expect(mermaidText(`flowchart ${dir}\n  C --> D\n  A --> C\n  B --> C`, false, 100)).toBe(art)
