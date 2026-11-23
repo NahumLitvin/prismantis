@@ -18,7 +18,7 @@ Redrawing anything Claude Code already shows is in.
 
 Full customization is the product. A request to hide, toggle or tune part of the drawing gets a yes, unless security, a mod-API limit or a real cost says no.
 
-- A look with more than one good style ships its top 3 or 4 behind one option, each a step in `/prismantis setup` with a README screenshot.
+- A look with more than one good style ships its top 3 or 4 behind one option, each a step in `/prismantis setup` with a screenshot in its `docs/` page.
 - Themes from published MIT palettes, credited in [plugin/THIRD_PARTY_NOTICES.md](plugin/THIRD_PARTY_NOTICES.md).
 - New looks are opt-in. Today's look stays the default until I change it.
 - Flags and knobs for anything other than the drawing don't go in.

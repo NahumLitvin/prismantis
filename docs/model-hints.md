@@ -1,0 +1,13 @@
+# Model hints
+
+[← README](../README.md)
+
+## Diagram hints
+
+Claude rarely writes a chart unless it knows the terminal can draw one. With `diagramHints` on (the default), each prompt you type or another plugin sends carries a short note that only the model reads. It says tables, alerts, code, mermaid diagrams and `xychart-beta` charts render here, and asks for commands in fenced blocks, since only those get a copy button. A second part describes [figures](diagrams.md#figures): prefer one over mermaid when position carries meaning (durations racing on a time axis, a screen layout, phases, before and after), keep mermaid for plain flows and charts, and draw none for short answers, code changes or reports; the prose never retells the picture. When you ask Claude to explain, compare or plan something and pictures would make it easier to grasp, it builds the reply around them, with the core on the first screen as a picture or a sentence. Then come the role markup, at most 74 columns so a figure fits an 80-column window, glyphs one column wide, and edge ticks `▏` for a time axis so `█` bars line up.
+
+The note costs about 630 tokens per prompt: about 275 for the main part and about 360 for the figure part, plus about 80 while [LaTeX math](diagrams.md#latex-math) is on, when it also says `$$` formulas render. All three are counted with Claude's tokenizer. It's off whenever `mermaid` is off, and skipped for the prompt a headless `claude -p` run starts with and for background notifications; a prompt another plugin sends inside such a run still carries it.
+
+With `keyPointHint` on (off by default), each prompt also carries a note that asks Claude to put each reply's key points in bold: the answer, the result, the decision, or what you have to do. Bold draws in the theme's `strong` color. In a theme where that color is close to the body text, such as `catppuccin-mocha`, set `strongColor` (for example `#fab387`) so those phrases stand out. Each one is a short phrase, usually no more than three per reply. The note costs about 80 tokens per prompt, whether `diagramHints` is on or off.
+
+With `issueHint` on (the default), your first prompt and every tenth after it carry a note of about 35 tokens: when you say something drew wrong, Claude can offer, after asking you, to open a minimal repro issue on prismantis. Set `issueHint` to `false` to drop it.
