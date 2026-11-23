@@ -860,6 +860,17 @@ test('a folder links once its stat lands, even when the engine refuses the first
   await ui.unmount()
 })
 
+test('a folder links once its stat lands, even when slow renders keep refusing the write for over a second', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = folders(on, ['/work/app/sub'])
+  on('state.set', (_, e, next) => (e.key === 'foundPaths' && clock.now() < 1500 ? { deny: 'state.set: denied: it was made while ui.render is being dispatched' } : next(e)))
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const ui = await $.ui.mount(mount('Folder: /work/app/sub'))
+  for (let step = 0; step < 40; step++) await clock.advance(100)
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///work/app/sub'])
+  await ui.unmount()
+})
+
 for (const [where, env, root] of [
   ['outside WSL', {}, 'file://'],
   ['under WSL', { WSL_DISTRO_NAME: 'Ubuntu' }, 'file://wsl.localhost/Ubuntu'],
