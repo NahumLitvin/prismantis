@@ -55,6 +55,19 @@ Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm t
 
 ![quiet: rows say what was read, nothing drawn under reads](tools/quiet.png)
 
+## Plans
+
+A plan from plan mode reaches the transcript as Claude Code's `ExitPlanMode` result: `Approved Claude's plan`, the `Plan saved to: … · /plan to edit` line, then the plan as plain text. `planStyle` draws the plan with the same renderer as a reply, so its tables, code, mermaid diagrams, math, numbers and paths draw as they would there, with the usual copy buttons and one `⧉ copy plan` button for the whole markdown. prismantis draws the header and the saved-path line above it itself, because Claude Code drops both when handed a result with no plan text.
+
+| `off` (default) | `bare` | `card` |
+|---|---|---|
+| Claude Code's own row, as today | drawn like a reply under the header | `bare` in a rounded frame of the `rule` color |
+| ![off](plan/off.png) | ![bare](plan/bare.png) | ![card](plan/card.png) |
+
+Only the transcript row changes: the approval dialog is not a component a mod can redraw, so it keeps Claude Code's look, and `/plan`, the plan file and the model's copy are untouched. The plan is read from the result's `plan` field, which Claude Code fills from 2.1.311; on older versions, for a teammate's plan waiting on the team lead, and for a rejected plan, the row stays Claude Code's. With `mermaid` off a plan's diagrams stay source, as in a reply, and long code blocks fold as usual.
+
+A `plan` fenced block draws the same way in any reply, so `/prismantis demo` and `/prismantis setup` can show the look without a plan-mode session. Fence it with four backticks so code blocks inside it keep theirs. In a reply, display math in a `plan` block draws as text and bare paths in it are not looked up, while the plan-mode row draws both. With `planStyle: off` it stays a code block.
+
 ## Turn footer
 
 ![Turn footer: plain Claude Code on the left, prismantis on the right](compare/footer.png)

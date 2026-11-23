@@ -71,6 +71,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `mermaid` | `true`, `false` | `true` |
 | `mermaidAscii` | `true`, `false` | `false` |
 | `codeStyle` | `plain` (no frame), `framed` (a rounded box), `filled` (a background, or the box in a theme with no colors), `card` (a rounded box on a background) | `plain` |
+| `planStyle` | `off` (Claude Code's own plain plan), `bare` (an approved plan drawn like a reply, with a `copy plan` button), `card` (the same in a rounded frame); see [Plans](tool-output.md#plans) | `off` |
 | `pieStyle` | `round` (a circle with a legend), `bars` (one bar per slice) | `round` |
 | `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |

@@ -124,6 +124,15 @@ test('display math still draws as an image when file links are on', async ($, on
   await ui.unmount()
 })
 
+test('display math in an approved plan draws as an image', { options: { planStyle: 'card' } }, async ($, on) => {
+  mock.env(on, KITTY)
+  const clock = mock.clock(on)
+  ratex(on)
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'plan-math', tool: 'ExitPlanMode', output: { plan: REPLY, isAgent: false }, isErrored: false }, viewport: { columns: 120, rows: 40 } })
+  await clock.settle()
+  expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('\\int_0^1 x^2\\,dx')
+})
+
 test('a math fence draws as an image too', async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)

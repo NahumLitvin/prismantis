@@ -1530,6 +1530,34 @@ const markedRow = ({ Box }: ElementTable, key: string, element: RenderElement, f
   </Box>
 )
 
+type CodeBlock = Extract<Block, { kind: 'code' }>
+
+export const planBlock = (plan: string): CodeBlock => ({ kind: 'code', lang: 'plan', lines: plan.split('\n'), raw: plan })
+
+export const isPlan = (style: Style, block: Block): block is CodeBlock => style.planStyle !== 'off' && block.kind === 'code' && block.lang === 'plan'
+
+export const planRoom = (style: Style): number => (style.planStyle === 'card' ? 4 : 0)
+
+export const renderPlan = ({ Box }: ElementTable, style: Style, body: RenderElement[], key: string): RenderElement =>
+  style.planStyle === 'card' ? (
+    <Box key={key} flexDirection="column" rowGap={1} borderStyle="round" borderColor={style.theme.rule} borderDimColor={!style.theme.rule} paddingX={1}>{body}</Box>
+  ) : (
+    <Box key={key} flexDirection="column" rowGap={1}>{body}</Box>
+  )
+
+export const renderPlanHead = ({ Box, Text }: ElementTable, style: Style, filePath?: string): RenderElement => (
+  <Box flexDirection="column">
+    <Text color={style.theme.accent}>Approved Claude's plan</Text>
+    {filePath ? <Text dimColor>{`Plan saved to: ${shortPath(style, filePath)} · /plan to edit`}</Text> : null}
+  </Box>
+)
+
+const copyLabel = (style: Style, block: Block, art: unknown): string | undefined => {
+  if (block.kind === 'table') return '⧉ md'
+  if (isPlan(style, block)) return '⧉ copy plan'
+  return art === undefined ? undefined : '⧉ source'
+}
+
 export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], columns: number, drawn: Drawn = new Map(), copy?: CopyButton, fold?: Fold, tip?: Tip): RenderElement[] => {
   const { Box, Text } = el
   const t = style.theme
@@ -1560,7 +1588,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
     const text = hover && holdsOnlyEmptyCode(block) ? undefined : blockSource(style, blocks, b)
     const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
     const { art, grid, hues } = artsOf(drawn.get(b), block, style.theme, rtlTables[b]!)
-    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
+    const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, copyLabel(style, block, art))
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null
     const html = first && block.kind === 'table' ? copy?.(() => tableText(block), `html${b}`, '⧉ html', () => tableHtml(block, rtlTables[b])) : null
     return { first, second, html, png: second && copy?.(grid!, `png${b}`, '▣ png', 'png', hues) }

@@ -162,6 +162,20 @@ test('with path links on, an extensionless file never links and an extensionless
   }
 })
 
+test('paths in an approved plan link once a stat finds them, as in a reply', { options: { planStyle: 'bare' } }, async ($, on) => {
+  claudeAt(on, '2.1.289')
+  mock.env(on, { FORCE_HYPERLINK: '1', HOME: '/home/me' })
+  on('session.root', () => ({ value: '/work/app' }))
+  const clock = mock.clock(on)
+  on('fs.stat', (_, e) => ({ value: { kind: /^\/(usr\/local|work\/app\/docs)$/.test(e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:(?=\/)/, '')) ? 'dir' as const : 'file' as const, size: 1, mtimeMs: 0, isLink: false } }))
+  if (!(await linksHttp($.ui.mount(reply('[/x.md](file:///x.md)'))))) return
+  const plan = { plugin: 'prismantis', component: 'ToolResult' as const, surface: 'terminal' as const, props: { tool_use_id: 'plan-paths', tool: 'ExitPlanMode', output: { plan: '## Plan\n\nMove docs/ under /usr/local.', isAgent: false }, isErrored: false }, viewport: { columns: 120, rows: 40 } }
+  await (await $.ui.mount(plan)).unmount()
+  await clock.settle()
+  const ui = await $.ui.mount(plan)
+  expect((await ui.findAll({ type: 'Link' })).map(l => String(l.props.href))).toEqual(['file:///work/app/docs/', 'file:///usr/local'])
+})
+
 const BAD = '\u001b]52;c;cHduZWQ=\u0007\u001b[2J'
 
 const toolCall = (tool: string, input: unknown) => ({ tool_use_id: `c-${tool}`, tool, input, isRunning: false, isErrored: false, isInterrupted: false })
