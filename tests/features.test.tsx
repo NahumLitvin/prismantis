@@ -28,6 +28,12 @@ const engine = (on: On) => {
   })
 }
 
+const turnEngine = (on: On) =>
+  on('ui.render', { component: 'TurnDuration' }, ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{`✻ ${e.props.word} for 6m 20s`}</Text>
+  })
+
 const call = (tool: string, input: unknown, id: string) => ({ tool_use_id: id, tool, input, isRunning: false, isErrored: false, isInterrupted: false })
 
 test('collapsed tool groups draw one summary line', { options: { toolStyle: 'classic' } }, async $ => {
@@ -528,7 +534,8 @@ test('turn footer formats durations', async () => {
   expect(formatDuration(3720000)).toBe('1h 2m')
 })
 
-test('turn footer keeps the word and colors the duration', async $ => {
+test('turn footer keeps the word and colors the duration', async ($, on) => {
+  turnEngine(on)
   const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 380000 } })
   expect((await ui.find({ type: 'Text', text: /^6m 20s$/ }))?.props.color).toBe(t.number)
   await ui.unmount()
@@ -559,6 +566,7 @@ test('a row takes the newest matching time recorded before it was first drawn', 
 })
 
 test('clock adds the end time to the turn footer', { options: { clock: '24h' } }, async ($, on) => {
+  turnEngine(on)
   mock.clock(on, { now: local(10, 14, 32) })
   on('turn.complete', async (_$, e) => ({ text: e.answer }))
   await $.turn.complete({ answer: 'done', durationMs: 380000, isAborted: false, turnId: 't1', reason: 'answer' })
@@ -578,6 +586,7 @@ test('clock off, or a turn it never saw, leaves the turn footer as it was', asyn
 
 test('an old turn line that redraws never takes a later end with a close duration', { options: { clock: '24h' } }, async ($, on) => {
   const clock = mock.clock(on, { now: local(10, 14, 0) })
+  turnEngine(on)
   on('turn.complete', async (_$, e) => ({ text: e.answer }))
   const line = (id: string) => $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', requestId: id, props: { word: 'Baked', durationMs: 5000 } })
   const old = await line('old')
@@ -3697,4 +3706,34 @@ test('in the ctrl+o transcript a non-shell row still goes to the engine whole', 
   })
   expect(await row.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
   await row.unmount()
+})
+
+test('turn footer lets another mod below it add to the line', async ($, on) => {
+  on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => {
+    const { Box, Text } = $.ui.resolve(e)
+    return <Box>{await next(e)}<Text>{' · ctx 12%'}</Text></Box>
+  })
+  turnEngine(on)
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 380000 } })
+  expect(await ui.find({ type: 'Text', text: /ctx 12%/ })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: /^6m 20s$/ }))?.props.color).toBe(t.number)
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('turn footer draws its own line when the engine line is the only one', async ($, on) => {
+  turnEngine(on)
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 380000 } })
+  expect((await ui.find({ type: 'Text', text: /^6m 20s$/ }))?.props.color).toBe(t.number)
+  await ui.unmount()
+})
+
+test('turn footer leaves the waiting line to the engine', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>Waiting for 1 background agent to finish</Text>
+  })
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 29000, waitingFor: { agents: [{ id: 'a', agentType: 'general-purpose' }], workflows: 0 } } })
+  expect(await ui.find({ type: 'Text', text: /Waiting for 1 background agent/ })).toBeDefined()
+  await ui.unmount()
 })
