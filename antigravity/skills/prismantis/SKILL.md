@@ -29,7 +29,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
-| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
+| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras, desktop app colors and plans |
 | `/config` | Edit any option |
 
 > [!NOTE]
@@ -57,7 +57,7 @@ In the desktop app, set `desktopColors` to `match` and the whole Code tab takes 
 
 ### Copy tables
 
-Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted table. `⧉ html` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. `▣ png` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set `copyButtonStyle` to `inline` in `/config` for the accent color, or to `hover` and each block shows a dim ⧉ instead: point at it for its buttons. Set `textCopyButtons` to `false` to keep only the buttons on code, tables, diagrams and the reply. Set `sectionCopyButtons` to `true` for a `⧉ copy` on each heading that copies its section, up to the next heading of its level.
+Use `⧉ md` for Markdown, `⧉ art` for chat, or `⧉ html` for a formatted table. `⧉ html` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. `▣ png` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set `copyButtonStyle` to `inline` in `/config` for the accent color, or to `hover` and each block shows a dim ⧉ instead: point at it for its buttons. Set `textCopyButtons` to `false` to keep only the buttons on code, tables, diagrams and the reply. Set `sectionCopyButtons` to `true` for a `⧉ copy` on each heading that copies its section, up to the next heading of its level. Set `promptCopyButtons` to `true` for a `⧉ copy` under each of your prompts.
 
 | Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
@@ -161,6 +161,40 @@ When a table groups its rows — the first column whose cells repeat in runs, li
 | worker | us-west | 1.8M | 132 ms |
 | cron | us-east | 96k | 40 ms |
 
+### Heatmap
+
+When a table holds a matrix of numbers — a column of requests beside a column of latencies, each number carrying the same suffix down its column — `heatTable` draws each number by where it sits between its column's lowest and highest: `color` puts the lowest in the table's text color, the next in the number color, the next in the accent color and the highest in the accent color and bold, and `bars` also adds one block glyph after each number, `▁`, `▄`, `▆` or `█` by the same four steps, so size reads without color. A column whose values are all equal stays as written, and a cell another table look already colored keeps that color. The default `off` keeps tables as written:
+
+| Region | Requests | p99 |
+|:-------|---------:|----:|
+| us-east | 1200 | 84 ms |
+| us-west | 900 | 91 ms |
+| eu-west | 640 | 120 ms |
+| ap-south | 480 | 132 ms |
+| sa-east | 96 | 140 ms |
+
+### Tree
+
+When a table nests its rows — a column of areas beside a column of services and their tasks — `treeTable` draws each run of a repeated first column once, in the accent color, and the rows under it as branches: `branch` prefixes each row with `├─` or `└─`, the last row of the run taking the corner, and when the next column repeats too it merges the same way and carries one `│` per continuing parent before its branch, so three levels draw as a tree. `full` also draws a heavy rule where one top-level group ends and the next begins. A column of numbers never nests, a table already grouped by status keeps its status grouping, and stacked tables stay as they are. The default `off` keeps tables as written:
+
+| Area | Service | Task |
+|:-----|:--------|:-----|
+| core | api | boot |
+| core | api | sync |
+| core | worker | draw |
+| web | ui | paint |
+| web | ui | route |
+
+### Pivot
+
+When a table holds metrics and periods — a column of names beside a header of quarters — `pivotTable` `transpose` draws it with rows and columns swapped, so the quarters read down the side and each metric has a column of its own, which fits a narrow terminal better than a long row. It adds no totals and no averages, so what you copy as markdown stays exactly what was written. The default `off` keeps tables as written:
+
+| Metric | Q1 | Q2 | Q3 | Q4 |
+|:-------|----:|----:|----:|----:|
+| Revenue | 120 | 148 | 162 | 190 |
+| Cost | 80 | 96 | 101 | 118 |
+| Margin | 40 | 52 | 61 | 72 |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -194,6 +228,30 @@ Tool calls draw as one line, dimmed on the right by default, and the file each o
 Each edit draws as a diff card headed `+N −M`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a `+K more lines` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (`sed -i`, a script) get the same card, one per file, headed by its path. Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`.
 
 A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks, and a click on it or on `+K more lines` opens the rest. A file an Edit or a shell command creates shows its first 10 lines as added lines under `Created`. A file a shell command removes is one `Deleted` line that opens to its removed lines on a click, and a file moved unchanged is one `Renamed old → new` line.
+
+### Plans
+
+Set `planStyle` in `/config` to `bare` or `card` and a plan you approve in plan mode draws like a reply under Claude Code's own header, tables, code and diagrams included, with a `copy plan` button. `card` frames it. A `plan` block in a reply draws the same way, and stays code with `planStyle: off`:
+
+````plan
+## Plan: retry failed uploads
+
+| File | Change |
+|:-----|:-------|
+| src/upload.ts | retry 3 times with backoff |
+| src/upload.test.ts | cover the retry |
+
+```ts
+const retries = 3
+```
+
+```mermaid
+flowchart LR
+    U[Upload] --> F{Failed?}
+    F -->|yes| R[Retry]
+    F -->|no| D[Done]
+```
+````
 
 ### Quotes and rules
 

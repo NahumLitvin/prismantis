@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.50.0] - 2026-11-23
+
+Approved plans draw like replies, prompts get a copy button, and tables can draw as a heatmap, a tree or a pivot.
+
+### Added
+
+- `planStyle` (default `off`): `bare` draws an approved plan in the transcript like a reply, with one `⧉ copy plan` button, and `card` puts it in a rounded frame in the rule color. A `plan` fenced block in a reply draws the same way. The approval dialog and results with no plan text keep Claude Code's row. Thanks @buer5 for the idea ([#611](https://github.com/NahumLitvin/prismantis/pull/611)).
+- `promptCopyButtons` (default `false`): a `⧉ copy` button under each of your prompts copies it as typed, pasted text included, without the paste markers. It works in the terminal and the desktop app, in every `promptStyle`, follows `copyButtonStyle` and needs `copyButtons` on. Thanks @zanDobaja for the report ([#609](https://github.com/NahumLitvin/prismantis/pull/609)).
+- `heatTable` (`color` or `bars`, default off): in a table of numbers, each number takes a color by where it sits between its column's lowest and highest, the highest in the accent color and bold. `bars` also puts a block glyph from `▁` to `█` after each number, so size reads without color. Thanks @buer5 ([#586](https://github.com/NahumLitvin/prismantis/pull/586)).
+- `treeTable` (`branch` or `full`, default off): leading columns whose cells repeat in runs draw as a tree, each run labeled once with `├─` and `└─` branches under it. `full` also draws a heavy rule between top-level groups. It wins over `groupTable` on the same table. Thanks @buer5 ([#586](https://github.com/NahumLitvin/prismantis/pull/586)).
+- `pivotTable` (`transpose`, default off): a table of metrics by period swaps rows and columns, so the periods read down the side and fit a narrow terminal better. It adds no totals, so a copied table still copies what was written. Thanks @buer5 ([#586](https://github.com/NahumLitvin/prismantis/pull/586)).
+
+### Changed
+
+- The README fits on a few screens with the current look and links to a page per feature in `docs/` for the details ([#604](https://github.com/NahumLitvin/prismantis/pull/604), [#605](https://github.com/NahumLitvin/prismantis/pull/605)).
+
+### Fixed
+
+- A flowchart whose edges into a node are declared after the node's own outgoing edge, like `C --> D` before `A --> C`, draws instead of falling back to its source. Of 1379 small flowcharts swept, 130 more now draw and none regress. Thanks @bastien-gallay for the report ([#608](https://github.com/NahumLitvin/prismantis/pull/608)).
+- Other mods' hooks on the `Baked for 3s` line run again under prismantis, which still draws its themed line. While a turn waits on background agents, Claude Code's waiting text shows. Thanks @YTsnipers for the report ([#610](https://github.com/NahumLitvin/prismantis/pull/610)).
+
 ## [0.49.4] - 2026-11-21
 
 Shell output keeps the colors the command printed.
