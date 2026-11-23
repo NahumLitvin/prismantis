@@ -28,11 +28,7 @@ const engine = (on: On) => {
   })
 }
 
-const turnEngine = (on: On) =>
-  on('ui.render', { component: 'TurnDuration' }, ($, e) => {
-    const { Text } = $.ui.resolve(e)
-    return <Text>{`✻ ${e.props.word} for 6m 20s`}</Text>
-  })
+const turnEngine = (on: On) => on('ui.render', { component: 'TurnDuration' }, () => ({ type: 'engine', ref: 1 }) as never)
 
 const call = (tool: string, input: unknown, id: string) => ({ tool_use_id: id, tool, input, isRunning: false, isErrored: false, isInterrupted: false })
 
@@ -576,10 +572,12 @@ test('clock adds the end time to the turn footer', { options: { clock: '24h' } }
 })
 
 test('clock off, or a turn it never saw, leaves the turn footer as it was', async ($, on) => {
+  turnEngine(on)
   mock.clock(on, { now: local(10, 14, 32) })
   on('turn.complete', async (_$, e) => ({ text: e.answer }))
   await $.turn.complete({ answer: 'done', durationMs: 380000, isAborted: false, turnId: 't1', reason: 'answer' })
   const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 380000 } })
+  expect(await ui.find({ type: 'Text', text: /^6m 20s$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^14:32$/ })).toBeUndefined()
   await ui.unmount()
 })
@@ -3721,10 +3719,14 @@ test('turn footer lets another mod below it add to the line', async ($, on) => {
   await ui.unmount()
 })
 
-test('turn footer draws its own line when the engine line is the only one', async ($, on) => {
-  turnEngine(on)
+test('turn footer passes the chain row through when it holds no engine line', async ($, on) => {
+  on('ui.render', { component: 'TurnDuration' }, ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>other mod only</Text>
+  })
   const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'TurnDuration', props: { word: 'Baked', durationMs: 380000 } })
-  expect((await ui.find({ type: 'Text', text: /^6m 20s$/ }))?.props.color).toBe(t.number)
+  expect(await ui.find({ type: 'Text', text: /^other mod only$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^6m 20s$/ })).toBeUndefined()
   await ui.unmount()
 })
 

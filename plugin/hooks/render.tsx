@@ -3049,13 +3049,11 @@ export const renderTurnDuration = ({ Text }: ElementTable, style: Style, word: s
   </Text>
 )
 
-const flatText = (n: RenderNode): string => (typeof n === 'string' ? n : n.children?.map(flatText).join('') ?? '')
-
-export const swapTurnLine = (tree: RenderElement, word: string, own: RenderElement): RenderElement => {
+export const swapTurnLine = (tree: RenderElement, own: RenderElement): RenderElement => {
   const walk = (n: RenderNode): RenderNode => {
     if (typeof n === 'string') return n
-    if (n.type === 'Text' && flatText(n).includes(`${word} for `)) return own
-    return n.children ? { ...n, children: n.children.map(walk) } : n
+    if (n.type === 'engine') return own
+    return 'children' in n && n.children ? { ...n, children: n.children.map(walk) } : n
   }
   return walk(tree) as RenderElement
 }

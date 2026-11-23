@@ -963,7 +963,7 @@ export const register: Register = (on, options) => {
     if (e.props.waitingFor) return row
     const at = style.clock === 'off' ? undefined : endedAt(await read($, turnEnds), e.props.durationMs, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
-    return swapTurnLine(row, e.props.word, renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs, time))
+    return swapTurnLine(row, renderTurnDuration($.ui.resolve(e), style, e.props.word, e.props.durationMs, time))
   })
 
   on('turn.complete', async ($, e, next) => {
