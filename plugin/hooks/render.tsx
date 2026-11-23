@@ -357,8 +357,14 @@ const spellingsIn = (nodes: Inline[]): string[] =>
     return n.kind === 'text' ? looseSpellings(n.text).map(m => m[0]) : []
   })
 
+const isPlainText = (lang: string): boolean => ['', 'text', 'txt', 'plain', 'plaintext'].includes(lang.toLowerCase())
+
+const lineNode = (line: string): Inline => ({ kind: 'code', text: line.trim() })
+
 const inlinesOf = (block: Block): Inline[][] => {
   switch (block.kind) {
+    case 'code':
+      return isPlainText(block.lang) ? block.lines.filter(line => line.trim()).map(line => [lineNode(line)]) : []
     case 'heading':
     case 'paragraph':
       return [block.inline]
@@ -410,6 +416,14 @@ const hyperlinkBlock = (block: Block, reach: Reach): Block => {
       return { ...block, header: block.header.map(drawn), rows: block.rows.map(r => r.map(drawn)) }
     case 'notes':
       return { ...block, notes: block.notes.map(note => ({ ...note, inline: drawn(note.inline) })) }
+    case 'code': {
+      if (!isPlainText(block.lang)) return block
+      const hrefs = block.lines.map(line => {
+        const node = line.trim() ? drawn([lineNode(line)])[0] : undefined
+        return node?.kind === 'code' ? node.href : undefined
+      })
+      return hrefs.some(Boolean) ? { ...block, hrefs } : block
+    }
     default:
       return block
   }
@@ -723,17 +737,23 @@ const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number
 
 const figureFallbackLines = (block: Extract<Block, { kind: 'code' }>): string[] => isFigureLang(block.lang) ? block.lines.map(figureText) : block.lines
 
-const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string, isOpen?: boolean): RenderElement[] => {
+const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string, isOpen?: boolean, hrefs?: readonly (string | undefined)[]): RenderElement[] => {
   if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
   const plain = plainBlock(lang, lines)
+  const draw = (line: string, i: number): RenderElement => { const href = hrefs?.[i]; return href ? linkedLine(el, style, line, href, `${key}.${i}`) : codeLine(el, style, line, lang, `${key}.${i}`, room, plain) }
   if (style.shape === 'engine' && !plain && !isShellLang(lang) && Object.keys(grammarFor(lang) ?? {}).length === 0) {
     return lines.slice(0, shown).map((line, i) => {
       const text = BOX_DRAWING.test(line) ? null : engineProse(line)
-      return text === null ? <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{codeLine(el, style, line, lang, `${key}.${i}`, room)}</el.Text> : <el.Text key={`${key}.${i}`} color={style.theme.codeText}>{text}</el.Text>
+      return text === null ? <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{draw(line, i)}</el.Text> : <el.Text key={`${key}.${i}`} color={style.theme.codeText}>{text}</el.Text>
     })
   }
-  const rows = (isShellLang(lang) ? null : highlightBlock(el, style, lines, lang, key, room, shown, isOpen)) ?? lines.slice(0, shown).map((line, i) => codeLine(el, style, line, lang, `${key}.${i}`, room, plain))
+  const rows = (isShellLang(lang) || hrefs ? null : highlightBlock(el, style, lines, lang, key, room, shown, isOpen)) ?? lines.slice(0, shown).map(draw)
   return style.shape === 'engine' ? rows.map((row, i) => <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</el.Text>) : rows
+}
+
+const linkedLine = ({ Text, Link }: ElementTable, style: Style, line: string, href: string, key: string): RenderElement => {
+  const [, lead, label, tail] = /^(\s*)(.*?)(\s*)$/.exec(line)!
+  return <Text key={key} color={style.theme.codeText}>{lead}<Link href={href} label={label} />{tail}</Text>
 }
 
 const codeBody = (el: ElementTable, style: Style, rows: RenderElement[], gutter: number, held: boolean, more: RenderNode | null): RenderElement => {
@@ -1597,7 +1617,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const room = columns - 2 - shell.width - gutterOf(lines, numbered)
         const gutter = numbered ? String(lines.length).length : 0
         const held = !style.nativeCode && mirrored(style) && lines.some(line => hasRtl(line) && (!opensLatin(line) || width(line) > room))
-        const rows = [...(held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key, block.isOpen) : codeRows(el, style, lines, shown, block.lang, numbered, room, key, block.isOpen)), ...codeRest(el, lines.length, shown, key)]
+        const rows = [...(held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key, block.isOpen) : codeRows(el, style, lines, shown, block.lang, numbered, room, key, block.isOpen, block.hrefs)), ...codeRest(el, lines.length, shown, key)]
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
         const head = codeHead(label, button, shell.width)
