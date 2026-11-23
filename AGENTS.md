@@ -48,7 +48,7 @@ Code:
 
 - No code comments. The why goes in the commit message or PR description.
 - Never copy code from other projects, including other mods. Read them to learn the API, then write our own.
-- Full customization is the product. When someone asks to hide, toggle or customize part of the drawing, the answer is yes unless there is a concrete reason to object (security, a mod-API limit, a real cost); treat such issues as accepted. Otherwise add no feature flags or config knobs. The exception is looks: a feature with more than one plausible look ships its top 3 or 4 styles behind one option (like `taskStyle`, `promptStyle`), the maintainer picks the default, every style is a step in `/prismantis setup`, and each style has a real screenshot in the README next to the option.
+- Full customization is the product. When someone asks to hide, toggle or customize part of the drawing, the answer is yes unless there is a concrete reason to object (security, a mod-API limit, a real cost); treat such issues as accepted. Otherwise add no feature flags or config knobs. The exception is looks: a feature with more than one plausible look ships its top 3 or 4 styles behind one option (like `taskStyle`, `promptStyle`), the maintainer picks the default, every style is a step in `/prismantis setup`, and each style has a real screenshot next to the option in its `docs/` page.
 - Every user-visible feature ships with a sample in `/prismantis demo` (`showcaseText` in `plugin/hooks/help.ts`), and in the one-screen `/prismantis` help (`helpText`) when it fits. Extend the help tests in `tests/regressions.test.tsx` so dropping the sample fails.
 
 Dependencies and licenses:
@@ -87,7 +87,7 @@ Triage:
 
 1. Add the field to `userConfig` in `plugin.json` with a `title`, a `description` and a `default`.
 2. Read it in `resolveStyle` in `plugin/hooks/theme.ts`, falling back safely on bad input.
-3. Add a row to the README options table.
+3. Add a row to the options table in `docs/configuration.md`. The README lists only the six options most people change.
 4. Add a test using `test(name, { options: {...} }, ...)`.
 
 ## Skills

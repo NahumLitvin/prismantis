@@ -28,3 +28,39 @@ These stay as in `quiet`:
 ## What counts as read-only
 
 A command counts as read-only only when every part of it is, after a quote-aware split on `;`, `&&`, `||`, `|`, `&` and newlines, with no redirect into a file, no `$(…)`, no heredoc and no write flags (`sed -i`, `find -delete`, …). In doubt, the result shows.
+
+## Tool rows
+
+![Tool rows: plain Claude Code on the left, prismantis on the right](compare/tools.png)
+
+![Diff cards: plain Claude Code on the left, prismantis on the right](compare/diff-cards.png)
+
+Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path, which opens the file on click like a path in a reply (see [Text](appearance.md#text)). A status dot shows done, running or failed, and output still draws below. Edits draw as a diff card in the theme's colors, and so do files a shell command changed (`sed -i`, a script), one card per file headed by its path. A file Write creates is no diff, as in Claude Code's own preview: `Created <path> (N lines)` heads its first 10 lines as numbered code in the theme's colors, and a click anywhere on it, title or lines, or on `+N more lines` opens the rest; `show less` or another click folds it again. A diff card or a new file's preview with lines folded away opens the same way. A file an Edit or a shell command creates shows its first 10 lines as added diff lines under the same header. A file a shell command deletes is one `Deleted <path> (N lines)` line, and a click on it opens its removed lines. A file moved unchanged is one `Renamed <old> → <new>` line. Before Claude Code 2.1.295, files Write creates keep Claude Code's own preview, a new file's lines open with a `+N more lines` button and a deleted file's with a `show N lines` button. In the desktop app a click on the code lines does nothing; the `+N more lines` button does it. In diff cards added and unchanged lines are highlighted in the file's language, removed lines stay plain as in Claude Code, and when a line is edited rather than rewritten, the words that changed get a deeper tint. `diffStyle` picks the look: `card` (default) frames the lines in a rounded box, `full` drops the box and tints each changed line across the width, `marks` drops the tint and colors only the `+` and `−` marks, and `bar` puts a colored `▌` before each changed line.
+
+| `card` (default) | `full` | `marks` | `bar` |
+|---|---|---|---|
+| rounded box, tinted lines | no box, lines tinted across the width | no tint, colored `+` and `−` | no tint, a colored `▌` before each changed line |
+| ![card](diff/card.png) | ![full](diff/full.png) | ![marks](diff/marks.png) | ![bar](diff/bar.png) |
+
+Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm test`, with `· N failed` in the flag color when any call failed. Expand a group (ctrl+o or `--verbose`): shell calls keep their colored command with the output boxed below, and other calls use Claude Code's own rows. ctrl+o on a reply shows the original text.
+
+`toolStyle` keeps tool rows apart from what Claude says:
+
+| `chat` (default) | `tree-dim` | `tree-bold` | `classic` |
+|---|---|---|---|
+| dimmed on the right, capped at 60% of the width | tucked under the sentence with `⎿`, dimmed | `tree-dim` with one-line sentences in bold | bold verb and status dot, full brightness |
+| ![chat](tools/chat.png) | ![tree-dim](tools/tree-dim.png) | ![tree-bold](tools/tree-bold.png) | ![classic](tools/classic.png) |
+
+`toolOutput: quiet` shows what Claude did, not what it read: reads, searches and read-only shell commands draw one plain row like `Read src/report.py lines 1–10` and nothing under it. Edits keep their diff and failures show their real error; the full rules are in [docs/tool-output.md](tool-output.md). `toolOutput: rows` goes further: a call that worked draws only its row, so `npm test` shows no output under it, while edits keep their diff and failures their error.
+
+![quiet: rows say what was read, nothing drawn under reads](tools/quiet.png)
+
+## Turn footer
+
+![Turn footer: plain Claude Code on the left, prismantis on the right](compare/footer.png)
+
+The line that closes a turn keeps Claude Code's word and colors the duration: `✻ Baked for 6m 20s`. Terminal only, since that's the only surface that draws it.
+
+## Slash commands
+
+Output from slash commands, built-in or from other plugins, is drawn like a reply, copy buttons included. Errors keep Claude Code's own red line.

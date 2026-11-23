@@ -12,6 +12,12 @@ prismantis is one Claude Code plugin and three ports generated from the same ses
 | `/prismantis demo` | yes | yes | yes | yes |
 | Copy buttons, tool rows, diff cards, prompt styles, alert boxes, footnotes, right-to-left text | yes | not yet, waiting on Codex to let plugins draw its interface | not yet | not in Antigravity |
 
+## What it looks like
+
+![prismantis in OpenCode drawing a line chart, a pie, a kanban board and a figure](opencode/demo.gif)
+
+![Antigravity drawing a table, a flowchart and a figure from a prismantis reply](compare/antigravity.png)
+
 ## The same session note
 
 Every surface sends the model the same note, built in `plugin/hooks/help.ts` and `plugin/hooks/figure.ts`. A short paragraph before it names the surface and says what that surface draws itself, so the note asks for a table, a diagram or a figure the same way everywhere, and a port never keeps its own copy to fall behind.
