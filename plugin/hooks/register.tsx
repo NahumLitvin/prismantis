@@ -11,7 +11,7 @@ import { artColors, clipboardCommand, drawsImages, imageCommand } from './clipbo
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { CopyButton, DrawPaste, Drawn, Fold, Hues, TerminalEnv } from './render'
-import { MARK, bashEdits, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isPlan, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, planBlock, planRoom, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderPlan, renderPlanHead, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, swapTurnLine, renderUserPrompt, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
+import { MARK, bashEdits, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isPlan, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, planBlock, planRoom, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderPlan, renderPlanHead, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, swapTurnLine, renderUserPrompt, promptSource, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, KEY_POINT_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -494,22 +494,23 @@ const copyNow = async ($: EngineInterface, style: Style, content: string, surfac
   return failure ? `Copied as plain text (${failure})` : 'Copied'
 }
 
+const copyButton = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style) => (text: string | (() => string), key: string, label = '⧉ copy', rich?: (() => string) | 'png', hues?: () => Hues) => {
+  const copied = (surface: RenderSurface) => lastCopy(() => copyNow($, style, typeof text === 'function' ? text() : text, surface, rich, hues?.()))
+  return style.copyButtons && offers(style, rich) ? (
+    <el.Button
+      key={key}
+      {...(style.copyButtonStyle === 'dim' ? { plain: true as const, dimColor: true } : { variant: 'primary' as const })}
+      label={label}
+      onPress={async press => {
+        const said = await copied(press.surface).catch(() => 'Copy failed')
+        if (said) $.ui.toast(said)
+      }}
+    />
+  ) : null
+}
+
 const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }, planMath?: Map<number, Typeset>): RenderElement[] => {
-  const { Button } = el
-  const copy = (text: string | (() => string), key: string, label = '⧉ copy', rich?: (() => string) | 'png', hues?: () => Hues) => {
-    const copied = (surface: RenderSurface) => lastCopy(() => copyNow($, style, typeof text === 'function' ? text() : text, surface, rich, hues?.()))
-    return style.copyButtons && offers(style, rich) ? (
-      <Button
-        key={key}
-        {...(style.copyButtonStyle === 'dim' ? { plain: true as const, dimColor: true } : { variant: 'primary' as const })}
-        label={label}
-        onPress={async press => {
-          const said = await copied(press.surface).catch(() => 'Copy failed')
-          if (said) $.ui.toast(said)
-        }}
-      />
-    ) : null
-  }
+  const copy = copyButton($, el, style)
   const drawn = drawPlans($, el, style, blocks, columns, drawDiagrams(el, style, blocks, columns - markerRoom(style)), open, planMath)
   const Image = 'Image' in el ? el.Image : null
   if (Image) {
@@ -529,14 +530,22 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   return [...elements, style.copyButtonStyle === 'hover' ? replyMarker(el, button, notes?.id) : <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>]
 }
 
-const replyMarker = (el: ReturnType<EngineInterface['ui']['resolve']>, button: RenderElement, id?: string) => {
-  const scope = `copy:${id === undefined ? '' : instanceKey(id)}:reply`
+const replyMarker = (el: ReturnType<EngineInterface['ui']['resolve']>, button: RenderElement, id?: string, name = 'reply') => {
+  const scope = `copy:${id === undefined ? '' : instanceKey(id)}:${name}`
+  const place = name === 'reply' ? { position: 'absolute' as const, bottom: 0, right: -MARK } : { alignSelf: 'flex-end' as const }
   return (
-    <el.Box key="reply" position="absolute" bottom={0} right={-MARK} hover={{ scope }}>
+    <el.Box key={name} {...place} hover={{ scope }}>
       <el.Text dimColor>⧉</el.Text>
       <el.Box position="absolute" top={0} right={0} display="none" hover={{ scope, display: 'flex' }}>{button}</el.Box>
     </el.Box>
   )
+}
+
+const withPromptCopy = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, typed: string, id: string, prompt: RenderElement): RenderElement => {
+  const button = style.promptCopyButtons ? copyButton($, el, style)(promptSource(typed), 'copyprompt') : null
+  if (!button) return prompt
+  const placed = style.copyButtonStyle === 'hover' ? replyMarker(el, button, id, 'prompt') : <el.Box key="prompt" alignSelf="flex-end">{button}</el.Box>
+  return <el.Box flexDirection="column">{prompt}{placed}</el.Box>
 }
 
 const THEME_ARGS = [...PRESET_NAMES, 'random']
@@ -1091,7 +1100,7 @@ export const register: Register = (on, options) => {
     if (!own) return next(e)
     const at = style.clock === 'off' ? undefined : sentAt(await read($, sent), e.props.text, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
-    if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
+    if (style.promptStyle === 'off') return withPromptCopy($, $.ui.resolve(e), style, e.props.text, e.requestId, await (time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })))
     const el = $.ui.resolve(e)
     const drawn = await unreadLook($, style, forSurface(style, e, await linkReach($, probes, style)), e.props.text, e.requestId)
     const columns = columnsOf(e.viewport, drawn)
@@ -1108,7 +1117,7 @@ export const register: Register = (on, options) => {
         </el.Box>
       )
     }
-    return renderUserPrompt(el, drawn, e.props.text, columns, time, paste)
+    return withPromptCopy($, el, drawn, e.props.text, e.requestId, renderUserPrompt(el, drawn, e.props.text, columns, time, paste))
   })
 
   on('ui.render', { component: 'AssistantMessage', ...here }, async ($, e, next) => {
