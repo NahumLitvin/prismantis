@@ -873,7 +873,8 @@ for (const [where, env, root, options] of [
 ] as const) {
   test(`a line that is a path in a plain code block links as it does in inline code, ${where}`, { options }, async ($, on) => {
     filesAt(on, '2.1.289', env)
-    const clock = folders(on, ['/home/me/notes', '/work/notes/plan.md'])
+    on('fs.stat', (_, e, next) => (/(^|\/)D:\/work\/notes\/plan\.md$/.test(e.path.replace(/\\/g, '/')) ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : next(e)))
+    const clock = folders(on, ['/home/me/notes'])
     if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
     const reply = ['```text', '/srv/app/main.ts', '  ~/notes', '/srv', 'npm test', '/srv/run.sh', 'D:\\work\\notes\\plan.md', '```', '', '```', '/srv/app/other.ts', '```', '', '```ts', '/srv/app/typed.ts', '```'].join('\n')
     const ui = await $.ui.mount(mount(reply))
