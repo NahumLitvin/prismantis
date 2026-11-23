@@ -1,6 +1,6 @@
 # prismantis
 
-A Claude Code mod that redraws Claude's replies in color: tables, headings, lists, quotes, highlighted code, numbers, paths and links, mermaid diagrams and charts, and tool rows, in 17 themes, with copy buttons. Run `/prismantis setup` to pick a look, or `/prismantis demo` to see everything it draws.
+A Claude Code mod that redraws Claude's replies in color: tables, headings, lists, quotes, highlighted code, numbers, paths and links, mermaid diagrams and charts, and tool rows, in 18 themes, with copy buttons. Run `/prismantis setup` to pick a look, or `/prismantis demo` to see everything it draws.
 
 Screenshots, every option and the changelog are in the [full README](https://github.com/NahumLitvin/prismantis#readme).
 
