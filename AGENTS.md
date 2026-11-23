@@ -68,11 +68,9 @@ Triage:
 ## Automated maintainer
 
 - An automated maintainer (a bot account run by the owner) works the repo alongside the human maintainer. It always says it is automated.
-- It triages issues and PRs (type, rea: and status labels), reviews PRs, merges PRs that pass every gate in this file and in CI, and cuts releases.
-- It does not merge changes to policy text (AGENTS.md, SCOPE.md, CONTRIBUTING.md), PRs labelled 
-eeds-owner, or anything SCOPE.md says to ask first about. Those wait for the human owner.
-- To reach a human, comment on the issue or PR and label it 
-eeds-owner, or ask for the owner in the thread. The owner replies there.
+- It triages issues and PRs (type, `area:` and status labels), reviews PRs, merges PRs that pass every gate in this file and in CI, and cuts releases.
+- It does not merge changes to policy text (AGENTS.md, SCOPE.md, CONTRIBUTING.md), PRs labelled `needs-owner`, or anything SCOPE.md says to ask first about. Those wait for the human owner.
+- To reach a human, comment on the issue or PR and label it `needs-owner`, or ask for the owner in the thread. The owner replies there.
 
 ## Mod API facts that bite
 
