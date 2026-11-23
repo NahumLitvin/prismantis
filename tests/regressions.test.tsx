@@ -1656,6 +1656,24 @@ for (const [name, source] of Object.entries(WIDTH_TABLES)) for (const columns of
   })
 }
 
+const WIDE_TABLE = `| ${Array.from({ length: 10 }, (_, c) => `Col ${c}`).join(' | ')} |\n|${'---|'.repeat(10)}\n| ${Array.from({ length: 10 }, () => 'one two six ten red sun day cat dog').join(' | ')} |`
+
+test('a wide desktop table of many columns is capped to the reply, and every word still fits its column', async ($, on) => {
+  claudeAt(on, '2.1.325')
+  const columns = 80
+  const ui = await $.ui.mount({ ...mount(WIDE_TABLE, columns), surface: 'desktop' })
+  const boxes = (await ui.findAll({ type: 'Box' })) as Found[]
+  const cells = boxes.filter(b => typeof b.props.minWidth === 'number' && typeof b.props.width === 'string' && b.text !== undefined)
+  const laid = boxes.find(b => typeof b.props.key === 'string' && /^b\d+$/.test(b.props.key))?.props.width as number
+  const room = Math.floor(columns * 0.84) - 4 - 2
+  expect(laid).toBe(Math.floor(room / 0.84))
+  expect(laid <= columns).toBe(true)
+  expect(cells.filter(b => (b.props.minWidth as number) * BODY_CELL < longestWord(b.text!) + 1).map(b => b.text)).toEqual([])
+  const floors = cells.slice(0, 10).reduce((sum, b) => sum + (b.props.minWidth as number), 0)
+  expect(floors + 2 * 9 <= laid).toBe(true)
+  await ui.unmount()
+})
+
 const NARROW_REPLIES = {
   'an English table and paragraph (#512)': `This is a deliberately long paragraph used to check whether body text wraps when the window becomes narrow, or whether it simply gets cut off at the right edge so the rest of the sentence cannot be read.\n\n${WIDTH_TABLES['English sections (#512)']}\n\n1. **First point**: this list item is also very long, to confirm whether lists wrap in a narrow window or get clipped.`,
   'a string with no spaces (#512)': `Before ${'x'.repeat(90)} after, and a long English paragraph that has to wrap inside the reply instead of running past it.`,
