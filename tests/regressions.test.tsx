@@ -1222,7 +1222,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const clock = mock.clock(on)
     const clips = CLIPS.map(path => path.replace(/\\/g, '/'))
     on('fs.stat', (_, e) => {
-      const path = e.path.replace(/\\/g, '/')
+      const path = e.path.replace(/\\/g, '/').replace(/^.*?(?=[A-Za-z]:\/)/, '')
       const kind = clips.includes(path) ? 'file' as const : clips.some(clip => clip.startsWith(`${path}/`)) ? 'dir' as const : undefined
       return kind ? { value: { kind, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` }
     })
