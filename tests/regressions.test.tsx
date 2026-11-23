@@ -1626,6 +1626,63 @@ test('a desktop table of CJK cells keeps its column floors to the longest Latin 
   await ui.unmount()
 })
 
+const BODY_CELL = 1.19
+
+const WIDTH_TABLES = {
+  'CJK cells (#553)': '| 項目 | 舊版 0.46.0 的狀況 | 新版 0.47.0 的狀況 | 對應的 issue |\n|---|---|---|---|\n| 中文表格 | 最後一欄被切掉，看不到 | 縮到回覆寬度內，必要時在格子裡換行 | #521 |\n| 中文路徑 | 只有部分上色 | 整段上色，可以點擊 | #533 |\n| 提示框顏色 | 用終端機的 ANSI 色 | 用主題自己的藍、綠、紫、黃、紅 | #545 |',
+  'English times (#553)': '| Run | Window | Steps run | Result |\n|---|---|---|---|\n| 1st | 10:00 → 10:15 | 0 | cancelled |\n| 2nd | 10:15 → 10:29 | 0 | cancelled |',
+  'CJK times (#553)': '| 次數 | 期間 | 執行的步驟 | 結果 |\n|---|---|---|---|\n| 第 1 次 | 10:00 → 10:15 | 0 | cancelled |\n| 第 2 次 | 10:15 → 10:29 | 0 | cancelled |',
+  'English sections (#512)': '| # | Section | Summary | Desktop / mobile | Maps to old block |\n|---|---|---|---|---|\n| 1 | Header | New logo, plus a support icon and a menu button on the right side | 1:100 / 1:200 | .header reused |\n| 2 | Banner | Main title, two subtitles, a button with an arrow, hero image on the right | 1:101 / 1:201 | .section-banner rewritten |\n| 3 | Content | Three sub-headings with eight list items, two columns on desktop, one on mobile | 1:102 / 1:202 | brand new block |',
+}
+
+type Found = { text?: string; props: Record<string, unknown> }
+
+for (const [name, source] of Object.entries(WIDTH_TABLES)) for (const columns of [80, 120]) {
+  test(`a desktop table of ${name} at ${columns} columns plans every column at the width the app's text really draws`, async ($, on) => {
+    claudeAt(on, '2.1.325')
+    const ui = await $.ui.mount({ ...mount(source, columns), surface: 'desktop' })
+    const boxes = (await ui.findAll({ type: 'Box' })) as Found[]
+    const cells = boxes.filter(b => typeof b.props.minWidth === 'number' && typeof b.props.width === 'string' && b.text !== undefined)
+    expect(cells.length > 0).toBe(true)
+    const short = cells.filter(b => (b.props.minWidth as number) * BODY_CELL < longestWord(b.text!) + 1).map(b => `${b.text} ${b.props.minWidth}`)
+    expect(short).toEqual([])
+    const root = boxes.find(b => typeof b.props.key === 'string' && /^b\d+$/.test(b.props.key))
+    const laid = root?.props.width
+    expect(typeof laid).toBe('number')
+    const floors = cells.slice(0, source.split('\n')[0]!.split('|').length - 2).reduce((sum, b) => sum + (b.props.minWidth as number), 0)
+    expect((laid as number) >= floors).toBe(true)
+    expect((laid as number) <= columns).toBe(true)
+    await ui.unmount()
+  })
+}
+
+const NARROW_REPLIES = {
+  'an English table and paragraph (#512)': `This is a deliberately long paragraph used to check whether body text wraps when the window becomes narrow, or whether it simply gets cut off at the right edge so the rest of the sentence cannot be read.\n\n${WIDTH_TABLES['English sections (#512)']}\n\n1. **First point**: this list item is also very long, to confirm whether lists wrap in a narrow window or get clipped.`,
+  'a string with no spaces (#512)': `Before ${'x'.repeat(90)} after, and a long English paragraph that has to wrap inside the reply instead of running past it.`,
+  'CJK bullets with inline code (#512)': '- **没开 `OptionA`**：改 `ValueOne`。\n- **`MaxLimit`**：如果你设的值低于 11，现在 0.01 的那一组其实一直被挡着没有执行；调到 0.03 后只有 1.4%，就能正常通过。\n\n代价是数量和占用变成 3 倍，单次结果也跟着放大 3 倍。如果不想放大这么多，0.02 是折中，结果是 3.6%。',
+}
+
+for (const [name, source] of Object.entries(NARROW_REPLIES)) for (const replyStyle of ['bubble', 'off'] as const) {
+  test(`a desktop reply of ${name} with replyStyle ${replyStyle} can shrink to the transcript, so nothing inside widens it`, { options: { replyStyle } }, async $ => {
+    const ui = await $.ui.mount({ ...mount(source, 70), surface: 'desktop' })
+    const boxes = (await ui.findAll({ type: 'Box' })) as Found[]
+    const msg = boxes.find(b => b.props.key === 'msg')
+    expect(msg?.props.minWidth).toBe(0)
+    const growing = boxes.filter(b => b.props.flexGrow === 1)
+    expect(growing.length > 0).toBe(true)
+    expect(growing.every(b => b.props.minWidth === 0)).toBe(true)
+    await ui.unmount()
+  })
+}
+
+test('a terminal reply keeps its layout, with no desktop floors or width', async $ => {
+  const ui = await $.ui.mount(mount(NARROW_REPLIES['an English table and paragraph (#512)'], 70))
+  const boxes = (await ui.findAll({ type: 'Box' })) as Found[]
+  expect(boxes.some(b => b.props.minWidth !== undefined && b.props.key === 'msg')).toBe(false)
+  expect(boxes.some(b => typeof b.props.key === 'string' && /^b\d+$/.test(b.props.key) && b.props.width !== undefined)).toBe(false)
+  await ui.unmount()
+})
+
 test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
 
