@@ -63,7 +63,14 @@ Triage:
 
 - Every open issue and PR carries a type (`bug`, `enhancement`, `theme`, `documentation`, `question`, `release`), at least one `area:` label and, while it waits on someone, one status. Areas: `mermaid`, `tables`, `copy`, `desktop`, `opencode`, `prompt`, `figures`, `i18n` (CJK and RTL), `links`, `tools`. A topic with no fitting area gets a new `area:` label, not a near fit.
 - Status names who moves next: `needs-info` the reporter, `needs-design` the maintainer (a SCOPE.md ask-first idea), `accepted` a contributor (shape agreed, PR welcome), `upstream` Claude Code or another tool. Change it when the ball moves.
-- Every issue from someone else gets a human reply before it closes, unless a merged PR closes it. Every PR gets a review, a merge or a closing comment.
+- Every issue from someone else gets a maintainer reply before it closes, unless a merged PR closes it. The automated maintainer counts as a maintainer and says so in the reply. Every PR gets a review, a merge or a closing comment.
+
+## Automated maintainer
+
+- An automated maintainer (a bot account run by the owner) works the repo alongside the human maintainer. It always says it is automated.
+- It triages issues and PRs (type, `area:` and status labels), reviews PRs, merges PRs that pass every gate in this file and in CI, and cuts releases.
+- It does not merge changes to policy text (AGENTS.md, SCOPE.md, CONTRIBUTING.md), PRs labelled `needs-owner`, or anything SCOPE.md says to ask first about. Those wait for the human owner.
+- To reach a human, comment on the issue or PR and label it `needs-owner`, or ask for the owner in the thread. The owner replies there.
 
 ## Mod API facts that bite
 
