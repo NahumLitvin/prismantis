@@ -64,6 +64,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `copyButtonStyle` | `dim`, `inline`, `hover` | `dim` |
 | `textCopyButtons` | `true`, `false` | `true` |
 | `sectionCopyButtons` | `true`, `false` | `false` |
+| `promptCopyButtons` | `true`, `false` | `false` |
 | `diagramHints` | `true`, `false` | `true` |
 | `issueHint` | `true`, `false` | `true` |
 | `keyPointHint` | `true` (each prompt carries a model-only note asking for each reply's key points in bold), `false` | `false` |

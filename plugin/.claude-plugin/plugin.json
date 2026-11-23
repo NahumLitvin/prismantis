@@ -561,6 +561,12 @@
       "description": "Put a copy button on each heading that copies its section as markdown: every block under it up to the next heading of the same or a higher level. A heading whose section is empty, or is one block that has its own button, gets none. Needs copyButtons on.",
       "default": false
     },
+    "promptCopyButtons": {
+      "type": "boolean",
+      "title": "Copy buttons on your prompts",
+      "description": "Put a ⧉ copy under each of your prompts that copies it as you typed it, pasted text included. Needs copyButtons on.",
+      "default": false
+    },
     "issueHint": {
       "type": "boolean",
       "title": "Issue hint",

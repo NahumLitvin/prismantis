@@ -3100,6 +3100,8 @@ export const pasteLang = (body: string): string => {
 
 const PASTE = /<pasted_content id="([^"]*)">\n?([\s\S]*?)\n?<\/pasted_content id="\1">/g
 
+export const promptSource = (typed: string): string => typed.replace(PASTE, (_, _id, body: string) => body)
+
 export type DrawPaste = (body: string, key: string) => RenderElement
 
 const CHAT_SHARE = 0.75

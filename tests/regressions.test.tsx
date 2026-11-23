@@ -494,6 +494,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('copyButtonStyle')
   expect(showcaseText([])).toContain('textCopyButtons')
   expect(showcaseText([])).toContain('sectionCopyButtons')
+  expect(showcaseText([])).toContain('promptCopyButtons')
   expect(showcaseText([])).toContain('each block shows a dim ⧉ instead: point at it for its buttons')
   expect(showcaseText([])).toContain('+M more lines')
   expect(showcaseText([])).toContain('```figure')
@@ -696,6 +697,30 @@ test('a one-paragraph English block gets no copy reply button', async $ => {
   expect((await ui.findAll({ type: 'Button' })).some(b => b.props.label === '⧉ copy reply')).toBe(false)
   await ui.unmount()
 })
+
+const userPrompt = (text: string, surface: 'terminal' | 'desktop') =>
+  ({ plugin: 'prismantis', component: 'UserMessage' as const, props: { text, origin: { kind: 'composer' } as never, isExpanded: true }, viewport: { columns: 80, rows: 20 }, surface })
+
+for (const promptStyle of ['bubble', 'chevron'] as const) for (const copyButtonStyle of ['dim', 'hover'] as const) test(`promptCopyButtons puts a ${copyButtonStyle} copy under a ${promptStyle} prompt that copies it as typed, paste included`, { options: { promptCopyButtons: true, promptStyle, copyButtonStyle } }, async ($, on) => {
+  const copied = stubClipboard(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(userPrompt('look at **this**\n<pasted_content id="9649">\n{ "on": true }\n</pasted_content id="9649">\nthanks', surface))
+    const button = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ copy')
+    await ui.press({ key: button!.key! })
+    await ui.unmount()
+  }
+  expect(copied).toEqual(['look at **this**\n{ "on": true }\nthanks', 'look at **this**\n{ "on": true }\nthanks'])
+})
+
+const noPromptButton: TestBody = async $ => {
+  const ui = await $.ui.mount(userPrompt('fix the failing test', 'desktop'))
+  expect((await ui.findAll({ type: 'Button' })).map(b => b.props.label)).toEqual([])
+  await ui.unmount()
+}
+
+test('a prompt gets no copy button by default', noPromptButton)
+
+test('a prompt gets no copy button with copyButtons off', { options: { copyButtons: false, promptCopyButtons: true } }, noPromptButton)
 
 test('only http, https and file links become terminal hyperlinks', async ($, on) => {
   claudeAt(on, '2.1.289')

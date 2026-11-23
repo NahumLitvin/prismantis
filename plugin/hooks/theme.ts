@@ -72,6 +72,7 @@ export type Style = {
   copyButtonStyle: 'dim' | 'inline' | 'hover'
   textCopyButtons: boolean
   sectionCopyButtons: boolean
+  promptCopyButtons: boolean
   htmlCopy: ClipboardBackend | null
   images: boolean
   nativeCode?: boolean
@@ -169,6 +170,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     copyButtonStyle: pick(options.copyButtonStyle, ['dim', 'inline', 'hover'] as const, 'dim'),
     textCopyButtons: options.textCopyButtons !== false,
     sectionCopyButtons: options.sectionCopyButtons === true,
+    promptCopyButtons: options.promptCopyButtons === true,
     htmlCopy: null,
     images: false,
     httpLinks: false,
