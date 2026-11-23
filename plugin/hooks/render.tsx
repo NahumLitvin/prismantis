@@ -315,19 +315,45 @@ const foundProbe = (reach: Reach, spelling: string): Probe | undefined => {
   return probe && reach.found?.has(probe.key) && opens(reach, probe.href) ? probe : undefined
 }
 
-const loosePaths = (n: Extract<Inline, { kind: 'text' }>, reach: Reach): Inline[] => {
+type Loose = Extract<Inline, { kind: 'text' | 'number' }>
+
+const runsOf = (nodes: Inline[]): (Inline | Loose[])[] => {
+  const out: (Inline | Loose[])[] = []
+  for (const n of nodes) {
+    const last = out.at(-1)
+    if (n.kind !== 'text' && n.kind !== 'number') out.push(n)
+    else if (Array.isArray(last)) last.push(n)
+    else out.push([n])
+  }
+  return out
+}
+
+const spans = (run: Loose[]): { n: Loose; start: number; end: number }[] => {
+  let at = 0
+  return run.map(n => ({ n, start: at, end: (at += n.text.length) }))
+}
+
+const runSpellings = (run: Loose[]): RegExpExecArray[] => {
+  const numbers = spans(run).filter(s => s.n.kind === 'number')
+  return looseSpellings(run.map(n => n.text).join('')).filter(m => !numbers.some(s => s.start <= m.index && m.index + m[0].length <= s.end))
+}
+
+const cut = (run: Loose[], from: number, to: number): Inline[] =>
+  spans(run).flatMap(({ n, start }) => {
+    const text = n.text.slice(Math.max(from - start, 0), Math.max(to - start, 0))
+    return text ? [{ ...n, text }] : []
+  })
+
+const loosePaths = (run: Loose[], reach: Reach): Inline[] => {
   const out: Inline[] = []
   let at = 0
-  for (const m of looseSpellings(n.text)) {
+  for (const m of runSpellings(run)) {
     const probe = foundProbe(reach, m[0])
     if (!probe) continue
-    if (m.index > at) out.push({ kind: 'text', text: n.text.slice(at, m.index) })
-    out.push({ kind: 'path', text: shownPath(reach, m[0], probe.href), href: probe.href })
+    out.push(...cut(run, at, m.index), { kind: 'path', text: shownPath(reach, m[0], probe.href), href: probe.href })
     at = m.index + m[0].length
   }
-  if (at === 0) return [n]
-  if (at < n.text.length) out.push({ kind: 'text', text: n.text.slice(at) })
-  return out
+  return at === 0 ? run : [...out, ...cut(run, at, Infinity)]
 }
 
 const looseCode = (n: Extract<Inline, { kind: 'code' }>, reach: Reach): Inline => {
@@ -337,8 +363,9 @@ const looseCode = (n: Extract<Inline, { kind: 'code' }>, reach: Reach): Inline =
 
 const isWholePath = (text: string): boolean => looseSpellings(text).some(m => m[0] === text)
 
-const looseNode = (n: Inline, reach: Reach): Inline | Inline[] => {
-  if (n.kind === 'text') return loosePaths(n, reach)
+const looseNode = (node: Inline, reach: Reach): Inline | Inline[] => {
+  const n = linked(node, reach)
+  if (n.kind === 'text') return loosePaths([n], reach)
   return n.kind === 'code' ? looseCode(n, reach) : n
 }
 
@@ -351,13 +378,13 @@ const linked = (node: Inline, reach: Reach): Inline => {
 }
 
 const hyperlinks = (nodes: Inline[], reach: Reach): Inline[] =>
-  reach.found?.size ? nodes.flatMap(node => looseNode(linked(node, reach), reach)) : nodes.map(node => linked(node, reach))
+  reach.found?.size ? runsOf(nodes).flatMap(n => (Array.isArray(n) ? loosePaths(n, reach) : looseNode(n, reach))) : nodes.map(node => linked(node, reach))
 
 const spellingsIn = (nodes: Inline[]): string[] =>
-  nodes.flatMap(n => {
+  runsOf(nodes).flatMap(n => {
+    if (Array.isArray(n)) return runSpellings(n).map(m => m[0])
     if ('children' in n) return spellingsIn(n.children)
-    if (n.kind === 'code') return isWholePath(n.text) ? [n.text] : []
-    return n.kind === 'text' ? looseSpellings(n.text).map(m => m[0]) : []
+    return n.kind === 'code' && isWholePath(n.text) ? [n.text] : []
   })
 
 const isPlainText = (lang: string): boolean => ['', 'text', 'txt', 'plain', 'plaintext'].includes(lang.toLowerCase())

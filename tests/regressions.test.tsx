@@ -1196,6 +1196,30 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(stats.filter(path => /\.(bat|py)$/.test(path))).toEqual([])
     await ui.unmount()
   })
+
+  test(`a path whose digit follows a CJK letter links whole once a stat finds it, and numbers elsewhere keep their color, on ${surface}`, async ($, on) => {
+    filesAt(on, '2.1.289')
+    const clock = mock.clock(on)
+    const stats: string[] = []
+    on('fs.stat', (_, e) => {
+      const path = e.path.replace(/\\/g, '/')
+      stats.push(path)
+      return path.endsWith('/work/app/docs/第1章.md') ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` }
+    })
+    if (surface === 'terminal' && !(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const number = PRESETS['catppuccin-mocha'].number
+    const found = await $.ui.mount({ ...mount('See docs/第1章.md, then rest 大約28秒, about 2.6 min. Score 1/2/3, trip 3天/2夜.'), surface })
+    await clock.settle()
+    expect((await found.findAll({ type: 'Link' })).map(l => l.props.label)).toEqual(surface === 'terminal' ? ['docs/第1章.md'] : [])
+    expect(stats.filter(path => path.endsWith('/2.6'))).toEqual([])
+    expect([(await found.find({ type: 'Text', text: /^28$/ }))?.props.color, (await found.find({ type: 'Text', text: /^3$/ }))?.props.color]).toEqual([number, number])
+    await found.unmount()
+    const missing = await $.ui.mount({ ...mount('See docs/第2章.md.'), surface })
+    await clock.settle()
+    expect(await missing.findAll({ type: 'Link' })).toHaveLength(0)
+    expect((await missing.find({ type: 'Text', text: /^2$/ }))?.props.color).toBe(number)
+    await missing.unmount()
+  })
 }
 
 test('prose with slashes and missing paths draws as before once their stats land', async ($, on) => {
