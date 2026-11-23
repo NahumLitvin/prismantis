@@ -3049,6 +3049,15 @@ export const renderTurnDuration = ({ Text }: ElementTable, style: Style, word: s
   </Text>
 )
 
+export const swapTurnLine = (tree: RenderElement, own: RenderElement): RenderElement => {
+  const walk = (n: RenderNode): RenderNode => {
+    if (typeof n === 'string') return n
+    if (n.type === 'engine') return own
+    return 'children' in n && n.children ? { ...n, children: n.children.map(walk) } : n
+  }
+  return walk(tree) as RenderElement
+}
+
 export const pasteLang = (body: string): string => {
   const s = body.trim()
   if (/^[[{]/.test(s)) {
