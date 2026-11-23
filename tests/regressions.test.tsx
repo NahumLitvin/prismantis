@@ -712,6 +712,31 @@ for (const promptStyle of ['bubble', 'chevron'] as const) for (const copyButtonS
   expect(copied).toEqual(['look at **this**\n{ "on": true }\nthanks', 'look at **this**\n{ "on": true }\nthanks'])
 })
 
+test('promptCopyButtons puts a copy under the engine prompt with promptStyle off', { options: { promptCopyButtons: true, promptStyle: 'off' } }, async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  const copied = stubClipboard(on)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(userPrompt('fix the failing test', surface))
+    expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+    const button = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ copy')
+    await ui.press({ key: button!.key! })
+    await ui.unmount()
+  }
+  expect(copied).toEqual(['fix the failing test', 'fix the failing test'])
+})
+
+test('a prompt that opens and ends with a paste copies without the blank lines around it', { options: { promptCopyButtons: true } }, async ($, on) => {
+  const copied = stubClipboard(on)
+  const ui = await $.ui.mount(userPrompt('\n\n<pasted_content id="dd4d">\nline one\nline two\n</pasted_content id="dd4d">\n\n', 'desktop'))
+  const button = (await ui.findAll({ type: 'Button' })).find(b => b.props.label === '⧉ copy')
+  await ui.press({ key: button!.key! })
+  await ui.unmount()
+  expect(copied).toEqual(['line one\nline two'])
+})
+
 const noPromptButton: TestBody = async $ => {
   const ui = await $.ui.mount(userPrompt('fix the failing test', 'desktop'))
   expect((await ui.findAll({ type: 'Button' })).map(b => b.props.label)).toEqual([])

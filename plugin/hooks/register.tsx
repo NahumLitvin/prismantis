@@ -548,7 +548,7 @@ const withPromptCopy = ($: EngineInterface, el: ReturnType<EngineInterface['ui']
   return <el.Box flexDirection="column">{prompt}{placed}</el.Box>
 }
 
-const THEME_ARGS =[...PRESET_NAMES, 'random']
+const THEME_ARGS = [...PRESET_NAMES, 'random']
 
 type Picked = { theme: string; options: PluginOptions; latex: LatexSession }
 
@@ -1100,7 +1100,7 @@ export const register: Register = (on, options) => {
     if (!own) return next(e)
     const at = style.clock === 'off' ? undefined : sentAt(await read($, sent), e.props.text, await firstDrawn($, e.requestId))
     const time = at === undefined ? undefined : clockText(at, await $.clock.now(), style.clock)
-    if (style.promptStyle === 'off') return time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })
+    if (style.promptStyle === 'off') return withPromptCopy($, $.ui.resolve(e), style, e.props.text, e.requestId, await (time === undefined ? next(e) : next({ ...e, props: { ...e.props, text: `[${time}] ${e.props.text}` } })))
     const el = $.ui.resolve(e)
     const drawn = await unreadLook($, style, forSurface(style, e, await linkReach($, probes, style)), e.props.text, e.requestId)
     const columns = columnsOf(e.viewport, drawn)
