@@ -585,7 +585,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | \`/prismantis\` | This screen |
 | \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
-| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
+| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras, desktop app colors and plans |
 | \`/config\` | Edit any option |
 
 > [!NOTE]
@@ -613,7 +613,7 @@ In the desktop app, set \`desktopColors\` to \`match\` and the whole Code tab ta
 
 ### Copy tables
 
-Use \`\u29C9 md\` for Markdown, \`\u29C9 art\` for chat, or \`\u29C9 html\` for a formatted table. \`\u29C9 html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. \`\u25A3 png\` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set \`copyButtonStyle\` to \`inline\` in \`/config\` for the accent color, or to \`hover\` and each block shows a dim \u29C9 instead: point at it for its buttons. Set \`textCopyButtons\` to \`false\` to keep only the buttons on code, tables, diagrams and the reply. Set \`sectionCopyButtons\` to \`true\` for a \`\u29C9 copy\` on each heading that copies its section, up to the next heading of its level.
+Use \`\u29C9 md\` for Markdown, \`\u29C9 art\` for chat, or \`\u29C9 html\` for a formatted table. \`\u29C9 html\` shows in a local macOS, Linux or Windows terminal and writes HTML and tab-separated plain text together; Linux needs CopyQ running. Pasted into Slack it makes a native table; Slack keeps cell text but drops bold, links and alignment. If that fails, it copies the plain text alone. \`\u25A3 png\` puts a picture of the drawn table, diagram or chart on the clipboard in the theme's colors, ready to paste into Slack, docs or slides; it shows in a local macOS or Windows terminal. The buttons draw dim and light up under the pointer; set \`copyButtonStyle\` to \`inline\` in \`/config\` for the accent color, or to \`hover\` and each block shows a dim \u29C9 instead: point at it for its buttons. Set \`textCopyButtons\` to \`false\` to keep only the buttons on code, tables, diagrams and the reply. Set \`sectionCopyButtons\` to \`true\` for a \`\u29C9 copy\` on each heading that copies its section, up to the next heading of its level. Set \`promptCopyButtons\` to \`true\` for a \`\u29C9 copy\` under each of your prompts.
 
 | Item | Quantity[^count] | Status |
 |:-----|---------:|:------:|
@@ -717,6 +717,40 @@ When a table groups its rows \u2014 the first column whose cells repeat in runs,
 | worker | us-west | 1.8M | 132 ms |
 | cron | us-east | 96k | 40 ms |
 
+### Heatmap
+
+When a table holds a matrix of numbers \u2014 a column of requests beside a column of latencies, each number carrying the same suffix down its column \u2014 \`heatTable\` draws each number by where it sits between its column's lowest and highest: \`color\` puts the lowest in the table's text color, the next in the number color, the next in the accent color and the highest in the accent color and bold, and \`bars\` also adds one block glyph after each number, \`\u2581\`, \`\u2584\`, \`\u2586\` or \`\u2588\` by the same four steps, so size reads without color. A column whose values are all equal stays as written, and a cell another table look already colored keeps that color. The default \`off\` keeps tables as written:
+
+| Region | Requests | p99 |
+|:-------|---------:|----:|
+| us-east | 1200 | 84 ms |
+| us-west | 900 | 91 ms |
+| eu-west | 640 | 120 ms |
+| ap-south | 480 | 132 ms |
+| sa-east | 96 | 140 ms |
+
+### Tree
+
+When a table nests its rows \u2014 a column of areas beside a column of services and their tasks \u2014 \`treeTable\` draws each run of a repeated first column once, in the accent color, and the rows under it as branches: \`branch\` prefixes each row with \`\u251C\u2500\` or \`\u2514\u2500\`, the last row of the run taking the corner, and when the next column repeats too it merges the same way and carries one \`\u2502\` per continuing parent before its branch, so three levels draw as a tree. \`full\` also draws a heavy rule where one top-level group ends and the next begins. A column of numbers never nests, a table already grouped by status keeps its status grouping, and stacked tables stay as they are. The default \`off\` keeps tables as written:
+
+| Area | Service | Task |
+|:-----|:--------|:-----|
+| core | api | boot |
+| core | api | sync |
+| core | worker | draw |
+| web | ui | paint |
+| web | ui | route |
+
+### Pivot
+
+When a table holds metrics and periods \u2014 a column of names beside a header of quarters \u2014 \`pivotTable\` \`transpose\` draws it with rows and columns swapped, so the quarters read down the side and each metric has a column of its own, which fits a narrow terminal better than a long row. It adds no totals and no averages, so what you copy as markdown stays exactly what was written. The default \`off\` keeps tables as written:
+
+| Metric | Q1 | Q2 | Q3 | Q4 |
+|:-------|----:|----:|----:|----:|
+| Revenue | 120 | 148 | 162 | 190 |
+| Cost | 80 | 96 | 101 | 118 |
+| Margin | 40 | 52 | 61 | 72 |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -750,6 +784,30 @@ Tool calls draw as one line, dimmed on the right by default, and the file each o
 Each edit draws as a diff card headed \`+N \u2212M\`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (\`sed -i\`, a script) get the same card, one per file, headed by its path. Set \`diffStyle\` in \`/config\` for the look: \`card\`, \`full\`, \`marks\` or \`bar\`.
 
 A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks, and a click on it or on \`+K more lines\` opens the rest. A file an Edit or a shell command creates shows its first 10 lines as added lines under \`Created\`. A file a shell command removes is one \`Deleted\` line that opens to its removed lines on a click, and a file moved unchanged is one \`Renamed old \u2192 new\` line.
+
+### Plans
+
+Set \`planStyle\` in \`/config\` to \`bare\` or \`card\` and a plan you approve in plan mode draws like a reply under Claude Code's own header, tables, code and diagrams included, with a \`copy plan\` button. \`card\` frames it. A \`plan\` block in a reply draws the same way, and stays code with \`planStyle: off\`:
+
+\`\`\`\`plan
+## Plan: retry failed uploads
+
+| File | Change |
+|:-----|:-------|
+| src/upload.ts | retry 3 times with backoff |
+| src/upload.test.ts | cover the retry |
+
+\`\`\`ts
+const retries = 3
+\`\`\`
+
+\`\`\`mermaid
+flowchart LR
+    U[Upload] --> F{Failed?}
+    F -->|yes| R[Retry]
+    F -->|no| D[Done]
+\`\`\`
+\`\`\`\`
 
 ### Quotes and rules
 
@@ -1052,7 +1110,11 @@ var setupSteps = (themes) => [
   { name: "api-table", key: "apiTable", title: "API reference", note: "How an API reference table draws: a method column whose cells read like HTTP verbs. `off` keeps tables as written. `verbs` draws each method cell by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. `auth` draws the scheme cells of an auth column: Bearer, OAuth, API key and JWT in the accent color. `full` does both.", options: ["full", "verbs", "auth", "off"], sample: "| Method | Endpoint | Auth | Description |\n|:-------|:---------|:-----|:------------|\n| GET | /v1/scrolls | Bearer | List the scrolls |\n| POST | /v1/scrolls | Bearer | Add a scroll |\n| DELETE | /v1/scrolls/:id | API key | Remove a scroll |\n| GET | /v1/health | none | Liveness check |" },
   { name: "kv-table", key: "kvTable", title: "Key-value", note: "How a table that lists configuration draws: a column of options beside columns of values, sources or defaults. `off` keeps tables as written. `sources` draws each source cell in theme colors by where it says the value comes from: env in the link color, config in the string color, default in gray. `overrides` draws the value cell in the accent color when the row's value differs from its default. `full` does both.", options: ["full", "sources", "overrides", "off"], sample: "| Option | Value | Source | Default |\n|:-------|:------|:-------|:--------|\n| retries | 5 | env | 3 |\n| format | json | config | json |\n| timeout | 30s | default | 30s |\n| token | abc123 | env | unset |" },
   { name: "group-table", key: "groupTable", title: "Groups", note: "How a table that groups its rows draws: the first column whose cells repeat in runs, like a column of services or teams. `off` keeps tables as written. `merge` labels the group once in the accent color and blanks the repeats under it, `count` also adds the group size to the label, and `full` also draws a heavy rule where one group ends and the next begins.", options: ["full", "count", "merge", "off"], sample: "| Service | Region | Requests | p99 |\n|:--------|:-------|---------:|----:|\n| api | us-east | 1.2M | 84 ms |\n| api | us-west | 900k | 91 ms |\n| worker | us-east | 2.4M | 120 ms |\n| worker | us-west | 1.8M | 132 ms |\n| cron | us-east | 96k | 40 ms |" },
-  { name: "desktop", key: "desktopColors", title: "Desktop app colors", note: "Whether the Claude Code desktop app (Code tab) takes the theme too: its background, text, borders and accent. `match` paints it in the theme you picked, in light mode for a light theme, and needs Claude Code 2.1.324 or later. `off` leaves the app as it is, and going back to it restores the app's own look. The terminal and VS Code keep their colors either way.", options: ["match", "off"], sample: "**Bold**, `inline code` and a [link](https://example.com)." }
+  { name: "heat-table", key: "heatTable", title: "Heatmap", note: "How a table of numbers draws. `off` keeps tables as written. `color` draws each number by where it sits between its column's lowest and highest: the lowest in the table's text color, then the number color, then the accent color, the highest in the accent color and bold. `bars` also adds one block glyph after each number, `\u2581`, `\u2584`, `\u2586` or `\u2588` by the same four steps. A column whose values are all equal stays as written.", options: ["bars", "color", "off"], sample: "| Region | Requests | p99 |\n|:-------|---------:|----:|\n| us-east | 1200 | 84 ms |\n| us-west | 900 | 91 ms |\n| eu-west | 640 | 120 ms |\n| ap-south | 480 | 132 ms |\n| sa-east | 96 | 140 ms |" },
+  { name: "tree-table", key: "treeTable", title: "Tree", note: "How a table that nests its rows draws: a column of areas beside a column of services and their tasks. `off` keeps tables as written. `branch` labels each run once in the accent color and prefixes the rows under it with `\u251C\u2500` or `\u2514\u2500`, the last row taking the corner; when the next column repeats too it merges the same way and carries one `\u2502` per continuing parent, so three levels draw as a tree. `full` also draws a heavy rule where one top-level group ends and the next begins.", options: ["full", "branch", "off"], sample: "| Area | Service | Task |\n|:-----|:--------|:-----|\n| core | api | boot |\n| core | api | sync |\n| core | worker | draw |\n| web | ui | paint |\n| web | ui | route |" },
+  { name: "pivot-table", key: "pivotTable", title: "Pivot", note: "How a table of metrics and periods draws. `off` keeps tables as written. `transpose` swaps its rows and columns: a first column of metric labels beside a header of period labels, with at least 60% numbers and fewer rows than periods, draws with the periods as rows and the metrics as columns. It adds no totals and no averages, so a table copied as markdown keeps exactly what was written.", options: ["transpose", "off"], sample: "| Metric | Q1 | Q2 | Q3 | Q4 |\n|:-------|----:|----:|----:|----:|\n| Revenue | 120 | 148 | 162 | 190 |\n| Cost | 80 | 96 | 101 | 118 |\n| Margin | 40 | 52 | 61 | 72 |" },
+  { name: "desktop", key: "desktopColors", title: "Desktop app colors", note: "Whether the Claude Code desktop app (Code tab) takes the theme too: its background, text, borders and accent. `match` paints it in the theme you picked, in light mode for a light theme, and needs Claude Code 2.1.324 or later. `off` leaves the app as it is, and going back to it restores the app's own look. The terminal and VS Code keep their colors either way.", options: ["match", "off"], sample: "**Bold**, `inline code` and a [link](https://example.com)." },
+  { name: "plans", key: "planStyle", title: "Plans", note: "How a plan you approve in plan mode draws in the transcript. `off` keeps Claude Code's own plain text. `bare` draws it like a reply under Claude Code's header and saved-path line, with tables, code and diagrams, and a `copy plan` button for the whole markdown. `card` draws the same in a rounded frame, so a plan stands apart from replies. The approval dialog keeps Claude Code's look.", options: ["off", "bare", "card"], sample: "````plan\n## Plan: retry failed uploads\n\n| File | Change |\n|:-----|:-------|\n| src/upload.ts | retry 3 times |\n\n```ts\nconst retries = 3\n```\n````" }
 ];
 var ESSENTIAL_STEPS = 6;
 var SETUP_ESSENTIALS_DONE = `Essentials set. \`/prismantis setup more\` walks ${setupSteps([]).length - ESSENTIAL_STEPS} more styles, from diffs and headings to tables of test results, and \`/config\` has every option.`;
