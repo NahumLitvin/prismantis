@@ -1609,6 +1609,483 @@
   <Text color=#585b70>
     "└─────────┴─────────┴──────────┴────────┘"
 <Box>
+  <Text color=#f9e2af bold>
+    <Text>
+      "Heatmap"
+  <Text color=#f9e2af>
+    "━━━━━━━"
+<Text>
+  <Text>
+    "When a table holds a matrix of numbers — a column of requests beside a column of latencies, each number carrying the same suffix down its column — "
+  <Text color=#89dceb>
+    "heatTable"
+  <Text>
+    " draws each number by where it sits between its column's lowest and highest: "
+  <Text color=#89dceb>
+    "color"
+  <Text>
+    " puts the lowest in the table's text color, the next in the number color, the next in the accent color and the highest in the accent color and bold, and "
+  <Text color=#89dceb>
+    "bars"
+  <Text>
+    " also adds one block glyph after each number, "
+  <Text color=#89dceb>
+    "▁"
+  <Text>
+    ", "
+  <Text color=#89dceb>
+    "▄"
+  <Text>
+    ", "
+  <Text color=#89dceb>
+    "▆"
+  <Text>
+    " or "
+  <Text color=#89dceb>
+    "█"
+  <Text>
+    " by the same four steps, so size reads without color. A column whose values are all equal stays as written, and a cell another table look already colored keeps that color. The default "
+  <Text color=#89dceb>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#585b70>
+    "┌──────────┬──────────┬────────┐"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Region"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Requests"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "p99"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞══════════╪══════════╪════════╡"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "us-east"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "1200"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "84"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "us-west"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "900"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "91"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "eu-west"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "640"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "120"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "ap-south"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "480"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "132"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────────┼──────────┼────────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "sa-east"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "96"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "140"
+        <Text>
+          " ms"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└──────────┴──────────┴────────┘"
+<Box>
+  <Text color=#f9e2af bold>
+    <Text>
+      "Tree"
+  <Text color=#f9e2af>
+    "━━━━"
+<Text>
+  <Text>
+    "When a table nests its rows — a column of areas beside a column of services and their tasks — "
+  <Text color=#89dceb>
+    "treeTable"
+  <Text>
+    " draws each run of a repeated first column once, in the accent color, and the rows under it as branches: "
+  <Text color=#89dceb>
+    "branch"
+  <Text>
+    " prefixes each row with "
+  <Text color=#89dceb>
+    "├─"
+  <Text>
+    " or "
+  <Text color=#89dceb>
+    "└─"
+  <Text>
+    ", the last row of the run taking the corner, and when the next column repeats too it merges the same way and carries one "
+  <Text color=#89dceb>
+    "│"
+  <Text>
+    " per continuing parent before its branch, so three levels draw as a tree. "
+  <Text color=#89dceb>
+    "full"
+  <Text>
+    " also draws a heavy rule where one top-level group ends and the next begins. A column of numbers never nests, a table already grouped by status keeps its status grouping, and stacked tables stay as they are. The default "
+  <Text color=#89dceb>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#585b70>
+    "┌──────┬─────────┬───────┐"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Area"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Service"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Task"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞══════╪═════════╪═══════╡"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "core"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "boot"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "core"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "api"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "sync"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "core"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "worker"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "draw"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "web"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "ui"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "paint"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├──────┼─────────┼───────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "web"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "ui"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text>
+          "route"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└──────┴─────────┴───────┘"
+<Box>
+  <Text color=#f9e2af bold>
+    <Text>
+      "Pivot"
+  <Text color=#f9e2af>
+    "━━━━━"
+<Text>
+  <Text>
+    "When a table holds metrics and periods — a column of names beside a header of quarters — "
+  <Text color=#89dceb>
+    "pivotTable"
+  <Text>
+    " "
+  <Text color=#89dceb>
+    "transpose"
+  <Text>
+    " draws it with rows and columns swapped, so the quarters read down the side and each metric has a column of its own, which fits a narrow terminal better than a long row. It adds no totals and no averages, so what you copy as markdown stays exactly what was written. The default "
+  <Text color=#89dceb>
+    "off"
+  <Text>
+    " keeps tables as written:"
+<Box>
+  <Text color=#585b70>
+    "┌─────────┬─────┬─────┐"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Metric"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Q1"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text color=#f9e2af bold>
+        "Q2"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "╞═════════╪═════╪═════╡"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Revenue"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "120"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "148"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼─────┼─────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Cost"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "80"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "96"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "├─────────┼─────┼─────┤"
+  <Box row>
+    <Text color=#585b70>
+      "│ "
+    <Box>
+      <Text>
+        <Text>
+          "Margin"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "40"
+    <Text color=#585b70>
+      " │ "
+    <Box>
+      <Text>
+        <Text color=#a6e3a1>
+          "52"
+    <Text color=#585b70>
+      " │"
+  <Text color=#585b70>
+    "└─────────┴─────┴─────┘"
+<Box>
   <Box row>
     <Text color=#cba6f7>
       "1. "

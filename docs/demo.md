@@ -109,6 +109,40 @@ When a table groups its rows — the first column whose cells repeat in runs, li
 | worker | us-west | 1.8M | 132 ms |
 | cron | us-east | 96k | 40 ms |
 
+## Heatmap
+
+When a table holds a matrix of numbers — a column of requests beside a column of latencies, each number carrying the same suffix down its column — `heatTable` draws each number by where it sits between its column's lowest and highest: `color` puts the lowest in the table's text color, the next in the number color, the next in the accent color and the highest in the accent color and bold, and `bars` also adds one block glyph after each number, `▁`, `▄`, `▆` or `█` by the same four steps, so size reads without color. A column whose values are all equal stays as written, and a cell another table look already colored keeps that color. The default `off` keeps tables as written:
+
+| Region | Requests | p99 |
+|:-------|---------:|----:|
+| us-east | 1200 | 84 ms |
+| us-west | 900 | 91 ms |
+| eu-west | 640 | 120 ms |
+| ap-south | 480 | 132 ms |
+| sa-east | 96 | 140 ms |
+
+## Tree
+
+When a table nests its rows — a column of areas beside a column of services and their tasks — `treeTable` draws each run of a repeated first column once, in the accent color, and the rows under it as branches: `branch` prefixes each row with `├─` or `└─`, the last row of the run taking the corner, and when the next column repeats too it merges the same way and carries one `│` per continuing parent before its branch, so three levels draw as a tree. `full` also draws a heavy rule where one top-level group ends and the next begins. A column of numbers never nests, a table already grouped by status keeps its status grouping, and stacked tables stay as they are. The default `off` keeps tables as written:
+
+| Area | Service | Task |
+|:-----|:--------|:-----|
+| core | api | boot |
+| core | api | sync |
+| core | worker | draw |
+| web | ui | paint |
+| web | ui | route |
+
+## Pivot
+
+When a table holds metrics and periods — a column of names beside a header of quarters — `pivotTable` `transpose` draws it with rows and columns swapped, so the quarters read down the side and each metric has a column of its own, which fits a narrow terminal better than a long row. It adds no totals and no averages, so what you copy as markdown stays exactly what was written. The default `off` keeps tables as written:
+
+| Metric | Q1 | Q2 |
+|:-------|----:|----:|
+| Revenue | 120 | 148 |
+| Cost | 80 | 96 |
+| Margin | 40 | 52 |
+
 1. Wake up, stretch all 6 legs
 2. Pray to the noodle gods
    - extra dumplings

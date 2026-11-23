@@ -163,6 +163,40 @@ When a table groups its rows — the first column whose cells repeat in runs, li
 | worker | us-west | 1.8M | 132 ms |
 | cron | us-east | 96k | 40 ms |
 
+### Heatmap
+
+When a table holds a matrix of numbers — a column of requests beside a column of latencies, each number carrying the same suffix down its column — \`heatTable\` draws each number by where it sits between its column's lowest and highest: \`color\` puts the lowest in the table's text color, the next in the number color, the next in the accent color and the highest in the accent color and bold, and \`bars\` also adds one block glyph after each number, \`▁\`, \`▄\`, \`▆\` or \`█\` by the same four steps, so size reads without color. A column whose values are all equal stays as written, and a cell another table look already colored keeps that color. The default \`off\` keeps tables as written:
+
+| Region | Requests | p99 |
+|:-------|---------:|----:|
+| us-east | 1200 | 84 ms |
+| us-west | 900 | 91 ms |
+| eu-west | 640 | 120 ms |
+| ap-south | 480 | 132 ms |
+| sa-east | 96 | 140 ms |
+
+### Tree
+
+When a table nests its rows — a column of areas beside a column of services and their tasks — \`treeTable\` draws each run of a repeated first column once, in the accent color, and the rows under it as branches: \`branch\` prefixes each row with \`├─\` or \`└─\`, the last row of the run taking the corner, and when the next column repeats too it merges the same way and carries one \`│\` per continuing parent before its branch, so three levels draw as a tree. \`full\` also draws a heavy rule where one top-level group ends and the next begins. A column of numbers never nests, a table already grouped by status keeps its status grouping, and stacked tables stay as they are. The default \`off\` keeps tables as written:
+
+| Area | Service | Task |
+|:-----|:--------|:-----|
+| core | api | boot |
+| core | api | sync |
+| core | worker | draw |
+| web | ui | paint |
+| web | ui | route |
+
+### Pivot
+
+When a table holds metrics and periods — a column of names beside a header of quarters — \`pivotTable\` \`transpose\` draws it with rows and columns swapped, so the quarters read down the side and each metric has a column of its own, which fits a narrow terminal better than a long row. It adds no totals and no averages, so what you copy as markdown stays exactly what was written. The default \`off\` keeps tables as written:
+
+| Metric | Q1 | Q2 | Q3 | Q4 |
+|:-------|----:|----:|----:|----:|
+| Revenue | 120 | 148 | 162 | 190 |
+| Cost | 80 | 96 | 101 | 118 |
+| Margin | 40 | 52 | 61 | 72 |
+
 ### Alerts
 
 > [!IMPORTANT]
@@ -632,7 +666,7 @@ flowchart LR
 
 export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
-export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'compareTable' | 'apiTable' | 'kvTable' | 'groupTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'codeStyle' | 'planStyle' | 'pieStyle' | 'desktopColors'; title: string; note: string; options: readonly string[]; sample: string }
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'compareTable' | 'apiTable' | 'kvTable' | 'groupTable' | 'heatTable' | 'treeTable' | 'pivotTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'codeStyle' | 'planStyle' | 'pieStyle' | 'desktopColors'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
@@ -659,6 +693,9 @@ export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'api-table', key: 'apiTable', title: 'API reference', note: 'How an API reference table draws: a method column whose cells read like HTTP verbs. `off` keeps tables as written. `verbs` draws each method cell by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. `auth` draws the scheme cells of an auth column: Bearer, OAuth, API key and JWT in the accent color. `full` does both.', options: ['full', 'verbs', 'auth', 'off'], sample: '| Method | Endpoint | Auth | Description |\n|:-------|:---------|:-----|:------------|\n| GET | /v1/scrolls | Bearer | List the scrolls |\n| POST | /v1/scrolls | Bearer | Add a scroll |\n| DELETE | /v1/scrolls/:id | API key | Remove a scroll |\n| GET | /v1/health | none | Liveness check |' },
   { name: 'kv-table', key: 'kvTable', title: 'Key-value', note: 'How a table that lists configuration draws: a column of options beside columns of values, sources or defaults. `off` keeps tables as written. `sources` draws each source cell in theme colors by where it says the value comes from: env in the link color, config in the string color, default in gray. `overrides` draws the value cell in the accent color when the row\'s value differs from its default. `full` does both.', options: ['full', 'sources', 'overrides', 'off'], sample: '| Option | Value | Source | Default |\n|:-------|:------|:-------|:--------|\n| retries | 5 | env | 3 |\n| format | json | config | json |\n| timeout | 30s | default | 30s |\n| token | abc123 | env | unset |' },
   { name: 'group-table', key: 'groupTable', title: 'Groups', note: 'How a table that groups its rows draws: the first column whose cells repeat in runs, like a column of services or teams. `off` keeps tables as written. `merge` labels the group once in the accent color and blanks the repeats under it, `count` also adds the group size to the label, and `full` also draws a heavy rule where one group ends and the next begins.', options: ['full', 'count', 'merge', 'off'], sample: '| Service | Region | Requests | p99 |\n|:--------|:-------|---------:|----:|\n| api | us-east | 1.2M | 84 ms |\n| api | us-west | 900k | 91 ms |\n| worker | us-east | 2.4M | 120 ms |\n| worker | us-west | 1.8M | 132 ms |\n| cron | us-east | 96k | 40 ms |' },
+  { name: 'heat-table', key: 'heatTable', title: 'Heatmap', note: 'How a table of numbers draws. `off` keeps tables as written. `color` draws each number by where it sits between its column\'s lowest and highest: the lowest in the table\'s text color, then the number color, then the accent color, the highest in the accent color and bold. `bars` also adds one block glyph after each number, `▁`, `▄`, `▆` or `█` by the same four steps. A column whose values are all equal stays as written.', options: ['bars', 'color', 'off'], sample: '| Region | Requests | p99 |\n|:-------|---------:|----:|\n| us-east | 1200 | 84 ms |\n| us-west | 900 | 91 ms |\n| eu-west | 640 | 120 ms |\n| ap-south | 480 | 132 ms |\n| sa-east | 96 | 140 ms |' },
+  { name: 'tree-table', key: 'treeTable', title: 'Tree', note: 'How a table that nests its rows draws: a column of areas beside a column of services and their tasks. `off` keeps tables as written. `branch` labels each run once in the accent color and prefixes the rows under it with `├─` or `└─`, the last row taking the corner; when the next column repeats too it merges the same way and carries one `│` per continuing parent, so three levels draw as a tree. `full` also draws a heavy rule where one top-level group ends and the next begins.', options: ['full', 'branch', 'off'], sample: '| Area | Service | Task |\n|:-----|:--------|:-----|\n| core | api | boot |\n| core | api | sync |\n| core | worker | draw |\n| web | ui | paint |\n| web | ui | route |' },
+  { name: 'pivot-table', key: 'pivotTable', title: 'Pivot', note: 'How a table of metrics and periods draws. `off` keeps tables as written. `transpose` swaps its rows and columns: a first column of metric labels beside a header of period labels, with at least 60% numbers and fewer rows than periods, draws with the periods as rows and the metrics as columns. It adds no totals and no averages, so a table copied as markdown keeps exactly what was written.', options: ['transpose', 'off'], sample: '| Metric | Q1 | Q2 | Q3 | Q4 |\n|:-------|----:|----:|----:|----:|\n| Revenue | 120 | 148 | 162 | 190 |\n| Cost | 80 | 96 | 101 | 118 |\n| Margin | 40 | 52 | 61 | 72 |' },
   { name: 'desktop', key: 'desktopColors', title: 'Desktop app colors', note: 'Whether the Claude Code desktop app (Code tab) takes the theme too: its background, text, borders and accent. `match` paints it in the theme you picked, in light mode for a light theme, and needs Claude Code 2.1.324 or later. `off` leaves the app as it is, and going back to it restores the app\'s own look. The terminal and VS Code keep their colors either way.', options: ['match', 'off'], sample: '**Bold**, `inline code` and a [link](https://example.com).' },
   { name: 'plans', key: 'planStyle', title: 'Plans', note: 'How a plan you approve in plan mode draws in the transcript. `off` keeps Claude Code\'s own plain text. `bare` draws it like a reply under Claude Code\'s header and saved-path line, with tables, code and diagrams, and a `copy plan` button for the whole markdown. `card` draws the same in a rounded frame, so a plan stands apart from replies. The approval dialog keeps Claude Code\'s look.', options: ['off', 'bare', 'card'], sample: '````plan\n## Plan: retry failed uploads\n\n| File | Change |\n|:-----|:-------|\n| src/upload.ts | retry 3 times |\n\n```ts\nconst retries = 3\n```\n````' },
 ]

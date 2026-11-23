@@ -44,6 +44,9 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `apiTable` | `full` (method cells colored by verb and auth scheme cells marked), `verbs` (just the method cells), `auth` (just the scheme cells: Bearer, OAuth, API key, JWT and Basic in the accent color), `off` (the default) | `off` |
 | `kvTable` | `full` (source cells colored by origin and values that moved off their default marked), `sources` (just the source cells: env in the link color, config in the string color, default in gray), `overrides` (just the value cells that differ from their default, in the accent color), `off` (the default) | `off` |
 | `groupTable` | `full` (each group labeled once in the accent color, its size beside the label and a heavy rule between groups), `count` (the label plus the group's size), `merge` (just the label once), `off` (the default) | `off` |
+| `heatTable` | `bars` (each number by its place in its column, with a block glyph by the same four steps), `color` (each number colored by its place in its column: the lowest in the table's text color, the next in the number color, the next in the accent color and the highest in the accent color and bold), `off` (the default) | `off` |
+| `treeTable` | `full` (each run of a column labeled once, its rows as branches, and a heavy rule between top-level groups), `branch` (the labels and branches), `off` (the default) | `off` |
+| `pivotTable` | `transpose` (rows and columns swapped, periods down the side and metrics across), `off` (the default) | `off` |
 | `taskStyle` | `checks` (`[ ]` `[✓]`, done struck through), `ticks` (`○` `✓`), `box` (`□` `✓`), `progress` (ticks with a done-count bar) | `checks` |
 | `listMarker` | `dots` (`•` then `◦` nested), `dash` (`-` at every level, pastes as a markdown list) | `dots` |
 | `promptStyle` | `bubble`, `framed`, `wide`, `bar`, `chevron`, `off` | `bubble` |
