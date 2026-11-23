@@ -218,6 +218,13 @@
       "default": "checks",
       "options": ["checks", "ticks", "box", "progress"]
     },
+    "planStyle": {
+      "type": "string",
+      "title": "Plan style",
+      "description": "How an approved plan from plan mode draws in the transcript, and a ```plan block in any reply. off: Claude Code's own plain text, as today. bare: drawn like a reply, with tables, code and mermaid, and a copy plan button. card: the same inside a rounded frame, so a plan stands apart from replies.",
+      "default": "off",
+      "options": ["off", "bare", "card"]
+    },
     "listMarker": {
       "type": "string",
       "title": "List bullets",
