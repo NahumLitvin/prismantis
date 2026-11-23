@@ -1213,6 +1213,28 @@ test('a line number after a path stays out of its link with number colors off', 
   await ui.unmount()
 })
 
+const AUDIO = 'D:\\work\\錄音\\take\\v4'
+const CLIPS = [`${AUDIO}\\v4_intro_第1-2段.mp3`, `${AUDIO}\\v4_outro_第1-2段.mp3`]
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`a Windows path with digits links whole and keeps them out of number colors, on ${surface}`, async ($, on) => {
+    filesAt(on, '2.1.289')
+    const clock = mock.clock(on)
+    const clips = CLIPS.map(path => path.replace(/\\/g, '/'))
+    on('fs.stat', (_, e) => {
+      const path = e.path.replace(/\\/g, '/')
+      const kind = clips.includes(path) ? 'file' as const : clips.some(clip => clip.startsWith(`${path}/`)) ? 'dir' as const : undefined
+      return kind ? { value: { kind, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` }
+    })
+    if (surface === 'terminal' && !(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const ui = await $.ui.mount({ ...mount(`兩個檔案都在 ${AUDIO}：\n\n- 開頭：${CLIPS[0]}\n- 結尾：${CLIPS[1]}\n\n兩段共 28 秒。`), surface })
+    await clock.settle()
+    expect((await ui.findAll({ type: 'Link' })).map(l => l.props.label)).toEqual(surface === 'terminal' ? [AUDIO, ...CLIPS] : [])
+    expect((await ui.findAll({ type: 'Text' })).filter(n => n.props.color === PRESETS['catppuccin-mocha'].number).map(n => n.text)).toEqual(['28'])
+    await ui.unmount()
+  })
+}
+
 for (const [where, root, home, full] of [
   ['on macOS and Linux', '/work/app', '/home/me', ['/work/app/src/app.ts', '/work/app/docs/guide/', '/work/app/src/app.ts', '/home/me/notes/todo.md.', 'C:\\work\\notes\\plan.md']],
   ['on Windows', 'C:\\work\\app', 'C:\\Users\\me', ['C:\\work\\app\\src\\app.ts', 'C:\\work\\app\\docs\\guide\\', 'C:\\work\\app\\src\\app.ts', 'C:\\Users\\me\\notes\\todo.md.', 'C:\\work\\notes\\plan.md']],
