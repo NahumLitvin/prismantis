@@ -1988,8 +1988,8 @@ function offsetDrawingForSubgraphs(graph) {
   }
 }
 function createMapping(graph) {
-  let dir = graph.config.graphDirection, highestPositionPerLevel = new Array(1e4).fill(0), nodesFound = /* @__PURE__ */ new Set(), initialRoots = [];
-  for (let node of graph.nodes) {
+  let dir = graph.config.graphDirection, highestPositionPerLevel = new Array(1e4).fill(0), nodesFound = /* @__PURE__ */ new Set(), initialRoots = [], targets = new Set(graph.edges.map((e) => e.to));
+  for (let node of [...graph.nodes].sort((a, b) => Number(targets.has(a)) - Number(targets.has(b)))) {
     nodesFound.has(node.name) || initialRoots.push(node), nodesFound.add(node.name);
     for (let child of getChildren(graph, node))
       nodesFound.add(child.name);
