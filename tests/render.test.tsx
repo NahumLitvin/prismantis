@@ -1886,12 +1886,14 @@ test('treeTable draws a table with no status column while statusMatrix groups', 
 })
 
 const PIVOT = [
-  '| Metric | Q1 | Q2 |',
-  '|:-------|----:|----:|',
-  '| Revenue | 120 | 148 |',
-  '| Cost | 80 | 96 |',
-  '| Margin | 40 | 52 |',
+  '| Metric | Q1 | Q2 | Q3 | Q4 |',
+  '|:-------|----:|----:|----:|----:|',
+  '| Revenue | 120 | 148 | 162 | 190 |',
+  '| Cost | 80 | 96 | 101 | 118 |',
+  '| Margin | 40 | 52 | 61 | 72 |',
 ].join('\n')
+
+const TALL = ['| Metric | Q1 | Q2 |', '|:-------|----:|----:|', '| Revenue | 120 | 148 |', '| Cost | 80 | 96 |', '| Margin | 40 | 52 |'].join('\n')
 
 test('pivotTable transpose swaps the rows and the columns', { options: { pivotTable: 'transpose' } }, async $ => {
   const t = PRESETS['catppuccin-mocha']
@@ -1909,6 +1911,14 @@ test('pivotTable off keeps tables as written', { options: { pivotTable: 'off' } 
   const t = PRESETS['catppuccin-mocha']
   const ui = await $.ui.mount({ ...draw(PIVOT), surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /^Metric$/ })).toMatchObject({ props: { color: t.tableHeader } })
+  expect((await ui.find({ type: 'Text', text: /^Revenue$/ }))?.props.color).not.toBe(t.tableHeader)
+  await ui.unmount()
+})
+
+test('pivotTable leaves a table with as many rows as data columns as written', { options: { pivotTable: 'transpose' } }, async $ => {
+  const t = PRESETS['catppuccin-mocha']
+  const ui = await $.ui.mount({ ...draw(TALL), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^Q1$/ })).toMatchObject({ props: { color: t.tableHeader } })
   expect((await ui.find({ type: 'Text', text: /^Revenue$/ }))?.props.color).not.toBe(t.tableHeader)
   await ui.unmount()
 })

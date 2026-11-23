@@ -12,7 +12,7 @@ const text = (cell: TableCell): string => inlineText(cell).trim()
 const isNumber = (cell: TableCell): boolean => NUMBER.test(text(cell))
 
 export const pivotOf = (block: TableBlock, option: PivotTable): TableBlock | undefined => {
-  if (option === 'off' || block.rows.length < 2 || block.header.length < 3) return undefined
+  if (option === 'off' || block.rows.length < 2 || block.rows.length >= block.header.length - 1) return undefined
   if (block.header.some(cell => text(cell) === '')) return undefined
   if (block.rows.some(row => !LETTER.test(text(row[0]!)))) return undefined
   const values = block.rows.flatMap(row => row.slice(1))
