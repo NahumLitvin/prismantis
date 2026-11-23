@@ -1530,7 +1530,7 @@ const markedRow = ({ Box }: ElementTable, key: string, element: RenderElement, f
   </Box>
 )
 
-export type CodeBlock = Extract<Block, { kind: 'code' }>
+type CodeBlock = Extract<Block, { kind: 'code' }>
 
 export const planBlock = (plan: string): CodeBlock => ({ kind: 'code', lang: 'plan', lines: plan.split('\n'), raw: plan })
 

@@ -494,7 +494,7 @@ const copyNow = async ($: EngineInterface, style: Style, content: string, surfac
   return failure ? `Copied as plain text (${failure})` : 'Copied'
 }
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }): RenderElement[] => {
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }, planMath?: Map<number, Typeset>): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', rich?: (() => string) | 'png', hues?: () => Hues) => {
     const copied = (surface: RenderSurface) => lastCopy(() => copyNow($, style, typeof text === 'function' ? text() : text, surface, rich, hues?.()))
@@ -510,7 +510,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
       />
     ) : null
   }
-  const drawn = drawPlans($, el, style, blocks, columns, drawDiagrams(el, style, blocks, columns - markerRoom(style)), open)
+  const drawn = drawPlans($, el, style, blocks, columns, drawDiagrams(el, style, blocks, columns - markerRoom(style)), open, planMath)
   const Image = 'Image' in el ? el.Image : null
   if (Image) {
     for (const [i, formula] of math) {
@@ -816,19 +816,21 @@ const planOf = (tool: string, output: unknown): { plan: string; filePath?: strin
   return typeof filePath === 'string' ? { plan, filePath } : { plan }
 }
 
-const drawPlans = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, drawn: Drawn, open?: string[]): Drawn => {
-  for (const [i, block] of blocks.entries()) if (isPlan(style, block)) drawn.set(i, { element: renderPlan(el, style, drawMarkdown($, el, style, parse(block.lines.join('\n'), { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns - planRoom(style), undefined, undefined, undefined, open), `b${i}`) })
+const drawPlans = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, drawn: Drawn, open?: string[], math?: Map<number, Typeset>): Drawn => {
+  for (const [i, block] of blocks.entries()) if (isPlan(style, block)) drawn.set(i, { element: renderPlan(el, style, drawMarkdown($, el, style, parse(block.lines.join('\n'), { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns - planRoom(style), math, undefined, undefined, open), `b${i}`) })
   return drawn
 }
 
-const planRow = async ($: EngineInterface, e: RenderInput<'ToolResult'>, style: Style, probes: Probes, surfaced: (base: Style, e: RenderInput<'ToolResult'>, links: LinkReach) => Style): Promise<RenderElement | undefined> => {
+const planRow = async ($: EngineInterface, e: RenderInput<'ToolResult'>, style: Style, ctx: { probes: Probes; latex: LatexSession; pathChecks: PathChecks; surfaced: (base: Style, e: RenderInput<'ToolResult'>, links: LinkReach) => Style }): Promise<RenderElement | undefined> => {
   const found = e.props.isErrored ? undefined : planOf(e.props.tool, e.props.output)
   if (!found) return undefined
   await locate($, style)
   const el = $.ui.resolve(e)
-  const reach = await linkReach($, probes, style)
-  const drawn = surfaced(style, e, reach)
-  const body = drawMarkdown($, el, drawn, [planBlock(found.plan)], columnsOf(e.viewport, drawn), undefined, undefined, undefined, await read($, unfolded), { id: e.props.tool_use_id, press: reach.marks })
+  const reach = await linkReach($, ctx.probes, style)
+  const inner = parse(found.plan, { numbers: style.highlightNumbers, paths: style.highlightPaths })
+  const drawn = await withFoundPaths($, ctx.pathChecks, ctx.surfaced(style, e, reach), inner)
+  const math = await mathOfBlocks($, ctx.latex, e.surface, inner)
+  const body = drawMarkdown($, el, drawn, [planBlock(found.plan)], columnsOf(e.viewport, drawn), undefined, undefined, undefined, await read($, unfolded), { id: e.props.tool_use_id, press: reach.marks }, math)
   return <el.Box flexDirection="column" rowGap={1}>{renderPlanHead(el, drawn, found.filePath)}{body}</el.Box>
 }
 
@@ -869,7 +871,7 @@ export const register: Register = (on, options) => {
     shellCommands.set(id, command)
     if (shellCommands.size > 500) shellCommands.delete(shellCommands.keys().next().value!)
   }
-  if (style.planStyle !== 'off') on('ui.render', { component: 'ToolResult', ...here }, async ($, e, next) => (await planRow($, e, style, probes, forSurface)) ?? next(e))
+  if (style.planStyle !== 'off') on('ui.render', { component: 'ToolResult', ...here }, async ($, e, next) => (await planRow($, e, style, { probes, latex, pathChecks, surfaced: forSurface })) ?? next(e))
   let firstEdit: string | undefined
   if (options.toolRows !== false) {
     on('ui.render', { component: 'ToolGroup', ...here }, async ($, e, next) => {

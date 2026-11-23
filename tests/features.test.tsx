@@ -3784,6 +3784,16 @@ for (const options of [{ planStyle: 'bare', toolOutput: 'rows' }, { planStyle: '
   })
 }
 
+test('planStyle draws the whole plan in the ctrl+o view with toolOutput quiet', { options: { planStyle: 'bare', toolOutput: 'quiet' } }, async ($, on) => {
+  engine(on)
+  const view = planResult('terminal', { plan: PLAN, isAgent: false })
+  const ui = await $.ui.mount({ ...view, props: { ...view.props, isExpanded: true } })
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^Approved Claude's plan$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /src\/upload\.ts/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /const retries = 3/ })).toBeDefined()
+})
+
 test('planStyle leaves a plan result with no plan text, as before 2.1.311, to Claude Code', { options: { planStyle: 'card' } }, async ($, on) => {
   engine(on)
   for (const output of [{ isAgent: false }, { plan: null, isAgent: false }, { plan: PLAN, isAgent: false, awaitingLeaderApproval: true }, 'Exited plan mode']) {
