@@ -198,7 +198,11 @@ for (const toolOutput of ['full', 'quiet'] as const) {
 }
 
 for (const scriptStyle of ['frame', 'rail', 'bar', 'chip'] as const) {
-  test(`terminal control sequences in a Code Mode script are never drawn (scriptStyle ${scriptStyle})`, { options: { scriptStyle } }, async $ => {
+  test(`terminal control sequences in a Code Mode script are never drawn (scriptStyle ${scriptStyle})`, { options: { scriptStyle } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
     const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: toolCall('REPL', { code: `log("hi ${BAD}")\nreturn 1` }) } as Parameters<Engine['ui']['mount']>[0])
     const texts = [...(await ui.findAll({ type: 'Text' })).map(n => n.text ?? ''), ...(await ui.findAll({ type: 'Button' })).map(n => String(n.props?.label ?? ''))]
     await ui.unmount()
