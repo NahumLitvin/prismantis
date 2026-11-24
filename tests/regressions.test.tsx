@@ -937,6 +937,32 @@ for (const [where, env, root] of [
   })
 }
 
+for (const [where, env, root, options] of [
+  ['outside WSL', {}, 'file://', {}],
+  ['under WSL', { WSL_DISTRO_NAME: 'Ubuntu' }, 'file://wsl.localhost/Ubuntu', {}],
+  ['in Windows Terminal', {}, 'file://', { rtl: 'windows-terminal' }],
+] as const) {
+  test(`a line that is a path in a plain code block links as it does in inline code, ${where}`, { options }, async ($, on) => {
+    filesAt(on, '2.1.289', env)
+    on('fs.stat', (_, e, next) => (/(^|\/)D:\/work\/notes\/plan\.md$/.test(e.path.replace(/\\/g, '/')) ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : next(e)))
+    const clock = folders(on, ['/home/me/notes'])
+    if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+    const reply = ['```text', '/srv/app/main.ts', '  ~/notes', '/srv', 'npm test', '/srv/run.sh', 'D:\\work\\notes\\plan.md', '```', '', '```', '/srv/app/other.ts', '```', '', '```ts', '/srv/app/typed.ts', '```'].join('\n')
+    const ui = await $.ui.mount(mount(reply))
+    await clock.settle()
+    const links = await ui.findAll({ type: 'Link' })
+    expect(links.map(l => [l.props.label, l.props.href])).toEqual([
+      ['/srv/app/main.ts', `${root}/srv/app/main.ts`],
+      ['~/notes', `${root}/home/me/notes`],
+      ['D:\\work\\notes\\plan.md', 'file:///D:/work/notes/plan.md'],
+      ['/srv/app/other.ts', `${root}/srv/app/other.ts`],
+    ])
+    expect(await ui.find({ type: 'Text', text: /^ {2}~\/notes$/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /^\/srv\/app\/typed\.ts$/ })).toBeTruthy()
+    await ui.unmount()
+  })
+}
+
 const withoutLinks = (node: unknown): unknown => {
   if (node === null || typeof node !== 'object') return node
   const { type, props, children } = node as { type?: string; props?: Record<string, unknown>; children?: unknown[] }

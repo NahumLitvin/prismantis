@@ -22,7 +22,7 @@ export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }
   | { kind: 'paragraph'; inline: Inline[] }
   | { kind: 'list'; ordered: boolean; items: ListItem[] }
-  | { kind: 'code'; lang: string; lines: string[]; isOpen?: true }
+  | { kind: 'code'; lang: string; lines: string[]; isOpen?: true; hrefs?: readonly (string | undefined)[] }
   | { kind: 'quote'; blocks: Block[] }
   | { kind: 'alert'; level: AlertLevel; blocks: Block[] }
   | { kind: 'rule' }
