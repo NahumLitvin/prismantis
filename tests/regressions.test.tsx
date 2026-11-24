@@ -976,6 +976,23 @@ for (const [where, env, root, options] of [
   })
 }
 
+test('a path inside a line of a plain code block links, the words around it drawn as written', async ($, on) => {
+  filesAt(on, '2.1.289')
+  const clock = folders(on, ['/home/me/notes', '/work/notes/plan.md'])
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const reply = ['```text', 'Plan: D:\\work\\notes\\plan.md, then review', 'see /srv/app/main.ts and ~/notes', 'version v1.2 is not a path', '```'].join('\n')
+  const ui = await $.ui.mount(mount(reply))
+  await clock.settle()
+  expect((await ui.findAll({ type: 'Link' })).map(l => [l.props.label, l.props.href])).toEqual([
+    ['D:\\work\\notes\\plan.md', 'file:///D:/work/notes/plan.md'],
+    ['/srv/app/main.ts', 'file:///srv/app/main.ts'],
+    ['~/notes', 'file:///home/me/notes'],
+  ])
+  expect(await ui.find({ type: 'Text', text: /^Plan: D:\\work\\notes\\plan\.md, then review$/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /^version v1\.2 is not a path$/ })).toBeTruthy()
+  await ui.unmount()
+})
+
 const withoutLinks = (node: unknown): unknown => {
   if (node === null || typeof node !== 'object') return node
   const { type, props, children } = node as { type?: string; props?: Record<string, unknown>; children?: unknown[] }
