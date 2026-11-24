@@ -7,7 +7,7 @@ import type { Block, Inline, TableAlign, TableCell, TableBlock } from './markdow
 import { mathOf } from './latex'
 import type { AnsiRun } from './ansi'
 import { ansiLines, hasAnsi, hasLook } from './ansi'
-import { CONTROL, displayText, inlineText, isPathSpelling, isWebLink, nestedBlocks, parseInline, texParses, texText } from './markdown'
+import { CONTROL, displayText, DRIVE_PATH, inlineText, isPathSpelling, isWebLink, NAME, nestedBlocks, parseInline, PART, texParses, texText } from './markdown'
 import type { Flow } from './rtl'
 import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, engineProse, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
@@ -296,9 +296,7 @@ const drawnCode = (n: Extract<Inline, { kind: 'code' }>, reach: Reach): Inline =
   return drawn?.kind === 'path' && drawn.href !== undefined ? { ...n, text: drawn.text, href: drawn.href } : n
 }
 
-const PART = String.raw`[\p{L}\p{N}_@+-]+`
-const NAME = String.raw`\.?${PART}(?:\.${PART})*`
-const LOOSE_PATH = new RegExp(String.raw`(?<![\p{L}\p{N}_/\\.:~@+-])(?:[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?|${NAME}(?:\/${NAME})*\/(?:${NAME})?|${PART}(?:\.${PART})+)(?![\p{L}\p{N}_/\\@+-]|\.[\p{L}\p{N}])`, 'gu')
+const LOOSE_PATH = new RegExp(String.raw`(?<![\p{L}\p{N}_/\\.:~@+-])(?:${DRIVE_PATH.source}|${NAME}(?:\/${NAME})*\/(?:${NAME})?|${PART}(?:\.${PART})+)(?![\p{L}\p{N}_/\\@+-]|\.[\p{L}\p{N}])`, 'gu')
 
 type Probe = { key: string; href: string }
 

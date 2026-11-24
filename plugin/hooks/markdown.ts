@@ -95,6 +95,10 @@ const NUMBER = /(?<![\w.#/-]|\d[.,:])((?:(?<!\p{L})-(?=\d))?v?\d+(?:[.,:]\d+)*(?
 const PATH = /(?<![\p{L}\p{M}\p{N}_/.:])((?:~|\.{1,2})?\/[\p{L}\p{M}\p{N}_.@+-]+(?:\/[\p{L}\p{M}\p{N}_.@+-]*)*)/gu
 const WHOLE_PATH = new RegExp(`^(?:${PATH.source})$`, PATH.flags.replace('g', ''))
 export const isPathSpelling = (text: string): boolean => WHOLE_PATH.test(text)
+export const PART = String.raw`[\p{L}\p{N}_@+-]+`
+export const NAME = String.raw`\.?${PART}(?:\.${PART})*`
+export const DRIVE_PATH = new RegExp(String.raw`[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?`, 'gu')
+const driveSpans = (text: string) => (text.includes(':') ? Array.from(text.matchAll(DRIVE_PATH), m => ({ start: m.index, end: m.index + m[0].length })) : [])
 
 const NAMED: Record<string, string> = {
   amp: '&', AMP: '&', lt: '<', LT: '<', gt: '>', GT: '>', quot: '"', QUOT: '"', apos: "'", nbsp: '\u00a0', COPY: '©', REG: '®', copy: '©', reg: '®', trade: '™', mdash: '—', ndash: '–', hellip: '…', minus: '−',
@@ -114,9 +118,10 @@ const decorate = (raw: string, hl: Highlight): Inline[] => {
   const marks: { start: number; end: number; kind: 'number' | 'path' }[] = []
   if (hl.paths) for (const m of text.matchAll(PATH)) marks.push({ start: m.index, end: m.index + m[0].length, kind: 'path' })
   if (hl.numbers) {
+    const taken = [...marks, ...driveSpans(text)]
     for (const m of text.matchAll(NUMBER)) {
       const start = m.index
-      if (!marks.some(p => start < p.end && start + m[0].length > p.start)) {
+      if (!taken.some(p => start < p.end && start + m[0].length > p.start)) {
         marks.push({ start, end: start + m[0].length, kind: 'number' })
       }
     }
