@@ -979,7 +979,8 @@ const tablePlan = (block: TableBlock, style: Style, columns: number, texts: bool
   const widths = style.tableLayout === 'compact' && !style.gridFace
     ? columnWidths(natural, Math.min(room, spread), sizingGap, words)
     : columnWidths(natural, room, sizingGap, words)
-  return { stack: false, box, gap, natural, words, widths }
+  const clipped = style.gridFace === true && !texts && widths.some((w, c) => w < minimum[c]!)
+  return { stack: clipped, box, gap, natural, words, widths: clipped ? [] : widths }
 }
 
 const stackedPlan = (header: TableCell[], columns: number) => {
@@ -1002,11 +1003,21 @@ const stackedTable = (el: ElementTable, style: Style, block: TableBlock, columns
   const t = style.theme
   const { labelW, room } = stackedPlan(block.header, columns)
   const separators = style.tableStyle !== 'minimal' && block.rows.length > 0
+  const label = (labels: Inline[][], i: number): RenderElement => {
+    if (!style.gridFace) return <Text bold color={t.tableHeader}>{labels[i] ? inlineText(padTo(labels[i]!, labelW)) : ' '.repeat(labelW)}</Text>
+    return <Box width={drawnCells(style, labelW)} flexShrink={0}><Text bold color={t.tableHeader}>{labels[i] ? inlineText(labels[i]!) : ''}</Text></Box>
+  }
+  const separator = (i: number): RenderElement => {
+    if (!style.gridFace) return <Text key={`${key}.s${i}`} color={t.tableRule} dimColor={!t.tableRule}>{'─'.repeat(columns)}</Text>
+    return (
+      <Box key={`${key}.s${i}`} flexDirection="row" height={1} alignItems="center">
+        <Box width={drawnCells(style, columns)} flexShrink={1} minWidth={0} height={HAIRLINE} backgroundColor={ruleInk(style)} />
+      </Box>
+    )
+  }
   const pairLine = (labels: Inline[][], values: Inline[][], c: number, i: number, k: string): RenderElement => (
     <Box key={`${k}.${c}.${i}`} flexDirection="row">
-      <Text bold color={t.tableHeader}>
-        {labels[i] ? inlineText(padTo(labels[i]!, labelW)) : ' '.repeat(labelW)}
-      </Text>
+      {label(labels, i)}
       <Text>
         {' '}
         {values[i] ? pressInline(el, style, values[i]!, room, `${k}.${c}.v${i}`, tip) ?? renderInline(el, style, values[i]!, `${k}.${c}.v${i}`) : ''}
@@ -1023,9 +1034,7 @@ const stackedTable = (el: ElementTable, style: Style, block: TableBlock, columns
   }
   const lines: RenderElement[] = block.rows.flatMap((r, i) => [
     ...record(r, i),
-    ...(separators && i < block.rows.length - 1
-      ? [<Text key={`${key}.s${i}`} color={t.tableRule} dimColor={!t.tableRule}>{'─'.repeat(columns)}</Text>]
-      : []),
+    ...(separators && i < block.rows.length - 1 ? [separator(i)] : []),
   ])
   return <Box key={key} flexDirection="column">{lines}</Box>
 }

@@ -1846,6 +1846,25 @@ test('a wide desktop table of many columns is capped to the reply, and every wor
   await ui.unmount()
 })
 
+const OPTIONS_TABLE = '| Option | Where | Machine | Cost | Fit |\n|---|---|---|---|---|\n| **AWS c7a.16xlarge, by the hour** | Virginia, same region as the vault | 64 vCPU, 128 GB | $3.28/hr on demand, about $0.95/hr on spot | **Best.** Pay only while rendering. 6 h/day is about $430/mo |\n| Hetzner AX162, flat | Germany only | 48 cores, 128 GB | €319/mo + €304 setup | Cheapest flat price, but every file read crosses the Atlantic. |'
+
+const gridCells = async (ui: { findAll: (q: object) => Promise<unknown[]> }) =>
+  ((await ui.findAll({ type: 'Box' })) as Found[]).filter(b => typeof b.props.minWidth === 'number' && typeof b.props.width === 'string')
+
+for (const [columns, layout, stacks] of [[60, 'classic', true], [70, 'classic', true], [70, 'compact', true], [120, 'classic', false]] as const) {
+  test(`a desktop table whose longest words cannot fit ${stacks ? 'stacks' : 'keeps its grid'} at ${columns} columns with tableLayout ${layout} (#619)`, { options: { tableLayout: layout } }, async ($, on) => {
+    claudeAt(on, '2.1.325')
+    const ui = await $.ui.mount({ ...mount(OPTIONS_TABLE, columns), surface: 'desktop' })
+    expect((await gridCells(ui)).length === 0).toBe(stacks)
+    if (stacks) {
+      expect(await ui.find({ type: 'Text', text: /^Option\s*$/ })).toBeTruthy()
+      expect((await ui.findAll({ type: 'Text', text: /─/ })).length).toBe(0)
+      expect(((await ui.findAll({ type: 'Box' })) as Found[]).filter(b => b.props.height === 0.06).length).toBe(1)
+    }
+    await ui.unmount()
+  })
+}
+
 const NARROW_REPLIES = {
   'an English table and paragraph (#512)': `This is a deliberately long paragraph used to check whether body text wraps when the window becomes narrow, or whether it simply gets cut off at the right edge so the rest of the sentence cannot be read.\n\n${WIDTH_TABLES['English sections (#512)']}\n\n1. **First point**: this list item is also very long, to confirm whether lists wrap in a narrow window or get clipped.`,
   'a string with no spaces (#512)': `Before ${'x'.repeat(90)} after, and a long English paragraph that has to wrap inside the reply instead of running past it.`,

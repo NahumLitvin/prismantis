@@ -1103,13 +1103,11 @@ for (const surface of ['terminal', 'desktop', 'vscode'] as const) test(`a list i
   await ui.unmount()
 })
 
-test('desktop columns ask for no more than their planned width, so long words break as in the terminal', async $ => {
+test('a desktop table whose long words cannot fit their columns stacks each row instead of clipping', async $ => {
   const table = '| a | b | c |\n|---|---|---|\n| src/components/navigation/sidebar.tsx | tests/integration/checkout.test.ts | docs/records/001-architecture-overview.md |'
   const ui = await $.ui.mount({ ...draw(table), surface: 'desktop', viewport: { columns: 40, rows: 20 } })
-  const headers = ['a', 'b', 'c'].map(async name => (await ui.findAll({ type: 'Box' })).find(b => b.text === name && typeof b.props.width === 'string'))
-  const minimums = (await Promise.all(headers)).map(b => b?.props.minWidth as number)
-  expect(minimums.every(n => typeof n === 'number')).toBe(true)
-  expect(minimums.reduce((sum, n) => sum + n, 0)).toBeLessThanOrEqual(36)
+  expect((await ui.findAll({ type: 'Box' })).filter(b => typeof b.props.width === 'string' && typeof b.props.minWidth === 'number')).toHaveLength(0)
+  expect(await ui.find({ type: 'Text', text: /^a\s*$/ })).toBeTruthy()
   await ui.unmount()
 })
 
