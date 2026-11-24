@@ -42,6 +42,8 @@ Each tool call draws as one line: a verb and its target, `Ran` with a colored sh
 | rounded box, tinted lines | no box, lines tinted across the width | no tint, colored `+` and `−` | no tint, a colored `▌` before each changed line |
 | ![card](diff/card.png) | ![full](diff/full.png) | ![marks](diff/marks.png) | ![bar](diff/bar.png) |
 
+In Code Mode, Claude Code gives each script a row of its own but draws nothing on it, then one row per tool call the script makes. prismantis draws the script's code on that row, highlighted as JavaScript, so it sits above the rows of its calls, with a copy button and the lines past 30 folded behind `+N more lines`. A script still streaming in draws once its code arrives. `scriptStyle` picks the look: `frame` (default) puts the code in a rounded box with `Code · N lines` in its top border and the copy button at its top right, `rail` draws a colored `▌` before every line on a background, `bar` heads the code with a filled strip that says whether the script is running, done or failed (failed when it throws or is interrupted), and `chip` folds it to one line with its first line of code, which opens on a click. The ctrl+o transcript draws it the same way.
+
 Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm test`, with `· N failed` in the flag color when any call failed. Expand a group (ctrl+o or `--verbose`): shell calls keep their colored command with the output boxed below, and other calls use Claude Code's own rows. ctrl+o on a reply shows the original text.
 
 `toolStyle` keeps tool rows apart from what Claude says:

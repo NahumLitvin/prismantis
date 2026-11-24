@@ -197,6 +197,20 @@ for (const toolOutput of ['full', 'quiet'] as const) {
   })
 }
 
+for (const scriptStyle of ['frame', 'rail', 'bar', 'chip'] as const) {
+  test(`terminal control sequences in a Code Mode script are never drawn (scriptStyle ${scriptStyle})`, { options: { scriptStyle } }, async ($, on) => {
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: toolCall('REPL', { code: `log("hi ${BAD}")\nreturn 1` }) } as Parameters<Engine['ui']['mount']>[0])
+    const texts = [...(await ui.findAll({ type: 'Text' })).map(n => n.text ?? ''), ...(await ui.findAll({ type: 'Button' })).map(n => String(n.props?.label ?? ''))]
+    await ui.unmount()
+    expect(texts.join('')).toContain('log')
+    expect(texts.filter(t => /[\u001b\u0007]/.test(t))).toEqual([])
+  })
+}
+
 test('terminal control sequences in a failed tool\'s error and refusal text are never drawn', { options: { toolOutput: 'quiet' } }, async $ => {
   const error = await drawnTexts($, { component: 'ToolResult', props: { tool_use_id: 'r-1', tool: 'Bash', output: { stdout: '', stderr: `boom ${BAD}`, interrupted: false }, isErrored: true } })
   const refusal = await drawnTexts($, { component: 'ToolResult', props: { tool_use_id: 'r-2', tool: 'Bash', output: `Permission to run ${BAD} denied`, isErrored: true } })

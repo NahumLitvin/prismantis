@@ -10,8 +10,8 @@ import type { ClipboardBackend, HelperCommand } from './clipboard'
 import { artColors, clipboardCommand, drawsImages, imageCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
-import type { CopyButton, DrawPaste, Drawn, Fold, Hues, TerminalEnv } from './render'
-import { MARK, bashEdits, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isPlan, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, planBlock, planRoom, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderPlan, renderPlanHead, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, swapTurnLine, renderUserPrompt, promptSource, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
+import type { CallWatch, CopyButton, DrawPaste, Drawn, Fold, Hues, Script, TerminalEnv } from './render'
+import { MARK, SCRIPT_SHOW, SCRIPT_TOOL, bashEdits, chipLabel, drawScript, dropRunning, scriptChip, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isPlan, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, planBlock, planRoom, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderPlan, renderPlanHead, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, swapTurnLine, renderUserPrompt, promptSource, replyRoom, replyStyleFor, scriptLines, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, watchCalls, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, KEY_POINT_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -425,6 +425,23 @@ const withFound = async ($: EngineInterface, checks: PathChecks, style: Style, p
   return { ...style, found: checks.found }
 }
 
+type Runs = { watch: CallWatch; blinker: Blinker; checks: PathChecks; style: Style }
+
+const watchRuns = ($: EngineInterface, runs: Runs, calls: Parameters<typeof watchCalls>[1]) => {
+  const { moved, finished } = watchCalls(runs.watch, calls)
+  for (const call of finished) forgetMisses(runs.checks, call)
+  if (!moved || runs.style.runningDot !== 'blink') return
+  runs.blinker.tools = runs.watch.running.size
+  $.clock.after(0, () => void keepBlinking($, runs.blinker).catch(() => undefined))
+}
+
+const settleRuns = async ($: EngineInterface, runs: Runs) => {
+  dropRunning(runs.watch)
+  if (runs.style.runningDot !== 'blink' || runs.blinker.tools === 0) return
+  runs.blinker.tools = 0
+  await keepBlinking($, runs.blinker)
+}
+
 const fileCard = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, output: unknown, id: string, style: Style, probes: Probes, drawn: () => Style, columns?: number): Promise<RenderElement | undefined> => {
   const press = (await linkReach($, probes, style)).marks
   if (leftToEngine(output, press)) return undefined
@@ -525,6 +542,39 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
   if (!button) return elements
   return [...elements, style.copyButtonStyle === 'hover' ? replyMarker(el, button, notes?.id) : <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>]
+}
+
+const SCRIPT_SAMPLE: Script = { id: 'setup', code: "const files = await $`git ls-files src`.lines()\nconst tests = files.filter(f => f.endsWith('.test.ts'))\nreturn { files: files.length, tests: tests.length }", status: 'done' }
+
+const scriptCard = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, script: Script, open: string[], columns: number, press: boolean): RenderElement | null => {
+  const lines = scriptLines(script.code)
+  if (!lines) return null
+  const fold = style.scriptStyle === 'chip'
+    ? folder($, el, open, press)(`${script.id}:chip`, lines.length, 'chip', { label: chipLabel(lines, columns - 2), face: folded => scriptChip(el, style, lines, folded, columns - 2) })
+    : lines.length > SCRIPT_SHOW ? folder($, el, open, false, style.folds === 'open')(`${script.id}:script`, lines.length - SCRIPT_SHOW, 'fold') : null
+  const copy = copyButton($, el, style)(script.code, 'copy')
+  return drawScript(el, style, { lines, copy, fold, status: script.status, columns }, `script:${script.id}`)
+}
+
+const withScript = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, viewport: { columns?: number } | undefined, style: Style, script: Script, row: RenderElement, press: boolean): Promise<RenderElement> => {
+  const open = await read($, unfolded)
+  return (
+    <el.Box flexDirection="column">
+      {scriptCard($, el, style, script, open, columnsOf(viewport, style), press)}
+      {row}
+    </el.Box>
+  )
+}
+
+const scriptRow = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, viewport: { columns?: number } | undefined, style: Style, props: Parameters<typeof ownScript>[0], press: boolean, row: () => Promise<RenderElement>): Promise<RenderElement> => {
+  const own = ownScript(props)
+  return own ? withScript($, el, viewport, style, own, await row(), press) : row()
+}
+
+const ownScript = (props: { tool_use_id: string; input: unknown; isRunning: boolean; isErrored: boolean; isInterrupted: boolean }): Script | undefined => {
+  const code = props.input !== null && typeof props.input === 'object' ? (props.input as { code?: unknown }).code : undefined
+  if (typeof code !== 'string' || !code.trim()) return undefined
+  return { id: props.tool_use_id, code, status: props.isErrored || props.isInterrupted ? 'failed' : props.isRunning ? 'running' : 'done' }
 }
 
 const replyMarker = (el: ReturnType<EngineInterface['ui']['resolve']>, button: RenderElement, id?: string, name = 'reply') => {
@@ -800,6 +850,7 @@ const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['res
     clock: (style, value, id) => clockSample(el, style, value, id, columns),
     replyStyle: (style, _, id) => replySample($, el, style, id, columns),
     bubbleLabels: (style, _, id) => [...promptSample(el, style, style.promptStyle, `${id}p`, columns), ...replySample($, el, style, id, columns)],
+    scriptStyle: (style, _, id) => [<el.Box key={id}>{scriptCard($, el, style, SCRIPT_SAMPLE, [], columns, false)}</el.Box>],
   }
   const sample = (style: Style, value: string, id: string): RenderElement[] => samples[key]?.(style, value, id) ?? []
   const picks = found.parts.options.map(({ value, text }, i) => {
@@ -879,29 +930,39 @@ export const register: Register = (on, options) => {
   }
   if (style.planStyle !== 'off') on('ui.render', { component: 'ToolResult', ...here }, async ($, e, next) => (await planRow($, e, style, { probes, latex, pathChecks, surfaced: forSurface })) ?? next(e))
   let firstEdit: string | undefined
-  if (options.toolRows !== false) {
-    on('ui.render', { component: 'ToolGroup', ...here }, async ($, e, next) => {
-      await locate($, style)
-      for (const call of e.props.calls) noteCommand(call.tool_use_id, call.tool, call.input)
-      if (quiet) for (const call of e.props.calls) if (call.tool_use_id && isReadOnlyCall(call.tool, call.input)) rememberCall(readOnlyCalls, call.tool_use_id)
-      if (e.props.isExpanded) {
-        for (const call of e.props.calls) if (call.tool_use_id) rememberCall(expandedCalls, call.tool_use_id, 500)
-        return next(e)
-      }
-      const dotDark = await darkDot($, style, groupRunning(e.props))
-      const drawn = forSurface(style, e, await linkReach($, probes, style))
-      return renderToolGroup($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, e.props.calls.map(call => call.input)))), dotDark }, e.props.calls, e.props.isActive, e.viewport?.columns)
-    })
-    on('ui.render', { component: 'ToolUse', ...here }, async ($, e, next) => {
-      await locate($, style)
-      noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
-      if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
-      const dotDark = await darkDot($, style, e.props.isRunning)
-      const drawn = forSurface(style, e, await linkReach($, probes, style))
-      const grouped = expandedCalls.has(e.props.tool_use_id)
-      if (!grouped && !expandedRow(e.props)) return renderToolRow($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, [e.props.input]))), dotDark }, e.props, e.viewport?.columns)
-      return renderExpandedCall($.ui.resolve(e), { ...style, dotDark }, e.props, grouped, e.viewport?.columns) ?? next(e)
-    })
+  const runs: Runs = { watch: { running: new Set(), done: new Set(), dropped: new Set() }, blinker, checks: pathChecks, style }
+  const toolRowsOn = options.toolRows !== false
+  on('ui.render', { component: 'ToolGroup', ...here }, async ($, e, next) => {
+    watchRuns($, runs, e.props.calls.map(call => ({ ...call, isRunning: e.props.isActive && call.isRunning })))
+    if (!toolRowsOn) return next(e)
+    await locate($, style)
+    for (const call of e.props.calls) noteCommand(call.tool_use_id, call.tool, call.input)
+    if (quiet) for (const call of e.props.calls) if (call.tool_use_id && isReadOnlyCall(call.tool, call.input)) rememberCall(readOnlyCalls, call.tool_use_id)
+    if (e.props.isExpanded) {
+      for (const call of e.props.calls) if (call.tool_use_id) rememberCall(expandedCalls, call.tool_use_id, 500)
+      return next(e)
+    }
+    const dotDark = await darkDot($, style, groupRunning(e.props))
+    const drawn = forSurface(style, e, await linkReach($, probes, style))
+    return renderToolGroup($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, e.props.calls.map(call => call.input)))), dotDark }, e.props.calls, e.props.isActive, e.viewport?.columns)
+  })
+  on('ui.render', { component: 'ToolUse', ...here }, async ($, e, next) => {
+    watchRuns($, runs, [e.props])
+    if (!toolRowsOn) return next(e)
+    if (e.props.tool === SCRIPT_TOOL) {
+      const reach = await linkReach($, probes, style)
+      return scriptRow($, $.ui.resolve(e), e.viewport, forSurface(style, e, reach), e.props, reach.marks, () => next(e))
+    }
+    await locate($, style)
+    noteCommand(e.props.tool_use_id, e.props.tool, e.props.input)
+    if (quiet && isReadOnlyCall(e.props.tool, e.props.input)) rememberCall(readOnlyCalls, e.props.tool_use_id)
+    const dotDark = await darkDot($, style, e.props.isRunning)
+    const drawn = forSurface(style, e, await linkReach($, probes, style))
+    const grouped = expandedCalls.has(e.props.tool_use_id)
+    if (!grouped && !expandedRow(e.props)) return renderToolRow($.ui.resolve(e), { ...(await withFound($, pathChecks, drawn, toolPathsToProbe(drawn, [e.props.input]))), dotDark }, e.props, e.viewport?.columns)
+    return renderExpandedCall($.ui.resolve(e), { ...style, dotDark }, e.props, grouped, e.viewport?.columns) ?? next(e)
+  })
+  if (toolRowsOn) {
     on('ui.render', { component: 'ToolResult', ...here }, async ($, e, next) => {
       const cards = (): Style => ({ ...style, pressPreview: e.surface === 'terminal' })
       if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) return (await fileCard($, $.ui.resolve(e), e.props.output, e.props.tool_use_id, style, probes, cards, e.viewport?.columns)) ?? next(e)
@@ -927,23 +988,6 @@ export const register: Register = (on, options) => {
       return shell ? renderShellResult(el, style, e.props.output) : next(e)
     })
   }
-
-  on('tool.call', async ($, e, next) => {
-    if (style.runningDot !== 'blink') {
-      const done = await next(e)
-      forgetMisses(pathChecks, e)
-      return done
-    }
-    blinker.tools++
-    await keepBlinking($, blinker)
-    try {
-      return await next(e)
-    } finally {
-      blinker.tools--
-      await keepBlinking($, blinker)
-      forgetMisses(pathChecks, e)
-    }
-  })
 
   on('session.start', async ($, e, next) => {
     await probe($, style, probes)
@@ -999,6 +1043,7 @@ export const register: Register = (on, options) => {
   })
 
   on('turn.complete', async ($, e, next) => {
+    if (e.agentId === undefined) await settleRuns($, runs)
     if (style.clock !== 'off' && e.agentId === undefined) {
       const at = await $.clock.now()
       await persist($, () => update($, turnEnds, list => withRecord(list, { durationMs: e.durationMs, at })))

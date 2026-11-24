@@ -2610,6 +2610,187 @@ export const rememberCall = (calls: Set<string>, id: string, limit = 2000): void
   if (calls.size > limit) calls.delete(calls.values().next().value!)
 }
 
+export type CallWatch = { running: Set<string>; done: Set<string>; dropped: Set<string> }
+
+type WatchedCall = { tool_use_id?: string; tool: string; input: unknown; isRunning: boolean }
+
+const callFields = (tool: string, input: unknown): Record<string, unknown> => ({ ...(input !== null && typeof input === 'object' ? input : {}), tool })
+
+export const watchCalls = (watch: CallWatch, calls: readonly WatchedCall[]): { moved: boolean; finished: Record<string, unknown>[] } => {
+  let moved = false
+  const finished: Record<string, unknown>[] = []
+  for (const { tool_use_id: id, tool, input, isRunning } of calls) {
+    if (!id) continue
+    const live = isRunning && !watch.done.has(id) && !watch.dropped.has(id)
+    moved ||= watch.running.has(id) !== live
+    if (live) watch.running.add(id)
+    else watch.running.delete(id)
+    if (isRunning || watch.done.has(id)) continue
+    rememberCall(watch.done, id)
+    finished.push(callFields(tool, input))
+  }
+  return { moved, finished }
+}
+
+export const dropRunning = (watch: CallWatch): void => {
+  for (const id of watch.running) rememberCall(watch.dropped, id)
+  watch.running.clear()
+}
+
+export const SCRIPT_TOOL = 'REPL'
+
+export const SCRIPT_SHOW = 30
+
+export type ScriptStatus = 'running' | 'done' | 'failed'
+
+export type Script = { id: string; code: string; status: ScriptStatus }
+
+export type ScriptParts = { lines: string[]; copy: RenderElement | null; fold: ReturnType<Fold>; status: ScriptStatus; columns: number }
+
+const scriptTitle = (lines: readonly string[]) => `Code · ${lineCount(lines.length)}`
+
+const scriptRows = (el: ElementTable, style: Style, parts: ScriptParts, room: number): RenderElement[] =>
+  codeRows(el, style, parts.lines, parts.fold?.folded ? SCRIPT_SHOW : parts.lines.length, 'javascript', false, Math.max(8, room), 'script')
+
+const buttonWidth = (button: RenderElement): number => (button.type === 'Button' && button.props.plain ? width(button.props.label ?? '') : width(buttonText(button) ?? ''))
+
+const cutTo = (text: string, room: number): string => {
+  if (width(text) <= room) return text
+  let kept = ''
+  for (const g of graphemes(text)) {
+    if (width(kept + g) > room - 1) break
+    kept += g
+  }
+  return `${kept}…`
+}
+
+const frameScript = (el: ElementTable, style: Style, parts: ScriptParts): RenderElement => {
+  const { Box, Text } = el
+  const color = style.theme.codeBorder ?? style.theme.accent
+  const title = scriptTitle(parts.lines)
+  const toggle = parts.fold?.element ?? null
+  if (style.nativeCode) {
+    return (
+      <Box flexDirection="column" alignSelf="flex-start" borderStyle="round" borderColor={color} paddingX={1}>
+        <Box flexDirection="row" justifyContent="space-between" columnGap={2}><Text color={style.theme.codeComment}>{title}</Text>{parts.copy}</Box>
+        {scriptRows(el, style, parts, parts.columns - 4)}
+        {toggle}
+      </Box>
+    )
+  }
+  const copyWidth = parts.copy ? buttonWidth(parts.copy) + 2 : 0
+  const wide = Math.min(parts.columns, Math.max(width(title) + copyWidth + 7, widestLine(parts.lines.join('\n')) + 4))
+  const copy = width(title) + copyWidth + 7 <= wide ? parts.copy : null
+  const head = cutTo(title, wide - 7)
+  const side = (key: string, body: RenderNode) => (
+    <Box key={key} flexDirection="row" width={wide}>
+      <Text color={color}>│ </Text>
+      <Box width={wide - 4} overflow="hidden">{body}</Box>
+      <Text color={color}> │</Text>
+    </Box>
+  )
+  return (
+    <Box flexDirection="column" width={wide}>
+      <Box flexDirection="row" width={wide}>
+        <Text color={color}>╭─ </Text>
+        <Text color={style.theme.codeComment}>{head}</Text>
+        <Text color={color}>{` ${'─'.repeat(Math.max(1, wide - 6 - width(head) - (copy ? copyWidth : 0)))}${copy ? ' ' : ''}`}</Text>
+        {copy}
+        <Text color={color}>{copy ? ' ─╮' : '─╮'}</Text>
+      </Box>
+      {scriptRows(el, style, parts, wide - 4).map((row, i) => side(`r${i}`, row))}
+      {toggle ? side('more', toggle) : null}
+      <Text color={color}>{`╰${'─'.repeat(wide - 2)}╯`}</Text>
+    </Box>
+  )
+}
+
+const railScript = (el: ElementTable, style: Style, parts: ScriptParts): RenderElement => {
+  const { Box, Text } = el
+  const fill = style.theme.codeFill ?? previewBand(style.theme, style.background)
+  const rail = (key: string, body: RenderNode | null) => (
+    <Box key={key} flexDirection="row">
+      <Text color={style.theme.accent}>▌ </Text>
+      {body}
+    </Box>
+  )
+  return (
+    <Box flexDirection="column" alignSelf="flex-start" {...(fill ? { backgroundColor: fill } : {})}>
+      <Box flexDirection="row" justifyContent="space-between" columnGap={2}>
+        {rail('head', <Text color={style.theme.codeComment}>{scriptTitle(parts.lines)}</Text>)}
+        {parts.copy}
+      </Box>
+      {scriptRows(el, style, parts, parts.columns - 2).map((row, i) => rail(`r${i}`, row))}
+      {parts.fold ? rail('fold', parts.fold.element) : null}
+    </Box>
+  )
+}
+
+const barScript = (el: ElementTable, style: Style, parts: ScriptParts): RenderElement => {
+  const { Box, Text } = el
+  const fill = style.theme.codeFill ?? previewBand(style.theme, style.background)
+  return (
+    <Box flexDirection="column">
+      <Box flexDirection="row" justifyContent="space-between" columnGap={2} backgroundColor={style.theme.accent}>
+        <Text inverse bold color={style.theme.accent}>{`▶ ${scriptTitle(parts.lines)} · ${parts.status}`}</Text>
+        {parts.copy}
+      </Box>
+      <Box flexDirection="column" paddingX={1} {...(fill ? { backgroundColor: fill } : {})}>
+        {scriptRows(el, style, parts, parts.columns - 2)}
+        {parts.fold?.element ?? null}
+      </Box>
+    </Box>
+  )
+}
+
+const chipParts = (lines: readonly string[], folded: boolean, columns: number) => {
+  const head = `${folded ? '▸' : '▾'} ${scriptTitle(lines)}`
+  return { head, shown: cutTo((lines.find(line => line.trim()) ?? '').trim(), columns - width(head) - 5) }
+}
+
+export const chipLabel = (lines: readonly string[], columns: number): string => {
+  const { head, shown } = chipParts(lines, true, columns)
+  return shown ? `${head} · ${shown} …` : head
+}
+
+export const scriptChip = (el: ElementTable, style: Style, lines: readonly string[], folded: boolean, columns: number): RenderElement => {
+  const { Text } = el
+  const { head, shown } = chipParts(lines, folded, columns)
+  return (
+    <Text>
+      <Text color={style.theme.accent}>{head}</Text>
+      {folded && shown ? <Text color={style.theme.codeComment}>{` · ${shown} …`}</Text> : null}
+    </Text>
+  )
+}
+
+const chipScript = (el: ElementTable, style: Style, parts: ScriptParts): RenderElement => {
+  const { Box } = el
+  const open = parts.fold !== null && !parts.fold.folded
+  return (
+    <Box flexDirection="column">
+      <Box flexDirection="row" columnGap={2}>
+        {parts.fold?.element ?? scriptChip(el, style, parts.lines, true, parts.columns)}
+        {open ? parts.copy : null}
+      </Box>
+      {open ? <Box flexDirection="column" paddingLeft={2}>{codeRows(el, style, parts.lines, parts.lines.length, 'javascript', false, parts.columns - 2, 'script')}</Box> : null}
+    </Box>
+  )
+}
+
+const SCRIPT_LOOKS: Record<Style['scriptStyle'], (el: ElementTable, style: Style, parts: ScriptParts) => RenderElement> = { frame: frameScript, rail: railScript, bar: barScript, chip: chipScript }
+
+export const drawScript = (el: ElementTable, style: Style, parts: ScriptParts, key: string): RenderElement => (
+  <el.Box key={key} flexDirection="column" paddingLeft={2}>
+    {SCRIPT_LOOKS[style.scriptStyle](el, style, { ...parts, columns: parts.columns - 2 })}
+  </el.Box>
+)
+
+export const scriptLines = (code: string): string[] | undefined => {
+  const clean = code.replace(CONTROL, '').replace(/\s+$/, '')
+  return clean.trim() ? clean.split('\n') : undefined
+}
+
 export const errorReason = (output: unknown): string | undefined => {
   const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
   const text = typeof output === 'string' ? output : typeof out.stderr === 'string' && out.stderr.trim() ? out.stderr : out.stdout
