@@ -2786,7 +2786,10 @@ export const drawScript = (el: ElementTable, style: Style, parts: ScriptParts, k
   </el.Box>
 )
 
-export const scriptLines = (code: string): string[] | undefined => (code.trim() ? code.replace(/\s+$/, '').split('\n') : undefined)
+export const scriptLines = (code: string): string[] | undefined => {
+  const clean = code.replace(CONTROL, '').replace(/\s+$/, '')
+  return clean.trim() ? clean.split('\n') : undefined
+}
 
 export const errorReason = (output: unknown): string | undefined => {
   const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
