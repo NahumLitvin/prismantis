@@ -164,6 +164,16 @@ const inlineOf = (m: RegExpExecArray, hl: Highlight): Inline[] => {
   return url === undefined ? [] : [{ kind: 'link', text: url, href: url }]
 }
 
+// INLINE's \w knows ASCII alone, so it took the underscores of 檔名_v2_最終
+// for emphasis. CommonMark keeps an underscore run with a letter or digit on
+// its outer side as part of the word, whatever the script.
+const WORDLIKE = /^[\p{L}\p{N}]$/u
+const isInWord = (text: string, m: RegExpExecArray): boolean => {
+  const before = Array.from(text.slice(Math.max(0, m.index - 2), m.index)).at(-1) ?? ''
+  const after = String.fromCodePoint(text.codePointAt(m.index + m[0].length) ?? 32)
+  return WORDLIKE.test(before) || WORDLIKE.test(after)
+}
+
 export const parseInline = (text: string, hl: Highlight): Inline[] => {
   if (text.length > MAX_INLINE) return [{ kind: 'text', text: dropTints(text) }]
   const out: Inline[] = []
@@ -174,6 +184,10 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
     at = m.index + m[0].length
     if (m[16] !== undefined) {
       plain += m[16]
+      continue
+    }
+    if ((m[6] !== undefined || m[9] !== undefined) && isInWord(text, m)) {
+      plain += m[0]
       continue
     }
     if (plain) out.push(...tinted(plain, hl))

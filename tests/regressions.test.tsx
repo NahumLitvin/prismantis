@@ -976,6 +976,17 @@ for (const [where, env, root, options] of [
   })
 }
 
+test('an underscore with a letter of any script on its outer side stays in the word', () => {
+  const words = (source: string) => {
+    const [block] = parse(source, { numbers: false, paths: false })
+    return block?.kind === 'paragraph' ? block.inline : []
+  }
+  expect(words('報告_v2版_最終稿.mp4')).toEqual([{ kind: 'text', text: '報告_v2版_最終稿.mp4' }])
+  expect(words('檔名__v2__最終')).toEqual([{ kind: 'text', text: '檔名__v2__最終' }])
+  expect(words('snake_case_name')).toEqual([{ kind: 'text', text: 'snake_case_name' }])
+  expect(words('這是 _重點_，那是 __粗體__。').map(n => n.kind)).toEqual(['text', 'emphasis', 'text', 'strong', 'text'])
+})
+
 const withoutLinks = (node: unknown): unknown => {
   if (node === null || typeof node !== 'object') return node
   const { type, props, children } = node as { type?: string; props?: Record<string, unknown>; children?: unknown[] }
