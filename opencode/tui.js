@@ -61,6 +61,9 @@ var FIGURE_ROLES = ["accent", "warn", "ok", "note", "dim", "strong"];
 var ROLE_MARKUP = new RegExp(`\\{(?:${FIGURE_ROLES.join("|")}):([^{}]*)\\}`, "g");
 var PATH = /(?<![\p{L}\p{M}\p{N}_/.:])((?:~|\.{1,2})?\/[\p{L}\p{M}\p{N}_.@+-]+(?:\/[\p{L}\p{M}\p{N}_.@+-]*)*)/gu;
 var WHOLE_PATH = new RegExp(`^(?:${PATH.source})$`, PATH.flags.replace("g", ""));
+var PART = String.raw`[\p{L}\p{N}_@+-]+`;
+var NAME = String.raw`\.?${PART}(?:\.${PART})*`;
+var DRIVE_PATH = new RegExp(String.raw`[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?`, "gu");
 var NAMED = {
   amp: "&",
   AMP: "&",
@@ -154,9 +157,7 @@ var takesHttpLinks = releaseFrom(HTTP_LINKS_FROM);
 var takesEditorLinks = releaseFrom(EDITOR_LINKS_FROM);
 var takesClickableMarks = releaseFrom(CLICKABLE_MARKS_FROM);
 var takesMonoText = releaseFrom(MONO_TEXT_FROM);
-var PART = String.raw`[\p{L}\p{N}_@+-]+`;
-var NAME = String.raw`\.?${PART}(?:\.${PART})*`;
-var LOOSE_PATH = new RegExp(String.raw`(?<![\p{L}\p{N}_/\\.:~@+-])(?:[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?|${NAME}(?:\/${NAME})*\/(?:${NAME})?|${PART}(?:\.${PART})+)(?![\p{L}\p{N}_/\\@+-]|\.[\p{L}\p{N}])`, "gu");
+var LOOSE_PATH = new RegExp(String.raw`(?<![\p{L}\p{N}_/\\.:~@+-])(?:${DRIVE_PATH.source}|${NAME}(?:\/${NAME})*\/(?:${NAME})?|${PART}(?:\.${PART})+)(?![\p{L}\p{N}_/\\@+-]|\.[\p{L}\p{N}])`, "gu");
 var KEPT_CHARS = 1e6;
 var keptTotals = /* @__PURE__ */ new WeakMap();
 var keptChars = (cache) => {

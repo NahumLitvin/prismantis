@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.51.0] - 2026-11-24
+
+Prismantis works with Code Mode, and desktop tables fit the reply.
+
+### Added
+
+- Code Mode (`CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1`) now works with prismantis on. Each REPL call draws its script as a code card above the tool calls it makes. `scriptStyle` picks the look: `frame` (the default, a rounded box with a copy button), `rail`, `bar` or `chip`. Scripts over 30 lines fold, and the card needs `toolRows` on. Thanks @samhvw8 ([#590](https://github.com/NahumLitvin/prismantis/pull/590)).
+- A line that is a path in a ```` ```text ```` block, or a block with no language, links to its file like a path in inline code. Thanks @Boring206 ([#612](https://github.com/NahumLitvin/prismantis/pull/612)).
+
+### Fixed
+
+- Desktop app: every table column is at least as wide as its longest word draws, so CJK cells and times like `10:15` no longer run into the next column. One wide table or long string no longer pushes the reply bubble past the transcript. Thanks @synkdiver, @huberthsieh, @Rensky, @kojan912-xizhai and @une0516 for the reports ([#607](https://github.com/NahumLitvin/prismantis/pull/607)).
+- Desktop app: a table whose longest words cannot fit a narrow pane draws one card per row instead of clipping its right side. Thanks @grant594codarx for the report ([#626](https://github.com/NahumLitvin/prismantis/pull/626)).
+- A pipe inside a code span, like `` `l:|=*` ``, stays in its table cell instead of splitting the row and dropping a column. Thanks @WzLYVg387U for the report ([#624](https://github.com/NahumLitvin/prismantis/pull/624)).
+- A decimal glued to a unit, like `$3.28/hr` or `1.2M`, no longer has only its whole part in the number color ([#625](https://github.com/NahumLitvin/prismantis/pull/625)).
+- A Windows path with digits in it, like `D:\work\take\v4\v4_intro_第1-2段.mp3`, links whole instead of only up to its parent folder. Thanks @Boring206 ([#614](https://github.com/NahumLitvin/prismantis/pull/614)).
+- A folder path links on slow machines too: a found path is no longer dropped when Claude Code refuses the write for over a second. Thanks @Boring206 ([#613](https://github.com/NahumLitvin/prismantis/pull/613)).
+
 ## [0.50.0] - 2026-11-23
 
 Approved plans draw like replies, prompts get a copy button, and tables can draw as a heatmap, a tree or a pivot.
