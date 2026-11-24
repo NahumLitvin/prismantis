@@ -56,13 +56,26 @@ const TAG_LINE = /^\s*<\/?(?!br\b(?!>))[a-z][\w-]*(?:\s[^<>]*)?>\s*$/i
 const SETEXT = /^ {0,3}(?:=+|-+)\s*$/
 const SUPERSCRIPT = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 
+const codeSpanAt = (text: string, at: number): string => {
+  if (text[at - 1] === '`') return ''
+  const fence = /^`+/.exec(text.slice(at))![0]
+  const close = new RegExp(`(?<!\`)${fence}(?!\`)`, 'g')
+  close.lastIndex = at + fence.length
+  const end = close.exec(text)
+  return end ? text.slice(at, end.index + fence.length) : ''
+}
+
 const splitRow = (line: string): string[] => {
   const trimmed = line.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '')
   const cells: string[] = []
   let cell = ''
   for (let i = 0; i < trimmed.length; i++) {
     const ch = trimmed[i]
-    if (ch === '\\' && trimmed[i + 1] === '|') {
+    const span = ch === '`' ? codeSpanAt(trimmed, i) : ''
+    if (span) {
+      cell += span.replace(/\\\|/g, '|')
+      i += span.length - 1
+    } else if (ch === '\\' && trimmed[i + 1] === '|') {
       cell += '|'
       i++
     } else if (ch === '|') {
