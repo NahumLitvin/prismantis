@@ -502,6 +502,13 @@
       "default": "card",
       "options": ["card", "full", "marks", "bar"]
     },
+    "planStyle": {
+      "type": "string",
+      "title": "Plan style",
+      "description": "How a plan from plan mode draws in the transcript after you answer the dialog. off keeps Claude Code's own look. bare draws the plan like a reply: headings, tables, lists, code, diagrams, its usual copy buttons and one copy plan button. card draws the same body in a rounded frame of the rule color. The approval dialog, /plan and the plan file stay as Claude Code draws them.",
+      "default": "off",
+      "options": ["off", "bare", "card"]
+    },
     "codeStyle": {
       "type": "string",
       "title": "Code block style",

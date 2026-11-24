@@ -1423,7 +1423,9 @@ const renderList = (el: ElementTable, style: Style, block: Extract<Block, { kind
 
 export type CopyButton = (text: string | (() => string), key: string, label?: string, rich?: (() => string) | 'png', hues?: () => Hues) => RenderElement | null
 export type Hues = Ink[][]
-export type Drawn = Map<number, { element?: RenderElement; art?: string; hues?: () => Hues; note?: string; scales?: boolean }>
+export type Drawn = Map<number, { element?: RenderElement; art?: string; hues?: () => Hues; note?: string; scales?: boolean; plan?: true }>
+type DrawnBlock = NonNullable<ReturnType<Drawn['get']>>
+const plainCode = (block: DrawnBlock | undefined): boolean => !block?.element || block.plan === true
 export type FoldLook = { label?: string; face?: (folded: boolean) => RenderElement }
 export type Fold = (id: string, hidden: number, key: string, look?: FoldLook) => { folded: boolean; element: RenderElement; faced: boolean; around?: (rows: RenderElement, hover: TextHoverProps) => RenderElement } | null
 export type Tip = (note: number) => (() => void) | undefined
@@ -1558,7 +1560,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
   const rtlTables = shown.map(block => style.reorder && block.kind === 'table' && isRtlTable(style, block))
   const buttons = blocks.map((block, b) => {
     const text = hover && holdsOnlyEmptyCode(block) ? undefined : blockSource(style, blocks, b)
-    const isPlainCode = block.kind === 'code' && !drawn.get(b)?.element
+    const isPlainCode = block.kind === 'code' && plainCode(drawn.get(b))
     const { art, grid, hues } = artsOf(drawn.get(b), block, style.theme, rtlTables[b]!)
     const first = text === undefined || isPlainCode ? null : copy?.(text, `copy${b}`, block.kind === 'table' ? '⧉ md' : art === undefined ? undefined : '⧉ source')
     const second = first && art !== undefined ? copy?.(art, `art${b}`, '⧉ art') : null

@@ -328,6 +328,15 @@ Collapsed groups draw one line too: `Ran 3 commands, read 2 files · last: npm t
 
 ![quiet: rows say what was read, nothing drawn under reads](docs/tools/quiet.png)
 
+### Plans
+
+A plan Claude writes in plan mode keeps Claude Code's own transcript row until you pick a `planStyle` in `/config`. `bare` draws the plan body like a reply: headings, tables, lists, code in the theme's colors, diagrams, its usual copy buttons and one for the whole plan. `card` draws the same body in a rounded frame of the rule color. The approval dialog, `/plan` and the plan file stay as Claude Code draws them.
+
+| `off` (default) | `bare` | `card` |
+|---|---|---|
+| Claude Code's own row | the plan drawn like a reply | the same body in a rounded frame |
+| ![off](docs/plans/off.png) | ![bare](docs/plans/bare.png) | ![card](docs/plans/card.png) |
+
 ### Turn footer
 
 ![Turn footer: plain Claude Code on the left, prismantis on the right](docs/compare/footer.png)
@@ -489,6 +498,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `latex` | `true`, `false` | `false` |
 | `<token>Color` | any color, see below | theme |
 | `diffStyle` | `card` (rounded box, tinted lines), `full` (no box, lines tinted across the width), `marks` (no tint, colored `+` and `−` marks), `bar` (no tint, a colored `▌` before each changed line) | `card` |
+| `planStyle` | `off` (Claude Code's own transcript row), `bare` (the plan body drawn like a reply, with its copy buttons and one for the whole plan), `card` (the same body in a rounded frame of the rule color) | `off` |
 A color is hex (`#a6e3a1`, `#fc0`), `rgb(166,227,161)`, `ansi256(114)` or a name (`green`, `cyanBright`). Values that don't parse are ignored. Every token has a `<token>Color` option and a row in `/config`:
 
 | Token | Colors |

@@ -31,7 +31,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | \`/prismantis\` | This screen |
 | \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
-| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
+| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, plans, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
 | \`/config\` | Edit any option |
 
 > [!NOTE]
@@ -196,6 +196,28 @@ Tool calls draw as one line, dimmed on the right by default, and the file each o
 Each edit draws as a diff card headed \`+N −M\`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a \`+K more lines\` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (\`sed -i\`, a script) get the same card, one per file, headed by its path. Set \`diffStyle\` in \`/config\` for the look: \`card\`, \`full\`, \`marks\` or \`bar\`.
 
 A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks, and a click on it or on \`+K more lines\` opens the rest. A file an Edit or a shell command creates shows its first 10 lines as added lines under \`Created\`. A file a shell command removes is one \`Deleted\` line that opens to its removed lines on a click, and a file moved unchanged is one \`Renamed old → new\` line.
+
+### Plans
+
+A plan Claude writes in plan mode draws as Claude Code draws it until you pick a \`planStyle\` in \`/config\`. \`bare\` draws it like a reply, \`card\` in a rounded frame of the rule color, both with a \`copy plan\` button for the whole plan. Write a plan block in any reply to see the look without a plan-mode session; \`off\` keeps it a code block:
+
+\`\`\`\`plan
+# Ship the update
+
+| File | Change |
+|:-----|:-------|
+| \`src/app.ts\` | Draw the plan |
+| \`tests/app.test.ts\` | Prove it |
+
+\`\`\`bash
+npm test
+\`\`\`
+
+\`\`\`mermaid
+flowchart LR
+    A[Draft] --> B[Ship]
+\`\`\`
+\`\`\`\`
 
 ### Quotes and rules
 
@@ -488,7 +510,7 @@ export const helpText = (themes: readonly string[]): string => `
 |---------|------|
 | \`/prismantis theme <name>\` | Switch theme on the spot (\`/prismantis <name>\` works too), \`random\` for a new dark one now and each time the mod loads |
 | \`/prismantis copy\` | Copy the last reply, or \`copy code\` for its last code block |
-| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
+| \`/prismantis setup\` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; \`/prismantis setup more\` goes on to diffs, plans, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras and desktop app colors |
 | \`/prismantis demo\` | Full showcase, every element and diagram, plus a section in your language (Korean so far, or \`demo ko\`) |
 | \`/prismantis demo-rtl\` | Hebrew right-to-left showcase |
 
@@ -608,7 +630,7 @@ flowchart LR
 
 export const languageShowcase = (lang: string): string => (/^ko/i.test(lang) ? KOREAN_SHOWCASE : '')
 
-export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'compareTable' | 'apiTable' | 'kvTable' | 'groupTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'codeStyle' | 'pieStyle' | 'desktopColors'; title: string; note: string; options: readonly string[]; sample: string }
+export type SetupStep = { name: string; key: 'theme' | 'tableStyle' | 'tableLayout' | 'statusMatrix' | 'testMatrix' | 'benchTable' | 'schemaTable' | 'compareTable' | 'apiTable' | 'kvTable' | 'groupTable' | 'taskStyle' | 'listMarker' | 'headingStyle' | 'copyButtonStyle' | 'promptStyle' | 'replyStyle' | 'bubbleLabels' | 'clock' | 'toolStyle' | 'toolOutput' | 'diffStyle' | 'planStyle' | 'codeStyle' | 'pieStyle' | 'desktopColors'; title: string; note: string; options: readonly string[]; sample: string }
 
 export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'theme', key: 'theme', title: 'Theme', note: 'Each theme draws the same line. `random` picks a new dark one each time the mod loads.', options: themes, sample: '**Bold**, `inline code`, 250ms and ~/src/app.ts.' },
@@ -635,6 +657,7 @@ export const setupSteps = (themes: readonly string[]): SetupStep[] => [
   { name: 'api-table', key: 'apiTable', title: 'API reference', note: 'How an API reference table draws: a method column whose cells read like HTTP verbs. `off` keeps tables as written. `verbs` draws each method cell by what the verb does: reads like GET in the link color, writes like POST in the string color, DELETE in the removed color, other verbs in gray. `auth` draws the scheme cells of an auth column: Bearer, OAuth, API key and JWT in the accent color. `full` does both.', options: ['full', 'verbs', 'auth', 'off'], sample: '| Method | Endpoint | Auth | Description |\n|:-------|:---------|:-----|:------------|\n| GET | /v1/scrolls | Bearer | List the scrolls |\n| POST | /v1/scrolls | Bearer | Add a scroll |\n| DELETE | /v1/scrolls/:id | API key | Remove a scroll |\n| GET | /v1/health | none | Liveness check |' },
   { name: 'kv-table', key: 'kvTable', title: 'Key-value', note: 'How a table that lists configuration draws: a column of options beside columns of values, sources or defaults. `off` keeps tables as written. `sources` draws each source cell in theme colors by where it says the value comes from: env in the link color, config in the string color, default in gray. `overrides` draws the value cell in the accent color when the row\'s value differs from its default. `full` does both.', options: ['full', 'sources', 'overrides', 'off'], sample: '| Option | Value | Source | Default |\n|:-------|:------|:-------|:--------|\n| retries | 5 | env | 3 |\n| format | json | config | json |\n| timeout | 30s | default | 30s |\n| token | abc123 | env | unset |' },
   { name: 'group-table', key: 'groupTable', title: 'Groups', note: 'How a table that groups its rows draws: the first column whose cells repeat in runs, like a column of services or teams. `off` keeps tables as written. `merge` labels the group once in the accent color and blanks the repeats under it, `count` also adds the group size to the label, and `full` also draws a heavy rule where one group ends and the next begins.', options: ['full', 'count', 'merge', 'off'], sample: '| Service | Region | Requests | p99 |\n|:--------|:-------|---------:|----:|\n| api | us-east | 1.2M | 84 ms |\n| api | us-west | 900k | 91 ms |\n| worker | us-east | 2.4M | 120 ms |\n| worker | us-west | 1.8M | 132 ms |\n| cron | us-east | 96k | 40 ms |' },
+  { name: 'plans', key: 'planStyle', title: 'Plans', note: 'How a plan Claude writes in plan mode draws in the transcript after you answer the dialog. `off` keeps Claude Code\'s own look. `bare` draws the plan like a reply, with headings, tables, code, diagrams and its copy buttons plus one for the whole plan. `card` draws the same body in a rounded frame of the rule color. The approval dialog, `/plan` and the plan file stay as Claude Code draws them.', options: ['off', 'bare', 'card'], sample: '````plan\n# Ship the update\n\n| File | Change |\n|:-----|:-------|\n| `src/app.ts` | Draw the plan |\n| `tests/app.test.ts` | Prove it |\n\n```bash\nnpm test\n```\n````' },
   { name: 'desktop', key: 'desktopColors', title: 'Desktop app colors', note: 'Whether the Claude Code desktop app (Code tab) takes the theme too: its background, text, borders and accent. `match` paints it in the theme you picked, in light mode for a light theme, and needs Claude Code 2.1.324 or later. `off` leaves the app as it is, and going back to it restores the app\'s own look. The terminal and VS Code keep their colors either way.', options: ['match', 'off'], sample: '**Bold**, `inline code` and a [link](https://example.com).' },
 ]
 

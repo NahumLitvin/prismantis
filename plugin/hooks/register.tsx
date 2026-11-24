@@ -10,7 +10,7 @@ import type { ClipboardBackend, HelperCommand } from './clipboard'
 import { artColors, clipboardCommand, drawsImages, imageCommand } from './clipboard'
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
-import type { CopyButton, DrawPaste, Fold, Hues, TerminalEnv } from './render'
+import type { CopyButton, Drawn, DrawPaste, Fold, Hues, TerminalEnv } from './render'
 import { MARK, bashEdits, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, renderUserPrompt, replyRoom, replyStyleFor, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, KEY_POINT_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
@@ -428,6 +428,10 @@ const withFound = async ($: EngineInterface, checks: PathChecks, style: Style, p
   return { ...style, found: checks.found }
 }
 
+const writesFile = (props: { tool: string; isErrored?: boolean }): boolean => (props.tool === 'Edit' || props.tool === 'Write') && !props.isErrored
+
+const bashEditsOf = (props: { tool: string; isErrored?: boolean; output: unknown }) => (props.tool === 'Bash' && !props.isErrored ? bashEdits(props.output) : undefined)
+
 const fileCard = async ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, output: unknown, id: string, style: Style, probes: Probes, drawn: () => Style, columns?: number): Promise<RenderElement | undefined> => {
   const press = (await linkReach($, probes, style)).marks
   if (leftToEngine(output, press)) return undefined
@@ -494,7 +498,32 @@ const copyNow = async ($: EngineInterface, style: Style, content: string, surfac
   return failure ? `Copied as plain text (${failure})` : 'Copied'
 }
 
-const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }): RenderElement[] => {
+const planFrame = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, key: string, body: RenderElement[]) =>
+  style.planStyle === 'card' ? (
+    <el.Box key={key} flexDirection="column" rowGap={1} borderStyle="round" borderColor={style.theme.rule} paddingX={1} alignSelf="flex-start">{body}</el.Box>
+  ) : (
+    <el.Box key={key} flexDirection="column" rowGap={1}>{body}</el.Box>
+  )
+
+const drawPlans = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: Block[], columns: number, open: string[] | undefined, drawn: Drawn): void => {
+  if (style.planStyle === 'off') return
+  for (const [i, block] of blocks.entries()) {
+    if (block.kind !== 'code' || !/^plan$/i.test(block.lang)) continue
+    const source = block.lines.join('\n')
+    const body = drawMarkdown($, el, style, parse(source, { numbers: style.highlightNumbers, paths: style.highlightPaths }), columns - (style.planStyle === 'card' ? 4 : 0), undefined, undefined, undefined, open, { id: `plan${i}`, press: false }, source)
+    drawn.set(i, { element: planFrame(el, style, `plan${i}`, body), plan: true })
+  }
+}
+
+const withCopyButtons = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, elements: RenderElement[], reply: string | undefined, plan: string | undefined, copy: CopyButton, id?: string): RenderElement[] => {
+  const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
+  const planButton = plan === undefined ? null : copy(plan, 'plan', '⧉ copy plan')
+  if (!button && !planButton) return elements
+  const marker = (key: string, drawn: RenderElement) => (style.copyButtonStyle === 'hover' ? replyMarker(el, drawn, id, key) : <el.Box key={key} alignSelf="flex-end">{drawn}</el.Box>)
+  return [...elements, ...(button ? [marker('reply', button)] : []), ...(planButton ? [marker('plan', planButton)] : [])]
+}
+
+const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, blocks: ReturnType<typeof parse>, columns: number, math: Map<number, Typeset> = new Map(), pictures: Map<number, Picture> = new Map(), reply?: string, open?: string[], notes?: { id: string; press: boolean }, plan?: string): RenderElement[] => {
   const { Button } = el
   const copy = (text: string | (() => string), key: string, label = '⧉ copy', rich?: (() => string) | 'png', hues?: () => Hues) => {
     const copied = (surface: RenderSurface) => lastCopy(() => copyNow($, style, typeof text === 'function' ? text() : text, surface, rich, hues?.()))
@@ -511,6 +540,7 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
     ) : null
   }
   const drawn = drawDiagrams(el, style, blocks, columns - markerRoom(style))
+  drawPlans($, el, style, blocks, columns, open, drawn)
   const Image = 'Image' in el ? el.Image : null
   if (Image) {
     for (const [i, formula] of math) {
@@ -524,15 +554,13 @@ const drawMarkdown = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['
   }
   const tip = notes?.press ? noteTip(blocks, text => void $.ui.toast(text)) : undefined
   const elements = renderBlocks(el, notes ? { ...style, noteKey: instanceKey(notes.id) } : style, blocks, columns, drawMath(el, style, blocks, drawn), copy, folder($, el, open, false, style.folds === 'open'), tip)
-  const button = reply === undefined ? null : copy(reply, 'reply', '⧉ copy reply')
-  if (!button) return elements
-  return [...elements, style.copyButtonStyle === 'hover' ? replyMarker(el, button, notes?.id) : <el.Box key="reply" alignSelf="flex-end">{button}</el.Box>]
+  return withCopyButtons(el, style, elements, reply, plan, copy, notes?.id)
 }
 
-const replyMarker = (el: ReturnType<EngineInterface['ui']['resolve']>, button: RenderElement, id?: string) => {
-  const scope = `copy:${id === undefined ? '' : instanceKey(id)}:reply`
+const replyMarker = (el: ReturnType<EngineInterface['ui']['resolve']>, button: RenderElement, id?: string, key = 'reply') => {
+  const scope = `copy:${id === undefined ? '' : instanceKey(id)}:${key}`
   return (
-    <el.Box key="reply" position="absolute" bottom={0} right={-MARK} hover={{ scope }}>
+    <el.Box key={key} position="absolute" bottom={0} right={-MARK} hover={{ scope }}>
       <el.Text dimColor>⧉</el.Text>
       <el.Box position="absolute" top={0} right={0} display="none" hover={{ scope, display: 'flex' }}>{button}</el.Box>
     </el.Box>
@@ -872,8 +900,23 @@ export const register: Register = (on, options) => {
     })
     on('ui.render', { component: 'ToolResult', ...here }, async ($, e, next) => {
       const cards = (): Style => ({ ...style, pressPreview: e.surface === 'terminal' })
-      if ((e.props.tool === 'Edit' || e.props.tool === 'Write') && !e.props.isErrored) return (await fileCard($, $.ui.resolve(e), e.props.output, e.props.tool_use_id, style, probes, cards, e.viewport?.columns)) ?? next(e)
-      const edits = e.props.tool === 'Bash' && !e.props.isErrored ? bashEdits(e.props.output) : undefined
+      const drawPlan = async (): Promise<RenderElement | null> => {
+        const output = e.props.output
+        const planned = output !== null && typeof output === 'object' ? (output as { plan?: unknown }) : undefined
+        if (e.props.tool !== 'ExitPlanMode' || style.planStyle === 'off' || e.props.isErrored || typeof planned?.plan !== 'string' || !planned.plan.trim()) return null
+        await locate($, style)
+        const el = $.ui.resolve(e)
+        const plan = planned.plan
+        const above = await next({ ...e, props: { ...e.props, output: { ...planned, plan: null } } })
+        const surfaceStyle = forSurface(cards(), e, await linkReach($, probes, style))
+        const columns = columnsOf(e.viewport, surfaceStyle)
+        const body = drawMarkdown($, el, surfaceStyle, parse(plan, { numbers: surfaceStyle.highlightNumbers, paths: surfaceStyle.highlightPaths }), columns - (style.planStyle === 'card' ? 4 : 0), undefined, undefined, undefined, await read($, unfolded), { id: e.props.tool_use_id, press: false }, plan)
+        return <el.Box flexDirection="column">{above}{planFrame(el, style, 'plan', body)}</el.Box>
+      }
+      const drawnPlan = await drawPlan()
+      if (drawnPlan) return drawnPlan
+      if (writesFile(e.props)) return (await fileCard($, $.ui.resolve(e), e.props.output, e.props.tool_use_id, style, probes, cards, e.viewport?.columns)) ?? next(e)
+      const edits = bashEditsOf(e.props)
       if (edits) {
         await locate($, style)
         const el = $.ui.resolve(e)
