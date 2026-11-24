@@ -137,18 +137,17 @@ const keepBlinking = async ($: EngineInterface, blinker: Blinker) => {
 
 const WRITE_TRIES = 20
 const WRITE_RETRY_MS = 50
+const WRITE_RETRY_MAX_MS = 1000
 
-const persist = async ($: EngineInterface, write: () => Promise<unknown>): Promise<void> => {
-  for (let tries = WRITE_TRIES; ; tries--) {
-    try {
-      await write()
-      return
-    } catch (error) {
-      if (tries <= 1) throw error
-    }
-    await $.clock.sleep(WRITE_RETRY_MS)
-  }
-}
+const persist = ($: EngineInterface, write: () => Promise<unknown>): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const attempt = (tries: number, wait: number) =>
+      void write().then(() => resolve(), error => {
+        if (tries <= 1) reject(error)
+        else $.clock.after(wait, () => attempt(tries - 1, Math.min(wait * 2, WRITE_RETRY_MAX_MS)))
+      })
+    attempt(WRITE_TRIES, WRITE_RETRY_MS)
+  })
 
 const firstDrawn = async ($: EngineInterface, id: string): Promise<number> => {
   const ref = { plugin: 'prismantis', key: 'drawn', id } as const
