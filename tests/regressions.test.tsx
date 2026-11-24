@@ -978,7 +978,8 @@ for (const [where, env, root, options] of [
 
 test('a path inside a line of a plain code block links, the words around it drawn as written', async ($, on) => {
   filesAt(on, '2.1.289')
-  const clock = folders(on, ['/home/me/notes', '/work/notes/plan.md'])
+  on('fs.stat', (_, e, next) => (/(^|\/)D:\/work\/notes\/plan\.md$/.test(e.path.replace(/\\/g, '/')) ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : next(e)))
+  const clock = folders(on, ['/home/me/notes'])
   if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
   const reply = ['```text', 'Plan: D:\\work\\notes\\plan.md, then review', 'see /srv/app/main.ts and ~/notes', 'version v1.2 is not a path', '```'].join('\n')
   const ui = await $.ui.mount(mount(reply))

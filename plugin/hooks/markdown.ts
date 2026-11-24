@@ -14,7 +14,6 @@ export type Inline =
 
 export type Note = { mark: string; inline: Inline[]; note: number }
 
-/** A path in a line of a plain code block, by its offsets in the line, and where it opens. */
 export type CodeLink = { start: number; end: number; href: string }
 
 export type TableAlign = 'left' | 'right' | 'center'

@@ -362,10 +362,6 @@ const spellingsIn = (nodes: Inline[]): string[] =>
 
 const isPlainText = (lang: string): boolean => ['', 'text', 'txt', 'plain', 'plaintext'].includes(lang.toLowerCase())
 
-/**
- * Where a line of a plain code block spells a path, a whole word of it, the
- * leftmost and then longest where spellings overlap.
- */
 const codeSpans = (line: string): { start: number; end: number }[] => {
   const spellings = [...pathSpellings(line), ...looseSpellings(line)]
     .map(m => ({ start: m.index, end: m.index + m[0].length }))
