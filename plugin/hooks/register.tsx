@@ -390,8 +390,6 @@ const forgetMisses = (checks: PathChecks, call: Record<string, unknown>) => {
   else for (let at = path; at.includes('/'); at = at.slice(0, at.lastIndexOf('/'))) checks.asked.delete(at)
 }
 
-// Under WSL, Linux knows a drive path (D:/x) only where it mounts it
-// (/mnt/d/x): the stat goes there, and a hit is found under the spelling.
 const statTarget = (path: string, isWsl: boolean): string => {
   const drive = isWsl ? /^([a-z]):\/(.*)$/i.exec(path) : null
   return drive ? `/mnt/${drive[1]!.toLowerCase()}/${drive[2]}` : path
