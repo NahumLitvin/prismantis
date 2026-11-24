@@ -19,7 +19,7 @@ import { desktopLook } from './desktop'
 import { textRows } from './layout'
 import type { Style } from './theme'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from './theme'
-import { DEFAULT_COLUMNS, MIN_COLUMNS } from './layout'
+import { DEFAULT_COLUMNS, DESKTOP_ROOM, MIN_COLUMNS } from './layout'
 import type { Terminal } from './rtl'
 import { ROW_MARK_TEXT, TERMINALS, hasRtl, opensLatin } from './rtl'
 
@@ -62,8 +62,6 @@ const applyRtl = async ($: EngineInterface, style: Style): Promise<Terminal | nu
 
 const expandedCalls = new Set<string>()
 const readOnlyCalls = new Set<string>()
-
-const DESKTOP_ROOM = 0.84
 
 const columnsOf = (viewport: { columns?: number } | undefined, style: Pick<Style, 'monoFace'>) => {
   const reported = viewport?.columns ?? DEFAULT_COLUMNS

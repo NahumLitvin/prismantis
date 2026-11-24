@@ -5,6 +5,8 @@ export const DEFAULT_COLUMNS = 100
 
 export const MIN_COLUMNS = 20
 
+export const DESKTOP_ROOM = 0.84
+
 export const graphemes = (s: string): string[] => [...segmenter.segment(s)].map(g => g.segment)
 
 const CLUSTER_UNITS = 32

@@ -28,7 +28,7 @@ import { pivotOf } from './pivot-table'
 import { testReport } from './test-report'
 import type { PrismToken } from './vendor/prism.js'
 import { languages, tokenize } from './vendor/prism.js'
-import { DEFAULT_COLUMNS, cells, clusters, columnWidths, graphemes, longestWord, mostLines, textRows, widestLine, width, wrapRanges } from './layout'
+import { DEFAULT_COLUMNS, DESKTOP_ROOM, cells, clusters, columnWidths, graphemes, longestWord, mostLines, textRows, widestLine, width, wrapRanges } from './layout'
 
 const sliceInline = (nodes: Inline[], from: number, to: number): Inline[] => {
   const out: Inline[] = []
@@ -1044,15 +1044,23 @@ const percentShares = (widths: number[]): number[] => {
   return shares
 }
 
+const drawnCells = (style: Style, n: number): number => (style.monoFace ? Math.ceil(n / DESKTOP_ROOM) + 1 : n)
+
 const tableColumn = (style: Style, w: number, share: number, word: number) =>
-  style.gridFace ? { width: `${share}%`, flexShrink: 1, minWidth: Math.min(word, w) } : { width: w, flexShrink: 0 }
+  style.gridFace ? { width: `${share}%`, flexShrink: 1, minWidth: drawnCells(style, Math.min(word, w)) } : { width: w, flexShrink: 0 }
 
 const tableRuleRun = ({ Box, Text }: ElementTable, style: Style, w: number, share: number, word: number, char: string, heavy: boolean, key: string) => {
   if (!style.gridFace) return <Text key={key} color={style.theme.tableRule} dimColor={!heavy && !style.theme.tableRule}>{char.repeat(w)}</Text>
   return <Box key={key} {...tableColumn(style, w, share, word)} height={char === '━' ? 2 * HAIRLINE : HAIRLINE} backgroundColor={ruleInk(style)} />
 }
 
-const tableRoot = (style: Style, flip: boolean) => (flip ? { alignSelf: 'flex-end' as const } : style.gridFace ? { alignSelf: 'flex-start' as const } : {})
+const tableRoot = (style: Style, flip: boolean, laid: number) => ({
+  ...(flip ? { alignSelf: 'flex-end' as const } : style.gridFace ? { alignSelf: 'flex-start' as const } : {}),
+  ...(style.monoFace ? { width: laid } : {}),
+})
+
+const laidWidth = (style: Style, widths: number[], columns: number, box: boolean, gap: number): number =>
+  Math.min(Math.floor(columns / DESKTOP_ROOM), widths.reduce((sum, w) => sum + drawnCells(style, w), 0) + (box ? 3 : gap) * Math.max(0, widths.length - 1) + (box ? 3 : 0))
 
 const laidLine = (style: Style) => (style.gridFace ? { flexWrap: 'nowrap' as const } : {})
 
@@ -1121,6 +1129,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
   const rowAt = compare || kv || group || tree || heat ? new Map(drawn.rows.map((cells, r) => [cells, r])) : undefined
   const look = (at: number | undefined) => (c: number, cell: TableCell, plain: { color?: string } = {}) => treeLook(t, tree, at, c, groupLook(t, group, at, c, statusLook(t, status, c, cell, benchLook(t, bench, c, cell, schemaLook(t, schema, c, cell, compareLook(t, compare, at, c, cell, apiLook(t, api, c, cell, kvLook(t, kv, at, c, cell, heatLook(t, heat, at, c, plain)))))))))
   const shares = percentShares(widths)
+  const laid = laidWidth(style, widths, columns, box, gap)
   const order = natural.map((_, c) => c)
   const mirror = rtl && mirrored(style)
   const flip = rtl && !mirror
@@ -1211,7 +1220,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
       lines.push(...wrappedRow(r, `${key}.r${i}`, false, rowAt?.get(r)))
     })
     lines.push(edge(`${key}.b`, '└─┴┘'))
-    return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{lines}{foot}{test}{spark}</Box>
+    return <Box key={key} flexDirection="column" {...tableRoot(style, flip, laid)}>{lines}{foot}{test}{spark}</Box>
   }
 
   const body: RenderElement[] = [row(drawn.header, `${key}.h`, true), rule(`${key}.hr`, true)]
@@ -1219,7 +1228,7 @@ const renderTable = (el: ElementTable, style: Style, block: Extract<Block, { kin
     body.push(row(r, `${key}.r${i}`, false, undefined, rowAt?.get(r)))
     if (style.tableStyle !== 'minimal' && i < layout.rows.length - 1) body.push(rule(`${key}.r${i}r`, heavyBetween(style, layout.buckets, runs, groupOption, i)))
   })
-  return <Box key={key} flexDirection="column" {...tableRoot(style, flip)}>{body}{foot}{test}{spark}</Box>
+  return <Box key={key} flexDirection="column" {...tableRoot(style, flip, laid)}>{body}{foot}{test}{spark}</Box>
 }
 
 const renderHeading = (el: ElementTable, style: Style, block: Extract<Block, { kind: 'heading' }>, key: string) => {
@@ -3266,6 +3275,8 @@ const solidEdge = (width: number, top: boolean): string => (width < 2 ? (top ? '
 
 const claudeColor = (theme: Theme): string | undefined => theme.replyBorder ?? (theme.accent === undefined ? undefined : 'claude')
 
+const shrinks = (style: Style) => (style.gridFace ? { minWidth: 0 } : {})
+
 const replyFrame = (el: ElementTable, style: Style, body: RenderElement, columns: number): RenderElement => {
   const t = style.theme
   const fill = fillOf(style)
@@ -3279,15 +3290,15 @@ const replyFrame = (el: ElementTable, style: Style, body: RenderElement, columns
       </el.Box>
     )
   }
-  return <el.Box flexDirection="column" flexGrow={1} paddingX={1} borderStyle="round" borderColor={claudeColor(t)} borderDimColor backgroundColor={fill}>{body}</el.Box>
+  return <el.Box flexDirection="column" flexGrow={1} {...shrinks(style)} paddingX={1} borderStyle="round" borderColor={claudeColor(t)} borderDimColor backgroundColor={fill}>{body}</el.Box>
 }
 
 export const renderReply = (el: ElementTable, style: Style, drawn: RenderElement[], first: boolean, columns: number, corner: boolean): RenderElement => {
   const room = corner ? <el.Box width={MARK} flexShrink={0} /> : null
-  const body = <el.Box flexDirection="column" rowGap={1} flexGrow={1}>{drawn}</el.Box>
+  const body = <el.Box flexDirection="column" rowGap={1} flexGrow={1} {...shrinks(style)}>{drawn}</el.Box>
   if (replyLook(style) === 'off') {
     return (
-      <el.Box key="msg" flexDirection="row">
+      <el.Box key="msg" flexDirection="row" {...shrinks(style)}>
         <el.Box width={2} flexShrink={0}>
           <el.Text color={style.theme.accent}>{first ? '●' : ' '}</el.Text>
         </el.Box>
@@ -3297,9 +3308,9 @@ export const renderReply = (el: ElementTable, style: Style, drawn: RenderElement
     )
   }
   return (
-    <el.Box key="msg" flexDirection="column">
+    <el.Box key="msg" flexDirection="column" {...shrinks(style)}>
       {first && style.bubbleLabels !== 'off' ? <el.Text color={claudeColor(style.theme)} bold>{claudeHead(style)}</el.Text> : null}
-      {replyFrame(el, style, <el.Box flexDirection="row">{body}{room}</el.Box>, columns)}
+      {replyFrame(el, style, <el.Box flexDirection="row" {...shrinks(style)}>{body}{room}</el.Box>, columns)}
     </el.Box>
   )
 }
