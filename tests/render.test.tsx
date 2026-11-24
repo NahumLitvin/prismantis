@@ -47,6 +47,16 @@ test('escaped pipes stay inside a cell', async () => {
   expect(t.rows[0]?.length).toBe(2)
 })
 
+test('a pipe inside a code span stays inside its cell', async () => {
+  const [t] = parse('| 写法 | 作用 |\n|---|---|\n| `l:|=*` | 左端补 `*` |\n| ``a|`b`` | x \\| `y\\|z` |\n| `open | c |', { numbers: false, paths: false })
+  if (t?.kind !== 'table') throw new Error('not a table')
+  expect(t.rows.map(r => r.map(c => c.map(n => ('text' in n ? n.text : '')).join('')))).toEqual([
+    ['l:|=*', '左端补 *'],
+    ['a|`b', 'x | y|z'],
+    ['`open', 'c'],
+  ])
+})
+
 test('a separator shorter than the header pads align to the header columns', async () => {
   const [t] = parse('| a | b | c |\n|:---|---:|\n| x | y |', { numbers: false, paths: false })
   if (t?.kind !== 'table') throw new Error('not a table')
