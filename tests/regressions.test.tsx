@@ -1831,6 +1831,12 @@ test('a terminal reply keeps its layout, with no desktop floors or width', async
   await ui.unmount()
 })
 
+test('a decimal number glued to a unit like $3.28/hr is not colored only up to its point (#619)', () => {
+  const [block] = parse('$3.28/hr on demand, about $0.95/hr, 6 h/day is $430/mo, $3.28 flat', hl)
+  const numbers = block?.kind === 'paragraph' ? block.inline.filter(n => n.kind === 'number').map(n => (n as { text: string }).text) : []
+  expect(numbers).toEqual(['6', '3.28'])
+})
+
 test('double underscores inside a word stay literal, as in mcp__serena__activate_project', async () => {
   const [block] = parse('Call mcp__serena__activate_project, not __this__.', hl)
 

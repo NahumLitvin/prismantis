@@ -1464,10 +1464,8 @@
       " │ "
     <Box>
       <Text>
-        <Text color=#a6e3a1>
-          "1"
         <Text>
-          ".2M"
+          "1.2M"
     <Text color=#585b70>
       " │ "
     <Box>
@@ -1528,10 +1526,8 @@
       " │ "
     <Box>
       <Text>
-        <Text color=#a6e3a1>
-          "2"
         <Text>
-          ".4M"
+          "2.4M"
     <Text color=#585b70>
       " │ "
     <Box>
@@ -1561,10 +1557,8 @@
       " │ "
     <Box>
       <Text>
-        <Text color=#a6e3a1>
-          "1"
         <Text>
-          ".8M"
+          "1.8M"
     <Text color=#585b70>
       " │ "
     <Box>

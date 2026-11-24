@@ -1465,9 +1465,7 @@
     <Box>
       <Text>
         <Text>
-          "1"
-        <Text>
-          ".2M"
+          "1.2M"
     <Text>
       " │ "
     <Box>
@@ -1529,9 +1527,7 @@
     <Box>
       <Text>
         <Text>
-          "2"
-        <Text>
-          ".4M"
+          "2.4M"
     <Text>
       " │ "
     <Box>
@@ -1562,9 +1558,7 @@
     <Box>
       <Text>
         <Text>
-          "1"
-        <Text>
-          ".8M"
+          "1.8M"
     <Text>
       " │ "
     <Box>
