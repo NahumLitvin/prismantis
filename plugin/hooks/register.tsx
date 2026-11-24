@@ -390,8 +390,16 @@ const forgetMisses = (checks: PathChecks, call: Record<string, unknown>) => {
   else for (let at = path; at.includes('/'); at = at.slice(0, at.lastIndexOf('/'))) checks.asked.delete(at)
 }
 
+// Under WSL, Linux knows a drive path (D:/x) only where it mounts it
+// (/mnt/d/x): the stat goes there, and a hit is found under the spelling.
+const statTarget = (path: string, isWsl: boolean): string => {
+  const drive = isWsl ? /^([a-z]):\/(.*)$/i.exec(path) : null
+  return drive ? `/mnt/${drive[1]!.toLowerCase()}/${drive[2]}` : path
+}
+
 const statPaths = async ($: EngineInterface, paths: string[]): Promise<void> => {
-  const kinds = await Promise.all(paths.map(path => $.fs.stat(path).then(stat => stat.kind, () => 'other')))
+  const isWsl = (await $.env.get('WSL_DISTRO_NAME')) !== undefined
+  const kinds = await Promise.all(paths.map(path => $.fs.stat(statTarget(path, isWsl)).then(stat => stat.kind, () => 'other')))
   const hits = paths.flatMap((path, i) => (kinds[i] === 'dir' ? [path, `${path}/`] : kinds[i] === 'file' ? [path] : []))
   if (hits.length) await persist($, () => update($, foundPaths, list => [...list, ...hits].slice(-MAX_FOUND)))
 }
