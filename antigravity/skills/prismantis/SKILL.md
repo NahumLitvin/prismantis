@@ -29,7 +29,7 @@ Code-shaped prose stays as written: f(*args, **kwargs), a link with parentheses 
 | `/prismantis` | This screen |
 | `/prismantis theme <name>` | Switch theme on the spot (`/prismantis <name>` works too), `random` for a new dark one now and each time the mod loads |
 | `/prismantis copy` | Copy the last reply, or `copy code` for its last code block |
-| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras, desktop app colors and plans |
+| `/prismantis setup` | Pick a theme and how prompts, replies, tables, code blocks and tool output look, from drawn samples; `/prismantis setup more` goes on to diffs, tool rows, headings, tasks, bubble labels, times, pie charts, the table extras, desktop app colors, plans and Code Mode scripts |
 | `/config` | Edit any option |
 
 > [!NOTE]
@@ -226,6 +226,8 @@ Scroll up: what you typed sits on the right under `You ⬤` and Claude's replies
 Tool calls draw as one line, dimmed on the right by default, and the file each one read or edited opens on click in a terminal that draws hyperlinks. Set `toolStyle` in `/config` to `chat`, `tree-dim`, `tree-bold` or `classic`. `toolOutput: quiet` in `/config` hides what Claude only read and says in plain words what each call did: `Read src/app.ts lines 1–40`, `Searched src/ for "TODO"`, and `toolOutput: rows` draws only the row of every call that worked. A call still running shows a still `◌`; `runningDot: blink` makes it a `●` that blinks every half second, and `unreadPrompts` keeps each prompt you send grey and blinking until Claude starts on it, so one queued mid-turn stands out.
 
 Each edit draws as a diff card headed `+N −M`: code highlighted in the file's language, added and removed lines on a tint of the theme's own green and red with the changed words in a deeper tint, kept readable in every theme, long lines wrapped, the first 20 lines and a `+K more lines` button that opens the rest, as does a click anywhere on the card. Files a shell command changes (`sed -i`, a script) get the same card, one per file, headed by its path. Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`.
+
+In Code Mode each script Claude runs draws as a code card above the tool calls it makes, highlighted as JavaScript, with a copy button and the lines past 30 folded behind `+N more lines`. Set `scriptStyle` in `/config` for the look: `frame`, `rail`, `bar` or `chip`.
 
 A file Write creates shows its first 10 lines as numbered code in the theme's colors with no diff marks, and a click on it or on `+K more lines` opens the rest. A file an Edit or a shell command creates shows its first 10 lines as added lines under `Created`. A file a shell command removes is one `Deleted` line that opens to its removed lines on a click, and a file moved unchanged is one `Renamed old → new` line.
 
