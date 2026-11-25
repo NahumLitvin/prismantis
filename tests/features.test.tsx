@@ -1921,7 +1921,7 @@ test('shell edits read a diff per changed file, the lines of each new file, and 
 })
 
 for (const toolOutput of ['full', 'quiet'] as const) {
-  test(`shell edits draw the same diff card as the Edit tool, one per changed file (toolOutput ${toolOutput})`, { options: { toolOutput } }, async ($, on) => {
+  test(`shell edits draw the same diff card as the Edit tool, one per changed file (toolOutput ${toolOutput})`, { options: { shellEdits: 'diffs', toolOutput } }, async ($, on) => {
     engine(on)
     mock.env(on, { HOME: '/home/demo' })
     on('session.root', () => ({ value: '/home/demo/app' }))
@@ -1946,7 +1946,7 @@ for (const toolOutput of ['full', 'quiet'] as const) {
   })
 }
 
-test('a shell edit with output keeps the engine output, without the engine diff, above the cards', async ($, on) => {
+test('a shell edit with output keeps the engine output, without the engine diff, above the cards', { options: { shellEdits: 'diffs' } }, async ($, on) => {
   const seen: unknown[] = []
   on('ui.render', ($, e) => {
     seen.push(e.props && 'output' in e.props ? e.props.output : undefined)
@@ -1964,7 +1964,7 @@ test('a shell edit with output keeps the engine output, without the engine diff,
   }
 })
 
-test('toolOutput quiet keeps a shell edit diff under the first lines of its output', { options: { toolOutput: 'quiet' } }, async ($, on) => {
+test('toolOutput quiet keeps a shell edit diff under the first lines of its output', { options: { shellEdits: 'diffs', toolOutput: 'quiet' } }, async ($, on) => {
   engine(on)
   const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit('patched 2 files')))
   expect(await ui.find({ type: 'Text', text: /^patched 2 files$/ })).toBeDefined()
@@ -1973,7 +1973,7 @@ test('toolOutput quiet keeps a shell edit diff under the first lines of its outp
   await ui.unmount()
 })
 
-test('toolOutput rows keeps a shell edit diff without the output lines above it', { options: { toolOutput: 'rows' } }, async ($, on) => {
+test('toolOutput rows keeps a shell edit diff without the output lines above it', { options: { shellEdits: 'diffs', toolOutput: 'rows' } }, async ($, on) => {
   engine(on)
   const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit('patched 2 files')))
   expect(await ui.find({ type: 'Text', text: /^\+2$/ })).toBeDefined()
@@ -1987,7 +1987,7 @@ test('toolOutput rows keeps a shell edit diff without the output lines above it'
   await expanded.unmount()
 })
 
-test('each shell edit card folds on its own', async ($, on) => {
+test('each shell edit card folds on its own', { options: { shellEdits: 'diffs' } }, async ($, on) => {
   engine(on)
   const long = Array.from({ length: 25 }, (_, i) => `+line ${i + 1}`)
   const file = (name: string) => ({ filePath: `/tmp/${name}`, hunks: [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: 25, lines: long }] })
@@ -2299,7 +2299,7 @@ test('shell edits tell new, removed and renamed files apart from changed ones', 
 })
 
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`a file a shell command creates shows its first 10 lines as added diff lines under a Created header on ${surface}`, async ($, on) => {
+  test(`a file a shell command creates shows its first 10 lines as added diff lines under a Created header on ${surface}`, { options: { shellEdits: 'diffs' } }, async ($, on) => {
     engine(on)
     inDemoApp(on)
     claudeAt(on, '2.1.295')
@@ -2324,7 +2324,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`a short new file shows whole, and an empty one says so, on ${surface}`, async ($, on) => {
+  test(`a short new file shows whole, and an empty one says so, on ${surface}`, { options: { shellEdits: 'diffs' } }, async ($, on) => {
     engine(on)
     inDemoApp(on)
     claudeAt(on, '2.1.295')
@@ -2337,7 +2337,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`a file a shell command removes is one Deleted line that opens on a click to its removed lines on ${surface}`, async ($, on) => {
+  test(`a file a shell command removes is one Deleted line that opens on a click to its removed lines on ${surface}`, { options: { shellEdits: 'diffs' } }, async ($, on) => {
     engine(on)
     inDemoApp(on)
     claudeAt(on, '2.1.295')
@@ -2359,7 +2359,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`removed lines stay plain in a clickable long diff and in a deleted file's opened lines, as in diff cards, from Claude Code 2.1.295 on ${surface}`, async ($, on) => {
+  test(`removed lines stay plain in a clickable long diff and in a deleted file's opened lines, as in diff cards, from Claude Code 2.1.295 on ${surface}`, { options: { shellEdits: 'diffs' } }, async ($, on) => {
     engine(on)
     inDemoApp(on)
     claudeAt(on, '2.1.295')
@@ -2440,7 +2440,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`a file moved and changed draws as removed and created on ${surface}`, async ($, on) => {
+  test(`a file moved and changed draws as removed and created on ${surface}`, { options: { shellEdits: 'diffs' } }, async ($, on) => {
     engine(on)
     inDemoApp(on)
     const ui = await $.ui.mount(editResult(surface, 'Bash', shellFiles(removedFile('move-me.txt', ['one', 'two']), madeFile('moved.txt', ['one', 'three']))))
@@ -2451,7 +2451,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`new and removed files keep a label button before Claude Code 2.1.295 on ${surface}`, async ($, on) => {
+  test(`new and removed files keep a label button before Claude Code 2.1.295 on ${surface}`, { options: { shellEdits: 'diffs' } }, async ($, on) => {
     engine(on)
     inDemoApp(on)
     claudeAt(on, '2.1.294')
@@ -2500,7 +2500,7 @@ for (const name of PRESET_NAMES) {
   })
 }
 
-test('changed files beside new ones still draw as diff cards, notes and all', async ($, on) => {
+test('changed files beside new ones still draw as diff cards, notes and all', { options: { shellEdits: 'diffs' } }, async ($, on) => {
   engine(on)
   inDemoApp(on)
   const ui = await $.ui.mount(editResult('terminal', 'Bash', shellFiles({ filePath: '/home/demo/app/src/app.ts', hunks: patch.structuredPatch }, madeFile('empty.txt', []), removedFile('old.txt', ['x']))))
@@ -2592,7 +2592,7 @@ test('diffAddedColor and diffRemovedColor set the diff colors like any other tok
 })
 
 for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
-  test(`diffStyle ${diffStyle} draws edit and shell edit diffs its way`, { options: { diffStyle } }, async ($, on) => {
+  test(`diffStyle ${diffStyle} draws edit and shell edit diffs its way`, { options: { shellEdits: 'diffs', diffStyle } }, async ($, on) => {
     engine(on)
     const tinted = diffStyle === 'card' || diffStyle === 'full'
     for (const surface of ['terminal', 'desktop'] as const) {
@@ -2623,13 +2623,92 @@ test('an unknown diffStyle draws the card', { options: { diffStyle: 'fancy' } },
   await ui.unmount()
 })
 
+const listed = (more: number, others: unknown[]) => ({ ...bashEdit('', more), bashEditDiff: { ...bashEdit('', more).bashEditDiff, changedFiles: ['/home/demo/app/src/app.ts', '/home/demo/app/NOTES.md', ...others] } })
+
+test('shell edits read the other paths Claude Code says changed, once each, without the files it diffed', () => {
+  expect(bashEdits(listed(3, ['/home/demo/app/a.ts', '/home/demo/app/b.ts', '/home/demo/app/a.ts', 7]))?.others).toEqual(['/home/demo/app/a.ts', '/home/demo/app/b.ts'])
+  expect(bashEdits(bashEdit('', 3))?.others).toEqual([])
+  const moved = shellFiles(removedFile('move-me.txt', ['one']), madeFile('moved.txt', ['one']))
+  expect(bashEdits({ ...moved, bashEditDiff: { ...moved.bashEditDiff, changedFiles: ['/home/demo/app/move-me.txt', '/home/demo/app/moved.txt', '/home/demo/app/c.ts'] } })?.others).toEqual(['/home/demo/app/c.ts'])
+})
+
+for (const toolOutput of ['full', 'quiet'] as const) {
+  test(`shellEdits list draws one line per file a shell command changed (toolOutput ${toolOutput})`, { options: { shellEdits: 'list', toolOutput } }, async ($, on) => {
+    engine(on)
+    mock.env(on, { HOME: '/home/demo' })
+    on('session.root', () => ({ value: '/home/demo/app' }))
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount(editResult(surface, 'Bash', listed(2, ['/home/demo/app/docs/a.md', '/home/demo/app/docs/b.md'])))
+      expect(await ui.find({ type: 'Text', text: /^Updated src\/app\.ts \+2 −1$/ })).toBeDefined()
+      expect((await ui.find({ type: 'Text', text: /^src\/app\.ts$/ }))?.props.color).toBe(t.path)
+      expect((await ui.find({ type: 'Text', text: /^ \+2$/ }))?.props.color).toBe(t.number)
+      expect((await ui.find({ type: 'Text', text: /^ −1$/ }))?.props.color).toBe(t.codeFlag)
+      expect(await ui.find({ type: 'Text', text: /^Created NOTES\.md \(2 lines\)$/ })).toBeDefined()
+      expect((await ui.find({ type: 'Text', text: /^… \+2 files changed$/ }))?.props.dimColor).toBe(true)
+      expect((await ui.find({ type: 'Text', text: /^docs\/a\.md$/ }))?.props.color).toBe(t.path)
+      expect((await ui.find({ type: 'Text', text: /^docs\/b\.md$/ }))?.props.color).toBe(t.path)
+      expect(await ui.find({ type: 'Text', text: /^const c = 4$/ })).toBeUndefined()
+      expect(await ui.find({ type: 'Text', text: /^two$/ })).toBeUndefined()
+      expect(await ui.find({ type: 'Button' })).toBeUndefined()
+      expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(false)
+      expect((await ui.findAll({ type: 'Text', text: /^  ⎿  $/ })).length).toBe(1)
+      expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+      await ui.unmount()
+    }
+  })
+}
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`shellEdits list draws a deleted file as its Deleted line and a moved one as its Renamed line on ${surface}`, { options: { shellEdits: 'list' } }, async ($, on) => {
+    engine(on)
+    inDemoApp(on)
+    const ui = await $.ui.mount(editResult(surface, 'Bash', shellFiles(removedFile('gone.txt', ['a', 'b', 'c']), removedFile('move-me.txt', ['one', 'two']), madeFile('moved.txt', ['one', 'two']))))
+    expect(await ui.find({ type: 'Text', text: /^Deleted gone\.txt \(3 lines\)$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Renamed move-me\.txt → moved\.txt$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Created / })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^a$/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Button' })).toBeUndefined()
+    await ui.unmount()
+  })
+}
+
+test('shellEdits list names the first 3 other changed paths, counts the rest, and keeps only the count when Claude Code names none', { options: { shellEdits: 'list' } }, async ($, on) => {
+  engine(on)
+  inDemoApp(on)
+  const ui = await $.ui.mount(editResult('terminal', 'Bash', listed(5, Array.from({ length: 5 }, (_, i) => `/home/demo/app/f${i + 1}.ts`))))
+  expect(await ui.find({ type: 'Text', text: /^… \+5 files changed$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^f3\.ts$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^f4\.ts$/ })).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^… \+2 more$/ }))?.props.dimColor).toBe(true)
+  await ui.unmount()
+  const cut = await $.ui.mount(editResult('terminal', 'Bash', listed(300, Array.from({ length: 4 }, (_, i) => `/home/demo/app/g${i + 1}.ts`))))
+  expect(await cut.find({ type: 'Text', text: /^… \+300 files changed$/ })).toBeDefined()
+  expect(await cut.find({ type: 'Text', text: /^… \+297 more$/ })).toBeDefined()
+  await cut.unmount()
+  const bare = await $.ui.mount(editResult('terminal', 'Bash', bashEdit('', 1)))
+  expect(await bare.find({ type: 'Text', text: /^… \+1 file changed$/ })).toBeDefined()
+  expect(await bare.find({ type: 'Text', text: /^… \+\d+ more$/ })).toBeUndefined()
+  await bare.unmount()
+})
+
+for (const shellEdits of [undefined, 'fancy']) {
+  test(`shellEdits ${shellEdits ?? 'unset'} draws one line per file`, { options: shellEdits ? { shellEdits } : {} }, async ($, on) => {
+    engine(on)
+    inDemoApp(on)
+    const ui = await $.ui.mount(editResult('terminal', 'Bash', bashEdit()))
+    expect(await ui.find({ type: 'Text', text: /^Updated src\/app\.ts \+2 −1$/ })).toBeDefined()
+    expect((await ui.findAll({ type: 'Box' })).some(b => b.props.borderStyle === 'round')).toBe(false)
+    await ui.unmount()
+  })
+}
+
 const twoHunks = [
   { oldStart: 4, newStart: 4, oldLines: 3, newLines: 3, lines: [' const a = 3', '-const b = 4', '+const b = 5', ' const c = 6'] },
   { oldStart: 50, newStart: 50, oldLines: 3, newLines: 3, lines: [' const x = 50', '-const y = 51', '+const y = 52', ' const z = 52'] },
 ]
 
 for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
-  test(`diffStyle ${diffStyle} parts separate hunks with a dim ... row, in edit and shell edit cards`, { options: { diffStyle } }, async ($, on) => {
+  test(`diffStyle ${diffStyle} parts separate hunks with a dim ... row, in edit and shell edit cards`, { options: { shellEdits: 'diffs', diffStyle } }, async ($, on) => {
     engine(on)
     const bash = { stdout: '', stderr: '', interrupted: false, bashEditDiff: { files: [{ filePath: '/tmp/far.ts', hunks: twoHunks }], moreFiles: 0 } }
     for (const surface of ['terminal', 'desktop'] as const) {
@@ -2780,7 +2859,7 @@ test('a diff of a file with no known language draws its lines plain', async ($, 
 })
 
 for (const diffStyle of ['card', 'full', 'marks', 'bar'] as const) {
-  test(`diffStyle ${diffStyle} keeps its tint and marks around highlighted code`, { options: { diffStyle } }, async ($, on) => {
+  test(`diffStyle ${diffStyle} keeps its tint and marks around highlighted code`, { options: { shellEdits: 'diffs', diffStyle } }, async ($, on) => {
     engine(on)
     const tinted = diffStyle === 'card' || diffStyle === 'full'
     for (const surface of ['terminal', 'desktop'] as const) {
@@ -2983,7 +3062,7 @@ test('an opened card of dense lines stays under the engine\'s 20000-node ceiling
   }
 })
 
-test('five opened shell edit cards of dense lines share one node allowance and stay under the ceiling', async ($, on) => {
+test('five opened shell edit cards of dense lines share one node allowance and stay under the ceiling', { options: { shellEdits: 'diffs' } }, async ($, on) => {
   engine(on)
   const short = Array.from({ length: 450 }, (_, i) => `+[${Array.from({ length: 12 }, (_, k) => (i + k) % 10).join(',')}]`)
   const files = Array.from({ length: 5 }, (_, f) => ({ filePath: `/tmp/d${f}.json`, hunks: [{ oldStart: 1, newStart: 1, oldLines: 0, newLines: 450, lines: short }] }))
@@ -2996,7 +3075,7 @@ test('five opened shell edit cards of dense lines share one node allowance and s
   }
 })
 
-test('clickable diff rows, a new file\'s preview, and new and removed files spend the same node allowance and stay under the ceiling', async ($, on) => {
+test('clickable diff rows, a new file\'s preview, and new and removed files spend the same node allowance and stay under the ceiling', { options: { shellEdits: 'diffs' } }, async ($, on) => {
   engine(on)
   claudeAt(on, '2.1.295')
   if (!(await takesTextButtons($))) return
@@ -3035,7 +3114,7 @@ test('an opened new file of long lines past the node allowance keeps each plain 
   }
 })
 
-test('a no-newline marker in a shell edit diff draws harmlessly as its own row', async ($, on) => {
+test('a no-newline marker in a shell edit diff draws harmlessly as its own row', { options: { shellEdits: 'diffs' } }, async ($, on) => {
   engine(on)
   const hunks = [{ oldStart: 1, newStart: 1, oldLines: 1, newLines: 1, lines: ['-old', '\\ No newline at end of file', '+new', '\\ No newline at end of file'] }]
   for (const surface of ['terminal', 'desktop'] as const) {
@@ -3117,15 +3196,15 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
     return { value: e.value }
   })
   const steps = setupSteps(PRESET_NAMES)
-  expect(steps.map(s => s.key)).toEqual(['theme', 'promptStyle', 'replyStyle', 'tableStyle', 'codeStyle', 'toolOutput', 'diffStyle', 'toolStyle', 'headingStyle', 'tableLayout', 'taskStyle', 'listMarker', 'copyButtonStyle', 'bubbleLabels', 'clock', 'pieStyle', 'statusMatrix', 'testMatrix', 'benchTable', 'schemaTable', 'compareTable', 'apiTable', 'kvTable', 'groupTable', 'heatTable', 'treeTable', 'pivotTable', 'desktopColors', 'planStyle', 'scriptStyle'])
+  expect(steps.map(s => s.key)).toEqual(['theme', 'promptStyle', 'replyStyle', 'tableStyle', 'codeStyle', 'toolOutput', 'diffStyle', 'toolStyle', 'headingStyle', 'tableLayout', 'taskStyle', 'listMarker', 'copyButtonStyle', 'bubbleLabels', 'clock', 'pieStyle', 'statusMatrix', 'testMatrix', 'benchTable', 'schemaTable', 'compareTable', 'apiTable', 'kvTable', 'groupTable', 'heatTable', 'treeTable', 'pivotTable', 'desktopColors', 'planStyle', 'scriptStyle', 'shellEdits'])
   for (const step of steps.slice(1)) for (const value of step.options) expect(resolveStyle({ [step.key]: value })[step.key]).toBe(value)
   expect(steps[0]!.options).toEqual(PRESET_NAMES)
   expect(steps.find(s => s.key === 'copyButtonStyle')?.note).toContain('`hover` puts a dim ⧉ beside each block instead and shows its buttons only while the pointer is on that ⧉')
   expect(setupParts(PRESET_NAMES, 0).head.startsWith('## Setup 1/6: Theme')).toBe(true)
   expect(setupParts(PRESET_NAMES, 5).head.startsWith('## Setup 6/6: Tool output')).toBe(true)
   expect(setupParts(PRESET_NAMES, 5).tail).not.toContain('Skip with')
-  expect(setupParts(PRESET_NAMES, 6).head.startsWith('## More styles 1/24: Diffs')).toBe(true)
-  expect(SETUP_ESSENTIALS_DONE).toContain('walks 24 more styles')
+  expect(setupParts(PRESET_NAMES, 6).head.startsWith('## More styles 1/25: Diffs')).toBe(true)
+  expect(SETUP_ESSENTIALS_DONE).toContain('walks 25 more styles')
   expect((await setupRun($, 'setup')).text).toBe(SETUP_PANE_OPENED)
   expect((await setupRun($, 'setup more')).text).toBe(SETUP_PANE_OPENED)
   expect((await setupRun($, 'setup theme')).text).toBe(setupText(setupParts(PRESET_NAMES, 0)))
@@ -3154,7 +3233,8 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
   expect((await setupRun($, 'setup pivot-table transpose')).text).toBe(`Pivot set to transpose.\n\n${setupText(setupParts(PRESET_NAMES, 27))}`)
   expect((await setupRun($, 'setup desktop match')).text).toBe(`Desktop app colors set to match.\n\n${setupText(setupParts(PRESET_NAMES, 28))}`)
   expect((await setupRun($, 'setup plans card')).text).toBe(`Plans set to card.\n\n${setupText(setupParts(PRESET_NAMES, 29))}`)
-  expect((await setupRun($, 'setup scripts chip')).text).toBe(`Code Mode scripts set to chip.\n\n${SETUP_DONE}`)
+  expect((await setupRun($, 'setup scripts chip')).text).toBe(`Code Mode scripts set to chip.\n\n${setupText(setupParts(PRESET_NAMES, 30))}`)
+  expect((await setupRun($, 'setup shell-edits list')).text).toBe(`Shell command edits set to list.\n\n${SETUP_DONE}`)
   expect(writes).toEqual([
     { key: 'prismantis.theme', value: 'nord' },
     { key: 'prismantis.promptStyle', value: 'bar' },
@@ -3182,12 +3262,13 @@ test('/prismantis setup walks the essential steps, then more styles, saves each 
     { key: 'prismantis.desktopColors', value: 'match' },
     { key: 'prismantis.planStyle', value: 'card' },
     { key: 'prismantis.scriptStyle', value: 'chip' },
+    { key: 'prismantis.shellEdits', value: 'list' },
   ])
   expect((await setupRun($, 'setup tasks')).text).toBe(setupText(setupParts(PRESET_NAMES, 10)))
   expect((await setupRun($, 'setup table-layout')).text).toBe(setupText(setupParts(PRESET_NAMES, 9)))
   expect((await setupRun($, 'setup tables 9')).text?.startsWith('Unknown tables pick "9".')).toBe(true)
   expect((await setupRun($, 'setup colors')).text?.startsWith('Unknown setup step "colors".')).toBe(true)
-  expect(writes).toHaveLength(26)
+  expect(writes).toHaveLength(27)
   expect(setupText(setupParts(PRESET_NAMES, 7))).toContain('`tree-bold` or `classic`')
 })
 
@@ -3245,33 +3326,35 @@ test('/prismantis setup opens a pane in the terminal: arrows move through the st
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup'])
   expect(toasts.at(-1)).toBe(`Tool output set to quiet. ${SETUP_ESSENTIALS_DONE}`)
   expect((await setupRun($, 'setup more')).text).toBe(SETUP_PANE_OPENED)
-  expect(await pane.find({ type: 'Text', text: /More styles 1\/24: Diffs/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 1\/25: Diffs/ })).toBeTruthy()
   for (const [step, value] of [['diffs', 'bar'], ['tools', 'tree-bold'], ['headings', 'uppercase'], ['table-layout', 'auto'], ['tasks', 'progress'], ['lists', 'dash'], ['copy', 'hover'], ['labels', 'small'], ['clock', '24h'], ['pies', 'bars'], ['status-matrix', 'color'], ['test-report', 'report'], ['bench-table', 'trend']] as const) await pane.press({ key: `pick:${step}:${value}` })
-  expect(await pane.find({ type: 'Text', text: /More styles 14\/24: Schema/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 14\/25: Schema/ })).toBeTruthy()
   await pane.press({ key: 'pick:schema-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 15\/24: Comparison/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 15\/25: Comparison/ })).toBeTruthy()
   await pane.press({ key: 'pick:compare-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 16\/24: API reference/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 16\/25: API reference/ })).toBeTruthy()
   await pane.press({ key: 'pick:api-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 17\/24: Key-value/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 17\/25: Key-value/ })).toBeTruthy()
   await pane.press({ key: 'pick:kv-table:full' })
-  expect(await pane.find({ type: 'Text', text: /More styles 18\/24: Groups/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 18\/25: Groups/ })).toBeTruthy()
   await pane.press({ key: 'pick:group-table:count' })
-  expect(await pane.find({ type: 'Text', text: /More styles 19\/24: Heatmap/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 19\/25: Heatmap/ })).toBeTruthy()
   await pane.press({ key: 'pick:heat-table:bars' })
-  expect(await pane.find({ type: 'Text', text: /More styles 20\/24: Tree/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 20\/25: Tree/ })).toBeTruthy()
   await pane.press({ key: 'pick:tree-table:branch' })
-  expect(await pane.find({ type: 'Text', text: /More styles 21\/24: Pivot/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 21\/25: Pivot/ })).toBeTruthy()
   await pane.press({ key: 'pick:pivot-table:transpose' })
-  expect(await pane.find({ type: 'Text', text: /More styles 22\/24: Desktop app colors/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 22\/25: Desktop app colors/ })).toBeTruthy()
   await pane.press({ key: 'pick:desktop:match' })
-  expect(await pane.find({ type: 'Text', text: /More styles 23\/24: Plans/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 23\/25: Plans/ })).toBeTruthy()
   await pane.press({ key: 'pick:plans:card' })
-  expect(await pane.find({ type: 'Text', text: /More styles 24\/24: Code Mode scripts/ })).toBeTruthy()
+  expect(await pane.find({ type: 'Text', text: /More styles 24\/25: Code Mode scripts/ })).toBeTruthy()
   await pane.press({ key: 'pick:scripts:chip' })
-  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.promptStyle=bar', 'prismantis.replyStyle=solid', 'prismantis.tableStyle=grid', 'prismantis.codeStyle=framed', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.headingStyle=uppercase', 'prismantis.tableLayout=auto', 'prismantis.taskStyle=progress', 'prismantis.listMarker=dash', 'prismantis.copyButtonStyle=hover', 'prismantis.bubbleLabels=small', 'prismantis.clock=24h', 'prismantis.pieStyle=bars', 'prismantis.statusMatrix=color', 'prismantis.testMatrix=report', 'prismantis.benchTable=trend', 'prismantis.schemaTable=full', 'prismantis.compareTable=full', 'prismantis.apiTable=full', 'prismantis.kvTable=full', 'prismantis.groupTable=count', 'prismantis.heatTable=bars', 'prismantis.treeTable=branch', 'prismantis.pivotTable=transpose', 'prismantis.desktopColors=match', 'prismantis.planStyle=card', 'prismantis.scriptStyle=chip'])
+  expect(await pane.find({ type: 'Text', text: /More styles 25\/25: Shell command edits/ })).toBeTruthy()
+  await pane.press({ key: 'pick:shell-edits:list' })
+  expect(writes.map(w => `${w.key}=${String(w.value)}`)).toEqual(['prismantis.theme=nord', 'prismantis.promptStyle=bar', 'prismantis.replyStyle=solid', 'prismantis.tableStyle=grid', 'prismantis.codeStyle=framed', 'prismantis.toolOutput=quiet', 'prismantis.diffStyle=bar', 'prismantis.toolStyle=tree-bold', 'prismantis.headingStyle=uppercase', 'prismantis.tableLayout=auto', 'prismantis.taskStyle=progress', 'prismantis.listMarker=dash', 'prismantis.copyButtonStyle=hover', 'prismantis.bubbleLabels=small', 'prismantis.clock=24h', 'prismantis.pieStyle=bars', 'prismantis.statusMatrix=color', 'prismantis.testMatrix=report', 'prismantis.benchTable=trend', 'prismantis.schemaTable=full', 'prismantis.compareTable=full', 'prismantis.apiTable=full', 'prismantis.kvTable=full', 'prismantis.groupTable=count', 'prismantis.heatTable=bars', 'prismantis.treeTable=branch', 'prismantis.pivotTable=transpose', 'prismantis.desktopColors=match', 'prismantis.planStyle=card', 'prismantis.scriptStyle=chip', 'prismantis.shellEdits=list'])
   expect(panes).toEqual(['open prismantis-setup', 'close prismantis-setup', 'open prismantis-setup', 'close prismantis-setup'])
-  expect(toasts.at(-1)).toBe('Code Mode scripts set to chip. Setup done.')
+  expect(toasts.at(-1)).toBe('Shell command edits set to list. Setup done.')
   await pane.unmount()
 })
 
@@ -3589,6 +3672,11 @@ expect((await status.findAll({ type: 'Text', text: /^✓$/ })).filter(n => n.pro
   expect((await diffs.findAll({ type: 'Box' })).filter(b => b.props.backgroundColor)).toHaveLength(8)
   expect(await diffs.findAll({ type: 'Text', text: /^▌ $/ })).toHaveLength(4)
   await diffs.unmount()
+  const shell = await mount(step('shell-edits'))
+  expect(await shell.findAll({ type: 'Text', text: /^Updated src\/config\.ts \+1 −1$/ })).toHaveLength(1)
+  expect(await shell.findAll({ type: 'Text', text: /^tests\/config\.test\.ts$/ })).toHaveLength(1)
+  expect(await shell.findAll({ type: 'Text', text: /^ {2}retries: 5,$/ })).toHaveLength(1)
+  await shell.unmount()
   const code = await mount(step('code'))
   expect(await code.findAll({ type: 'Text', text: /const retries = 3/ })).toHaveLength(4)
   expect((await code.findAll({ type: 'Box' })).filter(b => b.props.borderStyle === 'round')).toHaveLength(2)

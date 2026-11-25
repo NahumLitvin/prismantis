@@ -64,6 +64,7 @@ export type Style = {
   noteKey?: string
   pressPreview?: boolean
   diffStyle: 'card' | 'full' | 'marks' | 'bar'
+  shellEdits: 'list' | 'diffs'
   codeStyle: 'plain' | 'framed' | 'filled' | 'card'
   planStyle: 'off' | 'bare' | 'card'
   scriptStyle: 'frame' | 'rail' | 'bar' | 'chip'
@@ -166,6 +167,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
     runningDot: pick(options.runningDot, ['ring', 'blink'] as const, 'ring'),
     unreadPrompts: options.unreadPrompts === true,
     diffStyle: pick(options.diffStyle, ['card', 'full', 'marks', 'bar'] as const, 'card'),
+    shellEdits: pick(options.shellEdits, ['list', 'diffs'] as const, 'list'),
     codeStyle: pick(options.codeStyle, ['plain', 'framed', 'filled', 'card'] as const, 'plain'),
     planStyle: pick(options.planStyle, ['off', 'bare', 'card'] as const, 'off'),
     scriptStyle: pick(options.scriptStyle, ['frame', 'rail', 'bar', 'chip'] as const, 'frame'),

@@ -530,6 +530,13 @@
       "default": "card",
       "options": ["card", "full", "marks", "bar"]
     },
+    "shellEdits": {
+      "type": "string",
+      "title": "Shell command edits",
+      "description": "How the files a shell command changed (sed -i, a script, git merge) show under it. list: one line per file, like Claude Code's own summary of a big change: Updated <path> +N −M, Created, Deleted or Renamed, then up to 3 more changed paths. diffs: one diff card per file, as an edit draws.",
+      "default": "list",
+      "options": ["list", "diffs"]
+    },
     "codeStyle": {
       "type": "string",
       "title": "Code block style",

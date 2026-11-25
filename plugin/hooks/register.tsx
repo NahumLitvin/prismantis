@@ -803,6 +803,23 @@ const diffSample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Sty
   <el.Box key={`${id}d`} flexDirection="column">{renderDiffCard(el, style, SETUP_EDIT, () => null, id, columns)}</el.Box>,
 ]
 
+const SETUP_SHELL_EDITS = {
+  files: [
+    { filePath: 'src/config.ts', hunks: [{ oldStart: 12, oldLines: 4, newStart: 12, newLines: 4, lines: [' export const config = {', '-  retries: 3,', '+  retries: 5,', '   verbose: false,'] }] },
+    { filePath: 'src/client.ts', hunks: [{ oldStart: 40, oldLines: 2, newStart: 40, newLines: 2, lines: ['-  const retries = 3', '+  const retries = config.retries'] }] },
+  ],
+  moreFiles: 1,
+  changedFiles: ['src/config.ts', 'src/client.ts', 'tests/config.test.ts'],
+}
+
+const shellEditsSample = (el: ReturnType<EngineInterface['ui']['resolve']>, style: Style, id: string, columns: number): RenderElement[] => {
+  const edits = bashEdits({ bashEditDiff: SETUP_SHELL_EDITS })
+  return [
+    <el.Box key={`${id}r`}>{renderToolRow(el, style, { tool: 'Bash', input: { command: 'git merge --ff-only origin/main' }, isRunning: false, isErrored: false, isInterrupted: false }, columns)}</el.Box>,
+    ...(edits ? [<el.Box key={`${id}d`} flexDirection="column">{renderBashEdits(el, style, edits, () => null, id, false, [], columns)}</el.Box>] : []),
+  ]
+}
+
 type SetupView = { el: ReturnType<EngineInterface['ui']['resolve']>; base: Style; options: PluginOptions; at: number; step: SetupStep; current: string; columns: number; rows: number; pick: (value: string) => void }
 
 const shownRows = (text: string, columns: number) => textRows(text.replace(/`/g, ''), columns)
@@ -846,6 +863,7 @@ const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['res
     toolStyle: (style, _, id) => [md({ ...style, narration: style.toolStyle === 'tree-bold' }, 'Reading the config.', `${id}s`), <el.Box key={id}>{renderToolRow(el, style, { tool: 'Read', input: { file_path: 'src/config.ts' }, isRunning: false, isErrored: false, isInterrupted: false }, columns)}</el.Box>],
     toolOutput: (style, value, id) => toolOutputSample(el, style, value, id, columns),
     diffStyle: (style, _, id) => diffSample(el, style, id, columns),
+    shellEdits: (style, _, id) => shellEditsSample(el, style, id, columns),
     copyButtonStyle: (style, value, id) => copySample(el, style, value, id, columns),
     clock: (style, value, id) => clockSample(el, style, value, id, columns),
     replyStyle: (style, _, id) => replySample($, el, style, id, columns),

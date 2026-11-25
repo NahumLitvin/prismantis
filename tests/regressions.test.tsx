@@ -517,6 +517,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('code highlighted in the file\'s language')
   expect(showcaseText([])).toContain('the changed words in a deeper tint')
   expect(showcaseText([])).toContain('Files a shell command changes')
+  expect(showcaseText([])).toContain('draw one line each, like Claude Code\'s own summary of a big change: `Updated <path> +N −M`. Set `shellEdits` to `diffs` in `/config` to give each the same card instead')
   expect(showcaseText([])).toContain('Set `diffStyle` in `/config` for the look: `card`, `full`, `marks` or `bar`')
   expect(showcaseText([])).toContain('The buttons draw dim and light up under the pointer; set `copyButtonStyle` to `inline`')
   expect(showcaseText([])).toContain('Set `codeStyle` in `/config` for the look: `plain`, `framed`, `filled` or `card`')
@@ -1666,7 +1667,7 @@ test('a tool path whose link would pass 2048 characters stays text, and the row 
   expect(await toolLinks($, 'Read', { file_path: '/work/app/a b#c?d%e é.ts' })).toEqual([['a b#c?d%e é.ts', 'file:///work/app/a%20b%23c%3Fd%25e%20%C3%A9.ts']])
 })
 
-test('shell edit cards link their file headers', async ($, on) => {
+test('shell edit cards link their file headers', { options: { shellEdits: 'diffs' } }, async ($, on) => {
   filesAt(on, '2.1.289')
   if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
   const output = { stdout: '', stderr: '', interrupted: false, bashEditDiff: { files: [{ filePath: '/work/app/src/app.ts', hunks: [{ oldStart: 0, oldLines: 0, newStart: 1, newLines: 1, lines: ['+one'] }] }], moreFiles: 0 } }
@@ -3161,7 +3162,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 
   for (const toolOutput of ['full', 'quiet'] as const) {
-    test(`tool rows and shell edit cards keep programs and launchers as plain colored text on ${surface} (toolOutput ${toolOutput})`, { options: { toolOutput } }, async ($, on) => {
+    test(`tool rows and shell edit cards keep programs and launchers as plain colored text on ${surface} (toolOutput ${toolOutput})`, { options: { shellEdits: 'diffs', toolOutput } }, async ($, on) => {
       filesAt(on, '2.1.289')
       if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
       let calls = 0

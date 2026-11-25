@@ -2397,7 +2397,7 @@ type WholeFile = { kind: 'created' | 'deleted'; path: string; lines: string[] }
 
 export type FileChange = { kind: 'modified'; path: string; rows: DiffLine[] } | WholeFile | { kind: 'renamed'; path: string; to: string }
 
-export type BashEdits = { files: FileChange[]; more: number; shared: boolean }
+export type BashEdits = { files: FileChange[]; more: number; shared: boolean; others?: string[] }
 
 export const EDIT_NOTES = {
   first: 'every file that changed while this ran, by this command or anything else: a view of the changes, not an audit of the command',
@@ -2409,11 +2409,18 @@ export const bashEdits = (output: unknown): BashEdits | undefined => {
   if (output === null || typeof output !== 'object') return undefined
   const diff = (output as { bashEditDiff?: unknown }).bashEditDiff
   if (diff === null || typeof diff !== 'object') return undefined
-  const { files, moreFiles, shared } = diff as { files?: unknown; moreFiles?: unknown; shared?: unknown }
+  const { files, moreFiles, shared, changedFiles } = diff as { files?: unknown; moreFiles?: unknown; shared?: unknown; changedFiles?: unknown }
   if (!Array.isArray(files) || files.length === 0) return undefined
   const changed = files.map(fileChange)
   if (!changed.every((f): f is FileChange => f !== undefined)) return undefined
-  return { files: renamed(changed), more: typeof moreFiles === 'number' && moreFiles > 0 ? moreFiles : 0, shared: shared === true }
+  const shown = renamed(changed)
+  return { files: shown, more: typeof moreFiles === 'number' && moreFiles > 0 ? moreFiles : 0, shared: shared === true, others: otherPaths(shown, changedFiles) }
+}
+
+const otherPaths = (shown: FileChange[], changedFiles: unknown): string[] => {
+  const known = new Set(shown.flatMap(f => (f.kind === 'renamed' ? [f.path, f.to] : [f.path])))
+  const paths = Array.isArray(changedFiles) ? changedFiles.filter((p): p is string => typeof p === 'string' && !known.has(p)) : []
+  return [...new Set(paths)]
 }
 
 const fileChange = (entry: unknown): FileChange | undefined => {
@@ -2569,16 +2576,52 @@ const renamedLine = (el: ElementTable, style: Style, from: string, to: string, k
   </el.Text>
 )
 
+const OTHERS_SHOWN = 3
+
+const pathText = (el: ElementTable, style: Style, path: string, linked: boolean, key = 'path'): RenderElement => (
+  <el.Text key={key} color={style.theme.path}>{linked ? drawPieces(el, style, [{ text: shortPath(style, path), path }]) : shortPath(style, path)}</el.Text>
+)
+
+const changeCounts = (el: ElementTable, style: Style, rows: DiffLine[]): RenderElement[] => {
+  const marks = markColors(style.theme)
+  const added = rows.filter(r => r.mark === '+').length
+  const removed = rows.filter(r => r.mark === '-').length
+  return [
+    ...(added ? [<el.Text key="added" color={marks['+']}>{` +${added}`}</el.Text>] : []),
+    ...(removed ? [<el.Text key="removed" color={marks['-']}>{` −${removed}`}</el.Text>] : []),
+  ]
+}
+
+const listedFile = (el: ElementTable, style: Style, file: FileChange, key: string): RenderElement => {
+  if (file.kind === 'renamed') return renamedLine(el, style, file.path, file.to, key)
+  const verb = file.kind === 'modified' ? 'Updated' : file.kind === 'created' ? 'Created' : 'Deleted'
+  const tail = file.kind === 'modified' ? changeCounts(el, style, file.rows) : [<el.Text key="lines" dimColor>{` (${lineCount(file.lines.length)})`}</el.Text>]
+  return <el.Text key={`file${key}`}>{`${verb} `}{pathText(el, style, file.path, file.kind !== 'deleted')}{tail}</el.Text>
+}
+
+const otherFiles = (el: ElementTable, style: Style, edits: BashEdits): RenderElement[] => {
+  if (!edits.more) return []
+  const shown = (edits.others ?? []).slice(0, OTHERS_SHOWN)
+  const rest = edits.more - shown.length
+  return [
+    <el.Text key="more" dimColor>{`… +${edits.more} ${edits.more === 1 ? 'file' : 'files'} changed`}</el.Text>,
+    ...shown.map((path, i) => pathText(el, style, path, true, `other${i}`)),
+    ...(shown.length && rest > 0 ? [<el.Text key="others" dimColor>{`… +${rest} more`}</el.Text>] : []),
+  ]
+}
+
 export const renderBashEdits = (el: ElementTable, style: Style, edits: BashEdits, fold: Fold, id: string, below = false, notes: readonly string[] = [], columns?: number): RenderElement => {
+  if (style.shellEdits === 'list') return diffRow(el, style, [...edits.files.map((file, i) => listedFile(el, style, file, String(i))), ...otherFiles(el, style, edits), ...editNoteLines(el, notes)], below)
   const budget = { left: DIFF_EXTRA }
   const cards = edits.files.map((file, i) =>
     file.kind === 'modified' ? diffBox(el, style, file.rows, fold, `${id}:${i}`, String(i), file.path, budget, columns, shortPath(style, file.path))
     : file.kind === 'renamed' ? renamedLine(el, style, file.path, file.to, String(i))
     : wholeFileCard(el, style, file, fold, `${id}:${i}`, String(i), budget, columns))
   const more = edits.more ? [<el.Text key="more" dimColor>{`… +${edits.more} more ${edits.more === 1 ? 'file' : 'files'}`}</el.Text>] : []
-  const said = notes.map((note, i) => <el.Text key={`note${i}`} dimColor>{`(${note})`}</el.Text>)
-  return diffRow(el, style, [...cards, ...more, ...said], below)
+  return diffRow(el, style, [...cards, ...more, ...editNoteLines(el, notes)], below)
 }
+
+const editNoteLines = (el: ElementTable, notes: readonly string[]): RenderElement[] => notes.map((note, i) => <el.Text key={`note${i}`} dimColor>{`(${note})`}</el.Text>)
 
 const TREE_MOVERS = new Set(['checkout', 'switch', 'stash', 'pull', 'merge', 'rebase', 'reset', 'restore', 'clean', 'cherry-pick', 'revert'])
 
