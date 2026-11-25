@@ -2595,7 +2595,7 @@ test('a diff color set in diffAddedColor or diffRemovedColor tints in its own sa
     const added = (await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor
     const removed = (await ui.find({ type: 'Box', text: /^5 - const b = 2$/ }))?.props.backgroundColor
     expect([added, removed]).toEqual([diffTint(t.codeText, '#9bd1b6', false), diffTint(t.codeText, '#e5a8bd', false)])
-    expect([contrast(t.codeText!, added!) >= 4.5, contrast(t.codeText!, removed!) >= 4.5]).toEqual([true, true])
+    expect([contrast(t.codeText!, String(added)) >= 4.5, contrast(t.codeText!, String(removed)) >= 4.5]).toEqual([true, true])
     await ui.unmount()
   }
 })
