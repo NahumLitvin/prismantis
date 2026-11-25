@@ -31,6 +31,7 @@ export type Clock = 'off' | '24h' | '12h'
 
 export type Style = {
   theme: Theme
+  ownColors?: readonly string[]
   background?: string
   desktopColors: DesktopColors
   headingStyle: 'bold' | 'underline' | 'uppercase' | 'banner'
@@ -139,6 +140,7 @@ export const resolveStyle = (options: PluginOptions): Style => {
 
   return {
     theme: { ...base, ...fromFields },
+    ownColors: Object.keys(fromFields),
     ...(PRESET_BACKGROUNDS[preset] ? { background: PRESET_BACKGROUNDS[preset] } : {}),
     desktopColors: pick(options.desktopColors, ['off', 'match'] as const, 'off'),
     headingStyle: pick(options.headingStyle, ['bold', 'underline', 'uppercase', 'banner'] as const, 'banner'),

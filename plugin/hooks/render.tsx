@@ -1942,9 +1942,52 @@ export const fullHue = (hex: string): string => {
   return `#${pure.map(v => Math.round(v! * 255).toString(16).padStart(2, '0')).join('')}`
 }
 
-export const diffTint = (text: string | undefined, color: string | undefined): string | undefined => {
+const toLinear = (v: number): number => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+
+const fromLinear = (v: number): number => (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055)
+
+export const oklch = (hex: string): [number, number, number] => {
+  const [r, g, b] = channels(hex).map(v => toLinear(v / 255)) as [number, number, number]
+  const [l, m, s] = [
+    0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b,
+    0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b,
+    0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b,
+  ].map(Math.cbrt) as [number, number, number]
+  const [L, A, B] = [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ]
+  return [L, Math.hypot(A, B), Math.atan2(B, A)]
+}
+
+const oklchRgb = (L: number, C: number, h: number): number[] => {
+  const [A, B] = [C * Math.cos(h), C * Math.sin(h)]
+  const [l, m, s] = [L + 0.3963377774 * A + 0.2158037573 * B, L - 0.1055613458 * A - 0.0638541728 * B, L - 0.0894841775 * A - 1.291485548 * B].map(v => v ** 3) as [number, number, number]
+  return [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ].map(fromLinear)
+}
+
+export const fromOklch = (L: number, C: number, h: number): string => {
+  let chroma = C
+  while (chroma > 0 && oklchRgb(L, chroma, h).some(v => v < -0.0005 || v > 1.0005)) chroma = Math.max(0, chroma - 0.002)
+  return `#${oklchRgb(L, chroma, h).map(v => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('')}`
+}
+
+const ownTint = (text: string, color: string, dark: boolean): string => {
+  const [start, chroma, hue] = oklch(color)
+  let lightness = start
+  while (lightness > 0 && lightness < 1 && contrast(text, fromOklch(lightness, chroma, hue)) < TEXT_CONTRAST) lightness += dark ? -0.01 : 0.01
+  return fromOklch(Math.min(1, Math.max(0, lightness)), chroma, hue)
+}
+
+export const diffTint = (text: string | undefined, color: string | undefined, hued = true): string | undefined => {
   if (!text || !color || !HEX.test(text) || !HEX.test(color)) return undefined
   const dark = contrast(text, '#000000') >= contrast(text, '#ffffff')
+  if (!hued) return ownTint(text, color, dark)
   const base = dark ? '#000000' : '#ffffff'
   const hue = fullHue(color)
   let share = dark ? 0.3 : 0.2
@@ -2042,9 +2085,13 @@ const diffSegments = (style: Style, rows: DiffLine[], path: string | undefined):
 
 const WORD_SHARE = 0.3
 
-export const wordTint = (text: string | undefined, color: string | undefined): string | undefined => {
-  const row = diffTint(text, color)
-  return row && tint(row, color, WORD_SHARE)
+const WORD_STEP = 0.06
+
+export const wordTint = (text: string | undefined, color: string | undefined, hued = true): string | undefined => {
+  const row = diffTint(text, color, hued)
+  if (!row || hued || !text || !color) return row && tint(row, color, WORD_SHARE)
+  const [, chroma, hue] = oklch(color)
+  return fromOklch(oklch(row)[0] + (contrast(text, '#000000') >= contrast(text, '#ffffff') ? -WORD_STEP : WORD_STEP), chroma, hue)
 }
 
 const WORD = /\w+|\s+|[^\w\s]/g
@@ -2247,13 +2294,15 @@ const diffPaint = (style: Style, gutter: number): DiffPaint => {
   const t = style.theme
   const marks = markColors(t)
   const tinted = style.diffStyle === 'card' || style.diffStyle === 'full'
-  const lines = { ...UNTINTED, '+': diffTint(t.codeText, marks['+']), '-': diffTint(t.codeText, marks['-']) }
+  const own = style.ownColors ?? []
+  const hued = { '+': !own.includes(t.diffAdded ? 'diffAdded' : 'number'), '-': !own.includes(t.diffRemoved ? 'diffRemoved' : 'codeFlag') }
+  const lines = { ...UNTINTED, '+': diffTint(t.codeText, marks['+'], hued['+']), '-': diffTint(t.codeText, marks['-'], hued['-']) }
   return {
     look: style.diffStyle,
     gutter,
     marks,
     tints: tinted ? lines : UNTINTED,
-    words: tinted ? { ...UNTINTED, '+': wordTint(t.codeText, marks['+']), '-': wordTint(t.codeText, marks['-']) } : lines,
+    words: tinted ? { ...UNTINTED, '+': wordTint(t.codeText, marks['+'], hued['+']), '-': wordTint(t.codeText, marks['-'], hued['-']) } : lines,
   }
 }
 

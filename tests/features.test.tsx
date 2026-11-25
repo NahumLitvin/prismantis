@@ -9,7 +9,7 @@ import { PRESET_BACKGROUNDS, PRESET_NAMES, PRESETS } from '../hooks/presets'
 import { RANDOM_THEMES, pickTheme, resolveStyle } from '../hooks/theme'
 import { ISSUE_HINT, KEY_POINT_HINT, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, setupParts, setupSteps, setupText } from '../hooks/help'
 import type { Theme } from '../hooks/theme'
-import { BAND_STEP, BUBBLE_STEP, EDIT_NOTES, PRISM_COLORS, bashEdits, bubbleFill, replyFill, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, renderDiffCard, tint, wordTint, errorReason, formatDuration, groupSummary, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
+import { BAND_STEP, BUBBLE_STEP, EDIT_NOTES, PRISM_COLORS, bashEdits, bubbleFill, replyFill, contrast, describeShell, diffLines, diffTint, fullHue, movesTree, onTint, pathLanguage, previewBand, renderDiffCard, tint, wordTint, errorReason, formatDuration, groupSummary, oklch, isReadOnlyCall, programsOf, refusalReason, rememberCall, shortTarget, shortenPaths, withoutBashEdits } from '../hooks/render'
 import { columnWidths } from '../hooks/layout'
 import { startSession } from './clipboard-env'
 import { claudeAt } from './claude-version'
@@ -2581,11 +2581,30 @@ test('a diff card draws its counts, marks and tints in the theme\'s diff colors'
   }
 })
 
+test('a diff color set in diffAddedColor or diffRemovedColor tints in its own saturation, not the full hue', { options: { diffAddedColor: '#9bd1b6', diffRemovedColor: '#e5a8bd' } }, async ($, on) => {
+  engine(on)
+  expect(diffTint(t.codeText, '#9bd1b6', false)).not.toBe(diffTint(t.codeText, '#9bd1b6'))
+  for (const color of ['#9bd1b6', '#e5a8bd']) {
+    const [, chroma, hue] = oklch(color)
+    const [, rowChroma, rowHue] = oklch(diffTint(t.codeText, color, false)!)
+    expect([Math.abs(rowChroma - chroma) < 0.01, Math.abs(rowHue - hue) < 0.05]).toEqual([true, true])
+    expect(contrast(t.codeText!, wordTint(t.codeText, color, false)!) >= 4.5).toBe(true)
+  }
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(editResult(surface, 'Edit', patch))
+    const added = (await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor
+    const removed = (await ui.find({ type: 'Box', text: /^5 - const b = 2$/ }))?.props.backgroundColor
+    expect([added, removed]).toEqual([diffTint(t.codeText, '#9bd1b6', false), diffTint(t.codeText, '#e5a8bd', false)])
+    expect([contrast(t.codeText!, added!) >= 4.5, contrast(t.codeText!, removed!) >= 4.5]).toEqual([true, true])
+    await ui.unmount()
+  }
+})
+
 test('diffAddedColor and diffRemovedColor set the diff colors like any other token', { options: { diffAddedColor: '#22c55e', diffRemovedColor: 'red' } }, async ($, on) => {
   engine(on)
   const ui = await $.ui.mount(editResult('terminal', 'Edit', patch))
   expect((await ui.find({ type: 'Text', text: /^\+ $/ }))?.props.color).toBe('#22c55e')
-  expect((await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor).toBe(diffTint(t.codeText, '#22c55e'))
+  expect((await ui.find({ type: 'Box', text: /^6 \+ const c = 4$/ }))?.props.backgroundColor).toBe(diffTint(t.codeText, '#22c55e', false))
   expect((await ui.find({ type: 'Text', text: /^- $/ }))?.props.color).toBe('red')
   expect((await ui.find({ type: 'Box', text: /^5 - const b = 2$/ }))?.props.backgroundColor).toBeUndefined()
   await ui.unmount()
