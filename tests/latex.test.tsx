@@ -190,7 +190,7 @@ test('the prompt hint says display math renders when the renderer works', async 
   expect(seen[0]?.some(c => c.includes('$$') && c.includes('LaTeX'))).toBe(true)
 })
 
-test('a prompt sent while the renderer check is still running is not held up and carries no LaTeX hint', async ($, on) => {
+test('a prompt sent while the renderer check is still running is not held up and carries the LaTeX hint once the renderer is ready', { options: { diagramHintsWhen: 'once' } }, async ($, on) => {
   mock.env(on, KITTY)
   const clock = mock.clock(on)
   let release = () => {}
@@ -206,6 +206,11 @@ test('a prompt sent while the renderer check is still running is not held up and
   expect(seen[0]?.some(c => c.includes('$$'))).toBe(false)
   release()
   await clock.settle()
+  await $.prompt.submit({ text: 'again', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'once more', wait: false, origin: { kind: 'composer' } })
+  expect(seen[1]).toHaveLength(1)
+  expect(seen[1]?.[0]).toContain('LaTeX')
+  expect(seen[2] ?? []).toHaveLength(0)
 })
 
 test('a formula still draws as an image when the engine refuses its first store write mid-render', async ($, on) => {

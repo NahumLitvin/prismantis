@@ -69,6 +69,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `sectionCopyButtons` | `true`, `false` | `false` |
 | `promptCopyButtons` | `true`, `false` | `false` |
 | `diagramHints` | `true`, `false` | `true` |
+| `diagramHintsWhen` | `every` (each prompt), `once` (static hints first and after compaction or `/clear`, pane and LaTeX hints when they change) | `every` |
 | `issueHint` | `true`, `false` | `true` |
 | `keyPointHint` | `true` (each prompt carries a model-only note asking for each reply's key points in bold), `false` | `false` |
 | `rtl` | `auto`, a terminal (`warp`, `kitty`, `apple-terminal`, `iterm`, `ghostty`, `wezterm`, `vscode`, `alacritty`, `windows-terminal`, `gnome`, `konsole`), `off` | `auto` |

@@ -613,6 +613,13 @@
       "description": "Attach a short note, read by the model and never shown, to each prompt you type or another plugin sends, saying tables, code, mermaid diagrams, charts and figures render here, and LaTeX formulas when the renderer runs. About 630 tokens per prompt (about 275 for the main part, about 360 for figures), about 80 more with LaTeX. Off when mermaid is off.",
       "default": true
     },
+    "diagramHintsWhen": {
+      "type": "string",
+      "title": "Diagram hints: when",
+      "description": "When the diagram hints note goes with a prompt. every: each prompt you type or another plugin sends (about 630 tokens each). once: static hints on the first prompt and after compaction or /clear. Later prompts report changes to narrow pane width and LaTeX availability.",
+      "default": "every",
+      "options": ["every", "once"]
+    },
     "latex": {
       "type": "boolean",
       "title": "LaTeX math",
