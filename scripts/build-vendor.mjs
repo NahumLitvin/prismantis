@@ -159,6 +159,48 @@ const ROOT_SCAN = `  for (const node of graph.nodes) {
 const ROOTS_FIRST = `  const targets = new Set(graph.edges.map(e => e.to))
   for (const node of [...graph.nodes].sort((a, b) => Number(targets.has(a)) - Number(targets.has(b)))) {
     if (!nodesFound.has(node.name)) {`
+const EDGE_ROUTING = /beautiful-mermaid\/src\/ascii\/edge-routing\.ts$/
+const LABEL_WIDTH = [
+  [
+    '  const lenLabel = edge.text.length\n',
+    "  const lenLabel = Math.max(...edge.text.split('\\n').map(l => l.length))\n",
+  ],
+  [
+    '  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2))\n',
+    `  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2))
+  const width = (x: number) => graph.columnWidth.get(x) ?? 0
+  const between = (from: number, to: number) => Array.from({ length: Math.max(0, to - from - 1) }, (_, i) => width(from + 1 + i)).reduce((a, b) => a + b, 0)
+  const span = () => (minX === maxX ? width(minX) : width(minX) - Math.floor(width(minX) / 2) + between(minX, maxX) + Math.floor(width(maxX) / 2))
+  const [prev, last] = edge.path.slice(-2)
+  const intoLabel = !!prev && !!last && last.x < prev.x && largestLine.some(p => p.x === last.x && p.y === last.y)
+  const room = lenLabel + (minX !== maxX && intoLabel ? 4 : 2)
+  while (span() < room) graph.columnWidth.set(middleX, width(middleX) + 1)
+`,
+  ],
+  [
+    '    const fallbackSegments = segments.filter(s => s.width >= lenLabel)\n',
+    "    const fitting = segments.filter(s => s.width >= lenLabel)\n    const unstacked = fitting.filter(s => !(stacked && s.isVertical))\n    const fallbackSegments = unstacked.length > 0 ? unstacked : fitting\n",
+  ],
+  [
+    '  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1)\n',
+    "  const stacked = edge.text.includes('\\n')\n  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1 && !(stacked && s.isVertical))\n",
+  ],
+  [
+    `  const middleX = minX + Math.floor((maxX - minX) / 2)
+
+  const current = graph.columnWidth.get(middleX) ?? 0
+`,
+    `  const mid = minX + Math.floor((maxX - minX) / 2)
+  const placed = graph.nodes.filter(n => n.gridCoord).map(n => n.gridCoord!.x)
+  const end = (x: number) => minX !== maxX && (x === minX || x === maxX)
+  const border = (x: number) => placed.some(p => x === p || x === p + 2)
+  const cost = (x: number) => (x === mid && !border(x) ? -1 : border(x) ? 4 : placed.some(p => x === p + 1) ? 2 : end(x) ? 1 : 0) * 1000 + Math.abs(x - mid)
+  const middleX = Array.from({ length: maxX - minX + 1 }, (_, i) => minX + i).sort((a, b) => cost(a) - cost(b))[0]!
+
+  const current = graph.columnWidth.get(middleX) ?? 0
+`,
+  ],
+]
 const PARSER = /beautiful-mermaid\/src\/parser\.ts$/
 const NODE_ID_START = 'const NODE_PATTERNS'
 const NODE_ID_END = 'const CLASS_SHORTHAND_REGEX'
@@ -285,6 +327,14 @@ track(await build({
         if (!src.includes(LEVELS)) throw new Error(`grid.ts no longer sizes its level table with ${LEVELS}`)
         if (!src.includes(ROOT_SCAN)) throw new Error('grid.ts no longer finds root nodes in declaration order')
         return { contents: src.replace(LEVELS, 'new Array(10000).fill(0)').replace(ROOT_SCAN, ROOTS_FIRST), loader: 'ts' }
+      })
+      api.onLoad({ filter: EDGE_ROUTING }, args => {
+        let src = readFileSync(args.path, 'utf8')
+        for (const [from, to] of LABEL_WIDTH) {
+          if (!src.includes(from)) throw new Error(`edge-routing.ts no longer has "${from.trim().split('\n')[0]}"`)
+          src = src.replace(from, to)
+        }
+        return { contents: src, loader: 'ts' }
       })
       api.onLoad({ filter: PARSER }, args => {
         const src = readFileSync(args.path, 'utf8')

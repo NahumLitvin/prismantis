@@ -1986,7 +1986,7 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
     '  D -- yes --> E["INSERT INTO readings"]',
     '  D -- no --> X1["BLOCKED: acquire timeout<br/>pool 4/4 busy, reading fails"]',
     '  E --> F["client.release() back to pool"]',
-    '  E -. "slow INSERT holds the connection<br/>(no query timeout in code)" .-> X2["BLOCKED: connection held,<br/>starves the pool"]',
+    '  E -. "slow INSERT holds the connection open while the pool waits (no query timeout in code)" .-> X2["BLOCKED: connection held,<br/>starves the pool"]',
     '  F --> G[("readings table<br/>tanks-db.internal")]',
     '  G --> H["Dashboard polls readings"]',
   ].join('\n')
@@ -1997,6 +1997,57 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
   expect(await ui.find({ type: 'Text', text: /Tank sensor/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /flowchart TD/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('edges beside a long multi-line edge label still touch their boxes, and the label leaves the bend and arrow visible', () => {
+  const source = [
+    'flowchart TD',
+    '  A[any okf command starts] --> C{"same as<br/>.okf/.okfcache?"}',
+    '  C -->|all same| D["use cached index<br/>(fast path)"]',
+    '  C -->|some differ| E[read + hash only those files]',
+    '  D --> P[rank and print]',
+    '  E --> F{"content hash<br/>same as cached?"}',
+    '  F -->|"yes: copied, cloned,<br/>touched, checked out"| G["reuse entries,<br/>refresh their stat stamps"]',
+    '  F -->|"no: really edited,<br/>or new"| H[re-tokenize that file]',
+    '  G --> W["write cache:<br/>temp + rename"]',
+    '  H --> W',
+    '  W --> D',
+  ].join('\n')
+  const lines = mermaidText(source, false, 200)!.split('\n')
+  const at = (row: number, col: number) => [...(lines[row] ?? '')][col] ?? ' '
+  const loose = lines.flatMap((line, row) => [...line].flatMap((ch, col) =>
+    ('├┤'.includes(ch) && at(row - 1, col) === ' ' && at(row + 1, col) === ' ') || (ch === '◄' && at(row, col - 1) !== '│') || (ch === '►' && at(row, col + 1) !== '│') ? [`${row}:${col} ${ch}`] : []))
+  expect(loose).toEqual([])
+  const label = lines.findIndex(l => l.includes('yes: copied, cloned,'))
+  expect(lines[label]).toMatch(/┌──yes: copied, cloned,/)
+  expect(lines[label + 1]).toMatch(/▼ +touched, checked out/)
+})
+
+test('a two-line label on an edge leaving a box sideways is drawn beside the box, not over its border', () => {
+  const lines = mermaidText('flowchart TD\n  A --> B\n  B --> C\n  C -->|"copied<br/>cloned"| A', false, 200)!.split('\n')
+  const label = lines.findIndex(l => l.includes('copied'))
+  expect(lines[label]).toMatch(/^│ C ├copied─+┘$/)
+  expect(lines[label + 1]).toMatch(/^│ {3}│ *cloned/)
+  expect(lines.find(l => l.includes(' A '))).toMatch(/^│ A │◄─+┐$/)
+})
+
+test('a two-line label whose only fitting segments are a first horizontal run and a vertical drop sits on the horizontal run', () => {
+  const lines = mermaidText('flowchart TD\n  C{"same as<br/>the cache file?"} -->|all same| D[use cached index]\n  C -->|"some files<br/>differ"| E[read + hash only those files]', false, 200)!.split('\n')
+  const label = lines.findIndex(l => l.includes('some files'))
+  expect(lines[label]).toMatch(/├─+some files─+┐/)
+  expect(lines[label + 1]).toMatch(/│ +differ +│/)
+})
+
+test('a label on the last segment of an edge pointing left keeps its arrowhead', () => {
+  const two = mermaidText('flowchart TD\n  A[top] --> B[left]\n  A --> C[right]\n  C -->|"ab<br/>cd"| B', false, 200)!.split('\n')
+  expect(two.find(l => l.includes('ab'))).toMatch(/│ left │◄ab─+┤ right │/)
+  const one = mermaidText('flowchart TD\n  A --> B\n  B --> C\n  C -->|go| A', false, 200)!.split('\n')
+  expect(one.find(l => l.includes('go'))).toMatch(/^│ A │◄go─+┐$/)
+})
+
+test('a short label that already fits its segment widens nothing', () => {
+  const lines = mermaidText('flowchart LR\n  A --> B[already wide middle node]\n  B --> C\n  C -->|retry| A', false, 200)!.split('\n')
+  expect(lines.find(l => l.includes('already wide'))).toMatch(/^│ A ├──►│ already wide middle node ├──►│ C │/)
 })
 
 test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async $ => {
