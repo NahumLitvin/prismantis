@@ -11,7 +11,7 @@ import { artColors, clipboardCommand, drawsImages, imageCommand } from './clipbo
 import { FIGURE_HINT } from './figure'
 import { drawDiagrams } from './mermaid'
 import type { CallWatch, CopyButton, DrawPaste, Drawn, Fold, Hues, Script, TerminalEnv } from './render'
-import { MARK, SCRIPT_SHOW, SCRIPT_TOOL, bashEdits, chipLabel, drawScript, dropRunning, scriptChip, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isPlan, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, planBlock, planRoom, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderPlan, renderPlanHead, renderReply, renderShellResult, renderToolGroup, renderToolRow, renderTurnDuration, swapTurnLine, renderUserPrompt, promptSource, replyRoom, replyStyleFor, scriptLines, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, watchCalls, withoutBashEdits } from './render'
+import { MARK, SCRIPT_SHOW, SCRIPT_TOOL, bashEdits, chipLabel, drawScript, dropRunning, scriptChip, lineCount, drawMath, drawsHyperlinks, editNotes, fileRoot, hasShellOutput, instanceKey, isPlan, isReadOnlyCall, leftToEngine, markerRoom, mirrored, noteTip, pasteLang, pathsToProbe, planBlock, planRoom, toolPathsToProbe, remember, rememberCall, renderBashEdits, renderBlocks, renderDiffCard, renderExpandedCall, renderFailure, renderPlan, renderPlanHead, renderReply, renderShellResult, renderToolGroup, renderToolText, renderToolRow, renderTurnDuration, swapTurnLine, renderUserPrompt, promptSource, replyRoom, replyStyleFor, scriptLines, takesClickableMarks, takesEditorLinks, takesHttpLinks, takesMonoText, watchCalls, withoutBashEdits } from './render'
 import type { SetupStep } from './help'
 import { ESSENTIAL_STEPS, HINT, ISSUE_HINT, KEY_POINT_HINT, NARROW_PANE, narrowHint, SETUP_DONE, SETUP_ESSENTIALS_DONE, SETUP_MORE, SETUP_PANE_KEYS, SETUP_PANE_OPENED, THEME_PREVIEW, findSetup, helpText, languageShowcase, rtlShowcaseText, setupParts, setupSteps, setupText, showcaseText } from './help'
 import { PRESET_NAMES } from './presets'
@@ -913,7 +913,13 @@ const planRow = async ($: EngineInterface, e: RenderInput<'ToolResult'>, style: 
   return <el.Box flexDirection="column" rowGap={1}>{renderPlanHead(el, drawn, found.filePath)}{body}</el.Box>
 }
 
-const localeOf = async ($: EngineInterface, asked?: string): Promise<string> => asked ?? (await $.env.get('LC_ALL').catch(() => undefined)) ?? (await $.env.get('LANG').catch(() => undefined)) ?? ''
+const tintedResult = async <T,>($: EngineInterface, e: RenderInput<'ToolResult'>, style: Style, engine: () => T | Promise<T>): Promise<RenderElement | T> => {
+  if (!style.highlightOutput || e.props.isErrored) return engine()
+  await locate($, style)
+  return renderToolText($.ui.resolve(e), style, e.props.tool, e.props.output, expandedRow(e.props), e.viewport?.columns) ?? engine()
+}
+
+const localeOf = async($: EngineInterface, asked?: string): Promise<string> => asked ?? (await $.env.get('LC_ALL').catch(() => undefined)) ?? (await $.env.get('LANG').catch(() => undefined)) ?? ''
 
 export const register: Register = (on, options) => {
   on('engine.create', async (_$, e, next) => ({ ...(await next(e)), prismantis: { markdown: async () => undefined } }))
@@ -1000,7 +1006,7 @@ export const register: Register = (on, options) => {
         const drawn = renderBashEdits(el, forSurface(cards(), e, await linkReach($, probes, style)), edits, folder($, el, await read($, unfolded), (await linkReach($, probes, style)).marks, style.folds === 'open'), e.props.tool_use_id, above !== null, notes, e.viewport?.columns)
         return above === null ? drawn : <el.Box flexDirection="column">{above}{drawn}</el.Box>
       }
-      if (!quietRow(expandedRow(e.props))) return next(e)
+      if (!quietRow(expandedRow(e.props))) return tintedResult($, e, style, () => next(e))
       await locate($, style)
       const el = $.ui.resolve(e)
       const shell = e.props.tool === 'Bash' || e.props.tool === 'PowerShell'
@@ -1008,7 +1014,7 @@ export const register: Register = (on, options) => {
       if (shell && (out.backgroundTaskId || out.isImage || out.interrupted)) return next(e)
       if (e.props.isErrored) return renderFailure(el, style, e.props.output) ?? next(e)
       if (rowOnly(e.props.tool_use_id)) return <el.Box />
-      return shell ? renderShellResult(el, style, e.props.output) : next(e)
+      return shell ? renderShellResult(el, style, e.props.output) : tintedResult($, e, style, () => next(e))
     })
   }
 

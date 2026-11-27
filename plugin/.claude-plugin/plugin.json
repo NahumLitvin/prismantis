@@ -289,6 +289,12 @@
       "description": "Color file paths like ~/src/app.ts or /var/log.",
       "default": true
     },
+    "highlightOutput": {
+      "type": "boolean",
+      "title": "Highlight tool output",
+      "description": "Color tool results that are JSON, JSON lines or a diff, like MCP replies and jq or git diff output, pretty-print minified JSON when expanded with ctrl+o, and mark the size and saved file of a result too large to show. Needs toolRows on.",
+      "default": false
+    },
     "fullPaths": {
       "type": "boolean",
       "title": "Full paths",
