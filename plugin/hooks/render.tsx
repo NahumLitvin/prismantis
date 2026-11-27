@@ -2091,7 +2091,10 @@ export const wordTint = (text: string | undefined, color: string | undefined, hu
   const row = diffTint(text, color, hued)
   if (!row || hued || !text || !color) return row && tint(row, color, WORD_SHARE)
   const [, chroma, hue] = oklch(color)
-  return fromOklch(oklch(row)[0] + (contrast(text, '#000000') >= contrast(text, '#ffffff') ? -WORD_STEP : WORD_STEP), chroma, hue)
+  const dark = contrast(text, '#000000') >= contrast(text, '#ffffff')
+  const lightness = Math.max(0, Math.min(1, oklch(row)[0] + (dark ? -WORD_STEP : WORD_STEP)))
+  const deeper = fromOklch(lightness, chroma, hue)
+  return deeper === row ? ownTint(text, tint(row, text, WORD_SHARE)!, dark) : deeper
 }
 
 const WORD = /\w+|\s+|[^\w\s]/g

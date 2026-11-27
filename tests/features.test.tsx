@@ -2585,6 +2585,11 @@ test('a diff color set in diffAddedColor or diffRemovedColor tints in its own sa
   engine(on)
   for (const color of ['#000000', '#ffffff']) expect(contrast(color, diffTint(color, color, false)!) >= 4.5).toBe(true)
   expect(diffTint(t.codeText, '#9bd1b6', false)).not.toBe(diffTint(t.codeText, '#9bd1b6'))
+  for (const [text, row] of [['#ffffff', '#000000'], ['#000000', '#ffffff']] as const) {
+    const word = wordTint(text, row, false)!
+    expect(word).not.toBe(row)
+    expect(contrast(text, word) >= 4.5).toBe(true)
+  }
   for (const color of ['#9bd1b6', '#e5a8bd']) {
     const [, chroma, hue] = oklch(color)
     const [, rowChroma, rowHue] = oklch(diffTint(t.codeText, color, false)!)
