@@ -2031,6 +2031,13 @@ test('a two-line label on an edge leaving a box sideways is drawn beside the box
   expect(lines.find(l => l.includes(' A '))).toMatch(/^│ A │◄─+┐$/)
 })
 
+test('a two-line label whose only fitting segments are a first horizontal run and a vertical drop sits on the horizontal run', () => {
+  const lines = mermaidText('flowchart TD\n  C{"same as<br/>the cache file?"} -->|all same| D[use cached index]\n  C -->|"some files<br/>differ"| E[read + hash only those files]', false, 200)!.split('\n')
+  const label = lines.findIndex(l => l.includes('some files'))
+  expect(lines[label]).toMatch(/├─+some files─+┐/)
+  expect(lines[label + 1]).toMatch(/│ +differ +│/)
+})
+
 test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async $ => {
   const art = mermaidText('flowchart TD\n  A["metrics-server<br/><i>one slow scrape</i>"] --> B["<b>kubelet</b>"]', false, 80)!
   expect(art).toContain('one slow scrape')

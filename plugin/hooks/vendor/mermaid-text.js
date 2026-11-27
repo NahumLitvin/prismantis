@@ -921,7 +921,7 @@ function determineLabelLine(graph, edge) {
   if (suitableSegments.length > 0)
     suitableSegments.sort((a, b) => b.index - a.index), largestLine = suitableSegments[0].line;
   else {
-    let fallbackSegments = segments.filter((s) => s.width >= lenLabel);
+    let fitting = segments.filter((s) => s.width >= lenLabel), unstacked = fitting.filter((s) => !(stacked && s.isVertical)), fallbackSegments = unstacked.length > 0 ? unstacked : fitting;
     fallbackSegments.length > 0 ? (fallbackSegments.sort((a, b) => b.index - a.index), largestLine = fallbackSegments[0].line) : (segments.sort((a, b) => b.width - a.width), largestLine = segments[0]?.line ?? [edge.path[0], edge.path[1]]);
   }
   let minX = Math.min(largestLine[0].x, largestLine[1].x), maxX = Math.max(largestLine[0].x, largestLine[1].x), mid = minX + Math.floor((maxX - minX) / 2), placed = graph.nodes.filter((n) => n.gridCoord).map((n) => n.gridCoord.x), cost = (x) => (placed.some((p) => x === p || x === p + 2) ? 2 : placed.some((p) => x === p + 1) ? 1 : 0) * 1e3 + Math.abs(x - mid), middleX = Array.from({ length: maxX - minX + 1 }, (_, i) => minX + i).sort((a, b) => cost(a) - cost(b))[0], current = graph.columnWidth.get(middleX) ?? 0;

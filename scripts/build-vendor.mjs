@@ -175,6 +175,10 @@ const LABEL_WIDTH = [
 `,
   ],
   [
+    '    const fallbackSegments = segments.filter(s => s.width >= lenLabel)\n',
+    "    const fitting = segments.filter(s => s.width >= lenLabel)\n    const unstacked = fitting.filter(s => !(stacked && s.isVertical))\n    const fallbackSegments = unstacked.length > 0 ? unstacked : fitting\n",
+  ],
+  [
     '  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1)\n',
     "  const stacked = edge.text.includes('\\n')\n  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1 && !(stacked && s.isVertical))\n",
   ],
