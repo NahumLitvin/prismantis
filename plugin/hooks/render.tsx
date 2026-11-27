@@ -1980,7 +1980,7 @@ export const fromOklch = (L: number, C: number, h: number): string => {
 const ownTint = (text: string, color: string, dark: boolean): string => {
   const [start, chroma, hue] = oklch(color)
   let lightness = start
-  while (lightness > 0 && lightness < 1 && contrast(text, fromOklch(lightness, chroma, hue)) < TEXT_CONTRAST) lightness += dark ? -0.01 : 0.01
+  while ((dark ? lightness > 0 : lightness < 1) && contrast(text, fromOklch(lightness, chroma, hue)) < TEXT_CONTRAST) lightness += dark ? -0.01 : 0.01
   return fromOklch(Math.min(1, Math.max(0, lightness)), chroma, hue)
 }
 

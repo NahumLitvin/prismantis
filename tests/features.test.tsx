@@ -2583,6 +2583,7 @@ test('a diff card draws its counts, marks and tints in the theme\'s diff colors'
 
 test('a diff color set in diffAddedColor or diffRemovedColor tints in its own saturation, not the full hue', { options: { diffAddedColor: '#9bd1b6', diffRemovedColor: '#e5a8bd' } }, async ($, on) => {
   engine(on)
+  for (const color of ['#000000', '#ffffff']) expect(contrast(color, diffTint(color, color, false)!) >= 4.5).toBe(true)
   expect(diffTint(t.codeText, '#9bd1b6', false)).not.toBe(diffTint(t.codeText, '#9bd1b6'))
   for (const color of ['#9bd1b6', '#e5a8bd']) {
     const [, chroma, hue] = oklch(color)
