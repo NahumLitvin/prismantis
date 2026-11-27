@@ -424,6 +424,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText(Object.keys(PRESETS))).toContain('`replyStyle`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`You ⬤`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('A paste of 4 lines or more')
+  expect(showcaseText(Object.keys(PRESETS))).toContain('`highlightOutput`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`clock`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('`tableLayout`')
   expect(showcaseText(Object.keys(PRESETS))).toContain('scroll-07-training-notes.md')
@@ -3516,7 +3517,132 @@ test('256-color and truecolor codes draw as hex, and stderr without its own colo
   await ui.unmount()
 })
 
-test('a quiet shell result keeps the colors the command printed', { options: { toolOutput: 'quiet' } }, async ($, on) => {
+const toolText = (id: string, tool: string, output: unknown, isExpanded?: boolean) => ({ plugin: 'prismantis', surface: 'terminal' as const, component: 'ToolResult' as const, props: { tool_use_id: id, tool, output, isErrored: false, ...(isExpanded ? { isExpanded } : {}) }, viewport: { columns: 100, rows: 40 } })
+
+const tokenColor = async (ui: { find: (q: object) => Promise<{ props: { color?: string } } | undefined> }, text: RegExp) => (await ui.find({ type: 'Text', text }))?.props.color
+
+test('highlightOutput colors an MCP reply that is JSON and leaves the engine out', { options: { highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  const theme = resolveStyle({ highlightOutput: true }).theme
+  for (const output of ['{"status":"ok","count":3}', [{ type: 'text', text: '{"status":"ok","count":3}' }]]) {
+    const ui = await $.ui.mount(toolText('hl-mcp', 'mcp__plane__workitem', output))
+    expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+    const key = await tokenColor(ui, /^"status"$/)
+    expect(key).toBeDefined()
+    expect(key).not.toBe(theme.codeText)
+    expect(await ui.find({ type: 'Box', text: /^ {2}⎿ {2}\{"status":"ok","count":3\}$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('highlightOutput folds a long minified JSON reply to three rows and pretty-prints it under ctrl+o', { options: { highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  const json = JSON.stringify({ issues: Array.from({ length: 20 }, (_, i) => ({ id: i, name: `Ticket number ${i}` })) })
+  const folded = await $.ui.mount(toolText('hl-fold', 'mcp__plane__workitem', json))
+  expect(await folded.find({ type: 'Text', text: /^… \(ctrl\+o to expand\)$/ })).toBeDefined()
+  await folded.unmount()
+  const open = await $.ui.mount(toolText('hl-open', 'mcp__plane__workitem', json, true))
+  expect(await open.find({ type: 'Box', text: /^ {5} {2}"issues": \[$/ })).toBeDefined()
+  expect(await open.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  await open.unmount()
+})
+
+test('highlightOutput keeps a reply too long to pretty-print compact and colored under ctrl+o', { options: { highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  const json = JSON.stringify({ results: Array.from({ length: 150 }, (_, i) => ({ id: i, name: `Item ${i}` })) })
+  const ui = await $.ui.mount(toolText('hl-big', 'mcp__plane__workitem', json, true))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Box', text: /^ {2}⎿ {2}\{"results":\[/ })).toBeDefined()
+  expect(await tokenColor(ui, /^"results"$/)).toBeDefined()
+  await ui.unmount()
+})
+
+test('highlightOutput draws git diff output in the theme diff colors, headers and hunk lines apart', { options: { highlightOutput: true, theme: 'tokyo-night' } }, async ($, on) => {
+  engineStandIn(on)
+  const theme = PRESETS['tokyo-night']
+  const stdout = 'diff --git a/a.md b/a.md\nindex 1..2 100644\n--- a/a.md\n+++ b/a.md\n@@ -1,2 +1,2 @@ intro\n keep\n-old line\n+new line\n'
+  const ui = await $.ui.mount(toolText('hl-diff', 'Bash', { stdout, stderr: '' }, true))
+  expect(await tokenColor(ui, /^\+new line$/)).toBe(theme.diffAdded)
+  expect(await tokenColor(ui, /^-old line$/)).toBe(theme.diffRemoved)
+  expect(await tokenColor(ui, /^\+\+\+ b\/a\.md$/)).toBe(theme.codeComment)
+  expect(await tokenColor(ui, /^@@ -1,2 \+1,2 @@$/)).toBe(theme.codeCommand)
+  await ui.unmount()
+})
+
+test('highlightOutput marks the size and saved path of a result too large to show and dims the notes for Claude', { options: { highlightOutput: true, theme: 'tokyo-night' } }, async ($, on) => {
+  engineStandIn(on)
+  const theme = PRESETS['tokyo-night']
+  const output = 'Error: result (2,877,864 characters) exceeds maximum allowed tokens. Output has been saved to /tmp/out/plane.txt.\nFormat: JSON with schema: {result: {}}\n- For targeted queries: use jq on the file directly.'
+  const ui = await $.ui.mount(toolText('hl-over', 'mcp__plane__workitem', output, true))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  expect(await tokenColor(ui, /^2,877,864$/)).toBe(theme.number)
+  expect(await tokenColor(ui, /^\/tmp\/out\/plane\.txt$/)).toBe(theme.path)
+  expect((await ui.find({ type: 'Text', text: /^- For targeted queries/ }))?.props.dimColor).toBe(true)
+  await ui.unmount()
+})
+
+test('highlightOutput colors JSON lines in shell output and keeps the lines around them', { options: { highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  const ui = await $.ui.mount(toolText('hl-jsonl', 'Bash', { stdout: '== platform\n{"p":"package.json"}\n', stderr: '' }))
+  expect(await ui.find({ type: 'Box', text: /^ {2}⎿ {2}== platform$/ })).toBeDefined()
+  expect(await tokenColor(ui, /^"p"$/)).toBeDefined()
+  await ui.unmount()
+})
+
+test('highlightOutput hands plain text, colored output and a failure to the engine', { options: { highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  for (const [tool, output] of [['mcp__x__y', 'Navigated to https://example.com'], ['Bash', { stdout: '\x1b[32mok\x1b[0m\n', stderr: '' }], ['Bash', { stdout: '{"a":1}', stderr: 'warning' }]] as const) {
+    const ui = await $.ui.mount(toolText('hl-plain', tool, output))
+    expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('tool output stays with the engine while highlightOutput is off', async ($, on) => {
+  engineStandIn(on)
+  const ui = await $.ui.mount(toolText('hl-off', 'mcp__plane__workitem', '{"status":"ok"}'))
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('an expanded shell call colors and pretty-prints JSON output under highlightOutput', { options: { highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  const ui = await expandAnsi($, 'hl-box', '{"title":"Highlight","default":false}\n')
+  expect(await tokenColor(ui, /^"title"$/)).toBeDefined()
+  expect(await ui.find({ type: 'Box', text: /"default": false$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('an MCP call drawn inside an expanded group colors its output under highlightOutput', { options: { highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  const call = { tool_use_id: 'hl-mcp-group', tool: 'mcp__coolify__get_infrastructure_overview', input: {}, isRunning: false, isErrored: false, isInterrupted: false }
+  const group = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolGroup', props: { calls: [call], isActive: false, isExpanded: true } })
+  await group.unmount()
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: { ...call, output: [{ type: 'text', text: '{"data":{"coolify_version":"4.7.9"}}' }] } as never })
+  expect(await ui.find({ type: 'Text', text: /^engine$/ })).toBeUndefined()
+  expect(await tokenColor(ui, /^"coolify_version"$/)).toBeDefined()
+  expect(await ui.find({ type: 'Box', text: /"coolify_version": "4\.7\.9"/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('an MCP row names a server whose name has underscores and shows the call arguments', async ($, on) => {
+  engineStandIn(on)
+  const props = { tool_use_id: 'mcp-name', tool: 'mcp__plugin_resorsi-tickets_plane__workitem', input: { action: 'list', per_page: 20, filters: { a: 1 } }, isRunning: false, isErrored: false, isInterrupted: false }
+  const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolUse', props: props as never })
+  expect(await ui.find({ type: 'Text', text: /^plugin_resorsi-tickets_plane workitem$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^\(action: "list", per_page: 20\)$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /mcp__/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a quiet shell result colors JSON output under highlightOutput', { options: { toolOutput: 'quiet', highlightOutput: true } }, async ($, on) => {
+  engineStandIn(on)
+  const ui = await $.ui.mount(toolText('hl-quiet', 'Bash', { stdout: '{"first":"2026-11-25"}\n', stderr: '' }))
+  expect(await tokenColor(ui, /^"first"$/)).toBeDefined()
+  await ui.unmount()
+})
+
+test('a quiet shell result keeps the colors the command printed',{ options: { toolOutput: 'quiet' } }, async ($, on) => {
   engineStandIn(on)
   const ui = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'ToolResult', props: { tool_use_id: 'ansi-q', tool: 'Bash', output: { stdout: '\x1b[32mok\x1b[0m done\n', stderr: '' }, isErrored: false } })
   expect((await ui.find({ type: 'Text', text: /^ok$/ }))?.props.color).toBe('green')

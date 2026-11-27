@@ -56,6 +56,7 @@ Options sit under `options`, keyed by the plugin's install name. Project setting
 | `headingStyle` | `banner`, `bold`, `underline`, `uppercase` | `banner` |
 | `highlightNumbers` | `true`, `false` | `true` |
 | `highlightPaths` | `true`, `false` | `true` |
+| `highlightOutput` | `true` (tool results that are JSON, JSON lines or a diff draw highlighted, a diff in the theme's diff colors, minified JSON pretty-printed under ctrl+o, and a result too large to show names its size and saved file in color; needs `toolRows`), `false` | `false` |
 | `fullPaths` | `true` (a path that opens on click shows as its absolute path, so `src/app.ts` reads `/work/app/src/app.ts`), `false` | `false` |
 | `folds` | `closed` (long blocks start folded to their first lines), `open` (they start whole, with `show less`) | `closed` |
 | `toolRows` | `true`, `false` | `true` |

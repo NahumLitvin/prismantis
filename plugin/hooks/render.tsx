@@ -1920,6 +1920,20 @@ const sameDir = (a: string, b: string): boolean => a !== '' && folded(slashes(a)
 export const shortTarget = (places: Places, path: string): string => (sameDir(places.cwd, path) ? '.' : sameDir(places.home, path) ? '~' : compactPath(shortPath(places, path)))
 
 
+const MCP_PREFIX = /^mcp__(.+?)__/
+
+const mcpArgs = (tool: string, input: unknown): string | undefined => {
+  if (!tool.startsWith('mcp__') || input === null || typeof input !== 'object') return undefined
+  const args = Object.entries(input).filter(([, v]) => v !== null && typeof v !== 'object').map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+  return args.length ? `(${args.join(', ')})` : undefined
+}
+
+const rowTarget = (style: Style, row: ToolRow, isShell: boolean): { target?: string; path?: string } => {
+  if (isShell) return { target: field(row.input, 'command')?.split('\n')[0] }
+  const found = targetOf(style, row.input, TARGET_FIELDS)
+  return found.target === undefined ? { target: mcpArgs(row.tool, row.input) } : found
+}
+
 const PATH_FIELDS = ['file_path', 'notebook_path', 'path']
 
 const FILE_TOOLS = new Set(['Read', 'Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'Grep', 'Glob'])
@@ -1937,13 +1951,180 @@ const RESULT_LINES = 3
 export const renderShellResult = (el: ElementTable, style: Style, output: unknown): RenderElement => {
   const { Box, Text } = el
   const out = output !== null && typeof output === 'object' ? (output as Record<string, unknown>) : {}
-  const shown = [...outputLines(out.stdout), ...outputLines(out.stderr)]
+  const shown = shellLines(style, out, false)
   const head = shown.slice(0, RESULT_LINES).map(l => ({ ...l, text: shortenPaths(l.text, style), runs: l.runs?.map(r => ({ ...r, text: shortenPaths(r.text, style) })) }))
   return (
     <Box flexDirection="column">
       {head.length === 0 ? heldRow(el, style, 'l0', '  ⎿  ', '', <Text dimColor>(No output)</Text>) : head.map((l, i) => heldRow(el, style, `l${i}`, i ? '     ' : '  ⎿  ', l.text, outputCell(el, l, 'truncate-end')))}
       {shown.length > head.length ? heldRow(el, style, 'more', '     ', '', <Text dimColor>{`… +${shown.length - head.length} lines`}</Text>) : null}
     </Box>
+  )
+}
+
+const TINT_CHARS = 200000
+const TINT_LINES = 400
+const TINT_RUNS = 8000
+const NOT_JSON = Symbol('not json')
+
+const jsonValue = (text: string): unknown => {
+  const t = text.trim()
+  if (!/^[[{]/.test(t) || !/[\]}]$/.test(t)) return NOT_JSON
+  try {
+    return JSON.parse(t)
+  } catch {
+    return NOT_JSON
+  }
+}
+
+const tintedLines = (style: Style, lines: string[], lang: string): OutputLine[] | undefined => {
+  const rows = segmentRows(style, lines, lang)
+  if (!rows) return undefined
+  return lines.map((text, i) => {
+    const row = rows[i] ?? []
+    return { text, color: style.theme.codeText, runs: row.length ? row.map(s => ({ text: s.text, color: s.color, italic: s.italic || undefined })) : undefined }
+  })
+}
+
+const jsonShown = (value: unknown, body: string, expanded: boolean): string => {
+  if (!expanded || body.includes('\n')) return body
+  const pretty = JSON.stringify(value, null, 2)
+  return pretty.split('\n', TINT_LINES + 1).length > TINT_LINES ? body : pretty
+}
+
+const OVERFLOW = /^(Error: result \()([\d,]+)( characters\) exceeds maximum allowed tokens\. Output has been saved to )(\S+?)(\.?)$/
+
+const overflowLines = (theme: Theme, lines: string[]): OutputLine[] | undefined => {
+  const head = OVERFLOW.exec(lines[0] ?? '')
+  if (!head) return undefined
+  const [line, lead, size, middle, path, end] = head as unknown as string[]
+  const first = { text: line!, runs: [{ text: lead!, color: theme.codeFlag }, { text: size!, color: theme.number }, { text: middle!, color: theme.codeText }, { text: path!, color: theme.path }, ...(end ? [{ text: end, color: theme.codeText }] : [])] }
+  return [first, ...lines.slice(1).map(text => ({ text, runs: text ? [{ text, dim: true }] : undefined }))]
+}
+
+const DIFF_HEAD = /^(diff |index |--- |\+\+\+ |new file|deleted file|old mode|new mode|similarity|rename |Binary )/
+
+const hunkRuns = (theme: Theme, line: string): AnsiRun[] => {
+  const hunk = /^(@@ [^@]* @@)(.*)$/.exec(line)
+  if (hunk) return [{ text: hunk[1]!, color: theme.codeCommand }, ...(hunk[2] ? [{ text: hunk[2], color: theme.codeComment }] : [])]
+  const mark = line[0]
+  const color = mark === '+' ? (theme.diffAdded ?? theme.number) : mark === '-' ? (theme.diffRemoved ?? theme.codeFlag) : mark === '\\' ? theme.codeComment : theme.codeText
+  return [{ text: line, color }]
+}
+
+const headRuns = (theme: Theme, line: string): AnsiRun[] =>
+  line.startsWith('diff ') ? [{ text: line, color: theme.heading, bold: true }] : [{ text: line, color: DIFF_HEAD.test(line) ? theme.codeComment : theme.codeText }]
+
+const diffOutputLines = (theme: Theme, lines: string[]): OutputLine[] => {
+  let inHunk = false
+  return lines.map(text => {
+    if (text.startsWith('diff ')) inHunk = false
+    else if (text.startsWith('@@ ')) inHunk = true
+    return { text, runs: text ? (inHunk ? hunkRuns : headRuns)(theme, text) : undefined }
+  })
+}
+
+const runCount = (lines: OutputLine[]): number => lines.reduce((n, l) => n + (l.runs?.length ?? 1), 0)
+
+export const outputTint =(style: Style, text: string, expanded: boolean): OutputLine[] | undefined => {
+  if (text.length > TINT_CHARS || hasAnsi(text)) return undefined
+  const body = text.replace(/^\n+|\s+$/g, '')
+  const whole = jsonValue(body)
+  if (whole !== NOT_JSON) return tintedLines(style, jsonShown(whole, body, expanded).split('\n'), 'json')
+  const lines = body.split('\n')
+  if (pasteLang(body) === 'diff') return diffOutputLines(style.theme, lines)
+  const overflow = overflowLines(style.theme, lines)
+  if (overflow) return overflow
+  const json = lines.map(l => jsonValue(l) !== NOT_JSON)
+  if (!json.includes(true)) return undefined
+  return lines.map((text, i) => (json[i] ? tintedLines(style, [text], 'json')?.[0] : undefined) ?? { text })
+}
+
+const shellLines = (style: Style, out: Record<string, unknown>, expanded: boolean, errorColor?: string): OutputLine[] => {
+  const stderr = outputLines(out.stderr, errorColor)
+  const tinted = style.highlightOutput && stderr.length === 0 && typeof out.stdout === 'string' ? outputTint(style, out.stdout, expanded) : undefined
+  return [...(tinted ?? outputLines(out.stdout)), ...stderr]
+}
+
+const textBlocks = (blocks: unknown[]): string | undefined =>
+  blocks.length > 0 && blocks.every(b => b !== null && typeof b === 'object' && (b as { type?: unknown }).type === 'text' && typeof (b as { text?: unknown }).text === 'string')
+    ? blocks.map(b => (b as { text: string }).text).join('\n')
+    : undefined
+
+export const resultText = (tool: string, output: unknown): string | undefined => {
+  if (typeof output === 'string') return output
+  if (Array.isArray(output)) return textBlocks(output)
+  if (output === null || typeof output !== 'object') return undefined
+  const out = output as Record<string, unknown>
+  if (tool === 'Bash' || tool === 'PowerShell') {
+    if (out.backgroundTaskId || out.isImage || out.interrupted || (typeof out.stderr === 'string' && out.stderr.trim())) return undefined
+    return typeof out.stdout === 'string' ? out.stdout : undefined
+  }
+  return Array.isArray(out.content) ? textBlocks(out.content) : undefined
+}
+
+type Cell = { at: number; run: AnsiRun; ch: string; w: number }
+
+const cellsOf = (line: OutputLine, limit: number): Cell[] => {
+  const cells: Cell[] = []
+  for (const [at, run] of (line.runs ?? [{ text: line.text }]).entries()) {
+    if (cells.length >= limit) break
+    for (const ch of graphemes(run.text.slice(0, limit))) cells.push({ at, run, ch, w: width(ch) })
+  }
+  return cells
+}
+
+const joinCells = (line: OutputLine, cells: Cell[]): OutputLine => {
+  const runs: (AnsiRun & { at: number })[] = []
+  for (const c of cells) {
+    const last = runs.at(-1)
+    if (last?.at === c.at) last.text += c.ch
+    else runs.push({ ...c.run, text: c.ch, at: c.at })
+  }
+  return { text: runs.map(r => r.text).join(''), color: line.color, runs: runs.map(({ at: _, ...run }) => run) }
+}
+
+const wrapRuns = (line: OutputLine, room: number, most: number): { rows: OutputLine[]; cut: boolean } => {
+  const rows: Cell[][] = [[]]
+  let used = 0
+  const done = (cut: boolean) => ({ rows: rows.filter(r => r.length).map(r => joinCells(line, r)), cut })
+  for (const cell of cellsOf(line, room * most * 2)) {
+    if (used + cell.w > room && used > 0) {
+      if (rows.length === most) return done(true)
+      rows.push([])
+      used = 0
+    }
+    rows.at(-1)!.push(cell)
+    used += cell.w
+  }
+  return done(false)
+}
+
+const foldedRows = (lines: OutputLine[], room: number): { shown: OutputLine[]; hidden: number; cut: boolean } => {
+  const shown: OutputLine[] = []
+  for (const [i, line] of lines.entries()) {
+    const wrapped = wrapRuns(line, room, RESULT_LINES - shown.length)
+    shown.push(...(wrapped.rows.length ? wrapped.rows : [line]))
+    if (wrapped.cut || shown.length >= RESULT_LINES) return { shown, hidden: lines.length - i - 1, cut: wrapped.cut }
+  }
+  return { shown, hidden: 0, cut: false }
+}
+
+const foldNote = (hidden: number, cut: boolean): string | undefined =>
+  hidden > 0 ? `… +${hidden} ${hidden === 1 ? 'line' : 'lines'} (ctrl+o to expand)` : cut ? '… (ctrl+o to expand)' : undefined
+
+export const renderToolText = (el: ElementTable, style: Style, tool: string, output: unknown, expanded: boolean, columns = DEFAULT_COLUMNS): RenderElement | undefined => {
+  const text = resultText(tool, output)
+  const lines = text === undefined ? undefined : outputTint(style, text, expanded)
+  if (!lines || lines.length > TINT_LINES || (expanded && runCount(lines) > TINT_RUNS)) return undefined
+  const label = (i: number) => (i ? '     ' : '  ⎿  ')
+  if (expanded) return <el.Box flexDirection="column">{lines.map((l, i) => heldRow(el, style, `t${i}`, label(i), l.text, outputCell(el, l)))}</el.Box>
+  const { shown, hidden, cut } = foldedRows(lines, Math.max(20, columns - 6))
+  const more = foldNote(hidden, cut)
+  return (
+    <el.Box flexDirection="column">
+      {shown.map((l, i) => heldRow(el, style, `t${i}`, label(i), l.text, outputCell(el, l, 'truncate-end')))}
+      {more ? heldRow(el, style, 'more', '     ', '', <el.Text dimColor>{more}</el.Text>) : null}
+    </el.Box>
   )
 }
 
@@ -2934,7 +3115,7 @@ const callPieces = (call: ToolRow, style: Style): LinkPiece[] => {
     const path = field(call.input, 'path')
     if (pattern !== undefined) return path === undefined ? [{ text: `Searched . for "${pattern}"` }] : [{ text: 'Searched ' }, { text: shortTarget(style, path), path }, { text: ` for "${pattern}"` }]
   }
-  const verb = call.tool === 'Skill' ? 'Loaded skill' : VERBS[call.tool] ?? call.tool.replace(/^mcp__([^_]+)__/, '$1 ')
+  const verb = call.tool === 'Skill' ? 'Loaded skill' : VERBS[call.tool] ?? call.tool.replace(MCP_PREFIX, '$1 ')
   const target = field(call.input, ...TARGET_FIELDS)
   const args = call.tool === 'Skill' ? field(call.input, 'args') : undefined
   if (target === undefined) return [{ text: verb }]
@@ -2960,8 +3141,8 @@ export const renderToolRow = (el: ElementTable, style: Style, row: ToolRow, colu
   const { Text } = el
   const t = style.theme
   const isShell = row.tool === 'Bash' || row.tool === 'PowerShell'
-  const verb = VERBS[row.tool] ?? row.tool.replace(/^mcp__([^_]+)__/, '$1 ')
-  const found: { target?: string; path?: string } = isShell ? { target: field(row.input, 'command')?.split('\n')[0] } : targetOf(style, row.input, TARGET_FIELDS)
+  const verb = VERBS[row.tool] ?? row.tool.replace(MCP_PREFIX, '$1 ')
+  const found = rowTarget(style, row, isShell)
   const target = found.target
   const dot = statusColor(t, row)
   const isPath = target !== undefined && (found.path !== undefined || /^(~|\.{0,2}\/|[A-Za-z]:\\)/.test(target))
@@ -3304,8 +3485,15 @@ const renderShellCommand = (el: ElementTable, style: Style, row: ToolRow, column
   <el.Box flexDirection="column">{commandLines(el, style, row, columns)}</el.Box>
 )
 
+const renderTintedCall = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }, columns?: number): RenderElement | undefined => {
+  if (!style.highlightOutput || row.isErrored || row.isRunning || row.output === undefined) return undefined
+  const body = renderToolText(el, style, row.tool, row.output, true, columns)
+  return body ? <el.Box flexDirection="column">{renderToolRow(el, style, row, columns)}{body}</el.Box> : undefined
+}
+
 export const renderExpandedCall = (el: ElementTable, style: Style, row: ToolRow & { output?: unknown }, withOutput: boolean, columns?: number): RenderElement | undefined => {
-  if ((row.tool !== 'Bash' && row.tool !== 'PowerShell') || typeof row.output === 'string') return undefined
+  if (row.tool !== 'Bash' && row.tool !== 'PowerShell') return withOutput ? renderTintedCall(el, style, row, columns) : undefined
+  if (typeof row.output === 'string') return undefined
   return withOutput ? renderExpandedShell(el, style, row, columns) : renderShellCommand(el, style, row, columns)
 }
 
@@ -3313,7 +3501,7 @@ const renderExpandedShell = (el: ElementTable, style: Style, row: ToolRow & { ou
   const { Box, Text } = el
   const t = style.theme
   const out = row.output !== null && typeof row.output === 'object' ? (row.output as Record<string, unknown>) : {}
-  const shown: OutputLine[] = [...outputLines(out.stdout), ...outputLines(out.stderr, t.codeFlag)]
+  const shown = shellLines(style, out, true, t.codeFlag)
   const { rows, hidden } = outputRows(style, shown, columns === undefined ? undefined : columns - SHELL_FRAME)
   return (
     <Box flexDirection="column">
@@ -3342,7 +3530,7 @@ const GROUPS: [RegExp, string, string][] = [
 export const groupSummary = (calls: readonly { tool: string }[]): string => {
   const counts = new Map<string, number>()
   for (const call of calls) {
-    const [, verb, noun] = GROUPS.find(([re]) => re.test(call.tool)) ?? [, 'used', call.tool.replace(/^mcp__([^_]+)__/, '$1 ')]
+    const [, verb, noun] = GROUPS.find(([re]) => re.test(call.tool)) ?? [, 'used', call.tool.replace(MCP_PREFIX, '$1 ')]
     const label = `${verb} ${noun}`
     counts.set(label, (counts.get(label) ?? 0) + 1)
   }
