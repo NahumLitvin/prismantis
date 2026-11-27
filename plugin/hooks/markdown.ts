@@ -103,7 +103,7 @@ const parseCell = (text: string, hl: Highlight): Inline[] => {
   return at ? [...out, ...parseInline(text.slice(at).trim(), hl)] : parseInline(text, hl)
 }
 
-const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\)|\*\*(?!\s)((?:[^*]|\*[^*\s][^*]*?(?<!\s)\*)+?)(?<!\s)\*\*|(?<![\w_])__(?!\s)([^_]+?)(?<!\s)__(?![\w_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)(?<!\s)\*(?!\w)|(?<![\w_])_([^_\s][^_]*?)(?<!\s)_(?!\w)|(https?:\/\/(?:[^\s<>()　-〿！-／：-＠［-｀｛-･]|\([^\s<>()]*\))*(?:[^\s<>().,;:!?'"　-〿！-／：-＠［-｀｛-･]|\([^\s<>()]*\)))|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])|\[\^([^\]\s]+)\]|!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\)|<(https?:\/\/[^\s<>]+)>|\\([!-/:-@[-`{-~])/g
+const INLINE = /(`+)(?!`)(.+?)(?<!`)\1(?!`)|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\)|\*\*(?!\s)((?:[^*]|\*[^*\s][^*]*?(?<!\s)\*)+?)(?<!\s)\*\*|(?<![\p{L}\p{N}_])__(?!\s)([^_]+?)(?<!\s)__(?![\p{L}\p{N}_])|~~([^~]+?)~~|(?<![\w*])\*([^*\s][^*]*?)(?<!\s)\*(?!\w)|(?<![\p{L}\p{N}_])_([^_\s][^_]*?)(?<!\s)_(?![\p{L}\p{N}_])|(https?:\/\/(?:[^\s<>()　-〿！-／：-＠［-｀｛-･]|\([^\s<>()]*\))*(?:[^\s<>().,;:!?'"　-〿！-／：-＠［-｀｛-･]|\([^\s<>()]*\)))|(?<![\\$\w])\$(?=\S)((?:\\.|[^$\n\\])+?)(?<=\S)\$(?![\w$])|\[\^([^\]\s]+)\]|!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\)|<(https?:\/\/[^\s<>]+)>|\\([!-/:-@[-`{-~])/gu
 const NUMBER = /(?<![\w.#/-]|\d[.,:])((?:(?<!\p{L})-(?=\d))?v?\d+(?:[.,:]\d+)*(?:%|ms|s|m|h|d|Gi|Mi|GB|MB|KB|x)?)(?![\w/]|[.,:]\d)/gu
 const PATH = /(?<![\p{L}\p{M}\p{N}_/.:])((?:~|\.{1,2})?\/[\p{L}\p{M}\p{N}_.@+-]+(?:\/[\p{L}\p{M}\p{N}_.@+-]*)*)/gu
 const WHOLE_PATH = new RegExp(`^(?:${PATH.source})$`, PATH.flags.replace('g', ''))
@@ -164,13 +164,6 @@ const inlineOf = (m: RegExpExecArray, hl: Highlight): Inline[] => {
   return url === undefined ? [] : [{ kind: 'link', text: url, href: url }]
 }
 
-const WORDLIKE = /^[\p{L}\p{N}]$/u
-const isInWord = (text: string, m: RegExpExecArray): boolean => {
-  const before = Array.from(text.slice(Math.max(0, m.index - 2), m.index)).at(-1) ?? ''
-  const after = String.fromCodePoint(text.codePointAt(m.index + m[0].length) ?? 32)
-  return WORDLIKE.test(before) || WORDLIKE.test(after)
-}
-
 export const parseInline = (text: string, hl: Highlight): Inline[] => {
   if (text.length > MAX_INLINE) return [{ kind: 'text', text: dropTints(text) }]
   const out: Inline[] = []
@@ -181,10 +174,6 @@ export const parseInline = (text: string, hl: Highlight): Inline[] => {
     at = m.index + m[0].length
     if (m[16] !== undefined) {
       plain += m[16]
-      continue
-    }
-    if ((m[6] !== undefined || m[9] !== undefined) && isInWord(text, m)) {
-      plain += m[0]
       continue
     }
     if (plain) out.push(...tinted(plain, hl))

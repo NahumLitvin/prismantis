@@ -347,6 +347,19 @@ test('parse cost grows linearly on long backtick cells and unclosed $$ lines', a
   }
 })
 
+test('an underscore with a letter of any script on its outer side stays in the word', () => {
+  const words = (source: string) => {
+    const [block] = parse(source, { numbers: false, paths: false })
+    return block?.kind === 'paragraph' ? block.inline : []
+  }
+  expect(words('報告_v2版_最終稿.mp4')).toEqual([{ kind: 'text', text: '報告_v2版_最終稿.mp4' }])
+  expect(words('檔名__v2__最終')).toEqual([{ kind: 'text', text: '檔名__v2__最終' }])
+  expect(words('報告_v2 **bold** _ end').map(n => n.kind)).toEqual(['text', 'strong', 'text'])
+  expect(words('報告_a **bold** b_末').map(n => n.kind)).toEqual(['text', 'strong', 'text'])
+  expect(words('snake_case_name')).toEqual([{ kind: 'text', text: 'snake_case_name' }])
+  expect(words('這是 _重點_，那是 __粗體__。').map(n => n.kind)).toEqual(['text', 'emphasis', 'text', 'strong', 'text'])
+})
+
 test('parse stays inside a generous budget on a large reply', async () => {
   expect(best(() => parse(prose(2000), hl)) < 250).toBe(true)
   expect(best(() => parse(rows(2000), hl)) < 250).toBe(true)
@@ -975,17 +988,6 @@ for (const [where, env, root, options] of [
     await ui.unmount()
   })
 }
-
-test('an underscore with a letter of any script on its outer side stays in the word', () => {
-  const words = (source: string) => {
-    const [block] = parse(source, { numbers: false, paths: false })
-    return block?.kind === 'paragraph' ? block.inline : []
-  }
-  expect(words('報告_v2版_最終稿.mp4')).toEqual([{ kind: 'text', text: '報告_v2版_最終稿.mp4' }])
-  expect(words('檔名__v2__最終')).toEqual([{ kind: 'text', text: '檔名__v2__最終' }])
-  expect(words('snake_case_name')).toEqual([{ kind: 'text', text: 'snake_case_name' }])
-  expect(words('這是 _重點_，那是 __粗體__。').map(n => n.kind)).toEqual(['text', 'emphasis', 'text', 'strong', 'text'])
-})
 
 const withoutLinks = (node: unknown): unknown => {
   if (node === null || typeof node !== 'object') return node
