@@ -862,6 +862,11 @@ const drawSetup = ($: EngineInterface, el: ReturnType<EngineInterface['ui']['res
 
 type DiagramState = { width: string | undefined; math: string | undefined }
 
+const diagramState = (latex: LatexSession, pane?: number): DiagramState => ({
+  width: pane !== undefined && pane < NARROW_PANE ? narrowHint(pane) : undefined,
+  math: latex.ready && !latex.stopped ? LATEX_HINT : undefined,
+})
+
 const changedHint = (previous: string | undefined, current: string | undefined, cleared: string): string[] =>
   previous === current ? [] : [current ?? cleared]
 
@@ -869,6 +874,12 @@ const diagramNotes = (previous: DiagramState | undefined, current: DiagramState)
   ...(previous ? [] : [HINT, FIGURE_HINT]),
   ...changedHint(previous?.width, current.width, 'The terminal pane is wide again. The earlier narrow-pane guidance no longer applies.'),
   ...changedHint(previous?.math, current.math, 'LaTeX image rendering is unavailable now. Write math as plain text or Unicode.'),
+]
+
+const hintsFor = (style: Style, previous: DiagramState | undefined, current: DiagramState, nth: number): string[] => [
+  ...(style.diagramHints ? diagramNotes(style.diagramHintsWhen === 'once' ? previous : undefined, current) : []),
+  ...(style.keyPointHint ? [KEY_POINT_HINT] : []),
+  ...(style.issueHint && nth % 10 === 0 ? [ISSUE_HINT] : []),
 ]
 
 const planOf = (tool: string, output: unknown): { plan: string; filePath?: string } | undefined => {
@@ -1091,14 +1102,8 @@ export const register: Register = (on, options) => {
     if (!takesHint(e.origin) || (style.surfaces && !(await drawsWhereAsked($, e.origin, style.surfaces)))) return next(e)
     if (style.diagramHints) void latexEngine($, latex)
     const session = hintSession
-    const current = {
-      width: pane !== undefined && pane < NARROW_PANE ? narrowHint(pane) : undefined,
-      math: latex.ready && !latex.stopped ? LATEX_HINT : undefined,
-    }
-    const hints = style.diagramHints ? diagramNotes(style.diagramHintsWhen === 'once' ? session.sent : undefined, current) : []
-    if (style.keyPointHint) hints.push(KEY_POINT_HINT)
-    if (style.issueHint && prompts % 10 === 0) hints.push(ISSUE_HINT)
-    prompts++
+    const current = diagramState(latex, pane)
+    const hints = hintsFor(style, session.sent, current, prompts++)
     const result = await next(hints.length ? { ...e, context: [...(e.context ?? []), ...hints] } : e)
     if (result.drop === undefined) session.sent = current
     return result
