@@ -2023,6 +2023,14 @@ test('edges beside a long multi-line edge label still touch their boxes, and the
   expect(lines[label + 1]).toMatch(/▼ +touched, checked out/)
 })
 
+test('a two-line label on an edge leaving a box sideways is drawn beside the box, not over its border', () => {
+  const lines = mermaidText('flowchart TD\n  A --> B\n  B --> C\n  C -->|"copied<br/>cloned"| A', false, 200)!.split('\n')
+  const label = lines.findIndex(l => l.includes('copied'))
+  expect(lines[label]).toMatch(/^│ C ├copied─+┘$/)
+  expect(lines[label + 1]).toMatch(/^│ {3}│ *cloned/)
+  expect(lines.find(l => l.includes(' A '))).toMatch(/^│ A │◄─+┐$/)
+})
+
 test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async $ => {
   const art = mermaidText('flowchart TD\n  A["metrics-server<br/><i>one slow scrape</i>"] --> B["<b>kubelet</b>"]', false, 80)!
   expect(art).toContain('one slow scrape')

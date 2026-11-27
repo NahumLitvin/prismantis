@@ -166,6 +166,15 @@ const LABEL_WIDTH = [
     "  const lenLabel = Math.max(...edge.text.split('\\n').map(l => l.length))\n",
   ],
   [
+    '  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2))\n',
+    `  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2))
+  const width = (x: number) => graph.columnWidth.get(x) ?? 0
+  const between = (from: number, to: number) => Array.from({ length: Math.max(0, to - from - 1) }, (_, i) => width(from + 1 + i)).reduce((a, b) => a + b, 0)
+  const span = () => (minX === maxX ? width(minX) : width(minX) - Math.floor(width(minX) / 2) + between(minX, maxX) + Math.floor(width(maxX) / 2))
+  while (span() < lenLabel + 2) graph.columnWidth.set(middleX, width(middleX) + 1)
+`,
+  ],
+  [
     '  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1)\n',
     "  const stacked = edge.text.includes('\\n')\n  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1 && !(stacked && s.isVertical))\n",
   ],

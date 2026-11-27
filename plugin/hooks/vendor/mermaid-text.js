@@ -913,8 +913,8 @@ function determineLabelLine(graph, edge) {
   let lenLabel = Math.max(...edge.text.split(`
 `).map((l) => l.length)), pathLen = edge.path.length, isVerticalFlow = graph.config.graphDirection === "TD", segments = [];
   for (let i = 1; i < pathLen; i++) {
-    let p1 = edge.path[i - 1], p2 = edge.path[i], line = [p1, p2], width = calculateLineWidth(graph, line), isVertical = p1.x === p2.x;
-    segments.push({ line, width, index: i, isVertical });
+    let p1 = edge.path[i - 1], p2 = edge.path[i], line = [p1, p2], width2 = calculateLineWidth(graph, line), isVertical = p1.x === p2.x;
+    segments.push({ line, width: width2, index: i, isVertical });
   }
   let stacked = edge.text.includes(`
 `), suitableSegments = segments.filter((s) => s.width >= lenLabel && s.index > 1 && !(stacked && s.isVertical)), largestLine;
@@ -925,7 +925,10 @@ function determineLabelLine(graph, edge) {
     fallbackSegments.length > 0 ? (fallbackSegments.sort((a, b) => b.index - a.index), largestLine = fallbackSegments[0].line) : (segments.sort((a, b) => b.width - a.width), largestLine = segments[0]?.line ?? [edge.path[0], edge.path[1]]);
   }
   let minX = Math.min(largestLine[0].x, largestLine[1].x), maxX = Math.max(largestLine[0].x, largestLine[1].x), mid = minX + Math.floor((maxX - minX) / 2), placed = graph.nodes.filter((n) => n.gridCoord).map((n) => n.gridCoord.x), cost = (x) => (placed.some((p) => x === p || x === p + 2) ? 2 : placed.some((p) => x === p + 1) ? 1 : 0) * 1e3 + Math.abs(x - mid), middleX = Array.from({ length: maxX - minX + 1 }, (_, i) => minX + i).sort((a, b) => cost(a) - cost(b))[0], current = graph.columnWidth.get(middleX) ?? 0;
-  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2)), edge.labelLine = [largestLine[0], largestLine[1]];
+  graph.columnWidth.set(middleX, Math.max(current, lenLabel + 2));
+  let width = (x) => graph.columnWidth.get(x) ?? 0, between = (from, to) => Array.from({ length: Math.max(0, to - from - 1) }, (_, i) => width(from + 1 + i)).reduce((a, b) => a + b, 0), span = () => minX === maxX ? width(minX) : width(minX) - Math.floor(width(minX) / 2) + between(minX, maxX) + Math.floor(width(maxX) / 2);
+  for (; span() < lenLabel + 2; ) graph.columnWidth.set(middleX, width(middleX) + 1);
+  edge.labelLine = [largestLine[0], largestLine[1]];
 }
 function calculateLineWidth(graph, line) {
   let total = 0, startX = Math.min(line[0].x, line[1].x), endX = Math.max(line[0].x, line[1].x);
