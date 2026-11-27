@@ -616,7 +616,7 @@
     "diagramHintsWhen": {
       "type": "string",
       "title": "Diagram hints: when",
-      "description": "When the diagram hints note goes with a prompt. every: each prompt you type or another plugin sends (about 630 tokens each). once: the first prompt of the session and the first after a compaction or /clear, which drop it with the rest of the history.",
+      "description": "When the diagram hints note goes with a prompt. every: each prompt you type or another plugin sends (about 630 tokens each). once: static hints on the first prompt and after compaction or /clear. Later prompts report changes to narrow pane width and LaTeX availability.",
       "default": "every",
       "options": ["every", "once"]
     },

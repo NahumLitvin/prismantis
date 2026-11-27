@@ -693,14 +693,15 @@ test('diagramHintsWhen once: the note rides the first prompt and the first after
   on('session.compact', () => ({ messages: [{ role: 'user', text: 'summary', toolUses: [] }] }))
   on('prompt.submit', (_, e) => {
     seen.push(e.context)
-    return { text: e.text, context: e.context }
+    return e.text === 'dropped' ? { drop: 'dropped by another plugin' } : { text: e.text, context: e.context }
   })
+  await $.prompt.submit({ text: 'dropped', wait: false, origin: { kind: 'composer' } })
   await $.prompt.submit({ text: 'one', wait: false, origin: { kind: 'composer' } })
   await $.prompt.submit({ text: 'two', wait: false, origin: { kind: 'composer' } })
   await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: 'one', toolUses: [] }] })
   await $.prompt.submit({ text: 'three', wait: false, origin: { kind: 'composer' } })
   await $.prompt.submit({ text: 'four', wait: false, origin: { kind: 'composer' } })
-  expect(seen.map(c => (c ?? []).includes(FIGURE_HINT))).toEqual([true, false, true, false])
+  expect(seen.map(c => (c ?? []).includes(FIGURE_HINT))).toEqual([true, true, false, true, false])
 })
 
 test('diagramHintsWhen once: the note rides the first prompt after a /clear', { options: { diagramHintsWhen: 'once' } }, async ($, on) => {
@@ -3713,6 +3714,28 @@ test('a narrow pane adds its width to the render hint, a wide one does not', asy
   }
   expect(seen[0]?.some(c => c.includes('70 columns'))).toBe(true)
   expect(seen[1]?.some(c => c.includes('columns wide'))).toBe(false)
+})
+
+test('once sends only the changed pane hint and clears it when the pane widens', { options: { diagramHintsWhen: 'once', issueHint: false } }, async ($, on) => {
+  const seen: (readonly string[] | undefined)[] = []
+  mock.env(on, {})
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  on('prompt.submit', (_, e) => {
+    seen.push(e.context)
+    return { text: e.text, context: e.context }
+  })
+  for (const columns of [120, 70, 70, 80, 120, 120]) {
+    const reply = await $.ui.mount({ plugin: 'prismantis', surface: 'terminal', component: 'AssistantMessage', props: { text: 'hi', isFirstOfReply: true }, viewport: { columns, rows: 40 } })
+    await reply.unmount()
+    await $.prompt.submit({ text: 'draw it', wait: false, origin: { kind: 'composer' } })
+  }
+  expect(seen.map(notes => notes?.length ?? 0)).toEqual([2, 1, 0, 1, 1, 0])
+  expect(seen[1]?.[0]).toContain('70 columns')
+  expect(seen[3]?.[0]).toContain('80 columns')
+  expect(seen[4]?.[0]).toContain('wide again')
 })
 
 test('in the ctrl+o transcript a shell row keeps its colored command and leaves the output to the engine, so it draws once', async ($, on) => {
