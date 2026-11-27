@@ -3,11 +3,11 @@ import type { ElementTable, RenderElement, RenderNode, TextHoverProps } from 'cl
 import type { Ink } from './clipboard'
 import { figureText, isFigureLang } from './figure'
 import { tableHtml, tableText } from './html'
-import type { Block, Inline, TableAlign, TableCell, TableBlock } from './markdown'
+import type { Block, CodeLink, Inline, TableAlign, TableCell, TableBlock } from './markdown'
 import { mathOf } from './latex'
 import type { AnsiRun } from './ansi'
 import { ansiLines, hasAnsi, hasLook } from './ansi'
-import { CONTROL, displayText, DRIVE_PATH, inlineText, isPathSpelling, isWebLink, NAME, nestedBlocks, parseInline, PART, texParses, texText } from './markdown'
+import { CONTROL, displayText, DRIVE_PATH, inlineText, isPathSpelling, isWebLink, NAME, nestedBlocks, parseInline, PART, pathSpellings, texParses, texText } from './markdown'
 import type { Flow } from './rtl'
 import { LTR_BLANK, ROW_MARK, ROW_MARK_TEXT, WALL, codeVisual, commentTail, commentVisual, containsRtl, engineProse, flow, hasRtl, heldCell, listMarker, opensLatin, terminalLine } from './rtl'
 import type { Style, Theme } from './theme'
@@ -389,12 +389,20 @@ const spellingsIn = (nodes: Inline[]): string[] =>
 
 const isPlainText = (lang: string): boolean => ['', 'text', 'txt', 'plain', 'plaintext'].includes(lang.toLowerCase())
 
-const lineNode = (line: string): Inline => ({ kind: 'code', text: line.trim() })
+const codeSpans = (line: string): { start: number; end: number }[] => {
+  const spellings = [...pathSpellings(line), ...looseSpellings(line)]
+    .map(m => ({ start: m.index, end: m.index + m[0].length }))
+    .sort((a, b) => a.start - b.start || b.end - a.end)
+  let edge = 0
+  return spellings.filter(s => s.start >= edge && ((edge = s.end), true))
+}
+
+const spanNode = (line: string, span: { start: number; end: number }): Inline => ({ kind: 'code', text: line.slice(span.start, span.end) })
 
 const inlinesOf = (block: Block): Inline[][] => {
   switch (block.kind) {
     case 'code':
-      return isPlainText(block.lang) ? block.lines.filter(line => line.trim()).map(line => [lineNode(line)]) : []
+      return isPlainText(block.lang) ? block.lines.map(line => codeSpans(line).map(span => spanNode(line, span))).filter(nodes => nodes.length) : []
     case 'heading':
     case 'paragraph':
       return [block.inline]
@@ -448,11 +456,14 @@ const hyperlinkBlock = (block: Block, reach: Reach): Block => {
       return { ...block, notes: block.notes.map(note => ({ ...note, inline: drawn(note.inline) })) }
     case 'code': {
       if (!isPlainText(block.lang)) return block
-      const hrefs = block.lines.map(line => {
-        const node = line.trim() ? drawn([lineNode(line)])[0] : undefined
-        return node?.kind === 'code' ? node.href : undefined
+      const links = block.lines.map(line => {
+        const found = codeSpans(line).flatMap((span): CodeLink[] => {
+          const node = drawn([spanNode(line, span)])[0]
+          return node?.kind === 'code' && node.href ? [{ ...span, href: node.href }] : []
+        })
+        return found.length ? found : undefined
       })
-      return hrefs.some(Boolean) ? { ...block, hrefs } : block
+      return links.some(Boolean) ? { ...block, links } : block
     }
     default:
       return block
@@ -779,23 +790,30 @@ const heldCode = (el: ElementTable, style: Style, lines: string[], shown: number
 
 const figureFallbackLines = (block: Extract<Block, { kind: 'code' }>): string[] => isFigureLang(block.lang) ? block.lines.map(figureText) : block.lines
 
-const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string, isOpen?: boolean, hrefs?: readonly (string | undefined)[]): RenderElement[] => {
+const codeRows = (el: ElementTable, style: Style, lines: string[], shown: number, lang: string, numbered: boolean, room: number, key: string, isOpen?: boolean, links?: readonly (readonly CodeLink[] | undefined)[]): RenderElement[] => {
   if (style.nativeCode) return [<el.Code key="code" source={lines.slice(0, shown).join('\n') || ' '} {...(lang ? { language: lang } : {})} {...(numbered ? { startLine: 1 } : {})} />]
   const plain = plainBlock(lang, lines)
-  const draw = (line: string, i: number): RenderElement => { const href = hrefs?.[i]; return href ? linkedLine(el, style, line, href, `${key}.${i}`) : codeLine(el, style, line, lang, `${key}.${i}`, room, plain) }
+  const draw = (line: string, i: number): RenderElement => { const found = links?.[i]; return found ? linkedLine(el, style, line, found, `${key}.${i}`) : codeLine(el, style, line, lang, `${key}.${i}`, room, plain) }
   if (style.shape === 'engine' && !plain && !isShellLang(lang) && Object.keys(grammarFor(lang) ?? {}).length === 0) {
     return lines.slice(0, shown).map((line, i) => {
       const text = BOX_DRAWING.test(line) ? null : engineProse(line)
       return text === null ? <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{draw(line, i)}</el.Text> : <el.Text key={`${key}.${i}`} color={style.theme.codeText}>{text}</el.Text>
     })
   }
-  const rows = (isShellLang(lang) || hrefs ? null : highlightBlock(el, style, lines, lang, key, room, shown, isOpen)) ?? lines.slice(0, shown).map(draw)
+  const rows = (isShellLang(lang) || links ? null : highlightBlock(el, style, lines, lang, key, room, shown, isOpen)) ?? lines.slice(0, shown).map(draw)
   return style.shape === 'engine' ? rows.map((row, i) => <el.Text key={`${key}.ltr${i}`} {...heldLtr(style)}>{row}</el.Text>) : rows
 }
 
-const linkedLine = ({ Text, Link }: ElementTable, style: Style, line: string, href: string, key: string): RenderElement => {
-  const [, lead, label, tail] = /^(\s*)(.*?)(\s*)$/.exec(line)!
-  return <Text key={key} color={style.theme.codeText}>{lead}<Link href={href} label={label} />{tail}</Text>
+const linkedLine = ({ Text, Link }: ElementTable, style: Style, line: string, links: readonly CodeLink[], key: string): RenderElement => {
+  const pieces: RenderNode[] = []
+  let at = 0
+  links.forEach(({ start, end, href }, i) => {
+    if (start > at) pieces.push(line.slice(at, start))
+    pieces.push(<Link key={`l${i}`} href={href} label={line.slice(start, end)} />)
+    at = end
+  })
+  if (at < line.length) pieces.push(line.slice(at))
+  return <Text key={key} color={style.theme.codeText}>{pieces}</Text>
 }
 
 const codeBody = (el: ElementTable, style: Style, rows: RenderElement[], gutter: number, held: boolean, more: RenderNode | null): RenderElement => {
@@ -1716,7 +1734,7 @@ export const renderBlocks = (el: ElementTable, style: Style, blocks: Block[], co
         const room = columns - 2 - shell.width - gutterOf(lines, numbered)
         const gutter = numbered ? String(lines.length).length : 0
         const held = !style.nativeCode && mirrored(style) && lines.some(line => hasRtl(line) && (!opensLatin(line) || width(line) > room))
-        const rows = [...(held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key, block.isOpen) : codeRows(el, style, lines, shown, block.lang, numbered, room, key, block.isOpen, block.hrefs)), ...codeRest(el, lines.length, shown, key)]
+        const rows = [...(held ? heldCode(el, style, lines, shown, block.lang, gutter, room, key, block.isOpen) : codeRows(el, style, lines, shown, block.lang, numbered, room, key, block.isOpen, block.links)), ...codeRest(el, lines.length, shown, key)]
         const button = copy?.(lines.join('\n'), `copy${b}`) ?? null
         const label = codeLabel(block)
         const head = codeHead(label, button, shell.width)

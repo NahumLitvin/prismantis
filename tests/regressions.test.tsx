@@ -476,6 +476,7 @@ test('the help screen shows every element prismantis draws', async () => {
   expect(showcaseText([])).toContain('⧉ html')
   expect(showcaseText([])).toContain('`▣ png`')
   expect(showcaseText([])).toContain('src/app.ts:42, and Windows paths like C:\\work\\plan.md')
+  expect(showcaseText([])).toContain('Log written to /tmp/prismantis.log')
   expect(showcaseText([])).toContain('`fullPaths` in `/config`')
   expect(showcaseText([])).toContain('<i>Reply</i>')
   expect(showcaseText([])).toContain('CopyQ')
@@ -962,6 +963,24 @@ for (const [where, env, root] of [
     await ui.unmount()
   })
 }
+
+test('a path inside a line of a plain code block links, the words around it drawn as written', async ($, on) => {
+  filesAt(on, '2.1.289')
+  on('fs.stat', (_, e, next) => (/(^|\/)D:\/work\/notes\/plan\.md$/.test(e.path.replace(/\\/g, '/')) ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : next(e)))
+  const clock = folders(on, ['/home/me/notes'])
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const reply = ['```text', 'Plan: D:\\work\\notes\\plan.md, then review', 'see /srv/app/main.ts and ~/notes', 'version v1.2 is not a path', '```'].join('\n')
+  const ui = await $.ui.mount(mount(reply))
+  await clock.settle()
+  expect((await ui.findAll({ type: 'Link' })).map(l => [l.props.label, l.props.href])).toEqual([
+    ['D:\\work\\notes\\plan.md', 'file:///D:/work/notes/plan.md'],
+    ['/srv/app/main.ts', 'file:///srv/app/main.ts'],
+    ['~/notes', 'file:///home/me/notes'],
+  ])
+  expect(await ui.find({ type: 'Text', text: /^Plan: D:\\work\\notes\\plan\.md, then review$/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /^version v1\.2 is not a path$/ })).toBeTruthy()
+  await ui.unmount()
+})
 
 for (const [where, env, root, options] of [
   ['outside WSL', {}, 'file://', {}],

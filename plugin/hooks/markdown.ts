@@ -14,6 +14,8 @@ export type Inline =
 
 export type Note = { mark: string; inline: Inline[]; note: number }
 
+export type CodeLink = { start: number; end: number; href: string }
+
 export type TableAlign = 'left' | 'right' | 'center'
 export type TableCell = Inline[]
 export type TableBlock = Extract<Block, { kind: 'table' }>
@@ -22,7 +24,7 @@ export type Block = { raw: string } & (
   | { kind: 'heading'; level: number; inline: Inline[] }
   | { kind: 'paragraph'; inline: Inline[] }
   | { kind: 'list'; ordered: boolean; items: ListItem[] }
-  | { kind: 'code'; lang: string; lines: string[]; isOpen?: true; hrefs?: readonly (string | undefined)[] }
+  | { kind: 'code'; lang: string; lines: string[]; isOpen?: true; links?: readonly (readonly CodeLink[] | undefined)[] }
   | { kind: 'quote'; blocks: Block[] }
   | { kind: 'alert'; level: AlertLevel; blocks: Block[] }
   | { kind: 'rule' }
@@ -108,6 +110,7 @@ const NUMBER = /(?<![\w.#/-]|\d[.,:])((?:(?<!\p{L})-(?=\d))?v?\d+(?:[.,:]\d+)*(?
 const PATH = /(?<![\p{L}\p{M}\p{N}_/.:])((?:~|\.{1,2})?\/[\p{L}\p{M}\p{N}_.@+-]+(?:\/[\p{L}\p{M}\p{N}_.@+-]*)*)/gu
 const WHOLE_PATH = new RegExp(`^(?:${PATH.source})$`, PATH.flags.replace('g', ''))
 export const isPathSpelling = (text: string): boolean => WHOLE_PATH.test(text)
+export const pathSpellings = (text: string): RegExpExecArray[] => [...text.matchAll(PATH)]
 export const PART = String.raw`[\p{L}\p{N}_@+-]+`
 export const NAME = String.raw`\.?${PART}(?:\.${PART})*`
 export const DRIVE_PATH = new RegExp(String.raw`[A-Za-z]:[\\/](?:${NAME}[\\/])*(?:${NAME})?`, 'gu')

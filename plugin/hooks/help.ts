@@ -18,6 +18,12 @@ Paths like ~/src/app.ts, ./README.md and /tmp/app.ts open on click in a terminal
 
 Paths written without ./, like docs/guide/ or src/app.ts:42, and Windows paths like C:\\work\\plan.md link too, once a check finds them on disk; prose like and/or stays text. Set \`fullPaths\` in \`/config\` and each path that opens on click shows as its absolute path.
 
+Plain text logs keep their paths clickable:
+
+\`\`\`text
+Log written to /tmp/prismantis.log
+\`\`\`
+
 Programs and launchers stay plain text, so a click never runs one: ./install.sh, ~/Desktop/setup.command and /Applications/Calculator.app keep the path color without a link.
 
 Obsidian links that open a note open on click, like [a note](obsidian://open?vault=notes&file=todo), while one that writes, like [a new note](obsidian://new?vault=notes&name=x&content=y), and other app links like [diagnostics](ms-msdt:/id) stay text.
