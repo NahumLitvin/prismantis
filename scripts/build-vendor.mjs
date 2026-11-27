@@ -159,6 +159,30 @@ const ROOT_SCAN = `  for (const node of graph.nodes) {
 const ROOTS_FIRST = `  const targets = new Set(graph.edges.map(e => e.to))
   for (const node of [...graph.nodes].sort((a, b) => Number(targets.has(a)) - Number(targets.has(b)))) {
     if (!nodesFound.has(node.name)) {`
+const EDGE_ROUTING = /beautiful-mermaid\/src\/ascii\/edge-routing\.ts$/
+const LABEL_WIDTH = [
+  [
+    '  const lenLabel = edge.text.length\n',
+    "  const lenLabel = Math.max(...edge.text.split('\\n').map(l => l.length))\n",
+  ],
+  [
+    '  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1)\n',
+    "  const stacked = edge.text.includes('\\n')\n  const suitableSegments = segments.filter(s => s.width >= lenLabel && s.index > 1 && !(stacked && s.isVertical))\n",
+  ],
+  [
+    `  const middleX = minX + Math.floor((maxX - minX) / 2)
+
+  const current = graph.columnWidth.get(middleX) ?? 0
+`,
+    `  const mid = minX + Math.floor((maxX - minX) / 2)
+  const placed = graph.nodes.filter(n => n.gridCoord).map(n => n.gridCoord!.x)
+  const cost = (x: number) => (placed.some(p => x === p || x === p + 2) ? 2 : placed.some(p => x === p + 1) ? 1 : 0) * 1000 + Math.abs(x - mid)
+  const middleX = Array.from({ length: maxX - minX + 1 }, (_, i) => minX + i).sort((a, b) => cost(a) - cost(b))[0]!
+
+  const current = graph.columnWidth.get(middleX) ?? 0
+`,
+  ],
+]
 const PARSER = /beautiful-mermaid\/src\/parser\.ts$/
 const NODE_ID_START = 'const NODE_PATTERNS'
 const NODE_ID_END = 'const CLASS_SHORTHAND_REGEX'
@@ -285,6 +309,14 @@ track(await build({
         if (!src.includes(LEVELS)) throw new Error(`grid.ts no longer sizes its level table with ${LEVELS}`)
         if (!src.includes(ROOT_SCAN)) throw new Error('grid.ts no longer finds root nodes in declaration order')
         return { contents: src.replace(LEVELS, 'new Array(10000).fill(0)').replace(ROOT_SCAN, ROOTS_FIRST), loader: 'ts' }
+      })
+      api.onLoad({ filter: EDGE_ROUTING }, args => {
+        let src = readFileSync(args.path, 'utf8')
+        for (const [from, to] of LABEL_WIDTH) {
+          if (!src.includes(from)) throw new Error(`edge-routing.ts no longer has "${from.trim().split('\n')[0]}"`)
+          src = src.replace(from, to)
+        }
+        return { contents: src, loader: 'ts' }
       })
       api.onLoad({ filter: PARSER }, args => {
         const src = readFileSync(args.path, 'utf8')

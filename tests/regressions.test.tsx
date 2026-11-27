@@ -1986,7 +1986,7 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
     '  D -- yes --> E["INSERT INTO readings"]',
     '  D -- no --> X1["BLOCKED: acquire timeout<br/>pool 4/4 busy, reading fails"]',
     '  E --> F["client.release() back to pool"]',
-    '  E -. "slow INSERT holds the connection<br/>(no query timeout in code)" .-> X2["BLOCKED: connection held,<br/>starves the pool"]',
+    '  E -. "slow INSERT holds the connection open while the pool waits (no query timeout in code)" .-> X2["BLOCKED: connection held,<br/>starves the pool"]',
     '  F --> G[("readings table<br/>tanks-db.internal")]',
     '  G --> H["Dashboard polls readings"]',
   ].join('\n')
@@ -1997,6 +1997,30 @@ test('a flowchart whose long edge label makes it too wide draws with the label s
   expect(await ui.find({ type: 'Text', text: /Tank sensor/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /flowchart TD/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('edges beside a long multi-line edge label still touch their boxes, and the label leaves the bend and arrow visible', () => {
+  const source = [
+    'flowchart TD',
+    '  A[any okf command starts] --> C{"same as<br/>.okf/.okfcache?"}',
+    '  C -->|all same| D["use cached index<br/>(fast path)"]',
+    '  C -->|some differ| E[read + hash only those files]',
+    '  D --> P[rank and print]',
+    '  E --> F{"content hash<br/>same as cached?"}',
+    '  F -->|"yes: copied, cloned,<br/>touched, checked out"| G["reuse entries,<br/>refresh their stat stamps"]',
+    '  F -->|"no: really edited,<br/>or new"| H[re-tokenize that file]',
+    '  G --> W["write cache:<br/>temp + rename"]',
+    '  H --> W',
+    '  W --> D',
+  ].join('\n')
+  const lines = mermaidText(source, false, 200)!.split('\n')
+  const at = (row: number, col: number) => [...(lines[row] ?? '')][col] ?? ' '
+  const loose = lines.flatMap((line, row) => [...line].flatMap((ch, col) =>
+    ('├┤'.includes(ch) && at(row - 1, col) === ' ' && at(row + 1, col) === ' ') || (ch === '◄' && at(row, col - 1) !== '│') || (ch === '►' && at(row, col + 1) !== '│') ? [`${row}:${col} ${ch}`] : []))
+  expect(loose).toEqual([])
+  const label = lines.findIndex(l => l.includes('yes: copied, cloned,'))
+  expect(lines[label]).toMatch(/┌──yes: copied, cloned,/)
+  expect(lines[label + 1]).toMatch(/▼ +touched, checked out/)
 })
 
 test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async $ => {
