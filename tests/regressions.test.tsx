@@ -976,6 +976,23 @@ for (const [where, env, root, options] of [
   })
 }
 
+test('under WSL a drive path is stat-ed where Linux mounts it, and links to the drive', async ($, on) => {
+  filesAt(on, '2.1.289', { WSL_DISTRO_NAME: 'Ubuntu' })
+  const clock = mock.clock(on)
+  const stats: string[] = []
+  on('fs.stat', (_, e) => {
+    const path = e.path.replace(/\\/g, '/')
+    stats.push(path)
+    return path.endsWith('/mnt/d/work/notes/plan.md') ? { value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false } } : { deny: `no such file ${e.path}` }
+  })
+  if (!(await linksHttp($.ui.mount(mount('[/x.md](file:///x.md)'))))) return
+  const ui = await $.ui.mount(mount('Plan: D:\\work\\notes\\plan.md'))
+  await clock.settle()
+  expect((await ui.findAll({ type: 'Link' })).map(l => l.props.href)).toEqual(['file:///D:/work/notes/plan.md'])
+  expect(stats.some(path => path.endsWith('/mnt/d/work/notes/plan.md'))).toBe(true)
+  await ui.unmount()
+})
+
 const withoutLinks = (node: unknown): unknown => {
   if (node === null || typeof node !== 'object') return node
   const { type, props, children } = node as { type?: string; props?: Record<string, unknown>; children?: unknown[] }
