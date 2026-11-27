@@ -7,7 +7,7 @@
 - Read, Grep, Glob, web fetches and shell commands made only of read-only programs (`cat`, `grep`, `rg`, `ls`, `find`, `git log`, `gh pr view`, …) draw their row and nothing under it, and the row says it in plain words: `Read src/report.py lines 1–10`, `Searched src/ for "TODO"`, `Listed tests`.
 - A shell call with no such form shows the description Claude gave it and the programs it ran: `Run the unit tests · python3`.
 - Other shell commands show their first 3 lines and a count, without the approval line, also when Claude Code folded the call into a collapsed group.
-- Edits keep their diff card, and a shell command that changed files keeps one card per file under its first lines. New, deleted and renamed files keep their preview, `Deleted` line and `Renamed` line.
+- Edits keep their diff card, and a shell command that changed files keeps one line per file under its first lines, or one card per file with `shellEdits: diffs`. New, deleted and renamed files keep their preview, `Deleted` line and `Renamed` line.
 - A failed call shows the last real line of its error instead of `Exit code 1`; a refused call (a permission rule, the auto mode classifier) shows its full reason.
 
 ## rows
@@ -15,7 +15,7 @@
 `rows`, set as `"toolOutput": "rows"`, draws everything as `quiet` does, with these differences:
 
 - A shell call that worked draws its row and nothing under it, read-only or not: `npm test` shows no first lines and no count.
-- A shell command that changed files keeps one diff card per file, without its first lines above them.
+- A shell command that changed files keeps one line per file, or one diff card per file with `shellEdits: diffs`, without its first lines above them.
 - Any other call that worked, an MCP tool or an agent, draws only its row too.
 
 These stay as in `quiet`:
@@ -35,12 +35,19 @@ A command counts as read-only only when every part of it is, after a quote-aware
 
 ![Diff cards: plain Claude Code on the left, prismantis on the right](compare/diff-cards.png)
 
-Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path, which opens the file on click like a path in a reply (see [Text](appearance.md#text)). A status dot shows done, running or failed, and output still draws below. Edits draw as a diff card in the theme's colors, and so do files a shell command changed (`sed -i`, a script), one card per file headed by its path. A file Write creates is no diff, as in Claude Code's own preview: `Created <path> (N lines)` heads its first 10 lines as numbered code in the theme's colors, and a click anywhere on it, title or lines, or on `+N more lines` opens the rest; `show less` or another click folds it again. A diff card or a new file's preview with lines folded away opens the same way. A file an Edit or a shell command creates shows its first 10 lines as added diff lines under the same header. A file a shell command deletes is one `Deleted <path> (N lines)` line, and a click on it opens its removed lines. A file moved unchanged is one `Renamed <old> → <new>` line. Before Claude Code 2.1.295, files Write creates keep Claude Code's own preview, a new file's lines open with a `+N more lines` button and a deleted file's with a `show N lines` button. In the desktop app a click on the code lines does nothing; the `+N more lines` button does it. In diff cards added and unchanged lines are highlighted in the file's language, removed lines stay plain as in Claude Code, and when a line is edited rather than rewritten, the words that changed get a deeper tint. `diffStyle` picks the look: `card` (default) frames the lines in a rounded box, `full` drops the box and tints each changed line across the width, `marks` drops the tint and colors only the `+` and `−` marks, and `bar` puts a colored `▌` before each changed line.
+Each tool call draws as one line: a verb and its target, `Ran` with a colored shell command, `Read` and `Edited` with the path, which opens the file on click like a path in a reply (see [Text](appearance.md#text)). A status dot shows done, running or failed, and output still draws below. Edits draw as a diff card in the theme's colors. Files a shell command changed (`sed -i`, a script) draw one line each, or one card each headed by its path with `shellEdits: diffs`; see below. A file Write creates is no diff, as in Claude Code's own preview: `Created <path> (N lines)` heads its first 10 lines as numbered code in the theme's colors, and a click anywhere on it, title or lines, or on `+N more lines` opens the rest; `show less` or another click folds it again. A diff card or a new file's preview with lines folded away opens the same way. A file an Edit creates shows its first 10 lines as added diff lines under the same header, and so does one a shell command creates with `shellEdits: diffs`. A file a shell command deletes is one `Deleted <path> (N lines)` line, and with `shellEdits: diffs` a click on it opens its removed lines. A file moved unchanged is one `Renamed <old> → <new>` line. Before Claude Code 2.1.295, files Write creates keep Claude Code's own preview, a new file's lines open with a `+N more lines` button and a deleted file's with a `show N lines` button. In the desktop app a click on the code lines does nothing; the `+N more lines` button does it. In diff cards added and unchanged lines are highlighted in the file's language, removed lines stay plain as in Claude Code, and when a line is edited rather than rewritten, the words that changed get a deeper tint. `diffStyle` picks the look: `card` (default) frames the lines in a rounded box, `full` drops the box and tints each changed line across the width, `marks` drops the tint and colors only the `+` and `−` marks, and `bar` puts a colored `▌` before each changed line.
 
 | `card` (default) | `full` | `marks` | `bar` |
 |---|---|---|---|
 | rounded box, tinted lines | no box, lines tinted across the width | no tint, colored `+` and `−` | no tint, a colored `▌` before each changed line |
 | ![card](diff/card.png) | ![full](diff/full.png) | ![marks](diff/marks.png) | ![bar](diff/bar.png) |
+
+`shellEdits` picks how the files a shell command changed draw under it, as after a `sed -i`, a script or a `git merge`. `list` (default) draws one line per file, like Claude Code's own summary of a big change: `Updated <path> +N −M`, `Created <path> (N lines)`, `Deleted <path> (N lines)` or `Renamed <old> → <new>`, then up to 3 more changed paths and a count of the rest. The paths of updated and created files and the extra paths open on click, like a path in a reply. `diffs` gives each file the diff card above.
+
+| `list` (default) | `diffs` |
+|---|---|
+| one line per file | a diff card per file |
+| ![list](shell-edits/list.png) | ![diffs](shell-edits/diffs.png) |
 
 In Code Mode, Claude Code gives each script a row of its own but draws nothing on it, then one row per tool call the script makes. prismantis draws the script's code on that row, highlighted as JavaScript, so it sits above the rows of its calls, with a copy button and the lines past 30 folded behind `+N more lines`. A script still streaming in draws once its code arrives. `scriptStyle` picks the look: `frame` (default) puts the code in a rounded box with `Code · N lines` in its top border and the copy button at its top right, `rail` draws a colored `▌` before every line on a background, `bar` heads the code with a filled strip that says whether the script is running, done or failed (failed when it throws or is interrupted), and `chip` folds it to one line with its first line of code, which opens on a click. The ctrl+o transcript draws it the same way.
 
