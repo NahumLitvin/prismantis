@@ -171,7 +171,10 @@ const LABEL_WIDTH = [
   const width = (x: number) => graph.columnWidth.get(x) ?? 0
   const between = (from: number, to: number) => Array.from({ length: Math.max(0, to - from - 1) }, (_, i) => width(from + 1 + i)).reduce((a, b) => a + b, 0)
   const span = () => (minX === maxX ? width(minX) : width(minX) - Math.floor(width(minX) / 2) + between(minX, maxX) + Math.floor(width(maxX) / 2))
-  while (span() < lenLabel + 2) graph.columnWidth.set(middleX, width(middleX) + 1)
+  const [prev, last] = edge.path.slice(-2)
+  const intoLabel = !!prev && !!last && last.x < prev.x && largestLine.some(p => p.x === last.x && p.y === last.y)
+  const room = lenLabel + (minX !== maxX && intoLabel ? 4 : 2)
+  while (span() < room) graph.columnWidth.set(middleX, width(middleX) + 1)
 `,
   ],
   [
@@ -189,7 +192,9 @@ const LABEL_WIDTH = [
 `,
     `  const mid = minX + Math.floor((maxX - minX) / 2)
   const placed = graph.nodes.filter(n => n.gridCoord).map(n => n.gridCoord!.x)
-  const cost = (x: number) => (placed.some(p => x === p || x === p + 2) ? 2 : placed.some(p => x === p + 1) ? 1 : 0) * 1000 + Math.abs(x - mid)
+  const end = (x: number) => minX !== maxX && (x === minX || x === maxX)
+  const border = (x: number) => placed.some(p => x === p || x === p + 2)
+  const cost = (x: number) => (x === mid && !border(x) ? -1 : border(x) ? 4 : placed.some(p => x === p + 1) ? 2 : end(x) ? 1 : 0) * 1000 + Math.abs(x - mid)
   const middleX = Array.from({ length: maxX - minX + 1 }, (_, i) => minX + i).sort((a, b) => cost(a) - cost(b))[0]!
 
   const current = graph.columnWidth.get(middleX) ?? 0

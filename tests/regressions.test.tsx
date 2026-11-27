@@ -2038,6 +2038,18 @@ test('a two-line label whose only fitting segments are a first horizontal run an
   expect(lines[label + 1]).toMatch(/│ +differ +│/)
 })
 
+test('a label on the last segment of an edge pointing left keeps its arrowhead', () => {
+  const two = mermaidText('flowchart TD\n  A[top] --> B[left]\n  A --> C[right]\n  C -->|"ab<br/>cd"| B', false, 200)!.split('\n')
+  expect(two.find(l => l.includes('ab'))).toMatch(/│ left │◄ab─+┤ right │/)
+  const one = mermaidText('flowchart TD\n  A --> B\n  B --> C\n  C -->|go| A', false, 200)!.split('\n')
+  expect(one.find(l => l.includes('go'))).toMatch(/^│ A │◄go─+┐$/)
+})
+
+test('a short label that already fits its segment widens nothing', () => {
+  const lines = mermaidText('flowchart LR\n  A --> B[already wide middle node]\n  B --> C\n  C -->|retry| A', false, 200)!.split('\n')
+  expect(lines.find(l => l.includes('already wide'))).toMatch(/^│ A ├──►│ already wide middle node ├──►│ C │/)
+})
+
 test('inline HTML tags in mermaid labels draw as italic and bold, not as tags', async $ => {
   const art = mermaidText('flowchart TD\n  A["metrics-server<br/><i>one slow scrape</i>"] --> B["<b>kubelet</b>"]', false, 80)!
   expect(art).toContain('one slow scrape')
